@@ -273,7 +273,7 @@ void Sockets::readConnectionHelper(Instance* cInstance, const int& sockfd, const
 			eTextLen = eTextLen2;
 
 			if (eText2)
-				delete eText2;
+				free(eText2);
 		}
 
 		if (eTextLen == 0)
@@ -322,7 +322,7 @@ void Sockets::readConnectionHelper(Instance* cInstance, const int& sockfd, const
 
 				// overflow
 				if (cOverflow)
-					delete cOverflow;
+					free(cOverflow);
 				cOverflowLen = eTextLen - crypt->size;
 				cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
 				memcpy(cOverflow, &eText[crypt->size], sizeof(int64_t) * cOverflowLen);

@@ -278,6 +278,7 @@ void* GNet::commandCatcher(void*)
 		fd_set fdarr;
 		struct timeval tv;
 		tv.tv_sec = 10;
+		tv.tv_usec = 0;
 
 		FD_ZERO(&fdarr);
 		FD_SET(sockfd, &fdarr);
@@ -632,12 +633,12 @@ std::string GNet::getWebContents(std::string url)
 			{
 				if (contentPoint > -1)
 				{
-					stream += buffer;
+					stream += msg;
 					fileRead += bytesRead;
 				}
 				else
 				{
-					responseHeader += buffer;
+					responseHeader += msg;
 
 					if (msg.find("Content-Length: ") != std::string::npos)
 					{

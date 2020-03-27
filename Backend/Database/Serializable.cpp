@@ -286,7 +286,7 @@ int Serializable::deserializeType(char** serialRef, int& len, int64_t& newBlockS
 	// shift the serialBuffer (1 is for the comma)
 	len -= subBreakPoint + 1;
 	newBlockSize -= subBreakPoint + 1;
-	memcpy(serialBuffer, &serialBuffer[subBreakPoint + 1], len);
+	memmove(serialBuffer, &serialBuffer[subBreakPoint + 1], len);
 	char* tempserialBuffer = (char*)realloc(serialBuffer, sizeof(char) * len);
 	if (!tempserialBuffer)
 		return GType::NULL_TYPE;
@@ -337,7 +337,7 @@ int64_t Serializable::deserializeSize(char** serialRef, int& len, int64_t& newBl
 	// shift the serialBuffer (1 is for the comma)
 	len -= subBreakPoint + 1;
 	newBlockSize -= subBreakPoint + 1;
-	memcpy(serialBuffer, &serialBuffer[subBreakPoint + 1], len);
+	memmove(serialBuffer, &serialBuffer[subBreakPoint + 1], len);
 	char* tempserialBuffer = (char*)realloc(serialBuffer, sizeof(char) * len);
 	if (!tempserialBuffer)
 		return -1;
@@ -431,7 +431,7 @@ char* Serializable::deserializeContent(char** serialRef, int& len, int64_t& newB
 	else if (len == 0)
 		return unescapedBlock;
 
-	memcpy(serialBuffer, &serialBuffer[newBlockSize + escCount + delimiterLen], len);
+	memmove(serialBuffer, &serialBuffer[newBlockSize + escCount + delimiterLen], len);
 	char* tempserialBuffer = (char*)realloc(serialBuffer, sizeof(char) * len);
 	if (!tempserialBuffer)
 		return NULL;
