@@ -51,10 +51,12 @@ Service::~Service()
  * @param sockData a package of network data
  * @param cInstance the current instance
  */
-void Service::ExecuteService(const shmea::GList& sockData, Instance* cInstance)
+void Service::ExecuteService(GServer* serverInstance, const shmea::GList& sockData,
+							 Instance* cInstance)
 {
 	// set the args to pass in
 	newServiceArgs* x = new newServiceArgs[sizeof(newServiceArgs)];
+	x->serverInstance = serverInstance;
 	x->cInstance = cInstance;
 	x->sockData = sockData;
 	x->sThread = new pthread_t[sizeof(pthread_t)];
@@ -77,6 +79,10 @@ void* Service::launchService(void* y)
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
 
+	if (!x->serverInstance)
+		return NULL;
+	GServer* serverInstance = x->serverInstance;
+
 	// get the command
 	if (x->sockData.size() < 1)
 		return NULL;
@@ -86,9 +92,12 @@ void* Service::launchService(void* y)
 
 	// Instance is dead so ignore it
 	Instance* cInstance = x->cInstance;
+	if (!cInstance)
+		return NULL;
+
 	if (!cInstance->isFinished())
 	{
-		Service* cService = GNet::ServiceLookup(x->command);
+		Service* cService = serverInstance->ServiceLookup(x->command);
 		if (cService)
 		{
 			// start the service
@@ -97,7 +106,7 @@ void* Service::launchService(void* y)
 			// execute the service
 			shmea::GList retList = cService->execute(cInstance, x->sockData);
 			if (!retList.empty())
-				Sockets::addResponseList(cInstance, retList);
+				serverInstance->socks.addResponseList(cInstance, retList);
 
 			// exit the service
 			cService->ExitService(x);

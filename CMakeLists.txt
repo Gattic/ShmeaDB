@@ -11,7 +11,7 @@ set(shmea_FOUND 1)
 #Compiler Flags
 set(CMAKE_BUILD_TYPE Debug) # -g
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 #Project
@@ -31,8 +31,6 @@ endif()
 include(GNUInstallDirs)
 
 #Subdirectories
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories("services")
 add_subdirectory("Backend/Database")
 add_subdirectory("Backend/Networking")
 
@@ -47,15 +45,10 @@ add_library(${PROJECT_NAME} SHARED ${MAIN_SRC_FILES})
 target_link_libraries(${PROJECT_NAME}
 	GNet DB) #custom libs
 
-target_include_directories(shmea PRIVATE "include")
-target_include_directories(shmea PRIVATE "Backend")
-
-#target_include_directories(${PROJECT_NAME} PUBLIC
-#    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#    $<INSTALL_INTERFACE:include>
-#    PRIVATE Backend)
-
-message(${CMAKE_INSTALL_LIBDIR})
+target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    PRIVATE ${CMAKE_SOURCE_DIR})
 
 install(TARGETS ${PROJECT_NAME} EXPORT shmeaConfig
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}

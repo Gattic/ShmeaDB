@@ -206,7 +206,7 @@ void GTable::importFromUrl(const std::string& url)
 	if (url.length() == 0)
 		return;
 
-	std::string webContent = GNet::getWebContents(url);
+	std::string webContent = GNet::GServer::getWebContents(url);
 	if (webContent.length() > 0)
 		importFromString(webContent);
 }

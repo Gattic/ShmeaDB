@@ -26,30 +26,35 @@ using namespace GNet;
 
 const std::string Sockets::ANYADDR = "0.0.0.0";
 const std::string Sockets::LOCALHOST = "127.0.0.1";
-const std::string Sockets::PORT = "45019";
-int64_t* Sockets::overflow = NULL;
-unsigned int Sockets::overflowLen = 0;
-pthread_mutex_t* Sockets::inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-pthread_mutex_t* Sockets::outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-pthread_cond_t* Sockets::inWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-pthread_cond_t* Sockets::outWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-std::queue<shmea::GList> Sockets::inboundLists;
-std::queue<std::pair<Instance*, shmea::GList> > Sockets::outboundLists;
-
-const std::string Sockets::getPort()
-{
-	return PORT;
-}
 
 void Sockets::initSockets()
 {
+	PORT = "45019";
+	overflow = NULL;
+	overflowLen = 0;
+	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	inWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+	outWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+
 	pthread_mutex_init(inMutex, NULL);
 	pthread_mutex_init(outMutex, NULL);
 	pthread_cond_init(inWaitCond, NULL);
 	pthread_cond_init(outWaitCond, NULL);
 }
 
-void Sockets::closeSockets()
+Sockets::Sockets()
+{
+	initSockets();
+}
+
+Sockets::Sockets(const std::string& newPORT)
+{
+	initSockets();
+	PORT = newPORT;
+}
+
+Sockets::~Sockets()
 {
 	pthread_mutex_destroy(inMutex);
 	pthread_mutex_destroy(outMutex);
@@ -58,6 +63,12 @@ void Sockets::closeSockets()
 	free(inMutex);
 	free(outMutex);
 }
+
+const std::string Sockets::getPort()
+{
+	return PORT;
+}
+
 int Sockets::openClientConnection(const std::string& serverIP)
 {
 	struct addrinfo* result;
@@ -457,7 +468,7 @@ bool Sockets::readLists(Instance* cInstance)
  * @details create new services from the lists in the "inbound" queue
  * @param cInstance the connection instance
  */
-void Sockets::processLists(Instance* cInstance)
+void Sockets::processLists(GServer* serverInstance, Instance* cInstance)
 {
 	while (!inboundLists.empty())
 	{
@@ -465,7 +476,7 @@ void Sockets::processLists(Instance* cInstance)
 		pthread_mutex_lock(inMutex);
 		inboundLists.pop();
 		pthread_mutex_unlock(inMutex);
-		Service::ExecuteService(nextCommand, cInstance);
+		GNet::Service::ExecuteService(serverInstance, nextCommand, cInstance);
 	}
 }
 
@@ -484,7 +495,7 @@ bool Sockets::writeLists()
 	Instance* cInstance = nextOutbound.first;
 	shmea::GList nextCommand = nextOutbound.second;
 	int bytesWritten =
-		writeConnection(cInstance, cInstance->sockfd, nextCommand, GNet::RESPONSE_TYPE);
+		writeConnection(cInstance, cInstance->sockfd, nextCommand, GNet::GServer::RESPONSE_TYPE);
 
 	return !(bytesWritten < 0);
 }
