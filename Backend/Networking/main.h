@@ -96,7 +96,6 @@ class GServer
 	static void* LaunchInstanceLauncher(void*);
 	void LaunchInstanceHelper(void*);
 	void* ListWriter(void*);
-	void LaunchInstance(const std::string&, const std::string&);
 	void LaunchLocalInstance(const std::string&);
 	void LogoutInstance(Instance*);
 
@@ -116,6 +115,7 @@ public:
 	void stop();
 	void run(bool);
 
+	void LaunchInstance(const std::string&, const std::string&);
 	bool isConnection(int, const fd_set&);
 	Instance* setupNewConnection(int);
 	Instance* findExistingConnectionInstance(const std::vector<Instance*>&, const fd_set&);
