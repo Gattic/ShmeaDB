@@ -34,13 +34,9 @@ void Sockets::initSockets()
 	overflowLen = 0;
 	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	inWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-	outWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
 
 	pthread_mutex_init(inMutex, NULL);
 	pthread_mutex_init(outMutex, NULL);
-	pthread_cond_init(inWaitCond, NULL);
-	pthread_cond_init(outWaitCond, NULL);
 }
 
 Sockets::Sockets()
@@ -58,8 +54,6 @@ Sockets::~Sockets()
 {
 	pthread_mutex_destroy(inMutex);
 	pthread_mutex_destroy(outMutex);
-	pthread_cond_destroy(inWaitCond);
-	pthread_cond_destroy(outWaitCond);
 	free(inMutex);
 	free(outMutex);
 }
@@ -451,11 +445,6 @@ bool Sockets::readLists(Instance* cInstance)
 			pthread_mutex_lock(inMutex);
 			inboundLists.push(cList);
 			pthread_mutex_unlock(inMutex);
-
-			// launch the service with the command
-			// lock
-			// unlock
-			// Service::NewCommand(cList, cInstance);
 		}
 		return true;
 	}
@@ -472,8 +461,8 @@ void Sockets::processLists(GServer* serverInstance, Instance* cInstance)
 {
 	while (!inboundLists.empty())
 	{
-		shmea::GList nextCommand = inboundLists.front();
 		pthread_mutex_lock(inMutex);
+		shmea::GList nextCommand = inboundLists.front();
 		inboundLists.pop();
 		pthread_mutex_unlock(inMutex);
 		GNet::Service::ExecuteService(serverInstance, nextCommand, cInstance);
@@ -484,60 +473,20 @@ void Sockets::processLists(GServer* serverInstance, Instance* cInstance)
  * @brief write lists
  * @details write lists in the "outbound" queue to the socket
  * @param cInstance the connection instance
- * @return true if the lists were written, false otherwise
  */
-bool Sockets::writeLists()
+void Sockets::writeLists(GServer* serverInstance)
 {
-	std::pair<Instance*, shmea::GList> nextOutbound = outboundLists.front();
 	pthread_mutex_lock(outMutex);
+	std::pair<Instance*, shmea::GList> nextOutbound = outboundLists.front();
 	outboundLists.pop();
+	serverInstance->NewService(nextOutbound.second, nextOutbound.first);
 	pthread_mutex_unlock(outMutex);
-	Instance* cInstance = nextOutbound.first;
+	/*Instance* cInstance = nextOutbound.first;
 	shmea::GList nextCommand = nextOutbound.second;
 	int bytesWritten =
 		writeConnection(cInstance, cInstance->sockfd, nextCommand, GNet::GServer::RESPONSE_TYPE);
 
-	return !(bytesWritten < 0);
-}
-
-/*!
- * @brief get the in mutex
- * @details in mutex for Networking/main.cpp
- * @return the inbound mutex
- */
-pthread_mutex_t* Sockets::getInMutex()
-{
-	return inMutex;
-}
-
-/*!
- * @brief get the out mutex
- * @details out mutex for Networking/main.cpp
- * @return the outbound mutex
- */
-pthread_mutex_t* Sockets::getOutMutex()
-{
-	return outMutex;
-}
-
-/*!
- * @brief get the in wait cond
- * @details in wait cond for Networking/main.cpp
- * @return the inbound wait cond
- */
-pthread_cond_t* Sockets::getInWaitCond()
-{
-	return inWaitCond;
-}
-
-/*!
- * @brief get the out wait cond
- * @details out wait cond for Networking/main.cpp
- * @return the outbound wait cond
- */
-pthread_cond_t* Sockets::getOutWaitCond()
-{
-	return outWaitCond;
+	return !(bytesWritten < 0);*/
 }
 
 /*!
@@ -559,15 +508,14 @@ bool Sockets::anyOutboundLists()
 {
 	return !outboundLists.empty();
 }
-void Sockets::addResponseList(Instance* cInstance, const shmea::GList& cList)
+void Sockets::addResponseList(GServer* serverInstance, Instance* cInstance,
+							  const shmea::GList& cList)
 {
 	if (!cInstance)
 		return;
 
 	pthread_mutex_lock(outMutex);
 	outboundLists.push(std::make_pair(cInstance, cList));
+	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
-
-	// unlock the
-	pthread_cond_signal(outWaitCond);
 }

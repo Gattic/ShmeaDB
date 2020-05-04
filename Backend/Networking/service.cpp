@@ -106,7 +106,7 @@ void* Service::launchService(void* y)
 			// execute the service
 			shmea::GList retList = cService->execute(cInstance, x->sockData);
 			if (!retList.empty())
-				serverInstance->socks.addResponseList(cInstance, retList);
+				serverInstance->socks.addResponseList(serverInstance, cInstance, retList);
 
 			// exit the service
 			cService->ExitService(x);

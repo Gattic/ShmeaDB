@@ -42,7 +42,14 @@ GNet::GServer::GServer()
 	commandThread = (pthread_t*)malloc(sizeof(pthread_t));
 	writerThread = (pthread_t*)malloc(sizeof(pthread_t));
 	clientMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(clientMutex, NULL);
 	serverMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(serverMutex, NULL);
+
+	writersMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(writersMutex, NULL);
+	writersBlock = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+	pthread_cond_init(writersBlock, NULL);
 
 	Handshake_Client* hc = new Handshake_Client(this);
 	addService(hc->getName(), hc);
@@ -92,13 +99,27 @@ GNet::GServer::~GServer()
 		free(writerThread);
 	writerThread = NULL;
 
+	pthread_mutex_destroy(clientMutex);
 	if (clientMutex)
 		free(clientMutex);
 	clientMutex = NULL;
 
+	pthread_mutex_destroy(serverMutex);
 	if (serverMutex)
 		free(serverMutex);
 	serverMutex = NULL;
+
+	pthread_mutex_destroy(writersMutex);
+	if (writersMutex)
+		free(writersMutex);
+	writersMutex = NULL;
+
+	if (writersBlock)
+	{
+		pthread_cond_destroy(writersBlock);
+		free(writersBlock);
+	}
+	writersBlock = NULL;
 }
 
 void GNet::GServer::NewService(const shmea::GList& wData, GNet::Instance* cInstance,
@@ -156,7 +177,7 @@ void GNet::GServer::stop()
 
 	// cleanup the networking threads
 	pthread_join(*commandThread, NULL);
-	// pthread_join(*writerThread, NULL);
+	pthread_join(*writerThread, NULL);
 }
 
 void GNet::GServer::run(bool _networkingDisabled)
@@ -168,15 +189,11 @@ void GNet::GServer::run(bool _networkingDisabled)
 	LOCAL_ONLY = _networkingDisabled;
 	running = true;
 
-	// initialize the mutexes
-	pthread_mutex_init(getClientMutex(), NULL);
-	pthread_mutex_init(getServerMutex(), NULL);
-
 	socks = Sockets("45019");
 
 	// Launch the server server
 	pthread_create(commandThread, NULL, commandLauncher, this);
-	// pthread_create(writerThread, NULL, ListWriter, NULL);
+	pthread_create(writerThread, NULL, ListWLauncher, this);
 }
 
 bool GNet::GServer::isNetworkingDisabled()
@@ -208,9 +225,9 @@ void GNet::GServer::removeClientInstance(Instance* cInstance)
 	std::map<std::string, Instance*>::iterator itr = clientInstanceList->find(cInstance->getIP());
 	if (itr != clientInstanceList->end())
 	{
-		pthread_mutex_lock(getClientMutex());
+		pthread_mutex_lock(clientMutex);
 		clientInstanceList->erase(itr);
-		pthread_mutex_unlock(getClientMutex());
+		pthread_mutex_unlock(clientMutex);
 	}
 }
 
@@ -225,19 +242,9 @@ void GNet::GServer::removeServerInstance(GNet::Instance* cInstance)
 		return;
 
 	// delete it from the data structure
-	pthread_mutex_lock(getServerMutex());
+	pthread_mutex_lock(serverMutex);
 	serverInstanceList->erase(serverInstanceList->find(cInstance->getIP()));
-	pthread_mutex_unlock(getServerMutex());
-}
-
-pthread_mutex_t* GNet::GServer::getClientMutex()
-{
-	return clientMutex;
-}
-
-pthread_mutex_t* GNet::GServer::getServerMutex()
-{
-	return serverMutex;
+	pthread_mutex_unlock(serverMutex);
 }
 
 bool GNet::GServer::isConnection(int _sockfd, const fd_set& fdarr)
@@ -394,15 +401,21 @@ void GNet::GServer::commandCatcher(void*)
 		else
 			cInstance = findExistingConnectionInstance(instanceList, fdarr);
 
-		if (cInstance && !socks.readLists(cInstance))
+		if (!cInstance)
 		{
 			// LogoutInstance(cInstance);
 			continue;
 		}
-		else if (!cInstance)
-			break;
 
-		if (cInstance && socks.anyInboundLists())
+		// Put together new services from the socket
+		if (!socks.readLists(cInstance))
+		{
+			// LogoutInstance(cInstance);
+			continue;
+		}
+
+		// Run a service if we have any
+		if (socks.anyInboundLists())
 			socks.processLists(this, cInstance);
 	}
 
@@ -447,12 +460,6 @@ void GNet::GServer::commandCatcher(void*)
 
 	// close the socket
 	close(sockfd);
-
-	// Clean mutexes
-	pthread_mutex_destroy(clientMutex);
-	pthread_mutex_destroy(serverMutex);
-	free(clientMutex);
-	free(serverMutex);
 }
 
 void* GNet::GServer::LaunchInstanceLauncher(void* y)
@@ -531,30 +538,37 @@ void GNet::GServer::LaunchInstance(const std::string& serverIP, const std::strin
 	}*/
 }
 
-void* GNet::GServer::ListWriter(void*)
+void GNet::GServer::wakeWriter()
+{
+	pthread_cond_signal(writersBlock); // wake the ListWriter thread
+}
+
+void* GNet::GServer::ListWLauncher(void* y)
+{
+	GServer* x = (GServer*)y;
+	if (x)
+		x->ListWriter(y);
+
+	return NULL;
+}
+
+void GNet::GServer::ListWriter(void*)
 {
 	while (getRunning())
 	{
 		int waitError = 0;
 
-		// how long to wait on a fail
-		struct timespec timeToWait;
-		timeToWait.tv_nsec = 10000;
-
 		// Blocking call
-		pthread_mutex_lock(socks.getOutMutex());
-		waitError =
-			pthread_cond_timedwait(socks.getOutWaitCond(), socks.getOutMutex(), &timeToWait);
-		pthread_mutex_unlock(socks.getOutMutex());
+		pthread_mutex_lock(writersMutex);
+		waitError = pthread_cond_wait(writersBlock, writersMutex);
+		pthread_mutex_unlock(writersMutex);
 
 		// We found a GList!
 		if (waitError == 0)
-			socks.writeLists();
+			socks.writeLists(this);
 		else if (waitError != ETIMEDOUT)
 			printf("[SOCKS] ListWriter Err: %d\n", waitError);
 	}
-
-	return NULL;
 }
 
 void GNet::GServer::LaunchLocalInstance(const std::string& clientName)

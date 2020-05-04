@@ -49,8 +49,6 @@ private:
 	unsigned int overflowLen;
 	pthread_mutex_t* inMutex;
 	pthread_mutex_t* outMutex;
-	pthread_cond_t* inWaitCond; // not used yet
-	pthread_cond_t* outWaitCond;
 	std::queue<shmea::GList> inboundLists;
 	std::queue<std::pair<Instance*, shmea::GList> > outboundLists;
 
@@ -78,17 +76,13 @@ public:
 	int writeConnection(const class Instance* cInstance, const int&, const shmea::GList&, int);
 	void closeConnection(const int&);
 
-	pthread_mutex_t* getInMutex();
-	pthread_mutex_t* getOutMutex();
-	pthread_cond_t* getInWaitCond();
-	pthread_cond_t* getOutWaitCond();
 	bool anyInboundLists();
 	bool anyOutboundLists();
 
 	bool readLists(Instance*);
 	void processLists(GServer*, Instance*);
-	bool writeLists();
-	void addResponseList(Instance*, const shmea::GList&);
+	void writeLists(GServer*);
+	void addResponseList(GServer*, Instance*, const shmea::GList&);
 };
 };
 

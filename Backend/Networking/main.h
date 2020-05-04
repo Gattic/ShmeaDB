@@ -73,6 +73,7 @@ public:
 
 class GServer
 {
+	friend Sockets;
 	friend Service;
 
 	GNet::Sockets socks;
@@ -87,15 +88,21 @@ class GServer
 	pthread_t* writerThread;
 	pthread_mutex_t* clientMutex;
 	pthread_mutex_t* serverMutex;
+	pthread_mutex_t* writersMutex;
+	pthread_cond_t* writersBlock;
 	bool LOCAL_ONLY;
 	bool running;
 	std::map<std::string, Service*>* service_depot;
 
 	static void* commandLauncher(void*);
 	void commandCatcher(void*);
+
 	static void* LaunchInstanceLauncher(void*);
 	void LaunchInstanceHelper(void*);
-	void* ListWriter(void*);
+
+	void wakeWriter();
+	static void* ListWLauncher(void*);
+	void ListWriter(void*);
 	void LaunchLocalInstance(const std::string&);
 	void LogoutInstance(Instance*);
 
