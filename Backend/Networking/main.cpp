@@ -177,6 +177,7 @@ void GNet::GServer::stop()
 
 	// cleanup the networking threads
 	pthread_join(*commandThread, NULL);
+	wakeWriter();
 	pthread_join(*writerThread, NULL);
 }
 
@@ -342,7 +343,7 @@ void GNet::GServer::commandCatcher(void*)
 	{
 		fd_set fdarr;
 		struct timeval tv;
-		tv.tv_sec = 10;
+		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
 		FD_ZERO(&fdarr);

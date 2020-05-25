@@ -476,6 +476,9 @@ void Sockets::processLists(GServer* serverInstance, Instance* cInstance)
  */
 void Sockets::writeLists(GServer* serverInstance)
 {
+	if (!anyOutboundLists())
+		return;
+
 	pthread_mutex_lock(outMutex);
 	std::pair<Instance*, shmea::GList> nextOutbound = outboundLists.front();
 	outboundLists.pop();
