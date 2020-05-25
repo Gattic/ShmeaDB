@@ -53,9 +53,12 @@ Sockets::Sockets(const std::string& newPORT)
 Sockets::~Sockets()
 {
 	pthread_mutex_destroy(inMutex);
+	if (inMutex)
+		free(inMutex);
+
 	pthread_mutex_destroy(outMutex);
-	free(inMutex);
-	free(outMutex);
+	if (outMutex)
+		free(outMutex);
 }
 
 const std::string Sockets::getPort()

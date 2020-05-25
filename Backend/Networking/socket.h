@@ -45,7 +45,7 @@ private:
 	static const std::string ANYADDR;
 
 	std::string PORT;
-	int64_t* overflow;
+	int64_t* overflow; // dont free this
 	unsigned int overflowLen;
 	pthread_mutex_t* inMutex;
 	pthread_mutex_t* outMutex;
