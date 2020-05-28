@@ -35,6 +35,19 @@ Instance::Instance(int newSockFD, int newConnectionType, std::string newIP)
 	// newSID=Instance::generateSID();
 }
 
+Instance::Instance(const Instance& instance2)
+{
+	name = instance2.name;
+	// sid=instance2.sid;
+	ip = instance2.ip;
+	sockfd = instance2.sockfd;
+	overflow = instance2.overflow;
+	overflowLen = instance2.overflowLen;
+	connectionType = instance2.connectionType;
+	key = instance2.key; // shouldnt matter what this value is
+	finished = instance2.finished;
+}
+
 Instance::~Instance()
 {
 	finish();

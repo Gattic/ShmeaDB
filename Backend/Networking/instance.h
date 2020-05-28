@@ -56,6 +56,7 @@ public:
 	std::vector<Service*> sThreads; // all the active service threads
 
 	Instance(int, int, std::string);
+	Instance(const Instance&);
 	~Instance();
 	void finish();
 
