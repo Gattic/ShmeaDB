@@ -1,8 +1,8 @@
 #ssl and crypto libs
 #find_library(OpenSSL REQUIRED ssl crypto)
-	
-find_package(OpenSSL)
-include_directories(${OPENSSL_INCLUDE_DIRS})
+
+#find_package(OpenSSL)
+#include_directories(${OPENSSL_INCLUDE_DIRS})
 
 #Threading lib
 include(FindPkgConfig)
@@ -13,8 +13,8 @@ set(GNet_src_files
 	main.h
 	crypt.cpp
 	crypt.h
-	instance.cpp
-	instance.h
+	connection.cpp
+	connection.h
 	service.cpp
 	service.h
 	socket.cpp

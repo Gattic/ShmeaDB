@@ -16,8 +16,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GAnalysis.h"
 #include "GList.h"
-#include "gtable.h"
-#include "gtype.h"
+#include "GTable.h"
+#include "GType.h"
 #include <iostream>
 
 using namespace shmea;

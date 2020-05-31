@@ -15,7 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "service.h"
-#include "instance.h"
+#include "connection.h"
 #include "socket.h"
 
 using namespace GNet;
@@ -49,15 +49,15 @@ Service::~Service()
  * @brief Run execute() asynchronusly as a Service
  * @details launch new service thread (command)
  * @param sockData a package of network data
- * @param cInstance the current instance
+ * @param cConnection the current connection
  */
 void Service::ExecuteService(GServer* serverInstance, const shmea::GList& sockData,
-							 Instance* cInstance)
+							 Connection* cConnection)
 {
 	// set the args to pass in
 	newServiceArgs* x = new newServiceArgs[sizeof(newServiceArgs)];
 	x->serverInstance = serverInstance;
-	x->cInstance = cInstance;
+	x->cConnection = cConnection;
 	x->sockData = sockData;
 	x->sThread = new pthread_t[sizeof(pthread_t)];
 
@@ -90,12 +90,12 @@ void* Service::launchService(void* y)
 	x->command = x->sockData.getString(0);
 	x->sockData.remove(0);
 
-	// Instance is dead so ignore it
-	Instance* cInstance = x->cInstance;
-	if (!cInstance)
+	// Connection is dead so ignore it
+	Connection* cConnection = x->cConnection;
+	if (!cConnection)
 		return NULL;
 
-	if (!cInstance->isFinished())
+	if (!cConnection->isFinished())
 	{
 		Service* cService = serverInstance->ServiceLookup(x->command);
 		if (cService)
@@ -104,9 +104,9 @@ void* Service::launchService(void* y)
 			cService->StartService(x);
 
 			// execute the service
-			shmea::GList retList = cService->execute(cInstance, x->sockData);
+			shmea::GList retList = cService->execute(cConnection, x->sockData);
 			if (!retList.empty())
-				serverInstance->socks.addResponseList(serverInstance, cInstance, retList);
+				serverInstance->socks.addResponseList(serverInstance, cConnection, retList);
 
 			// exit the service
 			cService->ExitService(x);
@@ -118,9 +118,9 @@ void* Service::launchService(void* y)
 	if (x)
 		delete x;
 
-	// delete the instance
-	if (cInstance->isFinished())
-		delete cInstance;
+	// delete the Connection
+	if (cConnection->isFinished())
+		delete cConnection;
 	return NULL;
 }
 
@@ -135,16 +135,16 @@ void Service::StartService(newServiceArgs* x)
 	timeExecuted = time(NULL);
 
 	// Get the ip address
-	Instance* cInstance = x->cInstance;
+	Connection* cConnection = x->cConnection;
 	std::string ipAddress = "";
-	if (!cInstance->isFinished())
-		ipAddress = cInstance->getIP();
+	if (!cConnection->isFinished())
+		ipAddress = cConnection->getIP();
 
-	const std::string& command = x->command;
-	printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
+	// const std::string& command = x->command;
+	// printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
 
-	// add the thread to the instance's active thread vector
-	// cInstance->sThreads.push_back(x->sThread);
+	// add the thread to the connection's active thread vector
+	// cConnection->sThreads.push_back(x->sThread);
 }
 
 /*!
@@ -156,7 +156,7 @@ void Service::ExitService(newServiceArgs* x)
 {
 	// remove the thread
 	/*for(std::vector<Service*>::iterator
-	itr=cInstance->sThreads.begin();itr!=cInstance->sThreads.end();++itr)
+	itr=cConnection->sThreads.begin();itr!=cConnection->sThreads.end();++itr)
 	{
 		Service* tempThread=(*itr);
 		if(x->sThread == tempThread)
@@ -168,15 +168,15 @@ void Service::ExitService(newServiceArgs* x)
 	}*/
 
 	// Get the ip address
-	Instance* cInstance = x->cInstance;
+	Connection* cConnection = x->cConnection;
 	std::string ipAddress = "";
-	if (!cInstance->isFinished())
-		ipAddress = cInstance->getIP();
+	if (!cConnection->isFinished())
+		ipAddress = cConnection->getIP();
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(),
-		   x->command.c_str(), timeExecuted);
+	// printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(),
+	//	   x->command.c_str(), timeExecuted);
 
 	pthread_exit(0);
 }

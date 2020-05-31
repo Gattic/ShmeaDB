@@ -14,25 +14,25 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#include "saveitem.h"
-#include "gtable.h"
+#include "SaveTable.h"
+#include "GTable.h"
 #include "maxid.h"
 
 using namespace shmea;
 
-SaveItem::SaveItem(const std::string& newDirName, const std::string& newName)
+SaveTable::SaveTable(const std::string& newDirName, const std::string& newName)
 {
 	clean();
 	dname = newDirName;
 	name = newName;
 }
 
-SaveItem::~SaveItem()
+SaveTable::~SaveTable()
 {
 	clean();
 }
 
-std::string SaveItem::getPath() const
+std::string SaveTable::getPath() const
 {
 	if (dname.length() == 0)
 		return "";
@@ -44,22 +44,22 @@ std::string SaveItem::getPath() const
 	return "database/" + dname + "/" + name;
 }
 
-int64_t SaveItem::getID() const
+int64_t SaveTable::getID() const
 {
 	return id;
 }
 
-std::string SaveItem::getName() const
+std::string SaveTable::getName() const
 {
 	return name;
 }
 
-GTable SaveItem::getTable() const
+GTable SaveTable::getTable() const
 {
 	return value;
 }
 
-void SaveItem::loadByName()
+void SaveTable::loadByName()
 {
 	if (dname.length() == 0)
 		return;
@@ -73,7 +73,7 @@ void SaveItem::loadByName()
 	value = newValue;
 }
 
-void SaveItem::loadByID(int64_t newID)
+void SaveTable::loadByID(int64_t newID)
 {
 	/*if (name.length() == 0)
 		return;
@@ -91,7 +91,7 @@ void SaveItem::loadByID(int64_t newID)
 	loadByName(dname);*/
 }
 
-void SaveItem::saveByName(const GTable& newTable) const
+void SaveTable::saveByName(const GTable& newTable) const
 {
 	if (name.length() == 0)
 		return;
@@ -104,7 +104,7 @@ void SaveItem::saveByName(const GTable& newTable) const
 	newTable.save(fname);
 }
 
-void SaveItem::saveByID(const GTable& newTable)
+void SaveTable::saveByID(const GTable& newTable)
 {
 	/*if (name.length() == 0)
 		return;
@@ -118,7 +118,7 @@ void SaveItem::saveByID(const GTable& newTable)
 	newTable.save(fname);*/
 }
 
-/*void SaveItem::saveUID(std::string nuid)
+/*void SaveTable::saveUID(std::string nuid)
 {
 	struct stat info;
 	std::string dirname = buildDataDir();
@@ -170,7 +170,7 @@ void SaveItem::saveByID(const GTable& newTable)
 		printf("[DB] Max ID Save Error\n");
 }*/
 
-bool SaveItem::deleteByName()
+bool SaveTable::deleteByName()
 {
 	if (dname.length() == 0)
 		return false;
@@ -183,14 +183,14 @@ bool SaveItem::deleteByName()
 	return (remove(fname.c_str()) == 0);
 }
 
-void SaveItem::clean()
+void SaveTable::clean()
 {
 	id = -1;
 	dname = "";
 	name = "";
 }
 
-void SaveItem::print() const
+void SaveTable::print() const
 {
 	if (name.length() == 0)
 	{

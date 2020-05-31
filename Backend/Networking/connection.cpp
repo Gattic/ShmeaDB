@@ -14,12 +14,12 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#include "instance.h"
+#include "connection.h"
 #include "socket.h"
 
 using namespace GNet;
 
-Instance::Instance(int newSockFD, int newConnectionType, std::string newIP)
+Connection::Connection(int newSockFD, int newConnectionType, std::string newIP)
 {
 	name = "";
 	// sid=newSID;
@@ -32,10 +32,10 @@ Instance::Instance(int newSockFD, int newConnectionType, std::string newIP)
 	finished = false;
 
 	// generate a unique sid
-	// newSID=Instance::generateSID();
+	// newSID=Connection::generateSID();
 }
 
-Instance::Instance(const Instance& instance2)
+Connection::Connection(const Connection& instance2)
 {
 	name = instance2.name;
 	// sid=instance2.sid;
@@ -48,7 +48,7 @@ Instance::Instance(const Instance& instance2)
 	finished = instance2.finished;
 }
 
-Instance::~Instance()
+Connection::~Connection()
 {
 	finish();
 
@@ -63,7 +63,7 @@ Instance::~Instance()
 	finished = false;
 }
 
-void Instance::finish()
+void Connection::finish()
 {
 	// tell the client?
 
@@ -75,7 +75,7 @@ void Instance::finish()
 	this->sockfd = -1;
 }
 
-bool Instance::validName(const std::string& tempName)
+bool Connection::validName(const std::string& tempName)
 {
 	// Invalid Size
 	if ((tempName.length() < 1) || (tempName.length() > 40))
@@ -94,7 +94,7 @@ bool Instance::validName(const std::string& tempName)
 	return true;
 }
 
-int64_t Instance::generateKey()
+int64_t Connection::generateKey()
 {
 	const std::string options = "0123456789";
 
@@ -110,7 +110,7 @@ int64_t Instance::generateKey()
 	return key;
 }
 
-/*bool Instance::validSID(const std::string& sid)
+/*bool Connection::validSID(const std::string& sid)
 {
 	if(sid.length() != SID_LENGTH) return false;
 
@@ -126,7 +126,7 @@ int64_t Instance::generateKey()
 	return true;
 }
 
-std::string Instance::generateSID()
+std::string Connection::generateSID()
 {
 	const std::string options=
 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";

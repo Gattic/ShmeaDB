@@ -17,8 +17,8 @@
 #include "socket.h"
 #include "../Database/GList.h"
 #include "../Database/Serializable.h"
+#include "connection.h"
 #include "crypt.h"
-#include "instance.h"
 #include "main.h"
 #include "service.h"
 
@@ -216,10 +216,10 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 	return newEText;
 }
 
-void Sockets::readConnection(Instance* cInstance, const int& sockfd, const std::string& cIP,
+void Sockets::readConnection(Connection* cConnection, const int& sockfd, const std::string& cIP,
 							 std::vector<shmea::GList>& itemList)
 {
-	readConnectionHelper(cInstance, sockfd, cIP, itemList);
+	readConnectionHelper(cConnection, sockfd, cIP, itemList);
 
 	// remove the empty data lists
 	for (unsigned int i = 0; i < itemList.size(); ++i)
@@ -232,20 +232,20 @@ void Sockets::readConnection(Instance* cInstance, const int& sockfd, const std::
 	}
 }
 
-void Sockets::readConnectionHelper(Instance* cInstance, const int& sockfd, const std::string& cIP,
-								   std::vector<shmea::GList>& itemList)
+void Sockets::readConnectionHelper(Connection* cConnection, const int& sockfd,
+								   const std::string& cIP, std::vector<shmea::GList>& itemList)
 {
 	int balance = 0;
 	int64_t* cOverflow = overflow;
 	unsigned int cOverflowLen = overflowLen;
 	int64_t key = DEFAULT_KEY;
 
-	// we would rather use the instance versions instead
-	if (cInstance != NULL)
+	// we would rather use the Connection versions instead
+	if (cConnection != NULL)
 	{
-		cOverflow = cInstance->overflow;
-		cOverflowLen = cInstance->overflowLen;
-		key = cInstance->getKey();
+		cOverflow = cConnection->overflow;
+		cOverflowLen = cConnection->overflowLen;
+		key = cConnection->getKey();
 	}
 
 	do
@@ -347,20 +347,20 @@ void Sockets::readConnectionHelper(Instance* cInstance, const int& sockfd, const
 
 	} while (balance != 0);
 
-	if (cInstance != NULL)
+	if (cConnection != NULL)
 	{
-		cInstance->overflow = cOverflow;
-		cInstance->overflowLen = cOverflowLen;
+		cConnection->overflow = cOverflow;
+		cConnection->overflowLen = cOverflowLen;
 	}
 }
 
-int Sockets::writeConnection(const Instance* cInstance, const int& sockfd,
+int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 							 const shmea::GList& cList, int messageType)
 {
 	int64_t key = DEFAULT_KEY;
 
-	if (cInstance != NULL)
-		key = cInstance->getKey();
+	if (cConnection != NULL)
+		key = cConnection->getKey();
 
 	// add the version and message type to the front of every packet
 	shmea::GList writeList = cList;
@@ -415,13 +415,13 @@ void Sockets::closeConnection(const int& sockfd)
 /*!
  * @brief read lists from connection
  * @details read pending lists from a connection
- * @param cInstance the connection instance
- * @return false if the instance should log out (unable to read), false otherwise
+ * @param cConnection the connection Connection
+ * @return false if the Connection should log out (unable to read), false otherwise
  */
-bool Sockets::readLists(Instance* cInstance)
+bool Sockets::readLists(Connection* cConnection)
 {
 	std::vector<shmea::GList> itemList;
-	readConnection(cInstance, cInstance->sockfd, cInstance->getIP(), itemList);
+	readConnection(cConnection, cConnection->sockfd, cConnection->getIP(), itemList);
 
 	if (itemList.size() > 0)
 	{
@@ -458,9 +458,9 @@ bool Sockets::readLists(Instance* cInstance)
 /*!
  * @brief process lists
  * @details create new services from the lists in the "inbound" queue
- * @param cInstance the connection instance
+ * @param cConnection the connection Connection
  */
-void Sockets::processLists(GServer* serverInstance, Instance* cInstance)
+void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 {
 	while (!inboundLists.empty())
 	{
@@ -468,14 +468,14 @@ void Sockets::processLists(GServer* serverInstance, Instance* cInstance)
 		shmea::GList nextCommand = inboundLists.front();
 		inboundLists.pop();
 		pthread_mutex_unlock(inMutex);
-		GNet::Service::ExecuteService(serverInstance, nextCommand, cInstance);
+		GNet::Service::ExecuteService(serverInstance, nextCommand, cConnection);
 	}
 }
 
 /*!
  * @brief write lists
  * @details write lists in the "outbound" queue to the socket
- * @param cInstance the connection instance
+ * @param cConnection the connection Connection
  */
 void Sockets::writeLists(GServer* serverInstance)
 {
@@ -483,14 +483,15 @@ void Sockets::writeLists(GServer* serverInstance)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	std::pair<Instance*, shmea::GList> nextOutbound = outboundLists.front();
+	std::pair<Connection*, shmea::GList> nextOutbound = outboundLists.front();
 	outboundLists.pop();
 	serverInstance->NewService(nextOutbound.second, nextOutbound.first);
 	pthread_mutex_unlock(outMutex);
-	/*Instance* cInstance = nextOutbound.first;
+	/*Connection* cConnection = nextOutbound.first;
 	shmea::GList nextCommand = nextOutbound.second;
 	int bytesWritten =
-		writeConnection(cInstance, cInstance->sockfd, nextCommand, GNet::GServer::RESPONSE_TYPE);
+		writeConnection(cConnection, cConnection->sockfd, nextCommand,
+	GNet::GServer::RESPONSE_TYPE);
 
 	return !(bytesWritten < 0);*/
 }
@@ -514,14 +515,14 @@ bool Sockets::anyOutboundLists()
 {
 	return !outboundLists.empty();
 }
-void Sockets::addResponseList(GServer* serverInstance, Instance* cInstance,
+void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection,
 							  const shmea::GList& cList)
 {
-	if (!cInstance)
+	if (!cConnection)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	outboundLists.push(std::make_pair(cInstance, cList));
+	outboundLists.push(std::make_pair(cConnection, cList));
 	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
 }

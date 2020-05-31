@@ -16,7 +16,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GANALYSIS
 #define _GANALYSIS
-#include "gtable.h"
+#include "GTable.h"
 #include <iostream>
 #include <math.h>
 #include <stdio.h>

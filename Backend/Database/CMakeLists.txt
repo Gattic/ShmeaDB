@@ -7,20 +7,20 @@ set(DB_src_files
 	image.h
 	oldjson.cpp
 	oldjson.h
-	gtype.cpp
-	gtype.h
+	GType.cpp
+	GType.h
 	GList.cpp
 	GList.h
-	gtable.cpp
-	gtable.h
+	GTable.cpp
+	GTable.h
 	GAnalysis.cpp
 	GAnalysis.h
 	maxid.cpp
 	maxid.h
-	saveitem.cpp
-	saveitem.h
-	savelist.cpp
-	savelist.h
+	SaveTable.cpp
+	SaveTable.h
+	SaveFolder.cpp
+	SaveFolder.h
 	Serializable.cpp
 	Serializable.h
 )

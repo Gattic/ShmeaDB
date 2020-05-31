@@ -51,8 +51,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     PRIVATE ${CMAKE_SOURCE_DIR})
 
 install(TARGETS ${PROJECT_NAME} EXPORT shmeaConfig
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
@@ -96,5 +97,11 @@ add_custom_target(debug
 	add_custom_target(profile
 	COMMAND valgrind --tool=callgrind ./build/${PROJECT_NAME}
 	DEPENDS ${PROJECT_NAME}
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+#make uninstall
+	add_custom_target(uninstall
+	COMMAND sudo xargs rm < ./build/install_manifest.txt
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )

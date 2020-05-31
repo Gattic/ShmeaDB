@@ -14,10 +14,10 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#include "gtable.h"
+#include "GTable.h"
 #include "../Networking/main.h"
 #include "GList.h"
-#include "gtype.h"
+#include "GType.h"
 
 using namespace shmea;
 
@@ -67,8 +67,6 @@ GTable::GTable(const std::string& fname, char newDelimiter, int importFlag)
 	delimiter = newDelimiter;
 	if (importFlag == TYPE_FILE)
 		importFromFile(fname);
-	else if (importFlag == TYPE_URL)
-		importFromUrl(fname);
 	else if (importFlag == TYPE_STRING)
 		importFromString(fname);
 }
@@ -194,21 +192,6 @@ void GTable::importFromFile(const std::string& fname)
 	// EOF
 	free(buffer);
 	fclose(fd);
-}
-
-/*!
- * @brief GTable URL import
- * @details imports data from a URL path into a GTable
- * @param url the URL at which the desired data resides
- */
-void GTable::importFromUrl(const std::string& url)
-{
-	if (url.length() == 0)
-		return;
-
-	std::string webContent = GNet::GServer::getWebContents(url);
-	if (webContent.length() > 0)
-		importFromString(webContent);
 }
 
 /*!
