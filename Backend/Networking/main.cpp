@@ -30,7 +30,7 @@ using namespace GNet;
 
 GNet::GServer::GServer()
 {
-	socks = GNet::Sockets();
+	socks = NULL;
 	clientConnections = new std::map<std::string, GNet::Connection*>();
 	serverConnections = new std::map<std::string, GNet::Connection*>();
 	service_depot = new std::map<std::string, GNet::Service*>();
@@ -74,6 +74,10 @@ GNet::GServer::~GServer()
 
 	LOCAL_ONLY = true;
 	sockfd = -1;
+
+	if (socks)
+		delete socks;
+	socks = NULL;
 
 	if (localConnection)
 		delete localConnection;
@@ -144,7 +148,7 @@ void GNet::GServer::NewService(const shmea::GList& wData, GNet::Connection* cCon
 	if (!networkingDisabled)
 	{
 		int bytesWritten =
-			socks.writeConnection(cConnection, cConnection->sockfd, wData, messageType);
+			socks->writeConnection(cConnection, cConnection->sockfd, wData, messageType);
 
 		if (bytesWritten < 0)
 			LogoutInstance(cConnection);
@@ -187,7 +191,7 @@ void GNet::GServer::run(bool _networkingDisabled)
 	LOCAL_ONLY = _networkingDisabled;
 	running = true;
 
-	socks = Sockets("45019");
+	socks = new Sockets("45019");
 
 	// Launch the server server
 	pthread_create(commandThread, NULL, commandLauncher, this);
@@ -334,14 +338,14 @@ void GNet::GServer::commandCatcher(void*)
 	// dont want to crash unnecassarily
 	signal(SIGPIPE, SIG_IGN);
 
-	sockfd = socks.openServerConnection();
+	sockfd = socks->openServerConnection();
 	if (sockfd < 0)
 	{
 		printf("[SOCKS] Could not create server socket");
 		exit(0);
 	}
 	else
-		printf("[SOCKS] Listening on port %s\n", socks.getPort().c_str());
+		printf("[SOCKS] Listening on port %s\n", socks->getPort().c_str());
 
 	// Launch a local instance of a client
 	LaunchLocalInstance("Mar");
@@ -417,15 +421,15 @@ void GNet::GServer::commandCatcher(void*)
 		}
 
 		// Put together new services from the socket
-		if (!socks.readLists(cConnection))
+		if (!socks->readLists(cConnection))
 		{
 			// LogoutInstance(cConnection);
 			continue;
 		}
 
 		// Run a service if we have any
-		if (socks.anyInboundLists())
-			socks.processLists(this, cConnection);
+		if (socks->anyInboundLists())
+			socks->processLists(this, cConnection);
 	}
 
 	// stop everything
@@ -487,7 +491,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		return;
 	GServer* serverInstance = x->serverInstance;
 
-	int sockfd2 = serverInstance->socks.openClientConnection(x->serverIP);
+	int sockfd2 = serverInstance->socks->openClientConnection(x->serverIP);
 	if (sockfd2 < 0)
 	{
 		if (x->serverIP == "127.0.0.1")
@@ -514,7 +518,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	shmea::GList wData;
 	wData.addString("Handshake_Server");
 	wData.addString(x->clientName);
-	socks.writeConnection(cConnection, sockfd2, wData, ACK_TYPE);
+	socks->writeConnection(cConnection, sockfd2, wData, ACK_TYPE);
 }
 
 void GNet::GServer::LaunchInstance(const std::string& serverIP, const std::string& clientName)
@@ -574,7 +578,7 @@ void GNet::GServer::ListWriter(void*)
 
 		// We found a GList!
 		if (waitError == 0)
-			socks.writeLists(this);
+			socks->writeLists(this);
 		else if (waitError != ETIMEDOUT)
 			printf("[SOCKS] ListWriter Err: %d\n", waitError);
 	}

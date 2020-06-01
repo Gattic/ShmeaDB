@@ -18,7 +18,6 @@
 #define _GNET
 
 #include "../Database/GList.h"
-#include "socket.h"
 #include <errno.h>
 #include <iostream>
 #include <map>
@@ -36,30 +35,11 @@
 
 class GList;
 
-/*
- * THE ENGINE
- *
- * Handshake Client
- * HANDSHAKE_CLIENT|name\|
- *
- * Handshake Server
- * HANDSHAKE_SERVER|name|encKey\|
- *
- * Logout Server
- * LOGOUT_SERVER\|
- *
- * Logout Client
- * LOGOUT_CLIENT\|
- *
- * Bad Request
- * BAD_REQUEST\|
- *
- */
-
 namespace GNet {
 
 class Connection;
 class Service;
+class Sockets;
 
 // Service Arguments Class
 class newServiceArgs
@@ -77,7 +57,7 @@ class GServer
 	friend Sockets;
 	friend Service;
 
-	GNet::Sockets socks;
+	GNet::Sockets* socks;
 
 	// Key is ip address
 	std::map<std::string, Connection*>* clientConnections;
