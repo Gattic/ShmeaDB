@@ -72,11 +72,6 @@ add_custom_target(local
 	DEPENDS ${PROJECT_NAME}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-#make docs
-add_custom_target(docs
-	COMMAND google-chrome index.html
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/docs/html/
-)
 
 #make debug
 add_custom_target(debug
