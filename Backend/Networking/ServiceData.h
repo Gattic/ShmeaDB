@@ -14,8 +14,8 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _GSERVICE
-#define _GSERVICE
+#ifndef _GSERVICEDATA
+#define _GSERVICEDATA
 
 #include <pthread.h>
 #include <stdio.h>
@@ -24,39 +24,40 @@
 #include <string>
 #include <time.h>
 #include <vector>
-#include "../Database/GList.h"
-#include "ServiceData.h"
+
+namespace shmea {
+	class GList;
+	class GTable;
+};
 
 namespace GNet {
 
-class GServer;
-class Sockets;
-class Connection;
-class newServiceArgs;
-
-class Service
+class ServiceData
 {
-	friend GServer;
-	friend Sockets;
-
 private:
-	// timestamp variable to store service start and end time
-	static std::string name;
-	int64_t timeExecuted;
 
-	static void* launchService(void* y);
-	virtual shmea::GList execute(Connection*, const shmea::GList&) = 0;
-	void StartService(newServiceArgs*);
-	void ExitService(newServiceArgs*);
-
-	static void ExecuteService(GServer*, const shmea::GList&, Connection* = NULL);
+	std::string command;
+	int dataType;
 
 public:
-	Service();
-	virtual ~Service();
 
-	virtual Service* MakeService(GServer*) const = 0;
-	virtual std::string getName() const = 0;
+	static const int TYPE_ACK = 0;
+	static const int TYPE_LIST = 1;
+	static const int TYPE_TABLE = 2;
+
+	shmea::GList* listData;
+	shmea::GTable* tableData;
+
+	ServiceData(std::string);
+	ServiceData(std::string, shmea::GList*);
+	ServiceData(std::string, shmea::GTable*);
+	ServiceData(const ServiceData&);
+	~ServiceData();
+
+	std::string getCommand() const;
+	int getDataType() const;
+	void setCommand(std::string);
+	void setDataType(int);
 };
 };
 

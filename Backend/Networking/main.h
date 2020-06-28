@@ -17,7 +17,6 @@
 #ifndef _GNET
 #define _GNET
 
-#include "../Database/GList.h"
 #include <errno.h>
 #include <iostream>
 #include <map>
@@ -32,8 +31,8 @@
 /*#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>*/
-
-class GList;
+#include "../Database/GList.h"
+#include "ServiceData.h"
 
 namespace GNet {
 

@@ -17,7 +17,6 @@
 #ifndef _GSOCKET
 #define _GSOCKET
 
-#include "../Database/GList.h"
 #include <arpa/inet.h>
 #include <iostream>
 #include <netdb.h>
@@ -33,6 +32,8 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+#include "../Database/GList.h"
+#include "ServiceData.h"
 
 namespace GNet {
 class GServer;

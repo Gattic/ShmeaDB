@@ -13,6 +13,8 @@ set(GNet_src_files
 	main.h
 	crypt.cpp
 	crypt.h
+	ServiceData.cpp
+	ServiceData.h
 	connection.cpp
 	connection.h
 	service.cpp
