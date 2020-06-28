@@ -15,32 +15,59 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ServiceData.h"
+#include "../Database/Serializable.h"
 
 using namespace GNet;
 
-ServiceData::ServiceData(std::string newCommand)
+ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
+	std::string newCommand)
 {
+	origin = newOrigin;
+	destination = newDestination;
+	sid = generateSID();
 	command = newCommand;
 	listData = NULL;
 	tableData = NULL;
 }
 
-ServiceData::ServiceData(std::string newCommand, shmea::GList* newList)
+ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
+	std::string newCommand, shmea::GList* newList)
 {
+	origin = newOrigin;
+	destination = newDestination;
+	sid = generateSID();
 	command = newCommand;
 	listData = newList;
 	tableData = NULL;
 }
 
-ServiceData::ServiceData(std::string newCommand, shmea::GTable* newTable)
+ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
+	std::string newCommand, shmea::GTable* newTable)
 {
+	origin = newOrigin;
+	destination = newDestination;
+	sid = generateSID();
 	command = newCommand;
 	listData = NULL;
 	tableData = newTable;
 }
 
+ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
+	std::string newCommand, shmea::Serializable* newNP)
+{
+	origin = newOrigin;
+	destination = newDestination;
+	sid = generateSID();
+	command = newCommand;
+	listData = NULL;
+	tableData = newNP->toGTable();
+}
+
 ServiceData::ServiceData(const ServiceData& instance2)
 {
+	origin = instance2.origin;
+	destination = instance2.destination;
+	sid = instance2.sid;
 	command = instance2.command;
 	listData = instance2.listData;
 	tableData = instance2.tableData;
@@ -48,9 +75,22 @@ ServiceData::ServiceData(const ServiceData& instance2)
 
 ServiceData::~ServiceData()
 {
+	origin = NULL;
+	destination = NULL;
+	sid = "";
 	command = "";
 	listData = NULL;
 	tableData = NULL;
+}
+
+Connection* ServiceData::getOrigin()
+{
+	return origin;
+}
+
+Connection* ServiceData::getDestination()
+{
+	return destination;
 }
 
 std::string ServiceData::getCommand() const
@@ -71,4 +111,39 @@ void ServiceData::setCommand(std::string newCommand)
 void ServiceData::setDataType(int newDataType)
 {
 	dataType = newDataType;
+}
+
+bool ServiceData::validSID(const std::string& testSID)
+{
+	if(testSID.length() != SID_LENGTH) return false;
+
+	const std::string options=
+		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
+
+	for(int i=0;i<testSID.length();++i)
+	{
+		int breakPoint=options.find(testSID[i]);
+		if(breakPoint == -1) return false;
+	}
+
+	return true;
+}
+
+std::string ServiceData::generateSID()
+{
+	const std::string options=
+		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
+	std::string newSID="";
+	do
+	{
+		newSID="";
+		for(int i=0;i<SID_LENGTH;++i)
+		{
+			int newIndex=rand()%options.length();
+			char newChar=options[newIndex];
+			newSID+=newChar;
+		}
+	} while(!validSID(newSID));// && check if its in the data structure to avoid hijacking
+
+	return newSID;
 }

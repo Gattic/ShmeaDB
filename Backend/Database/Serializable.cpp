@@ -474,39 +474,38 @@ int Serializable::Serialize(const GList& itemizedTable, char** serial)
  * @param serial the new serial
  * @return the length of the new serial
  */
-/*int Serializable::Serialize(const GTable& cTable, char** serial)
+int Serializable::Serialize(const GTable& cTable, char** serial)
 {
-	int rows = cTable->numberOfRows();
-	int columns = cTable->numberOfCols();
+	int rows = cTable.numberOfRows();
+	int columns = cTable.numberOfCols();
 	int r, c;
 
 	// metadata at the front
 	GList cList;
-	cList.addChar(cTable->delimiter);
-	cList.addFloat(cTable->xMin);
-	cList.addFloat(cTable->xMax);
-	cList.addFloat(cTable->xRange);
-	cList.addBoolean(cTable->outputsSelected);
+	cList.addChar(cTable.delimiter);
+	cList.addFloat(cTable.xMin);
+	cList.addFloat(cTable.xMax);
+	cList.addFloat(cTable.xRange);
 	cList.addInt(rows);
 	cList.addInt(columns);
 
 	// the header
 	for (c = 0; c < columns; ++c)
-		cList.addString(cTable->getHeader(c));
+		cList.addString(cTable.getHeader(c));
 
 	// the output columns
 	for (c = 0; c < columns; ++c)
-		cList.addBoolean(cTable->isOutput(c));
+		cList.addBoolean(cTable.isOutput(c));
 
 	// the contents
 	for (r = 0; r < rows; ++r)
 	{
 		for (c = 0; c < columns; ++c)
-			cList.addGType(cTable->getCell(r, c));
+			cList.addGType(cTable.getCell(r, c));
 	}
 
 	return Serialize(cList, serial);
-}*/
+}
 
 /*!
  * @brief serial to GList
@@ -583,29 +582,28 @@ GList Serializable::DeserializeHelper(const char* serial, int len)
 	GList cList = DeserializeHelper(serial, len);
 
 	// metadata
-	char delimiter = cList->getChar(0);
-	float min = cList->getFloat(1), max = cList->getFloat(2), range = cList->getFloat(3);
-	bool outputsSelected = cList->getBoolean(4);
-	int rows = cList->getInt(5), columns = cList->getInt(6);
+	char delimiter = cList.getChar(0);
+	float min = cList.getFloat(1), max = cList.getFloat(2), range = cList.getFloat(3);
+	bool outputsSelected = cList.getBoolean(4);//TODO: MAKE THIS A VECTOR
+	int rows = cList.getInt(5), columns = cList.getInt(6);
 	int bundleIndex = 7;
 
 	// the header
 	std::vector<std::string> header;
 	for (int i = 0; i < columns; ++i, ++i)
-		header.push_back(cList->getString(i));
+		header.push_back(cList.getString(i));
 
 	// the output columns
 	std::vector<bool> outputColumns;
 	for (int i = 0; i < columns; ++i, ++i)
-		outputColumns.push_back(cList->getBoolean(i));
+		outputColumns.push_back(cList.getBoolean(i));
 
 	GTable* cTable = new GTable(delimiter);
-	cTable->setMin(min);
-	cTable->setMax(max);
-	cTable->setRange(range);
-	cTable->header = header;
-	cTable->outputColumns = outputColumns;
-	cTable->outputsSelected = outputsSelected;
+	cTable.setMin(min);
+	cTable.setMax(max);
+	cTable.setRange(range);
+	cTable.header = header;
+	cTable.outputColumns = outputColumns;
 
 	// the contents
 	for (int i = 0; i < rows; ++i)
@@ -613,10 +611,10 @@ GList Serializable::DeserializeHelper(const char* serial, int len)
 		std::vector<GType*> row;
 		for (int j = 0; j < columns; ++j, ++j)
 			row.push_back((*cList)[j]);
-		cTable->addRow(row);
+		cTable.addRow(row);
 	}
 
-	int actual_size = cList->size();
+	int actual_size = cList.size();
 	int expected_size = (rows + 2) * columns + bundleIndex;
 	if (expected_size != actual_size)
 	{

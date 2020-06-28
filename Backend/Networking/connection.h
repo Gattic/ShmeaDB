@@ -34,7 +34,6 @@ class Connection
 {
 private:
 	std::string name;
-	// std::string sid;//session id
 	std::string ip;
 	int connectionType;
 	int64_t key;
@@ -43,7 +42,6 @@ private:
 public:
 	// member limits
 	static const int KEY_LENGTH = 6;
-	static const int SID_LENGTH = 12;
 
 	// connectionType
 	static const int EMPTY_TYPE = -1;
@@ -100,8 +98,6 @@ public:
 
 	static bool validName(const std::string&);
 	static int64_t generateKey();
-	// static bool validSID(const std::string&);
-	// static std::string generateSID();
 };
 };
 

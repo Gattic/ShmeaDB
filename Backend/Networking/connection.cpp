@@ -109,38 +109,3 @@ int64_t Connection::generateKey()
 	int64_t key = atoll(newKey.c_str());
 	return key;
 }
-
-/*bool Connection::validSID(const std::string& sid)
-{
-	if(sid.length() != SID_LENGTH) return false;
-
-	const std::string options=
-		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
-
-	for(int i=0;i<sid.length();++i)
-	{
-		int breakPoint=options.find(sid[i]);
-		if(breakPoint == -1) return false;
-	}
-
-	return true;
-}
-
-std::string Connection::generateSID()
-{
-	const std::string options=
-		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
-	std::string newSID="";
-	do
-	{
-		newSID="";
-		for(int i=0;i<SID_LENGTH;++i)
-		{
-			int newIndex=rand()%options.length();
-			char newChar=options[newIndex];
-			newSID+=newChar;
-		}
-	} while(!validSID(newSID));// && check if its in the data structure to avoid hijacking
-
-	return newSID;
-}*/

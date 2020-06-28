@@ -53,15 +53,14 @@ private:
 	static int unescapeCharacter(char**, int64_t&, int);
 	static char* deserializeContent(char**, int&, int64_t&, int64_t, int);
 
-	// virtual GTable toGTable()const = 0;
-	// virtual void fromGTable(const GTable&)=0;
-
 public:
 	static int Serialize(const GList&, char**); // to byte stream
-	// static int Serialize(const GTable&, char**);	   // to byte stream
+	static int Serialize(const GTable&, char**);	   // to byte stream
 	static GList DeserializeHelper(const char*, int); // from byte stream; make this private
 	// static GTable Deserialize(const char*, int);	  // from byte stream
-	GTable toGTable() const;
+
+	virtual GTable* toGTable() const = 0;
+	virtual void fromGTable(const GTable*) = 0;
 };
 };
 
