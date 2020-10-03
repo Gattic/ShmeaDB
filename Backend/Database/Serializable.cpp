@@ -482,12 +482,12 @@ int Serializable::Serialize(const GTable& cTable, char** serial)
 
 	// metadata at the front
 	GList cList;
+	cList.addInt(rows);
+	cList.addInt(columns);
 	cList.addChar(cTable.delimiter);
 	cList.addFloat(cTable.xMin);
 	cList.addFloat(cTable.xMax);
 	cList.addFloat(cTable.xRange);
-	cList.addInt(rows);
-	cList.addInt(columns);
 
 	// the header
 	for (c = 0; c < columns; ++c)
@@ -577,41 +577,60 @@ GList Serializable::DeserializeHelper(const char* serial, int len)
  * @details Creates a GTable from a bundle
  * @return the GTable version of the bundle
  */
-/*GTable Serializable::Deserialize(const char* serial, int len)
+GTable Serializable::Deserialize(const char* serial, int len)
 {
 	GList cList = DeserializeHelper(serial, len);
 
 	// metadata
-	char delimiter = cList.getChar(0);
-	float min = cList.getFloat(1), max = cList.getFloat(2), range = cList.getFloat(3);
-	bool outputsSelected = cList.getBoolean(4);//TODO: MAKE THIS A VECTOR
-	int rows = cList.getInt(5), columns = cList.getInt(6);
-	int bundleIndex = 7;
+	int rows = cList.getInt(0), columns = cList.getInt(1);
+	char delimiter = cList.getChar(2);
+	float min = cList.getFloat(3), max = cList.getFloat(4), range = cList.getFloat(5);
+	int bundleIndex = 6; // Index to mark the end of the input args
+	int cIndex = bundleIndex;
 
 	// the header
 	std::vector<std::string> header;
-	for (int i = 0; i < columns; ++i, ++i)
-		header.push_back(cList.getString(i));
+	for (int i = 0; i < columns; ++i)
+		header.push_back(cList.getString(cIndex + i));
+
+	// Because we cycled through the header
+	cIndex += columns;
 
 	// the output columns
-	std::vector<bool> outputColumns;
-	for (int i = 0; i < columns; ++i, ++i)
-		outputColumns.push_back(cList.getBoolean(i));
+	std::vector<int> outputColumns;
+	for (int i = 0; i < columns; ++i)
+	{
+		int isOutputCol = cList.getString(cIndex + i) == std::string("True");
+		outputColumns.push_back(isOutputCol);
+	}
 
-	GTable* cTable = new GTable(delimiter);
+	// Because we cycled through the output columns
+	cIndex += columns;
+
+	// Create the GTable schema
+	GTable cTable(delimiter);
 	cTable.setMin(min);
 	cTable.setMax(max);
 	cTable.setRange(range);
-	cTable.header = header;
-	cTable.outputColumns = outputColumns;
+	cTable.setHeaders(header);
+
+	for (unsigned int i = 0; i < outputColumns.size(); ++i)
+	{
+		if(outputColumns[i])
+			cTable.toggleOutput(i);
+	}
 
 	// the contents
 	for (int i = 0; i < rows; ++i)
 	{
-		std::vector<GType*> row;
-		for (int j = 0; j < columns; ++j, ++j)
-			row.push_back((*cList)[j]);
+		GList row;
+		for (int j = 0; j < columns; ++j)
+			row.addGType(cList[cIndex + j]);
+
 		cTable.addRow(row);
+
+		// Because we cycled through another row
+		cIndex += columns;
 	}
 
 	int actual_size = cList.size();
@@ -619,10 +638,11 @@ GList Serializable::DeserializeHelper(const char* serial, int len)
 	if (expected_size != actual_size)
 	{
 		printf("[SER] Bad GTable: Sizes(%d != %d)\n", actual_size, expected_size);
-		if (!cTable)
-			delete cTable;
-		return NULL;
+
+		// Empty GTable
+		GTable emptyTable;
+		return emptyTable;
 	}
 
 	return cTable;
-}*/
+}

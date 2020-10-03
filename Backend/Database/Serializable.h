@@ -56,11 +56,16 @@ private:
 public:
 	static int Serialize(const GList&, char**); // to byte stream
 	static int Serialize(const GTable&, char**);	   // to byte stream
-	static GList DeserializeHelper(const char*, int); // from byte stream; make this private
-	// static GTable Deserialize(const char*, int);	  // from byte stream
+	static GList DeserializeHelper(const char*, int); // from byte stream; make this private?
+	static GTable Deserialize(const char*, int);	  // from byte stream
 
 	virtual GTable* toGTable() const = 0;
 	virtual void fromGTable(const GTable*) = 0;
+
+/*
+Make Serialize a template, general should be x|y|z\| where x y z can be not just gtables but gtypes and glists (add GList and GTable to GType)
+*/
+
 };
 };
 
