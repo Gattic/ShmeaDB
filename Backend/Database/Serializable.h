@@ -19,6 +19,7 @@
 
 #include "GList.h"
 #include "GTable.h"
+#include "GObject.h"
 #include <algorithm>
 #include <dirent.h>
 #include <map>
@@ -56,6 +57,7 @@ private:
 public:
 	static int Serialize(const GList&, char**); // to byte stream
 	static int Serialize(const GTable&, char**);	   // to byte stream
+	static int Serialize(const GObject&, char**);	   // to byte stream
 	static GList DeserializeHelper(const char*, int); // from byte stream; make this private?
 	static GTable Deserialize(const char*, int);	  // from byte stream
 

@@ -18,6 +18,7 @@
 #include "GList.h"
 #include "GTable.h"
 #include "GType.h"
+#include "GObject.h"
 
 using namespace shmea;
 
@@ -502,6 +503,85 @@ int Serializable::Serialize(const GTable& cTable, char** serial)
 	{
 		for (c = 0; c < columns; ++c)
 			cList.addGType(cTable.getCell(r, c));
+	}
+
+	return Serialize(cList, serial);
+}
+
+/*!
+ * @brief Create a new serial from GObject
+ * @details Turn the GObject into a serial
+ * @param cObject the table to serialize
+ * @param serial the new serial
+ * @return the length of the new serial
+ */
+int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
+{
+	unsigned int memberTablesCount = cObject.memberTables.size();
+
+	GList cList;
+	cList.addInt(memberTablesCount);
+
+	// Add the member table
+	const GTable& members = cObject.members;
+	int rows = members.numberOfRows();
+	int columns = members.numberOfCols();
+	int r, c;
+
+	// metadata at the front
+	cList.addInt(rows);
+	cList.addInt(columns);
+	cList.addChar(members.delimiter);
+	cList.addFloat(members.xMin);
+	cList.addFloat(members.xMax);
+	cList.addFloat(members.xRange);
+
+	// the header
+	for (c = 0; c < columns; ++c)
+		cList.addString(members.getHeader(c));
+
+	// the output columns
+	for (c = 0; c < columns; ++c)
+		cList.addBoolean(members.isOutput(c));
+
+	// the contents
+	for (r = 0; r < rows; ++r)
+	{
+		for (c = 0; c < columns; ++c)
+			cList.addGType(members.getCell(r, c));
+	}
+
+	// Add the member's tables
+	for(unsigned int i = 0; i < memberTablesCount; ++i)
+	{
+		const GTable& cTable = cObject.memberTables[i];
+		int rows = cTable.numberOfRows();
+		int columns = cTable.numberOfCols();
+		int r, c;
+
+		// metadata at the front
+		GList cList;
+		cList.addInt(rows);
+		cList.addInt(columns);
+		cList.addChar(cTable.delimiter);
+		cList.addFloat(cTable.xMin);
+		cList.addFloat(cTable.xMax);
+		cList.addFloat(cTable.xRange);
+
+		// the header
+		for (c = 0; c < columns; ++c)
+			cList.addString(cTable.getHeader(c));
+
+		// the output columns
+		for (c = 0; c < columns; ++c)
+			cList.addBoolean(cTable.isOutput(c));
+
+		// the contents
+		for (r = 0; r < rows; ++r)
+		{
+			for (c = 0; c < columns; ++c)
+				cList.addGType(cTable.getCell(r, c));
+		}
 	}
 
 	return Serialize(cList, serial);
