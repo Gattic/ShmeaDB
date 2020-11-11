@@ -58,8 +58,9 @@ public:
 	static int Serialize(const GList&, char**); // to byte stream
 	static int Serialize(const GTable&, char**);	   // to byte stream
 	static int Serialize(const GObject&, char**);	   // to byte stream
-	static GList DeserializeHelper(const char*, int); // from byte stream; make this private?
-	static GTable Deserialize(const char*, int);	  // from byte stream
+	static void Deserialize(GList&, const char*, int); // from byte stream; make this private?
+	static void Deserialize(GTable&, const char*, int);	  // from byte stream
+	static void Deserialize(GObject&, const char*, int);	  // from byte stream
 
 	virtual GTable* toGTable() const = 0;
 	virtual void fromGTable(const GTable*) = 0;

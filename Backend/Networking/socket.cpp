@@ -319,8 +319,9 @@ void Sockets::readConnectionHelper(Connection* cConnection, const int& sockfd,
 		else if (crypt->linesRead == crypt->size)
 		{
 			// set the text from the crypt object & add it to the data
-			itemList.push_back(shmea::Serializable::DeserializeHelper(
-				crypt->dText, crypt->size - 1)); // minus the key
+			shmea::GList cList;
+			shmea::Serializable::Deserialize(cList, crypt->dText, crypt->size - 1);
+			itemList.push_back(cList); // minus the key
 
 			if (eTextLen == crypt->size)
 				balance = 0;

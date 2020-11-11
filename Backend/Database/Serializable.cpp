@@ -524,9 +524,8 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 
 	// Add the member table
 	const GTable& members = cObject.members;
-	int rows = members.numberOfRows();
-	int columns = members.numberOfCols();
-	int r, c;
+	unsigned int rows = members.numberOfRows();
+	unsigned int columns = members.numberOfCols();
 
 	// metadata at the front
 	cList.addInt(rows);
@@ -537,17 +536,17 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 	cList.addFloat(members.xRange);
 
 	// the header
-	for (c = 0; c < columns; ++c)
+	for (unsigned int c = 0; c < columns; ++c)
 		cList.addString(members.getHeader(c));
 
 	// the output columns
-	for (c = 0; c < columns; ++c)
+	for (unsigned int c = 0; c < columns; ++c)
 		cList.addBoolean(members.isOutput(c));
 
 	// the contents
-	for (r = 0; r < rows; ++r)
+	for (unsigned int r = 0; r < rows; ++r)
 	{
-		for (c = 0; c < columns; ++c)
+		for (unsigned int c = 0; c < columns; ++c)
 			cList.addGType(members.getCell(r, c));
 	}
 
@@ -555,9 +554,8 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 	for(unsigned int i = 0; i < memberTablesCount; ++i)
 	{
 		const GTable& cTable = cObject.memberTables[i];
-		int rows = cTable.numberOfRows();
-		int columns = cTable.numberOfCols();
-		int r, c;
+		unsigned int rows = cTable.numberOfRows();
+		unsigned int columns = cTable.numberOfCols();
 
 		// metadata at the front
 		GList cList;
@@ -569,17 +567,17 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 		cList.addFloat(cTable.xRange);
 
 		// the header
-		for (c = 0; c < columns; ++c)
+		for (unsigned int c = 0; c < columns; ++c)
 			cList.addString(cTable.getHeader(c));
 
 		// the output columns
-		for (c = 0; c < columns; ++c)
+		for (unsigned int c = 0; c < columns; ++c)
 			cList.addBoolean(cTable.isOutput(c));
 
 		// the contents
-		for (r = 0; r < rows; ++r)
+		for (unsigned int r = 0; r < rows; ++r)
 		{
-			for (c = 0; c < columns; ++c)
+			for (unsigned int c = 0; c < columns; ++c)
 				cList.addGType(cTable.getCell(r, c));
 		}
 	}
@@ -603,11 +601,11 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
  * @param the length of the serial
  * @return the full list with all contents
  */
-GList Serializable::DeserializeHelper(const char* serial, int len)
+void Serializable::Deserialize(GList& retList, const char* serial, int len)
 {
 	GList cList;
 	if ((!serial) || (len == 0))
-		return cList;
+		return;
 
 	// copy the serial (keep the original intact)
 	char* serialBuffer = (char*)malloc(sizeof(char) * (len));
@@ -649,7 +647,7 @@ GList Serializable::DeserializeHelper(const char* serial, int len)
 	if (serialBuffer)
 		free(serialBuffer);
 
-	return cList;
+	retList = cList;
 }
 
 /*!
@@ -657,9 +655,10 @@ GList Serializable::DeserializeHelper(const char* serial, int len)
  * @details Creates a GTable from a bundle
  * @return the GTable version of the bundle
  */
-GTable Serializable::Deserialize(const char* serial, int len)
+void Serializable::Deserialize(GTable& retTable, const char* serial, int len)
 {
-	GList cList = DeserializeHelper(serial, len);
+	GList cList;
+	Deserialize(cList, serial, len);
 
 	// metadata
 	int rows = cList.getInt(0), columns = cList.getInt(1);
@@ -718,11 +717,150 @@ GTable Serializable::Deserialize(const char* serial, int len)
 	if (expected_size != actual_size)
 	{
 		printf("[SER] Bad GTable: Sizes(%d != %d)\n", actual_size, expected_size);
-
-		// Empty GTable
-		GTable emptyTable;
-		return emptyTable;
+		return;
 	}
 
-	return cTable;
+	retTable = cTable;
+}
+
+/*!
+ * @brief GList to GObject
+ * @details Creates a GObject from a bundle
+ * @return the GObject version of the bundle
+ */
+void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
+{
+	// Add the members
+	GList cList;
+	Deserialize(cList, serial, len);
+	unsigned int memberTablesCount = cList.getInt(0);
+	int cIndex = 1;
+
+	// metadata
+	int rows = cList.getInt(cIndex + 0), columns = cList.getInt(cIndex + 1);
+	char delimiter = cList.getChar(cIndex + 2);
+	float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
+	int bundleIndex = cIndex + 6; // Index to mark the end of the input args
+	cIndex = bundleIndex;
+
+	// the header
+	std::vector<std::string> header;
+	for (int i = 0; i < columns; ++i)
+		header.push_back(cList.getString(cIndex + i));
+
+	// Because we cycled through the header
+	cIndex += columns;
+
+	// the output columns
+	std::vector<int> outputColumns;
+	for (int i = 0; i < columns; ++i)
+	{
+		int isOutputCol = cList.getString(cIndex + i) == std::string("True");
+		outputColumns.push_back(isOutputCol);
+	}
+
+	// Because we cycled through the output columns
+	cIndex += columns;
+
+	// Create the GTable schema
+	GTable members(delimiter);
+	members.setMin(min);
+	members.setMax(max);
+	members.setRange(range);
+	members.setHeaders(header);
+
+	for (unsigned int i = 0; i < outputColumns.size(); ++i)
+	{
+		if(outputColumns[i])
+			members.toggleOutput(i);
+	}
+
+	// the contents
+	for (int i = 0; i < rows; ++i)
+	{
+		GList row;
+		for (int j = 0; j < columns; ++j)
+			row.addGType(cList[cIndex + j]);
+
+		members.addRow(row);
+
+		// Because we cycled through another row
+		cIndex += columns;
+	}
+
+	int actual_size = cList.size();
+	int expected_size = (rows + 2) * columns + bundleIndex;
+	if (expected_size != actual_size)
+	{
+		printf("[SER] Bad GObject: Sizes(%d != %d)\n", actual_size, expected_size);
+		return;
+	}
+
+	// Create the cObject we will return from the members
+	GObject cObject;
+	cObject.setMembers(members);
+
+	// Now we add the member GTables
+	for(unsigned int mCounter = 0; mCounter < memberTablesCount; ++mCounter)
+	{
+		// metadata
+		int rows = cList.getInt(cIndex + 0), columns = cList.getInt(cIndex + 1);
+		char delimiter = cList.getChar(cIndex + 2);
+		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
+
+		// the header
+		std::vector<std::string> header;
+		for (int i = 0; i < columns; ++i)
+			header.push_back(cList.getString(cIndex + i));
+
+		// Because we cycled through the header
+		cIndex += columns;
+
+		// the output columns
+		std::vector<int> outputColumns;
+		for (int i = 0; i < columns; ++i)
+		{
+			int isOutputCol = cList.getString(cIndex + i) == std::string("True");
+			outputColumns.push_back(isOutputCol);
+		}
+
+		// Because we cycled through the output columns
+		cIndex += columns;
+
+		// Create the GTable schema
+		GTable cTable(delimiter);
+		cTable.setMin(min);
+		cTable.setMax(max);
+		cTable.setRange(range);
+		cTable.setHeaders(header);
+
+		for (unsigned int i = 0; i < outputColumns.size(); ++i)
+		{
+			if(outputColumns[i])
+				cTable.toggleOutput(i);
+		}
+
+		// the contents
+		for (int i = 0; i < rows; ++i)
+		{
+			GList row;
+			for (int j = 0; j < columns; ++j)
+				row.addGType(cList[cIndex + j]);
+	
+			cTable.addRow(row);
+
+			// Because we cycled through another row
+			cIndex += columns;
+		}
+
+		int actual_size = cList.size();
+		int expected_size = (rows + 2) * columns + bundleIndex;
+		if (expected_size != actual_size)
+		{
+			printf("[SER] Bad GObject GTable[%d]: Sizes(%d != %d)\n", mCounter, actual_size, expected_size);
+			return;
+		}
+	}
+
+	retObj = cObject;
 }
