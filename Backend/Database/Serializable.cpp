@@ -556,9 +556,9 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 		const GTable& cTable = cObject.memberTables[i];
 		unsigned int rows = cTable.numberOfRows();
 		unsigned int columns = cTable.numberOfCols();
+		printf("GTable[%d]: %d\n", i, rows, columns);
 
 		// metadata at the front
-		GList cList;
 		cList.addInt(rows);
 		cList.addInt(columns);
 		cList.addChar(cTable.delimiter);
@@ -582,6 +582,8 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 		}
 	}
 
+	cList.print();
+	printf("-----------\n");
 	return Serialize(cList, serial);
 }
 
@@ -730,6 +732,7 @@ void Serializable::Deserialize(GTable& retTable, const char* serial, int len)
  */
 void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
 {
+	//TODO: REPLACE THIS BLOCK WITH GTABLE DSERIALIZE CALL
 	// Add the members
 	GList cList;
 	Deserialize(cList, serial, len);
@@ -788,14 +791,15 @@ void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
 		cIndex += columns;
 	}
 
-	int actual_size = cList.size();
-	int expected_size = (rows + 2) * columns + bundleIndex;
-	if (expected_size != actual_size)
+	int top_actual_size = cIndex;
+	int top_expected_size = (rows + 2) * columns + bundleIndex;
+	if (top_expected_size != top_actual_size)
 	{
-		printf("[SER] Bad GObject: Sizes(%d != %d)\n", actual_size, expected_size);
+		printf("[SER] Bad GObject: Sizes(%d != %d)\n", top_actual_size, top_expected_size);
 		return;
 	}
 
+	//TODO: REPLACE THIS BLOCK WITH GTABLE DSERIALIZE CALL IN THE LOOP
 	// Create the cObject we will return from the members
 	GObject cObject;
 	cObject.setMembers(members);
@@ -804,6 +808,7 @@ void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
 	for(unsigned int mCounter = 0; mCounter < memberTablesCount; ++mCounter)
 	{
 		// metadata
+		cList.print();
 		int rows = cList.getInt(cIndex + 0), columns = cList.getInt(cIndex + 1);
 		char delimiter = cList.getChar(cIndex + 2);
 		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
@@ -853,8 +858,9 @@ void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
 			cIndex += columns;
 		}
 
-		int actual_size = cList.size();
-		int expected_size = (rows + 2) * columns + bundleIndex;
+		int actual_size = cIndex;
+		int expected_size = (rows + 2) * columns + top_actual_size;
+		top_actual_size = expected_size; // for the next iteration of the mCounter
 		if (expected_size != actual_size)
 		{
 			printf("[SER] Bad GObject GTable[%d]: Sizes(%d != %d)\n", mCounter, actual_size, expected_size);

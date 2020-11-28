@@ -289,7 +289,7 @@ std::vector<std::string> GTable::getHeaders() const
 std::string GTable::getHeader(unsigned int index) const
 {
 	if (index >= header.size())
-		return "";
+		return " "; // Keep this a space character
 
 	return header[index];
 }
