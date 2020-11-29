@@ -29,7 +29,7 @@ namespace shmea {
 
 class GType
 {
-private:
+protected:
 	char* block;
 	unsigned int blockSize;
 	int type;
@@ -57,8 +57,9 @@ public:
 	GType(const float&);
 	GType(const double&);
 	GType(const std::string&);
+	GType(const char*);
 	GType(int, const void*, int64_t);
-	~GType();
+	virtual ~GType();
 
 	// gets
 	char* getBlockCopy() const;
@@ -88,16 +89,16 @@ public:
 	void clean();
 
 	//= operators
-	void operator=(const GType&);
-	void operator=(const char&);
-	void operator=(const short&);
-	void operator=(const int&);
-	void operator=(const int64_t&);
-	void operator=(const float&);
-	void operator=(const double&);
-	void operator=(const char*);
-	void operator=(const std::string&);
-	void operator=(const bool&);
+	GType& operator=(const GType&);
+	GType& operator=(const char&);
+	GType& operator=(const short&);
+	GType& operator=(const int&);
+	GType& operator=(const int64_t&);
+	GType& operator=(const float&);
+	GType& operator=(const double&);
+	GType& operator=(const char*);
+	GType& operator=(const std::string&);
+	GType& operator=(const bool&);
 
 	//== operators
 	bool operator==(const GType&);

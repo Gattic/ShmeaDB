@@ -146,6 +146,18 @@ GType::GType(const std::string& word)
 	}
 }
 
+GType::GType(const char* newBlock)
+{
+	type = NULL_TYPE;
+	blockSize = 0;
+	block = NULL;
+
+	// Add the object if its valid
+	unsigned int newBlockSize = strlen(newBlock);
+	if (newBlockSize > 0)
+		set(STRING_TYPE, newBlock, newBlockSize);
+}
+
 GType::GType(int newType, const void* newBlock, int64_t newBlockSize)
 {
 	type = NULL_TYPE;
@@ -683,55 +695,65 @@ void GType::clean()
 	type = NULL_TYPE;
 }
 
-void GType::operator=(const GType& compValue)
+GType& GType::operator=(const GType& compValue)
 {
 	set(compValue.getType(), compValue.block, compValue.size());
+	return *this;
 }
 
-void GType::operator=(const char& compValue)
+GType& GType::operator=(const char& compValue)
 {
 	set(CHAR_TYPE, &compValue, sizeof(char));
+	return *this;
 }
 
-void GType::operator=(const short& compValue)
+GType& GType::operator=(const short& compValue)
 {
 	set(SHORT_TYPE, &compValue, sizeof(short));
+	return *this;
 }
 
-void GType::operator=(const int& compValue)
+GType& GType::operator=(const int& compValue)
 {
 	set(INT_TYPE, &compValue, sizeof(int));
+	return *this;
 }
 
-void GType::operator=(const int64_t& compValue)
+GType& GType::operator=(const int64_t& compValue)
 {
 	set(LONG_TYPE, &compValue, sizeof(int));
+	return *this;
 }
 
-void GType::operator=(const float& compValue)
+GType& GType::operator=(const float& compValue)
 {
 	set(FLOAT_TYPE, &compValue, sizeof(float));
+	return *this;
 }
 
-void GType::operator=(const double& compValue)
+GType& GType::operator=(const double& compValue)
 {
 	set(DOUBLE_TYPE, &compValue, sizeof(double));
+	return *this;
 }
 
-void GType::operator=(const char* compValue)
+GType& GType::operator=(const char* compValue)
 {
 	std::string newCompValue(compValue);
 	set(STRING_TYPE, newCompValue.c_str(), newCompValue.length());
+	return *this;
 }
 
-void GType::operator=(const std::string& compValue)
+GType& GType::operator=(const std::string& compValue)
 {
 	set(STRING_TYPE, compValue.c_str(), compValue.length());
+	return *this;
 }
 
-void GType::operator=(const bool& compValue)
+GType& GType::operator=(const bool& compValue)
 {
 	set(BOOLEAN_TYPE, &compValue, sizeof(bool));
+	return *this;
 }
 
 bool GType::operator==(const GType& cCell2)

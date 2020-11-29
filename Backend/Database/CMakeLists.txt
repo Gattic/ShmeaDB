@@ -15,6 +15,8 @@ set(DB_src_files
 	GTable.h
 	GObject.cpp
 	GObject.h
+	GString.cpp
+	GString.h
 	GAnalysis.cpp
 	GAnalysis.h
 	maxid.cpp
