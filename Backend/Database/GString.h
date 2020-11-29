@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <stdexcept>
 #include "GType.h"
 
 namespace shmea {
@@ -42,10 +43,9 @@ public:
 	const char* c_str() const;
 	unsigned int length() const;
 
-	//== operators
+	//operators
+	char operator[](const unsigned int&);
 	bool operator==(const GString&);
-
-	//!= operators
 	bool operator!=(const GString&);
 
 	// helpers

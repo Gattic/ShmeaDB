@@ -556,7 +556,6 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 		const GTable& cTable = cObject.memberTables[i];
 		unsigned int rows = cTable.numberOfRows();
 		unsigned int columns = cTable.numberOfCols();
-		printf("GTable[%d]: %d\n", i, rows, columns);
 
 		// metadata at the front
 		cList.addInt(rows);
@@ -582,8 +581,6 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 		}
 	}
 
-	cList.print();
-	printf("-----------\n");
 	return Serialize(cList, serial);
 }
 
@@ -808,7 +805,6 @@ void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
 	for(unsigned int mCounter = 0; mCounter < memberTablesCount; ++mCounter)
 	{
 		// metadata
-		cList.print();
 		int rows = cList.getInt(cIndex + 0), columns = cList.getInt(cIndex + 1);
 		char delimiter = cList.getChar(cIndex + 2);
 		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);

@@ -25,7 +25,7 @@ GString::GString()
 	block = NULL;
 }
 
-GString::GString(const GString& g2)
+GString::GString(const GString& g2) : GType(g2)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
@@ -59,6 +59,18 @@ const char* GString::c_str() const
 unsigned int GString::length() const
 {
 	return size();
+}
+
+char GString::operator[](const unsigned int& index)
+{
+	if(index >= length())
+	{
+		char buffer[256];
+		sprintf(buffer, "GStr[%d] out of range", index);
+		throw std::out_of_range(buffer);
+	}
+
+	return getBlockCopy()[index];
 }
 
 bool GString::operator==(const GString& cCell2)
