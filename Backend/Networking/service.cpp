@@ -63,8 +63,8 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::GList& sockDa
 
 	// launch a new service thread
 	pthread_create(x->sThread, NULL, &launchService, (void*)x);
-	if (x->sThread)
-		pthread_detach(*x->sThread);
+	//if (x->sThread)
+	//	pthread_detach(*x->sThread);
 }
 
 /*!
@@ -144,7 +144,7 @@ void Service::StartService(newServiceArgs* x)
 	// printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
 
 	// add the thread to the connection's active thread vector
-	// cConnection->sThreads.push_back(x->sThread);
+	cConnection->sThreads.push_back(x->sThread);
 }
 
 /*!
@@ -154,18 +154,8 @@ void Service::StartService(newServiceArgs* x)
  */
 void Service::ExitService(newServiceArgs* x)
 {
-	// remove the thread
-	/*for(std::vector<Service*>::iterator
-	itr=cConnection->sThreads.begin();itr!=cConnection->sThreads.end();++itr)
-	{
-		Service* tempThread=(*itr);
-		if(x->sThread == tempThread)
-		{
-			sThreads.erase(itr);
-			free(tempThread);
-			break;
-		}
-	}*/
+	// Wait for the thread
+	pthread_join(*(x->sThread), NULL);
 
 	// Get the ip address
 	Connection* cConnection = x->cConnection;

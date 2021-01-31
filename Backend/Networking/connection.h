@@ -51,7 +51,7 @@ public:
 	int sockfd;
 	int64_t* overflow;
 	unsigned int overflowLen;
-	std::vector<Service*> sThreads; // all the active service threads
+	std::vector<pthread_t*> sThreads; // all the active service threads
 
 	Connection(int, int, std::string);
 	Connection(const Connection&);
