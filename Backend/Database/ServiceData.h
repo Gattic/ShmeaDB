@@ -25,52 +25,62 @@
 #include <time.h>
 #include <vector>
 
+namespace GNet {
+class Connection;
+};
+
 namespace shmea {
 	class GList;
 	class GTable;
+	class GObject;
 	class Serializable;
-};
-
-namespace GNet {
-
-class Connection;
 
 class ServiceData
 {
 private:
 
-	Connection* origin;
-	Connection* destination;
+	GNet::Connection* cConnection;
 	std::string sid;
 	std::string command;
-	int dataType;
+	int type;
+
+	shmea::GList* repList;
+	shmea::GTable* repTable;
+	shmea::GObject* repObj;
 
 public:
 
 	static const int SID_LENGTH = 12;
 
-	static const int TYPE_ACK = 0;
+	static const int TYPE_ACK = 0;//default
 	static const int TYPE_LIST = 1;
 	static const int TYPE_TABLE = 2;
 	static const int TYPE_NETWORK_POINTER = 3;
 
-	shmea::GList* listData;
-	shmea::GTable* tableData;
-
-	ServiceData(Connection*, Connection*, std::string);
-	ServiceData(Connection*, Connection*, std::string, shmea::GList*);
-	ServiceData(Connection*, Connection*, std::string, shmea::GTable*);
-	ServiceData(Connection*, Connection*, std::string, shmea::Serializable*);
+	ServiceData(GNet::Connection*);
+	ServiceData(GNet::Connection*, std::string);
+	ServiceData(GNet::Connection*, std::string, shmea::GList*);
+	ServiceData(GNet::Connection*, std::string, shmea::GTable*);
+	ServiceData(GNet::Connection*, std::string, shmea::Serializable*);
 	ServiceData(const ServiceData&);
-	~ServiceData();
+	virtual ~ServiceData();
 
-	Connection* getOrigin();
-	Connection* getDestination();
+	GNet::Connection* getConnection() const;
 	std::string getSID() const;
 	std::string getCommand() const;
-	int getDataType() const;
+	int getType() const;
+
+	void setSID(std::string);
 	void setCommand(std::string);
-	void setDataType(int);
+	void setType(int);
+
+	const GList* getList() const;
+	const GTable* getTable() const;
+	const GObject* getObj() const;
+
+	void setList(GList*);
+	void setTable(GTable*);
+	void setObj(GObject*);
 
 	static bool validSID(const std::string&);
 	static std::string generateSID();

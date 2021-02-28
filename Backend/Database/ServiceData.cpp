@@ -17,80 +17,131 @@
 #include "ServiceData.h"
 #include "../Database/Serializable.h"
 
-using namespace GNet;
+using namespace shmea;
 
-ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
-	std::string newCommand)
+ServiceData::ServiceData(GNet::Connection* newConnection)
 {
-	origin = newOrigin;
-	destination = newDestination;
+	cConnection = newConnection;
 	sid = generateSID();
-	command = newCommand;
-	listData = NULL;
-	tableData = NULL;
+	command = "";
+	repList = NULL;
+	repTable = NULL;
+	repObj = NULL;
+	type = TYPE_ACK;
 }
 
-ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
-	std::string newCommand, shmea::GList* newList)
+ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand)
 {
-	origin = newOrigin;
-	destination = newDestination;
+	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
-	listData = newList;
-	tableData = NULL;
+	repList = NULL;
+	repTable = NULL;
+	repObj = NULL;
+	type = TYPE_ACK;
 }
 
-ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
-	std::string newCommand, shmea::GTable* newTable)
+ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand, GList* newList)
 {
-	origin = newOrigin;
-	destination = newDestination;
+	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
-	listData = NULL;
-	tableData = newTable;
+	repList = newList;
+	repTable = NULL;
+	repObj = NULL;
+	type = TYPE_LIST;
 }
 
-ServiceData::ServiceData(Connection* newOrigin, Connection* newDestination,
-	std::string newCommand, shmea::Serializable* newNP)
+ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand, GTable* newTable)
 {
-	origin = newOrigin;
-	destination = newDestination;
+	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
-	listData = NULL;
-	tableData = newNP->toGTable();
+	repList = NULL;
+	repTable = newTable;
+	repObj = NULL;
+	type = TYPE_TABLE;
+}
+
+ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand, Serializable* newNP)
+{
+	cConnection = newConnection;
+	sid = generateSID();
+	command = newCommand;
+	repList = NULL;
+	repObj = newNP->serialize();
+	type = TYPE_NETWORK_POINTER;
 }
 
 ServiceData::ServiceData(const ServiceData& instance2)
 {
-	origin = instance2.origin;
-	destination = instance2.destination;
+	cConnection = instance2.cConnection;
 	sid = instance2.sid;
 	command = instance2.command;
-	listData = instance2.listData;
-	tableData = instance2.tableData;
+	repList = instance2.repList;
+	repTable = instance2.repTable;
+	repObj = instance2.repObj;
+	type = instance2.type;
 }
 
 ServiceData::~ServiceData()
 {
-	origin = NULL;
-	destination = NULL;
+	cConnection = NULL;
 	sid = "";
 	command = "";
-	listData = NULL;
-	tableData = NULL;
+	repList = NULL;
+	repTable = NULL;
+	repObj = NULL;
+	type = TYPE_ACK;
 }
 
-Connection* ServiceData::getOrigin()
+const GList* ServiceData::getList() const
 {
-	return origin;
+	return repList;
 }
 
-Connection* ServiceData::getDestination()
+const GTable* ServiceData::getTable() const
 {
-	return destination;
+	return repTable;
+}
+
+const GObject* ServiceData::getObj() const
+{
+	return repObj;
+}
+
+void ServiceData::setList(GList* newList)
+{
+	if(!newList)
+		return;
+
+	repList = newList;
+}
+
+void ServiceData::setTable(GTable* newTable)
+{
+	if(!newTable)
+		return;
+
+	repTable = newTable;
+}
+
+void ServiceData::setObj(GObject* newObj)
+{
+	if(!newObj)
+		return;
+
+	repObj = newObj;
+}
+
+GNet::Connection* ServiceData::getConnection() const
+{
+	return cConnection;
+}
+
+std::string ServiceData::getSID() const
+{
+	return sid;
 }
 
 std::string ServiceData::getCommand() const
@@ -98,9 +149,14 @@ std::string ServiceData::getCommand() const
 	return command;
 }
 
-int ServiceData::getDataType() const
+int ServiceData::getType() const
 {
-	return dataType;
+	return type;
+}
+
+void ServiceData::setSID(std::string newSID)
+{
+	sid = newSID;
 }
 
 void ServiceData::setCommand(std::string newCommand)
@@ -108,9 +164,9 @@ void ServiceData::setCommand(std::string newCommand)
 	command = newCommand;
 }
 
-void ServiceData::setDataType(int newDataType)
+void ServiceData::setType(int newType)
 {
-	dataType = newDataType;
+	type = newType;
 }
 
 bool ServiceData::validSID(const std::string& testSID)
@@ -120,7 +176,7 @@ bool ServiceData::validSID(const std::string& testSID)
 	const std::string options=
 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
 
-	for(int i=0;i<testSID.length();++i)
+	for(unsigned int i=0;i<testSID.length();++i)
 	{
 		int breakPoint=options.find(testSID[i]);
 		if(breakPoint == -1) return false;
@@ -137,7 +193,7 @@ std::string ServiceData::generateSID()
 	do
 	{
 		newSID="";
-		for(int i=0;i<SID_LENGTH;++i)
+		for(unsigned int i=0;i<SID_LENGTH;++i)
 		{
 			int newIndex=rand()%options.length();
 			char newChar=options[newIndex];

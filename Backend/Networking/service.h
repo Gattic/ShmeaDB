@@ -24,8 +24,10 @@
 #include <string>
 #include <time.h>
 #include <vector>
-#include "../Database/GList.h"
-#include "ServiceData.h"
+
+namespace shmea {
+class ServiceData;
+};
 
 namespace GNet {
 
@@ -45,11 +47,11 @@ private:
 	int64_t timeExecuted;
 
 	static void* launchService(void* y);
-	virtual shmea::GList execute(Connection*, const shmea::GList&) = 0;
+	virtual shmea::ServiceData* execute(const shmea::ServiceData*) = 0;
 	void StartService(newServiceArgs*);
 	void ExitService(newServiceArgs*);
 
-	static void ExecuteService(GServer*, const shmea::GList&, Connection* = NULL);
+	static void ExecuteService(GServer*, const shmea::ServiceData*, Connection* = NULL);
 
 public:
 	Service();

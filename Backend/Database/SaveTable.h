@@ -53,7 +53,7 @@ protected:
 public:
 	// constructors & destructor
 	SaveTable(const std::string&, const std::string&);
-	~SaveTable();
+	virtual ~SaveTable();
 
 	// Database operations
 	void loadByName();

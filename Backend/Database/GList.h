@@ -45,7 +45,7 @@ public:
 	GList();
 	GList(const GList&);
 	GList(int, const GType&);
-	~GList();
+	virtual ~GList();
 
 	// sets
 	void copy(const GList&);

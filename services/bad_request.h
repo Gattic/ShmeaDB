@@ -17,7 +17,7 @@
 #ifndef _BAD_REQUEST
 #define _BAD_REQUEST
 
-#include "../Backend/Database/GList.h"
+#include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/main.h"
 #include "../Backend/Networking/service.h"
 
@@ -42,15 +42,10 @@ public:
 		serverInstance = NULL; // Not ours to delete
 	}
 
-	shmea::GList execute(class GNet::Connection* cConnection, const shmea::GList& data)
+	shmea::ServiceData* execute(const shmea::ServiceData* data)
 	{
-		shmea::GList retList;
-		if (!serverInstance)
-			return retList;
-
 		printf("[SRVC] Bad Request\n");
-
-		return retList;
+		return NULL;
 	}
 
 	GNet::Service* MakeService(GNet::GServer* newInstance) const

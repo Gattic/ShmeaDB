@@ -44,7 +44,7 @@ private:
 public:
 	// constructors & destructor
 	SaveFolder(const std::string&);
-	~SaveFolder();
+	virtual ~SaveFolder();
 
 	SaveTable* loadItem(const std::string&);
 	bool deleteItem(const std::string&);

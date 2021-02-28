@@ -126,20 +126,20 @@ GNet::GServer::~GServer()
 	writersBlock = NULL;
 }
 
-void GNet::GServer::NewService(const shmea::GList& wData, GNet::Connection* cConnection,
-							   int messageType, bool networkingDisabled)
+void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
 {
-	if (wData.size() <= 0)
+	if (!cData)
 		return;
 
 	// Default instance
-	if (!cConnection)
-		cConnection = getLocalConnection();
+	 GNet::Connection* destination = cData->getConnection();
+	if (!destination)
+		destination = getLocalConnection();
 
 	if (isNetworkingDisabled())
 		networkingDisabled = true;
 
-	if (!cConnection)
+	if (!destination)
 	{
 		printf("[NET] Invalid Local Connection\n");
 		return;
@@ -148,14 +148,14 @@ void GNet::GServer::NewService(const shmea::GList& wData, GNet::Connection* cCon
 	if (!networkingDisabled)
 	{
 		int bytesWritten =
-			socks->writeConnection(cConnection, cConnection->sockfd, wData, messageType);
+			socks->writeConnection(destination, destination->sockfd, cData);
 
 		if (bytesWritten < 0)
-			LogoutInstance(cConnection);
+			LogoutInstance(destination);
 	}
 	else
 	{
-		GNet::Service::ExecuteService(this, wData, cConnection);
+		GNet::Service::ExecuteService(this, cData, destination);
 	}
 }
 
@@ -165,9 +165,9 @@ GNet::Service* GNet::GServer::ServiceLookup(std::string cCommand)
 	return cService;
 }
 
-unsigned int GNet::GServer::addService(std::string newServiceName, GNet::Service* newService)
+unsigned int GNet::GServer::addService(std::string newServiceName, GNet::Service* newServiceObj)
 {
-	(*service_depot)[newServiceName] = newService;
+	(*service_depot)[newServiceName] = newServiceObj;
 	return service_depot->size();
 }
 
@@ -506,19 +506,19 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	}
 
 	// create the new server instance and add it to the data structure
-	Connection* cConnection = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
+	Connection* destination = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
 	pthread_mutex_lock(serverMutex);
-	serverConnections->insert(std::pair<std::string, Connection*>(x->serverIP, cConnection));
+	serverConnections->insert(std::pair<std::string, Connection*>(x->serverIP, destination));
 	pthread_mutex_unlock(serverMutex);
 
 	if (x->serverIP == "127.0.0.1")
-		localConnection = cConnection;
+		localConnection = destination;
 
 	// Login
-	shmea::GList wData;
-	wData.addString("Handshake_Server");
-	wData.addString(x->clientName);
-	socks->writeConnection(cConnection, sockfd2, wData, ACK_TYPE);
+	shmea::GList* wData = new shmea::GList();
+	wData->addString(x->clientName);
+	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
+	socks->writeConnection(destination, sockfd2, cData);
 }
 
 void GNet::GServer::LaunchInstance(const std::string& serverIP, const std::string& clientName)
@@ -545,7 +545,7 @@ void GNet::GServer::LaunchInstance(const std::string& serverIP, const std::strin
 		LogoutInstance(cConnection);
 
 		//Log the server out of the client
-		GList wData;
+		ServiceData* wData;
 		wData.addInt(Service::LOGOUT_SERVER);
 		GNet::Service::ExecuteService(this, wData, cConnection);
 	}*/
@@ -576,7 +576,7 @@ void GNet::GServer::ListWriter(void*)
 		waitError = pthread_cond_wait(writersBlock, writersMutex);
 		pthread_mutex_unlock(writersMutex);
 
-		// We found a GList!
+		// We found a ServiceData!
 		if (waitError == 0)
 			socks->writeLists(this);
 		else if (waitError != ETIMEDOUT)
@@ -596,7 +596,6 @@ void GNet::GServer::LogoutInstance(Connection* cConnection)
 		return;
 
 	// Log out the connection
-	shmea::GList wData;
-	wData.addString("Logout_Client");
-	GNet::Service::ExecuteService(this, wData, cConnection);
+	shmea::ServiceData* cData = new shmea::ServiceData(localConnection, "Logout_Client");
+	GNet::Service::ExecuteService(this, cData, cConnection);
 }

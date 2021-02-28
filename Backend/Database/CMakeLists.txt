@@ -27,6 +27,8 @@ set(DB_src_files
 	SaveFolder.h
 	Serializable.cpp
 	Serializable.h
+	ServiceData.cpp
+	ServiceData.h
 )
 add_library(DB ${DB_src_files})
 

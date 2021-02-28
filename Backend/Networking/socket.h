@@ -32,8 +32,10 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
-#include "../Database/GList.h"
-#include "ServiceData.h"
+
+namespace shmea {
+class ServiceData;
+};
 
 namespace GNet {
 class GServer;
@@ -50,12 +52,12 @@ private:
 	unsigned int overflowLen;
 	pthread_mutex_t* inMutex;
 	pthread_mutex_t* outMutex;
-	std::queue<shmea::GList> inboundLists;
-	std::queue<std::pair<Connection*, shmea::GList> > outboundLists;
+	std::queue<const shmea::ServiceData*> inboundLists;
+	std::queue<std::pair<Connection*, const shmea::ServiceData*> > outboundLists;
 
 	void initSockets();
 
-	// GList emptyResponseList();
+	// ServiceData* emptyResponseList();
 
 public:
 	static const std::string LOCALHOST;
@@ -71,10 +73,9 @@ public:
 	int openServerConnection();
 	int openClientConnection(const std::string&);
 	int64_t* reader(const int&, unsigned int&);
-	void readConnection(Connection*, const int&, const std::string&, std::vector<shmea::GList>&);
-	void readConnectionHelper(Connection*, const int&, const std::string&,
-							  std::vector<shmea::GList>&);
-	int writeConnection(const Connection*, const int&, const shmea::GList&, int);
+	void readConnection(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
+	void readConnectionHelper(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
+	int writeConnection(const Connection*, const int&, const shmea::ServiceData*);
 	void closeConnection(const int&);
 
 	bool anyInboundLists();
@@ -83,7 +84,7 @@ public:
 	bool readLists(Connection*);
 	void processLists(GServer*, Connection*);
 	void writeLists(GServer*);
-	void addResponseList(GServer*, Connection*, const shmea::GList&);
+	void addResponseList(GServer*, Connection*, const shmea::ServiceData*);
 };
 };
 

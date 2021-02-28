@@ -31,8 +31,10 @@
 /*#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>*/
-#include "../Database/GList.h"
-#include "ServiceData.h"
+
+namespace shmea {
+class ServiceData;
+};
 
 namespace GNet {
 
@@ -46,7 +48,7 @@ class newServiceArgs
 public:
 	class GServer* serverInstance;
 	class Connection* cConnection;
-	shmea::GList sockData;
+	const shmea::ServiceData* sockData;
 	pthread_t* sThread;
 	std::string command;
 };
@@ -97,15 +99,11 @@ class GServer
 	Connection* findExistingConnection(const std::vector<Connection*>&, const fd_set&);
 
 public:
-	static const int CONTENT_TYPE = 0;
-	static const int RESPONSE_TYPE = 1;
-	static const int ACK_TYPE = 2;
 
 	GServer();
 	~GServer();
 
-	void NewService(const shmea::GList&, GNet::Connection* = NULL, int = CONTENT_TYPE,
-					bool = false);
+	void send(const shmea::ServiceData*, bool = false);
 
 	Service* ServiceLookup(std::string);
 	unsigned int addService(std::string, Service*);

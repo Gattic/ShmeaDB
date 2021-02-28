@@ -33,7 +33,7 @@ const std::string Serializable::NEED_ESCAPING = "%,\\|";
  * @param size the size of the item (pass by reference)
  * @return whether or not the operation succeeded
  */
-bool Serializable::escapeSeparators(char** item, unsigned int& size)
+bool Serializable::escapeSeparators(char** item, int64_t& size)
 {
 	char* contents = *item;
 	for (unsigned int i = 0; i < size; ++i)
@@ -67,9 +67,9 @@ bool Serializable::escapeSeparators(char** item, unsigned int& size)
  * @param isLastItem whether or not this is the last item in the bundle.
  * @return whether or not the operation succeeded
  */
-bool Serializable::addDelimiter(char** item, unsigned int& size, bool isLastItem)
+bool Serializable::addDelimiter(char** item, int64_t& size, bool isLastItem)
 {
-	int delimiterLen = isLastItem ? 2 : 1;
+	/*int delimiterLen = isLastItem ? 2 : 1;
 	char* contents = *item;
 	char* newContents = (char*)realloc(contents, size + delimiterLen);
 	if (!newContents)
@@ -86,6 +86,26 @@ bool Serializable::addDelimiter(char** item, unsigned int& size, bool isLastItem
 	}
 
 	size += delimiterLen;
+	return true;*/
+
+	int delimiterLen = isLastItem ? 2 : 1;
+	char* contents = *item;
+	char* newContents = (char*)malloc(size + delimiterLen);
+	if (!newContents)
+		return false;
+
+	memcpy(newContents, contents, size);
+	if (delimiterLen == 1)
+		newContents[size] = '|';
+	else if (delimiterLen == 2)
+	{
+		newContents[size] = '\\';
+		newContents[size + 1] = '|';
+	}
+
+	size += delimiterLen;
+
+	*item = newContents;
 	return true;
 }
 
@@ -103,7 +123,7 @@ bool Serializable::addDelimiter(char** item, unsigned int& size, bool isLastItem
  * @param itemType the type of the contents (INT_TYPE, STRING_TYPE, etc.)
  * @return the GTable version of the bundle
  */
-bool Serializable::addItemToSerial(char** serialRef, unsigned int& serialLen, char* block,
+bool Serializable::addItemToSerial(char** serialRef, int64_t& serialLen, char* block,
 								   int itemSize, int realSize, int itemType)
 {
 	// increase the size of the retblock (2 for the commas)
@@ -151,10 +171,10 @@ bool Serializable::addItemToSerial(char** serialRef, unsigned int& serialLen, ch
  * @return whether or not the operation succeeded
  */
 bool Serializable::serializeItem(const GType& item, bool isLastItem, char** serial,
-								 unsigned int& serialLen)
+								 int64_t& serialLen)
 {
 	int cType = item.getType();
-	unsigned int cBlockSize = item.size();
+	int64_t cBlockSize = item.size();
 	char* cBlock = item.getBlockCopy();
 
 	if (!escapeSeparators(&cBlock, cBlockSize) || !addDelimiter(&cBlock, cBlockSize, isLastItem) ||
@@ -272,7 +292,7 @@ int Serializable::getDelimiterIdx(const char* text, const int textLen, const cha
  * @param newBlockSize block size for the current item (pass by reference)
  * @return the type parameter for the item currently being extracted
  */
-int Serializable::deserializeType(char** serialRef, int& len, int64_t& newBlockSize)
+int Serializable::deserializeType(char** serialRef, int64_t& len, int64_t& newBlockSize)
 {
 	const bool NOT_ESCAPED = false;
 	char* serialBuffer = *serialRef;
@@ -320,7 +340,7 @@ int Serializable::deserializeType(char** serialRef, int& len, int64_t& newBlockS
  * @param newBlockSize block size for the current item (pass by reference)
  * @return the size parameter for the item currently being extracted
  */
-int64_t Serializable::deserializeSize(char** serialRef, int& len, int64_t& newBlockSize)
+int64_t Serializable::deserializeSize(char** serialRef, int64_t& len, int64_t& newBlockSize)
 {
 	char* serialBuffer = *serialRef;
 	const bool NOT_ESCAPED = false;
@@ -403,7 +423,7 @@ int Serializable::unescapeCharacter(char** blockRef, int64_t& newBlockSize, int 
  * @param delimiterLen the length of the ending delimiter (1 = |, 2 = \\|)
  * @return the contents of the item currently being extracted
  */
-char* Serializable::deserializeContent(char** serialRef, int& len, int64_t& newBlockSize,
+char* Serializable::deserializeContent(char** serialRef, int64_t& len, int64_t& newBlockSize,
 									   int64_t newSize, int delimiterLen)
 {
 	char* unescapedBlock = (char*)malloc(newBlockSize);
@@ -450,14 +470,14 @@ char* Serializable::deserializeContent(char** serialRef, int& len, int64_t& newB
  * @param serial the new serial
  * @return the length of the new serial
  */
-int Serializable::Serialize(const GList& itemizedTable, char** serial)
+int Serializable::Serialize(const GList& itemizedTable, char** serial, bool overrideLast)
 {
 	// Serialize the Itemized List (GList)
-	unsigned int len = 0;
+	int64_t len = 0;
 	char* retBlock = (char*)malloc(sizeof(char) * len);
 	for (unsigned int i = 0; i < itemizedTable.size(); ++i)
 	{
-		if (!serializeItem((itemizedTable)[i], i == itemizedTable.size() - 1, &retBlock, len))
+		if (!serializeItem((itemizedTable)[i], (i == itemizedTable.size() - 1) && (!overrideLast), &retBlock, len))
 		{
 			free(retBlock);
 			return 0;
@@ -475,7 +495,7 @@ int Serializable::Serialize(const GList& itemizedTable, char** serial)
  * @param serial the new serial
  * @return the length of the new serial
  */
-int Serializable::Serialize(const GTable& cTable, char** serial)
+int Serializable::Serialize(const GTable& cTable, char** serial, bool overrideLast)
 {
 	int rows = cTable.numberOfRows();
 	int columns = cTable.numberOfCols();
@@ -505,7 +525,7 @@ int Serializable::Serialize(const GTable& cTable, char** serial)
 			cList.addGType(cTable.getCell(r, c));
 	}
 
-	return Serialize(cList, serial);
+	return Serialize(cList, serial, overrideLast);
 }
 
 /*!
@@ -515,7 +535,7 @@ int Serializable::Serialize(const GTable& cTable, char** serial)
  * @param serial the new serial
  * @return the length of the new serial
  */
-int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
+int Serializable::Serialize(const shmea::GObject& cObject, char** serial, bool overrideLast)
 {
 	unsigned int memberTablesCount = cObject.memberTables.size();
 
@@ -581,7 +601,90 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
 		}
 	}
 
-	return Serialize(cList, serial);
+	return Serialize(cList, serial, overrideLast);
+}
+
+/*!
+ * @brief Create a new serial from ServiceData
+ * @details Turn the ServiceData into a serial
+ * @param cData the table to serialize
+ * @param serial the new serial
+ * @return the length of the new serial
+ */
+int Serializable::Serialize(const ServiceData* cData, char** serial)
+{
+	// Metadata at the front
+	GList metaList;
+	metaList.addString(cData->getSID());
+	metaList.addInt(cData->getType());
+	metaList.addString(cData->getCommand());
+
+	char* metaData = NULL;
+	unsigned int metaLen = Serialize(metaList, &metaData, true);
+	if(!metaData)
+		return 0;
+
+	char* repData = NULL;
+	unsigned int repLen = 0;
+	switch(cData->getType())
+	{
+		case ServiceData::TYPE_NETWORK_POINTER:
+		{
+			// {GOBJECT}
+			repLen = Serialize(*(cData->getObj()), &repData);
+
+			break;
+		}
+
+		case ServiceData::TYPE_TABLE:
+		{
+			// {GTable}
+			repLen = Serialize(*(cData->getTable()), &repData);
+
+			break;
+		}
+
+		case ServiceData::TYPE_LIST:
+		{
+			// {GList}
+			repLen = Serialize(*(cData->getList()), &repData);
+
+			break;
+		}
+
+		case ServiceData::TYPE_ACK:
+		default:
+		{
+			// Write nothing
+			break;
+		}
+	}
+
+			printf("WRITE-metaData[%d]: %s\n", metaLen, metaData);
+			/*for(unsigned int rCounter=0;rCounter<metaLen;++rCounter)
+			{
+				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, metaData[rCounter], metaData[rCounter]);
+				if(metaData[rCounter] == 0x7C)
+					printf("-------------------------------\n");
+			}*/
+
+			printf("WRITE-repData[%d]: %s\n", repLen, repData);
+			/*for(unsigned int rCounter=0;rCounter<repLen;++rCounter)
+			{
+				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, repData[rCounter], repData[rCounter]);
+				if(repData[rCounter] == 0x7C)
+					printf("-------------------------------\n");
+			}*/
+
+
+	//metaData+repData
+	int64_t len = metaLen+repLen;
+	char* retBlock = (char*)malloc(sizeof(char) * len);
+	memcpy(retBlock, metaData, metaLen);
+	memcpy(&retBlock[metaLen], repData, repLen);
+
+	*serial = retBlock;
+	return len;
 }
 
 /*!
@@ -600,9 +703,8 @@ int Serializable::Serialize(const shmea::GObject& cObject, char** serial)
  * @param the length of the serial
  * @return the full list with all contents
  */
-void Serializable::Deserialize(GList& retList, const char* serial, int len)
+void Serializable::Deserialize(GList& retList, const char* serial, int64_t& len, int maxItems)
 {
-	GList cList;
 	if ((!serial) || (len == 0))
 		return;
 
@@ -610,20 +712,26 @@ void Serializable::Deserialize(GList& retList, const char* serial, int len)
 	char* serialBuffer = (char*)malloc(sizeof(char) * (len));
 	memcpy(serialBuffer, serial, len);
 
+	int itemCounter = 0;
 	int breakPoint;
 	const bool NOT_ESCAPED = false;
 
 	do
 	{
 		breakPoint = getDelimiterIdx(serialBuffer, len, "|", 1, NOT_ESCAPED);
-		int bpEndOfserial = getDelimiterIdx(serialBuffer, len, "\\|", 2, NOT_ESCAPED);
+		int bpIndex = getDelimiterIdx(serialBuffer, len, "\\|", 2, NOT_ESCAPED);
 
-		if ((breakPoint <= 0) || (bpEndOfserial <= 0))
+		int totalEnd = bpIndex;
+
+		if (totalEnd < 0)
+			totalEnd = len-1;
+
+		if ((breakPoint <= 0) || (totalEnd == 0))
 			break;
 
-		bool isLastBlock = (breakPoint == bpEndOfserial + 1);
-		int64_t newBlockSize = isLastBlock ? bpEndOfserial : breakPoint;
-		int delimiterLen = isLastBlock ? 2 : 1;
+		bool isLastBlock = (breakPoint == bpIndex+1);
+		int64_t newBlockSize = isLastBlock ? totalEnd : breakPoint;
+		int delimiterLen = ((isLastBlock) && (bpIndex > 0)) ? 2 : 1;
 
 		int newType = deserializeType(&serialBuffer, len, newBlockSize);
 		if (newType == GType::NULL_TYPE)
@@ -639,14 +747,16 @@ void Serializable::Deserialize(GList& retList, const char* serial, int len)
 		if (!unescapedBlock)
 			break;
 
-		cList.addObject(newType, unescapedBlock, newBlockSize);
-	} while (breakPoint > 0);
+		retList.addObject(newType, unescapedBlock, newBlockSize);
+		++itemCounter;
+	} while ((breakPoint > 0) && (maxItems>0? (itemCounter < maxItems):true));
 
 	// free the serialBuffer
-	if (serialBuffer)
-		free(serialBuffer);
-
-	retList = cList;
+	if(!(maxItems>0? (itemCounter < maxItems):true))
+	{
+		if (serialBuffer)
+			free(serialBuffer);
+	}
 }
 
 /*!
@@ -654,7 +764,7 @@ void Serializable::Deserialize(GList& retList, const char* serial, int len)
  * @details Creates a GTable from a bundle
  * @return the GTable version of the bundle
  */
-void Serializable::Deserialize(GTable& retTable, const char* serial, int len)
+void Serializable::Deserialize(GTable& retTable, const char* serial, int64_t& len)
 {
 	GList cList;
 	Deserialize(cList, serial, len);
@@ -727,7 +837,7 @@ void Serializable::Deserialize(GTable& retTable, const char* serial, int len)
  * @details Creates a GObject from a bundle
  * @return the GObject version of the bundle
  */
-void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
+void Serializable::Deserialize(GObject& retObj, const char* serial, int64_t& len)
 {
 	//TODO: REPLACE THIS BLOCK WITH GTABLE DSERIALIZE CALL
 	// Add the members
@@ -865,4 +975,77 @@ void Serializable::Deserialize(GObject& retObj, const char* serial, int len)
 	}
 
 	retObj = cObject;
+}
+
+void Serializable::Deserialize(ServiceData* retData, const char* serial, int64_t len)
+{
+	if ((!serial) || (len == 0))
+		return;
+
+
+	GList metaList;
+	printf("PRE-len: %ld\n", len);
+	int64_t oldLen = len;
+	Deserialize(metaList, serial, len, 3);//we want only 3 GItems
+	printf("POST-len: %ld\n", len);
+	printf("oldLen-len: %ld\n", oldLen-len);
+	const char* repData = &serial[oldLen-len];
+
+	// metadata
+	std::string sdSID = metaList.getString(0);
+	retData->setSID(sdSID);
+	printf("sdSID: %s\n", sdSID.c_str());
+
+	int sdType = metaList.getInt(1);
+	retData->setType(sdType);
+	printf("sdType: %d\n", sdType);
+
+	std::string sdCommand = metaList.getString(2);
+	retData->setCommand(sdCommand);
+	printf("sdCommand: %s\n", sdCommand.c_str());
+
+	switch(sdType)
+	{
+		case ServiceData::TYPE_NETWORK_POINTER:
+		{
+			// {GOBJECT}
+			GObject cObj;
+			Deserialize(cObj, repData, len);
+			retData->setObj(new GObject(cObj));
+			printf("---SD Object---\n");
+
+			break;
+		}
+
+		case ServiceData::TYPE_TABLE:
+		{
+			// {GTable}
+			GTable cTable;
+			Deserialize(cTable, repData, len);
+			retData->setTable(new GTable(cTable));
+			printf("---SD Table---\n");
+
+			break;
+		}
+
+		case ServiceData::TYPE_LIST:
+		{
+			// {GList}
+
+			printf("---SD List---\n");
+			GList cList;
+			Deserialize(cList, repData, len);
+			retData->setList(new GList(cList));
+
+			break;
+		}
+
+		case ServiceData::TYPE_ACK:
+		default:
+		{
+			// Write nothing
+			printf("---SD Nothing---\n");
+			break;
+		}
+	}
 }

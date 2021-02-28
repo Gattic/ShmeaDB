@@ -15,7 +15,6 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "socket.h"
-#include "../Database/GList.h"
 #include "../Database/Serializable.h"
 #include "connection.h"
 #include "crypt.h"
@@ -216,24 +215,22 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 	return newEText;
 }
 
-void Sockets::readConnection(Connection* cConnection, const int& sockfd, const std::string& cIP,
-							 std::vector<shmea::GList>& itemList)
+void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
 {
-	readConnectionHelper(cConnection, sockfd, cIP, itemList);
+	readConnectionHelper(origin, sockfd, srvcList);
 
 	// remove the empty data lists
-	for (unsigned int i = 0; i < itemList.size(); ++i)
+	/*for (unsigned int i = 0; i < srvcList.size(); ++i)
 	{
-		if (itemList[i].size() <= 0)
+		if (srvcList[i].size() <= 0)
 		{
-			itemList.erase(itemList.begin() + i);
+			srvcList.erase(srvcList.begin() + i);
 			--i;
 		}
-	}
+	}*/
 }
 
-void Sockets::readConnectionHelper(Connection* cConnection, const int& sockfd,
-								   const std::string& cIP, std::vector<shmea::GList>& itemList)
+void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
 {
 	int balance = 0;
 	int64_t* cOverflow = overflow;
@@ -241,11 +238,11 @@ void Sockets::readConnectionHelper(Connection* cConnection, const int& sockfd,
 	int64_t key = DEFAULT_KEY;
 
 	// we would rather use the Connection versions instead
-	if (cConnection != NULL)
+	if (origin != NULL)
 	{
-		cOverflow = cConnection->overflow;
-		cOverflowLen = cConnection->overflowLen;
-		key = cConnection->getKey();
+		cOverflow = origin->overflow;
+		cOverflowLen = origin->overflowLen;
+		key = origin->getKey();
 	}
 
 	do
@@ -318,10 +315,20 @@ void Sockets::readConnectionHelper(Connection* cConnection, const int& sockfd,
 		}
 		else if (crypt->linesRead == crypt->size)
 		{
+			printf("READ-dText[%d]: %s\n", crypt->size, crypt->dText);
+			/*for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
+			{
+				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
+				if(crypt->dText[rCounter] == 0x7C)
+					printf("-------------------------------\n");
+			}*/
+
 			// set the text from the crypt object & add it to the data
-			shmea::GList cList;
-			shmea::Serializable::Deserialize(cList, crypt->dText, crypt->size - 1);
-			itemList.push_back(cList); // minus the key
+			shmea::ServiceData* cData = new shmea::ServiceData(origin);
+			printf("eTextLen: %u\n", eTextLen);
+			printf("crypt->size: %u\n", crypt->size);
+			shmea::Serializable::Deserialize(cData, crypt->dText, crypt->size - 1);
+			srvcList.push_back(cData); // minus the key
 
 			if (eTextLen == crypt->size)
 				balance = 0;
@@ -348,35 +355,35 @@ void Sockets::readConnectionHelper(Connection* cConnection, const int& sockfd,
 
 	} while (balance != 0);
 
-	if (cConnection != NULL)
+	if (origin != NULL)
 	{
-		cConnection->overflow = cOverflow;
-		cConnection->overflowLen = cOverflowLen;
+		origin->overflow = cOverflow;
+		origin->overflowLen = cOverflowLen;
 	}
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
-							 const shmea::GList& cList, int messageType)
+							 const shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
 
 	if (cConnection != NULL)
 		key = cConnection->getKey();
 
-	// add the version and message type to the front of every packet
-	shmea::GList writeList = cList;
-	writeList.insertInt(0, messageType);
+	// Add the version and message type to the front of every packet
 	// writeList.insertString(0, version.getString());
 
-	// convert to packet format
-	char* writeData = (char*)malloc(0);
-	unsigned int writeDataSize = shmea::Serializable::Serialize(writeList, &writeData);
+	// Convert to packet format
+	char* rawData = (char*)malloc(0);
+	unsigned int writeDataSize = shmea::Serializable::Serialize(cData, &rawData);
 	if (writeDataSize <= 0)
 		return -1;
+	printf("writeDataSize: %u\n", writeDataSize);
 
-	// encrypt
+	// Encrypt
 	Crypt* crypt = new Crypt();
-	crypt->encrypt(writeData, key, writeDataSize);
+	crypt->encrypt(rawData, key, writeDataSize);
+	free(rawData);
 
 	if (crypt->error)
 	{
@@ -390,6 +397,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	for(int i=0;i<crypt->size;++i)
 		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);*/
 
+	printf("crypt->size*2: %d\n", crypt->size*2);
 	unsigned int writeLen = 0;
 	for (unsigned int i = 0; i < crypt->size * 2; ++i)
 	{
@@ -400,6 +408,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	if (writeLen != sizeof(int64_t) * crypt->size)
 		printf("[SOCKS] Write error: %u/%llu\n", writeLen, sizeof(int64_t) * crypt->size);
 
+	printf("writeLen: %d\n", writeLen);
 	// delete it after we are done
 	if (crypt)
 		delete crypt;
@@ -416,38 +425,31 @@ void Sockets::closeConnection(const int& sockfd)
 /*!
  * @brief read lists from connection
  * @details read pending lists from a connection
- * @param cConnection the connection Connection
+ * @param origin the connection Connection
  * @return false if the Connection should log out (unable to read), false otherwise
  */
-bool Sockets::readLists(Connection* cConnection)
+bool Sockets::readLists(Connection* origin)
 {
-	std::vector<shmea::GList> itemList;
-	readConnection(cConnection, cConnection->sockfd, cConnection->getIP(), itemList);
+	std::vector<const shmea::ServiceData*> srvcList;
+	readConnection(origin, origin->sockfd, srvcList);
 
-	if (itemList.size() > 0)
+	if (srvcList.size() > 0)
 	{
-		// loop through the itemList
-		for (unsigned int i = 0; i < itemList.size(); ++i)
+		// loop through the srvcList
+		for (unsigned int i = 0; i < srvcList.size(); ++i)
 		{
 			// get the data from the data list
-			shmea::GList cList = itemList.front();
-			itemList.erase(itemList.begin());
+			const shmea::ServiceData* cData = srvcList.front();
+			srvcList.erase(srvcList.begin());
 
 			// Check the version
-			/*std::string clientVersion = cList.getString(0);
-			cList.remove(0);*/
+			/*std::string clientVersion = cData.getString(0);
+			cData.remove(0);*/
 			/*if (version != clientVersion)
 				return false;*/
-			// check the message type as well
-			int messageType = cList.getInt(0);
-			cList.remove(0);
-			// do something with message type here!!
-			// printf("[NET] message type: %d\n", messageType);
-			/*if (messageType == GNet::RESPONSE_TYPE)
-				outboundLists.push(cList);
-			else*/
+
 			pthread_mutex_lock(inMutex);
-			inboundLists.push(cList);
+			inboundLists.push(cData);
 			pthread_mutex_unlock(inMutex);
 		}
 		return true;
@@ -466,10 +468,10 @@ void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 	while (!inboundLists.empty())
 	{
 		pthread_mutex_lock(inMutex);
-		shmea::GList nextCommand = inboundLists.front();
+		const shmea::ServiceData* nextSD = inboundLists.front();
 		inboundLists.pop();
 		pthread_mutex_unlock(inMutex);
-		GNet::Service::ExecuteService(serverInstance, nextCommand, cConnection);
+		GNet::Service::ExecuteService(serverInstance, nextSD, cConnection);
 	}
 }
 
@@ -480,19 +482,21 @@ void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
  */
 void Sockets::writeLists(GServer* serverInstance)
 {
+	if (!serverInstance)
+		return;
+
 	if (!anyOutboundLists())
 		return;
 
 	pthread_mutex_lock(outMutex);
-	std::pair<Connection*, shmea::GList> nextOutbound = outboundLists.front();
+	std::pair<Connection*, const shmea::ServiceData*> nextOutbound = outboundLists.front();
 	outboundLists.pop();
-	serverInstance->NewService(nextOutbound.second, nextOutbound.first);
+	serverInstance->send(nextOutbound.second);
 	pthread_mutex_unlock(outMutex);
 	/*Connection* cConnection = nextOutbound.first;
-	shmea::GList nextCommand = nextOutbound.second;
+	const shmea::ServiceData* nextCommand = nextOutbound.second;
 	int bytesWritten =
-		writeConnection(cConnection, cConnection->sockfd, nextCommand,
-	GNet::GServer::RESPONSE_TYPE);
+		writeConnection(cConnection, cConnection->sockfd, nextCommand);
 
 	return !(bytesWritten < 0);*/
 }
@@ -517,13 +521,13 @@ bool Sockets::anyOutboundLists()
 	return !outboundLists.empty();
 }
 void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection,
-							  const shmea::GList& cList)
+							  const shmea::ServiceData* cData)
 {
 	if (!cConnection)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	outboundLists.push(std::make_pair(cConnection, cList));
+	outboundLists.push(std::make_pair(cConnection, cData));
 	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
 }

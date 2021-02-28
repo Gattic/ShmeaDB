@@ -554,7 +554,7 @@ void GTable::swapCol(unsigned int index, unsigned int index2)
 		return;
 
 	// Make sure index is smaller than index2
-	if (index > index)
+	if (index > index2)
 	{
 		int tempIndex = index;
 		index = index2;

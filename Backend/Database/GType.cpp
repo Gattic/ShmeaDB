@@ -687,8 +687,9 @@ void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 
 void GType::clean()
 {
-	if (block)
-		free(block);
+	// Spam bad request and this crashes WHY
+	/*if (block)
+		free(block);*/
 	block = NULL;
 
 	blockSize = 0;
@@ -1227,7 +1228,8 @@ std::string GType::doubleTOstring(const double number)
  */
 std::string GType::datetimeTOstring(const int64_t ts)
 {
-	return (dateTOstring(ts) + " " + timeTOstring(ts));
+	std::string newDateStr = (dateTOstring(ts) + " " + timeTOstring(ts));
+	return newDateStr;
 }
 
 std::string GType::dateTOstring(const int64_t ts)
@@ -1243,7 +1245,8 @@ std::string GType::dateTOstring(const int64_t ts)
 
 	time_t time = (time_t)ts;
 	std::tm* date = localtime(&time);
-	return intTOstring(cMonth) + "-" + intTOstring(cDay) + "-" + intTOstring(cYear);
+	std::string newDateStr = intTOstring(cMonth) + "-" + intTOstring(cDay) + "-" + intTOstring(cYear);
+	return newDateStr;
 }
 
 std::string GType::timeTOstring(const int64_t ts)
@@ -1261,7 +1264,7 @@ std::string GType::timeTOstring(const int64_t ts)
 	std::tm* date = localtime(&time);
 	char buffer[80];
 	sprintf(buffer, "%d:%d:%d", cHour, cMinute, cSeconds);
-	std::string retString(buffer);
+	std::string retString = buffer;
 	return retString;
 }
 

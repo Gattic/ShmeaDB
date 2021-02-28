@@ -16,13 +16,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "connection.h"
 #include "socket.h"
+#include "../Database/ServiceData.h"
 
 using namespace GNet;
 
 Connection::Connection(int newSockFD, int newConnectionType, std::string newIP)
 {
 	name = "";
-	// sid=newSID;
 	ip = newIP;
 	sockfd = newSockFD;
 	overflow = NULL;
@@ -30,15 +30,11 @@ Connection::Connection(int newSockFD, int newConnectionType, std::string newIP)
 	connectionType = newConnectionType;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
-
-	// generate a unique sid
-	// newSID=Connection::generateSID();
 }
 
 Connection::Connection(const Connection& instance2)
 {
 	name = instance2.name;
-	// sid=instance2.sid;
 	ip = instance2.ip;
 	sockfd = instance2.sockfd;
 	overflow = instance2.overflow;
@@ -53,7 +49,6 @@ Connection::~Connection()
 	finish();
 
 	name = "";
-	// sid="";
 	ip = "";
 	sockfd = -1;
 	overflow = NULL;
@@ -73,6 +68,42 @@ void Connection::finish()
 	// close the connection
 	close(this->sockfd);
 	this->sockfd = -1;
+}
+
+std::string Connection::getName() const
+{
+	return name;
+}
+std::string Connection::getIP() const
+{
+	return ip;
+}
+int Connection::getConnectionType() const
+{
+	return connectionType;
+}
+int64_t Connection::getKey() const
+{
+	return key;
+}
+bool Connection::isFinished() const
+{
+	return finished;
+}
+
+void Connection::setName(std::string newName)
+{
+	name = newName;
+}
+
+void Connection::setIP(std::string newIP)
+{
+	ip = newIP;
+}
+
+void Connection::setKey(int64_t newKey)
+{
+	key = newKey;
 }
 
 bool Connection::validName(const std::string& tempName)

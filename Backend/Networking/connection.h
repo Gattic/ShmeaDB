@@ -59,42 +59,16 @@ public:
 	void finish();
 
 	// gets
-	std::string getName() const
-	{
-		return name;
-	}
-	// std::string getSID() const { return sid; }
-	std::string getIP() const
-	{
-		return ip;
-	}
-	int getConnectionType() const
-	{
-		return connectionType;
-	}
-	int64_t getKey() const
-	{
-		return key;
-	}
-	bool isFinished() const
-	{
-		return finished;
-	}
+	std::string getName() const;
+	std::string getIP() const;
+	int getConnectionType() const;
+	int64_t getKey() const;
+	bool isFinished() const;
 
 	// sets
-	void setName(std::string newName)
-	{
-		name = newName;
-	}
-	// void setSID(std::string newSID) { sid=newSID; }
-	void setIP(std::string newIP)
-	{
-		ip = newIP;
-	}
-	void setKey(int64_t newKey)
-	{
-		key = newKey;
-	}
+	void setName(std::string);
+	void setIP(std::string);
+	void setKey(int64_t);
 
 	static bool validName(const std::string&);
 	static int64_t generateKey();

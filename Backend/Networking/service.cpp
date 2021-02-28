@@ -51,7 +51,7 @@ Service::~Service()
  * @param sockData a package of network data
  * @param cConnection the current connection
  */
-void Service::ExecuteService(GServer* serverInstance, const shmea::GList& sockData,
+void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* sockData,
 							 Connection* cConnection)
 {
 	// set the args to pass in
@@ -74,7 +74,7 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::GList& sockDa
  */
 void* Service::launchService(void* y)
 {
-	// helper function for pthread_create
+	// Helper function for pthread_create
 
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
@@ -83,12 +83,10 @@ void* Service::launchService(void* y)
 		return NULL;
 	GServer* serverInstance = x->serverInstance;
 
-	// get the command
-	if (x->sockData.size() < 1)
+	// Get the command in order to tell the service what to do
+	x->command = x->sockData->getCommand();
+	if(x->command.length() == 0)//Uncomment this before commit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		return NULL;
-
-	x->command = x->sockData.getString(0);
-	x->sockData.remove(0);
 
 	// Connection is dead so ignore it
 	Connection* cConnection = x->cConnection;
@@ -104,9 +102,11 @@ void* Service::launchService(void* y)
 			cService->StartService(x);
 
 			// execute the service
-			shmea::GList retList = cService->execute(cConnection, x->sockData);
-			if (!retList.empty())
-				serverInstance->socks->addResponseList(serverInstance, cConnection, retList);
+			shmea::ServiceData* retData = cService->execute(x->sockData);
+			if(!retData)
+			{
+				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
+			}
 
 			// exit the service
 			cService->ExitService(x);

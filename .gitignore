@@ -9,3 +9,4 @@ unit-tests/database/*
 *.swp
 alpaca.key
 .gdb_history
+*.vim

@@ -56,7 +56,7 @@ public:
 	GTable(char, const std::vector<std::string>&);
 	GTable(const std::string&, char, int);
 	GTable(const GTable&);
-	~GTable();
+	virtual ~GTable();
 	void copy(const GTable&);
 
 	// gets
