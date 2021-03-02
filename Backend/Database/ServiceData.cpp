@@ -69,6 +69,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand
 	sid = generateSID();
 	command = newCommand;
 	repList = NULL;
+	repTable = NULL;
 	repObj = newNP->serialize();
 	type = TYPE_NETWORK_POINTER;
 }

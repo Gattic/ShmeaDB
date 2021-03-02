@@ -316,6 +316,8 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		else if (crypt->linesRead == crypt->size)
 		{
 			printf("READ-dText[%d]: %s\n", crypt->size, crypt->dText);
+			if(crypt->dText[crypt->size-1] == 0)
+				printf("NULL TERM ON dText\n");
 			/*for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
 			{
 				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
@@ -366,6 +368,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 							 const shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
+	printf("==============================================================\n");
 
 	if (cConnection != NULL)
 		key = cConnection->getKey();
@@ -409,6 +412,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 		printf("[SOCKS] Write error: %u/%llu\n", writeLen, sizeof(int64_t) * crypt->size);
 
 	printf("writeLen: %d\n", writeLen);
+	printf("==============================================================\n");
 	// delete it after we are done
 	if (crypt)
 		delete crypt;

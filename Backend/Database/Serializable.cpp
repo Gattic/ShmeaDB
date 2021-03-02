@@ -618,6 +618,10 @@ int Serializable::Serialize(const ServiceData* cData, char** serial)
 	metaList.addString(cData->getSID());
 	metaList.addInt(cData->getType());
 	metaList.addString(cData->getCommand());
+	printf("metaList-Size: %d\n", metaList.size());
+	printf("SER-sdSID: %s\n", cData->getSID().c_str());
+	printf("SER-sdType: %d\n", cData->getType());
+	printf("SER-sdCommand: %s\n", cData->getCommand().c_str());
 
 	char* metaData = NULL;
 	unsigned int metaLen = Serialize(metaList, &metaData, true);
@@ -631,6 +635,7 @@ int Serializable::Serialize(const ServiceData* cData, char** serial)
 		case ServiceData::TYPE_NETWORK_POINTER:
 		{
 			// {GOBJECT}
+			printf("---SS Object---\n");
 			repLen = Serialize(*(cData->getObj()), &repData);
 
 			break;
@@ -639,6 +644,7 @@ int Serializable::Serialize(const ServiceData* cData, char** serial)
 		case ServiceData::TYPE_TABLE:
 		{
 			// {GTable}
+			printf("---SS Table---\n");
 			repLen = Serialize(*(cData->getTable()), &repData);
 
 			break;
@@ -647,7 +653,9 @@ int Serializable::Serialize(const ServiceData* cData, char** serial)
 		case ServiceData::TYPE_LIST:
 		{
 			// {GList}
+			printf("---SS List: %d---\n", cData->getList()->size());
 			repLen = Serialize(*(cData->getList()), &repData);
+			cData->getList()->print();
 
 			break;
 		}
@@ -656,6 +664,7 @@ int Serializable::Serialize(const ServiceData* cData, char** serial)
 		default:
 		{
 			// Write nothing
+			printf("---SS Nothing---\n");
 			break;
 		}
 	}
@@ -747,6 +756,7 @@ void Serializable::Deserialize(GList& retList, const char* serial, int64_t& len,
 		if (!unescapedBlock)
 			break;
 
+		printf("unescapedBlock: %s\n", unescapedBlock);
 		retList.addObject(newType, unescapedBlock, newBlockSize);
 		++itemCounter;
 	} while ((breakPoint > 0) && (maxItems>0? (itemCounter < maxItems):true));
@@ -987,6 +997,7 @@ void Serializable::Deserialize(ServiceData* retData, const char* serial, int64_t
 	printf("PRE-len: %ld\n", len);
 	int64_t oldLen = len;
 	Deserialize(metaList, serial, len, 3);//we want only 3 GItems
+	printf("metaList-Size: %d\n", metaList.size());
 	printf("POST-len: %ld\n", len);
 	printf("oldLen-len: %ld\n", oldLen-len);
 	const char* repData = &serial[oldLen-len];
@@ -1036,6 +1047,7 @@ void Serializable::Deserialize(ServiceData* retData, const char* serial, int64_t
 			GList cList;
 			Deserialize(cList, repData, len);
 			retData->setList(new GList(cList));
+			cList.print();
 
 			break;
 		}

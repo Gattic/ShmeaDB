@@ -205,7 +205,6 @@ void GList::insertObject(unsigned int index, int newType, const void* newBlock,
  */
 void GList::addGType(const GType& item)
 {
-	if(item)
 		items.push_back(item);
 }
 
