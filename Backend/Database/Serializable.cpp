@@ -33,7 +33,7 @@ const std::string Serializable::NEED_ESCAPING = "%,\\|";
  * @param size the size of the item (pass by reference)
  * @return whether or not the operation succeeded
  */
-bool Serializable::escapeSeparators(char** item, int64_t& size)
+bool Serializable::escapeSeparators(char** item, unsigned int& size)
 {
 	char* contents = *item;
 	for (unsigned int i = 0; i < size; ++i)
@@ -67,7 +67,7 @@ bool Serializable::escapeSeparators(char** item, int64_t& size)
  * @param isLastItem whether or not this is the last item in the bundle.
  * @return whether or not the operation succeeded
  */
-bool Serializable::addDelimiter(char** item, int64_t& size, bool isLastItem)
+bool Serializable::addDelimiter(char** item, unsigned int& size, bool isLastItem)
 {
 	/*int delimiterLen = isLastItem ? 2 : 1;
 	char* contents = *item;
@@ -123,7 +123,7 @@ bool Serializable::addDelimiter(char** item, int64_t& size, bool isLastItem)
  * @param itemType the type of the contents (INT_TYPE, STRING_TYPE, etc.)
  * @return the GTable version of the bundle
  */
-bool Serializable::addItemToSerial(char** serialRef, int64_t& serialLen, char* block,
+bool Serializable::addItemToSerial(char** serialRef, unsigned int& serialLen, char* block,
 								   int itemSize, int realSize, int itemType)
 {
 	// increase the size of the retblock (2 for the commas)
@@ -171,13 +171,14 @@ bool Serializable::addItemToSerial(char** serialRef, int64_t& serialLen, char* b
  * @return whether or not the operation succeeded
  */
 bool Serializable::serializeItem(const GType& item, bool isLastItem, char** serial,
-								 int64_t& serialLen)
+								 unsigned int& serialLen)
 {
 	int cType = item.getType();
-	int64_t cBlockSize = item.size();
+	unsigned int cBlockSize = item.size();
 	char* cBlock = item.getBlockCopy();
 
-	if (!escapeSeparators(&cBlock, cBlockSize) || !addDelimiter(&cBlock, cBlockSize, isLastItem) ||
+	if (!escapeSeparators(&cBlock, cBlockSize) ||
+		!addDelimiter(&cBlock, cBlockSize, isLastItem) ||
 		!addItemToSerial(serial, serialLen, cBlock, cBlockSize, item.size(), cType))
 	{
 		free(cBlock);
@@ -292,7 +293,7 @@ int Serializable::getDelimiterIdx(const char* text, const int textLen, const cha
  * @param newBlockSize block size for the current item (pass by reference)
  * @return the type parameter for the item currently being extracted
  */
-int Serializable::deserializeType(char** serialRef, int64_t& len, int64_t& newBlockSize)
+int Serializable::deserializeType(char** serialRef, unsigned int& len, int64_t& newBlockSize)
 {
 	const bool NOT_ESCAPED = false;
 	char* serialBuffer = *serialRef;
@@ -340,14 +341,14 @@ int Serializable::deserializeType(char** serialRef, int64_t& len, int64_t& newBl
  * @param newBlockSize block size for the current item (pass by reference)
  * @return the size parameter for the item currently being extracted
  */
-int64_t Serializable::deserializeSize(char** serialRef, int64_t& len, int64_t& newBlockSize)
+unsigned int Serializable::deserializeSize(char** serialRef, unsigned int& len, int64_t& newBlockSize)
 {
 	char* serialBuffer = *serialRef;
 	const bool NOT_ESCAPED = false;
 
 	int subBreakPoint = getDelimiterIdx(serialBuffer, len, ",", 1, NOT_ESCAPED);
 	if (subBreakPoint != sizeof(int64_t))
-		return -1;
+		return 0;
 
 	int64_t newSize = 0;
 	unsigned int newSizeLeastHalf = *((unsigned int*)(serialBuffer));
@@ -361,7 +362,7 @@ int64_t Serializable::deserializeSize(char** serialRef, int64_t& len, int64_t& n
 	memmove(serialBuffer, &serialBuffer[subBreakPoint + 1], len);
 	char* tempserialBuffer = (char*)realloc(serialBuffer, sizeof(char) * len);
 	if (!tempserialBuffer)
-		return -1;
+		return 0;
 
 	serialBuffer = tempserialBuffer;
 	*serialRef = serialBuffer;
@@ -423,8 +424,8 @@ int Serializable::unescapeCharacter(char** blockRef, int64_t& newBlockSize, int 
  * @param delimiterLen the length of the ending delimiter (1 = |, 2 = \\|)
  * @return the contents of the item currently being extracted
  */
-char* Serializable::deserializeContent(char** serialRef, int64_t& len, int64_t& newBlockSize,
-									   int64_t newSize, int delimiterLen)
+char* Serializable::deserializeContent(char** serialRef, unsigned int& len, int64_t& newBlockSize,
+									   unsigned int newSize, int delimiterLen)
 {
 	char* unescapedBlock = (char*)malloc(newBlockSize);
 	char* serialBuffer = *serialRef;
@@ -447,9 +448,10 @@ char* Serializable::deserializeContent(char** serialRef, int64_t& len, int64_t& 
 		return NULL;
 
 	len -= newBlockSize + delimiterLen;
-	if (len < 0)
-		return NULL;
-	else if (len == 0)
+	//if (len < 0)
+		//return NULL;
+	//else if (len == 0)
+	if (len == 0)
 		return unescapedBlock;
 
 	memmove(serialBuffer, &serialBuffer[newBlockSize + escCount + delimiterLen], len);
@@ -473,7 +475,7 @@ char* Serializable::deserializeContent(char** serialRef, int64_t& len, int64_t& 
 int Serializable::Serialize(const GList& itemizedTable, char** serial, bool overrideLast)
 {
 	// Serialize the Itemized List (GList)
-	int64_t len = 0;
+	unsigned int len = 0;
 	char* retBlock = (char*)malloc(sizeof(char) * len);
 	for (unsigned int i = 0; i < itemizedTable.size(); ++i)
 	{
@@ -712,7 +714,7 @@ int Serializable::Serialize(const ServiceData* cData, char** serial)
  * @param the length of the serial
  * @return the full list with all contents
  */
-void Serializable::Deserialize(GList& retList, const char* serial, int64_t& len, int maxItems)
+void Serializable::Deserialize(GList& retList, const char* serial, unsigned int& len, int maxItems)
 {
 	if ((!serial) || (len == 0))
 		return;
@@ -746,7 +748,7 @@ void Serializable::Deserialize(GList& retList, const char* serial, int64_t& len,
 		if (newType == GType::NULL_TYPE)
 			break;
 
-		int64_t newSize = deserializeSize(&serialBuffer, len, newBlockSize);
+		unsigned int newSize = deserializeSize(&serialBuffer, len, newBlockSize);
 		if (newSize == -1)
 			break;
 
@@ -774,7 +776,7 @@ void Serializable::Deserialize(GList& retList, const char* serial, int64_t& len,
  * @details Creates a GTable from a bundle
  * @return the GTable version of the bundle
  */
-void Serializable::Deserialize(GTable& retTable, const char* serial, int64_t& len)
+void Serializable::Deserialize(GTable& retTable, const char* serial, unsigned int& len)
 {
 	GList cList;
 	Deserialize(cList, serial, len);
@@ -847,7 +849,7 @@ void Serializable::Deserialize(GTable& retTable, const char* serial, int64_t& le
  * @details Creates a GObject from a bundle
  * @return the GObject version of the bundle
  */
-void Serializable::Deserialize(GObject& retObj, const char* serial, int64_t& len)
+void Serializable::Deserialize(GObject& retObj, const char* serial, unsigned int& len)
 {
 	//TODO: REPLACE THIS BLOCK WITH GTABLE DSERIALIZE CALL
 	// Add the members
@@ -987,7 +989,7 @@ void Serializable::Deserialize(GObject& retObj, const char* serial, int64_t& len
 	retObj = cObject;
 }
 
-void Serializable::Deserialize(ServiceData* retData, const char* serial, int64_t len)
+void Serializable::Deserialize(ServiceData* retData, const char* serial, unsigned int len)
 {
 	if ((!serial) || (len == 0))
 		return;
@@ -995,7 +997,7 @@ void Serializable::Deserialize(ServiceData* retData, const char* serial, int64_t
 
 	GList metaList;
 	printf("PRE-len: %ld\n", len);
-	int64_t oldLen = len;
+	unsigned int oldLen = len;
 	Deserialize(metaList, serial, len, 3);//we want only 3 GItems
 	printf("metaList-Size: %d\n", metaList.size());
 	printf("POST-len: %ld\n", len);

@@ -40,30 +40,30 @@ private:
 	static const std::string NEED_ESCAPING;
 	static const char ESC_CHAR;
 
-	static bool escapeSeparators(char**, int64_t&);
-	static bool addDelimiter(char**, int64_t&, bool);
-	static bool addItemToSerial(char**, int64_t&, char*, int, int, int);
-	static bool serializeItem(const GType&, bool, char**, int64_t&);
+	static bool escapeSeparators(char**, unsigned int&);
+	static bool addDelimiter(char**, unsigned int&, bool);
+	static bool addItemToSerial(char**, unsigned int&, char*, int, int, int);
+	static bool serializeItem(const GType&, bool, char**, unsigned int&);
 
 	static bool isDelimiterAt(const char*, int, const char*);
 	static int findNextDelimiterIndex(const char*, int, const char*, const int, const int);
 	static bool isEscaped(const int, const char*);
 	static int getDelimiterIdx(const char*, const int, const char*, const int, bool);
 
-	static int deserializeType(char**, int64_t&, int64_t&);
-	static int64_t deserializeSize(char**, int64_t&, int64_t&);
+	static int deserializeType(char**, unsigned int&, int64_t&);
+	static unsigned int deserializeSize(char**, unsigned int&, int64_t&);
 	static int unescapeCharacter(char**, int64_t&, int);
-	static char* deserializeContent(char**, int64_t&, int64_t&, int64_t, int);
+	static char* deserializeContent(char**, unsigned int&, int64_t&, unsigned int, int);
 
 public:
 	static int Serialize(const GList&, char**, bool = false); // to byte stream
 	static int Serialize(const GTable&, char**, bool = false);	   // to byte stream
 	static int Serialize(const GObject&, char**, bool = false);	   // to byte stream
 	static int Serialize(const ServiceData*, char**);	   // to byte stream
-	static void Deserialize(GList&, const char*, int64_t&, int = 0); // from byte stream; make this private?
-	static void Deserialize(GTable&, const char*, int64_t&);	  // from byte stream
-	static void Deserialize(GObject&, const char*, int64_t&);	  // from byte stream
-	static void Deserialize(ServiceData*, const char*, int64_t);	  // from byte stream
+	static void Deserialize(GList&, const char*, unsigned int&, int = 0); // from byte stream; make this private?
+	static void Deserialize(GTable&, const char*, unsigned int&);	  // from byte stream
+	static void Deserialize(GObject&, const char*, unsigned int&);	  // from byte stream
+	static void Deserialize(ServiceData*, const char*, unsigned int);	  // from byte stream
 
 	virtual GObject* serialize() const = 0;
 	virtual void deserialize(const GObject*) = 0;
