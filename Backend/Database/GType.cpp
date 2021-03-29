@@ -244,7 +244,7 @@ std::string GType::getString() const
 	return newStr;
 }
 
-const char* GType::getCString() const
+const char* GType::c_str() const
 {
 	if (size() <= 0)
 		return "";
@@ -288,12 +288,7 @@ const char* GType::getCString() const
 	}
 
 	// String Type (match)
-	int newBlockSize = size();
-	char* newBlock = (char*)malloc(sizeof(char) * newBlockSize + 1);
-	memcpy(newBlock, getBlockCopy(), newBlockSize);
-	newBlock[newBlockSize] = '\0';
-	std::string newStr(newBlock);
-	return newStr.c_str();
+	return block;
 }
 
 char GType::getChar() const
@@ -332,7 +327,7 @@ char GType::getChar() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		char value = atoi(getCString());
+		char value = atoi(c_str());
 		return value;
 	}
 
@@ -379,7 +374,7 @@ short GType::getShort() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		short value = atoi(getCString());
+		short value = atoi(c_str());
 		return value;
 	}
 
@@ -426,7 +421,7 @@ int GType::getInt() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int value = atoi(getCString());
+		int value = atoi(c_str());
 		return value;
 	}
 
@@ -473,7 +468,7 @@ int64_t GType::getLong() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int64_t value = atoll(getCString());
+		int64_t value = atoll(c_str());
 		return value;
 	}
 
@@ -520,7 +515,7 @@ float GType::getFloat() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		float value = atof(getCString());
+		float value = atof(c_str());
 		return value;
 	}
 
@@ -567,7 +562,7 @@ double GType::getDouble() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		double value = atof(getCString());
+		double value = atof(c_str());
 		return value;
 	}
 
@@ -615,7 +610,7 @@ bool GType::getBoolean() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		bool value = atoll(getCString());
+		bool value = atoll(c_str());
 		return value;
 	}
 
@@ -658,7 +653,7 @@ GType::operator double() const
 
 GType::operator const char*() const
 {
-	return getCString();
+	return c_str();
 }
 
 GType::operator std::string() const

@@ -366,7 +366,7 @@ void GTable::print() const
 			// get the data by cell
 			GType cCell = getCell(r, c);
 			if (cCell.getType() == GType::STRING_TYPE)
-				printf("%s", cCell.getCString());
+				printf("%s", cCell.c_str());
 			else if (cCell.getType() == GType::CHAR_TYPE)
 				printf("%c", cCell.getChar());
 			else if (cCell.getType() == GType::SHORT_TYPE)

@@ -75,7 +75,7 @@ public:
 
 	// gets
 	std::string getString(unsigned int) const;
-	const char* getCString(unsigned int) const;
+	const char* c_str(unsigned int) const;
 	char getChar(unsigned int) const;
 	short getShort(unsigned int) const;
 	int getInt(unsigned int) const;

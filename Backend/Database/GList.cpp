@@ -254,7 +254,7 @@ std::string GList::getString(unsigned int index) const
 	return items[index].getString();
 }
 
-const char* GList::getCString(unsigned int index) const
+const char* GList::c_str(unsigned int index) const
 {
 	if (index >= items.size())
 		return "";
@@ -262,7 +262,7 @@ const char* GList::getCString(unsigned int index) const
 	if (items[index].size() <= 0)
 		return "";
 
-	return items[index].getCString();
+	return items[index].c_str();
 }
 
 char GList::getChar(unsigned int index) const

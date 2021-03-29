@@ -15,6 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "socket.h"
+#include "../Database/GString.h"
 #include "../Database/Serializable.h"
 #include "connection.h"
 #include "crypt.h"
@@ -289,7 +290,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			printf("eTextRead[%d]: 0x%016llX\n", i, eText[i]);*/
 
 		// decrypt
-		Crypt* crypt = new Crypt();
+		Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
 		crypt->decrypt(eText, key, eTextLen);
 
 		if (crypt->error)
@@ -329,7 +330,8 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			shmea::ServiceData* cData = new shmea::ServiceData(origin);
 			printf("eTextLen: %u\n", eTextLen);
 			printf("crypt->size: %u\n", crypt->size);
-			shmea::Serializable::Deserialize(cData, crypt->dText, crypt->size - 1);
+			shmea::GString cStr(crypt->dText, crypt->size - 1);//Instead of returning in this string, return via return
+			shmea::Serializable::Deserialize(cData, cStr);
 			srvcList.push_back(cData); // minus the key
 
 			if (eTextLen == crypt->size)
@@ -377,16 +379,14 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	// writeList.insertString(0, version.getString());
 
 	// Convert to packet format
-	char* rawData = (char*)malloc(0);
-	unsigned int writeDataSize = shmea::Serializable::Serialize(cData, &rawData);
-	if (writeDataSize <= 0)
+	shmea::GString rawData = shmea::Serializable::Serialize(cData);
+	if (rawData.length() == 0)
 		return -1;
-	printf("writeDataSize: %u\n", writeDataSize);
+	printf("rawData.length(): %u\n", rawData.length());
 
 	// Encrypt
-	Crypt* crypt = new Crypt();
-	crypt->encrypt(rawData, key, writeDataSize);
-	free(rawData);
+	Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
+	crypt->encrypt(rawData.c_str(), key, rawData.length());
 
 	if (crypt->error)
 	{

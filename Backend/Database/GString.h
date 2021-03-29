@@ -36,52 +36,73 @@ private:
 public:
 	GString();
 	GString(const GString&);
+	GString(const GType&);
 	GString(const char*);
+	GString(const char*, unsigned int);
+
+	// Our GType constructors
+	GString(const bool&);
+	GString(const char&);
+	GString(const short&);
+	GString(const int&);
+	GString(const int64_t&);
+	GString(const float&);
+	GString(const double&);
+
 	virtual ~GString();
 
 	// gets
-	const char* c_str() const;
 	unsigned int length() const;
 
 	//operators
-	char operator[](const unsigned int&);
-	bool operator==(const GString&);
-	bool operator!=(const GString&);
+	const char& operator[](const unsigned int&) const;
+	char& operator[](const unsigned int&);
+	bool operator==(const GString&) const;
+	bool operator!=(const GString&) const;
+	GString operator+(const char&) const;
+	GString operator+(const GType&) const;
+	GString operator+(const char*) const;
+	GString operator+=(const char&);
+	GString operator+=(const GType&);
+	GString operator+=(const char*);
 
-	// helpers
-	/*static bool isWhitespace(const char);
-	static bool isWhitespace(const char*);
-	static bool isWhitespace(const std::string);
+	// Strng Helpers
+	GString substr(unsigned int, unsigned int=0) const;
 
-	static bool isInteger(const char*);
-	static bool isInteger(const std::string);
+	// members that call  GType helpers
+	/*bool isWhitespace(const char);
+	bool isWhitespace(const char*);
+	bool isWhitespace(const std::string);
 
-	static bool isFloat(const char*);
-	static bool isFloat(const std::string);
+	bool isInteger(const char*);
+	bool isInteger(const std::string);
 
-	static bool isUpper(const char);
-	static bool isUpper(const std::string);
+	bool isFloat(const char*);
+	bool isFloat(const std::string);
 
-	static char toUpper(char);
-	static std::string toUpper(const std::string);
+	bool isUpper(const char);
+	bool isUpper(const std::string);
 
-	static bool isLower(const char);
-	static bool isLower(const std::string);
+	char toUpper(char);
+	std::string toUpper(const std::string);
 
-	static char toLower(char);
-	static std::string toLower(const std::string);
+	bool isLower(const char);
+	bool isLower(const std::string);
 
-	static char toggleCase(char);
-	static std::string toggleCase(const std::string);
+	char toLower(char);
+	std::string toLower(const std::string);
 
-	static std::string trim(std::string);
-	static std::string trim(char*);
+	char toggleCase(char);
+	std::string toggleCase(const std::string);
 
-	static std::string datetimeTOstring(const int64_t);
-	static std::string dateTOstring(const int64_t);
-	static std::string timeTOstring(const int64_t);
+	std::string trim(std::string);
+	std::string trim(char*);
 
-	static unsigned int cfind(const char, const char*, const unsigned int);*/
+	std::string datetimeTOstring(const int64_t);
+	std::string dateTOstring(const int64_t);
+	std::string timeTOstring(const int64_t);
+
+	unsigned int cfind(const char, const char*, const unsigned int);*/
 };
 };
 

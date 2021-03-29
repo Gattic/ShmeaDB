@@ -27,11 +27,12 @@ GString::GString()
 
 GString::GString(const GString& g2) : GType(g2)
 {
-	type = NULL_TYPE;
-	blockSize = 0;
-	block = NULL;
-	if (g2.blockSize > 0)
-		set(g2.type, g2.block, g2.blockSize);
+	// Calling parent constructor
+}
+
+GString::GString(const GType& g2) : GType(g2)
+{
+	// Calling parent constructor
 }
 
 GString::GString(const char* newBlock)
@@ -46,14 +47,56 @@ GString::GString(const char* newBlock)
 		set(STRING_TYPE, newBlock, newBlockSize);
 }
 
+GString::GString(const char* newBlock, unsigned int len)
+{
+	type = NULL_TYPE;
+	blockSize = 0;
+	block = NULL;
+
+	// Add the object if its valid
+	unsigned int newBlockSize = len;
+	if (newBlockSize > 0)
+		set(STRING_TYPE, newBlock, newBlockSize);
+}
+
+GString::GString(const bool& cBool) : GType(cBool)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const char& cChar) : GType(cChar)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const short& cShort) : GType(cShort)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const int& cInt) : GType(cInt)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const int64_t& cLong) : GType(cLong)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const float& cFloat) : GType(cFloat)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const double& cDouble) : GType(cDouble)
+{
+	type = STRING_TYPE;
+}
+
 GString::~GString()
 {
 	clean();
-}
-
-const char* GString::c_str() const
-{
-	return getCString();
 }
 
 unsigned int GString::length() const
@@ -61,7 +104,7 @@ unsigned int GString::length() const
 	return size();
 }
 
-char GString::operator[](const unsigned int& index)
+const char& GString::operator[](const unsigned int& index) const
 {
 	if(index >= length())
 	{
@@ -70,10 +113,22 @@ char GString::operator[](const unsigned int& index)
 		throw std::out_of_range(buffer);
 	}
 
-	return getBlockCopy()[index];
+	return block[index];
 }
 
-bool GString::operator==(const GString& cCell2)
+char& GString::operator[](const unsigned int& index)
+{
+	if(index >= length())
+	{
+		char buffer[256];
+		sprintf(buffer, "GStr[%d] out of range", index);
+		throw std::out_of_range(buffer);
+	}
+
+	return block[index];
+}
+
+bool GString::operator==(const GString& cCell2) const
 {
 	// compare the known types
 	bool intFlag1 = false;
@@ -197,9 +252,103 @@ bool GString::operator==(const GString& cCell2)
 	return false;
 }
 
-bool GString::operator!=(const GString& cCell2)
+bool GString::operator!=(const GString& cCell2) const
 {
 	return !((*this) == cCell2);
+}
+
+GString GString::operator+(const char& cChar) const
+{
+	unsigned int newBlockSize = length() + 1;
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	newBlock[newBlockSize-1] = cChar;
+
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
+
+	return retStr;
+}
+
+GString GString::operator+(const GType& str2) const
+{
+	unsigned int newBlockSize = length() + str2.size();
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2.c_str(), str2.size());
+
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
+
+	return retStr;
+}
+
+GString GString::operator+(const char* str2) const
+{
+	unsigned int newBlockSize = length() + strlen(str2);
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2, strlen(str2));
+
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
+
+	return retStr;
+}
+
+GString GString::operator+=(const char& cChar)
+{
+	unsigned int newBlockSize = length() + 1;
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	newBlock[newBlockSize-1] = cChar;
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
+}
+
+GString GString::operator+=(const GType& str2)
+{
+	unsigned int newBlockSize = length() + str2.size();
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2.c_str(), str2.size());
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
+}
+
+GString GString::operator+=(const char* str2)
+{
+	unsigned int newBlockSize = length() + strlen(str2);
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2, strlen(str2));
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
+}
+
+GString GString::substr(unsigned int start, unsigned int end) const
+{
+	if(end == 0)
+		end = blockSize;
+
+	//Empty source
+	if(end == 0)
+		return "";
+
+	unsigned int subLen = end-start;
+	if(start + subLen < blockSize)
+		return "";
+
+	return GString(&block[start], subLen);
 }
 
 /*bool GString::isWhitespace(const char tempNumber)
