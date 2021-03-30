@@ -473,7 +473,7 @@ void GTable::addCol(const std::string& headerName, const shmea::GList& newCol, u
 	// error checking
 	if ((newCol.size() != numberOfRows()) && (numberOfRows() > 0))
 	{
-		printf("[CSV] Invalid col size: %u != %s:%lu\n", numberOfRows(), headerName.c_str(),
+		printf("[CSV] Invalid col size: %u != %s:%u\n", numberOfRows(), headerName.c_str(),
 			   newCol.size());
 		return;
 	}

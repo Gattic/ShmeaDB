@@ -21,6 +21,14 @@ void GObjectsUnitTest()
 	/*printf("GStr: %s\n", str.c_str());
 	for(unsigned int i=0;i<str.length();++i)
 		printf("GStr[%d]: 0x%02X:%c\n", i, str[i], str[i]);*/
+	str = "abc" + str;
+	G_assert (__FILE__, __LINE__, "==============GString::operator+ Failed==============", str == "abcTest123!");
+	str += "?!";
+	G_assert (__FILE__, __LINE__, "==============GString::operator+= Failed==============", str == "abcTest123!?!");
+	str = str + "!";
+	G_assert (__FILE__, __LINE__, "==============GString::operator+ Failed==============", str == "abcTest123!?!!");
+	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(3) == "Test123!?!!");
+	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(3, 4) == "Test");
 
 	shmea::GList list0;
 	list0.addString("derp");
@@ -75,10 +83,9 @@ void GObjectsUnitTest()
 	cObj.addTable(table1);
 	cObj.addTable(table2);
 
-	char* cStr = 0;
-	int cLen = shmea::Serializable::Serialize(cObj, &cStr);
+	shmea::GString cStr = shmea::Serializable::Serialize(cObj);
 	shmea::GObject newObj;
-	shmea::Serializable::Deserialize(newObj, cStr, cLen);
+	shmea::Serializable::Deserialize(newObj, cStr);
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
 	printf("========================\n");

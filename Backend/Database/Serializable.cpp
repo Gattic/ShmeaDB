@@ -185,72 +185,6 @@ int Serializable::getDelimiterIdx(const GString& text, const GString& delimiter,
 }
 
 /*!
- * @brief deserialize type
- * @details deserialize the current item's type.
- *
- * The inbound data stream should look like:
- * type,size,contents|(rest of items)
- *
- * afterwards, it should look like:
- * size,contents|(rest of items)
- *
- * the process goes as follows:
- * - find the separator, i.e. ','
- * - pull all content before that (i.e. the size) out of the data
- * - calculate type
- * - shift the serial to remove the type + separator
- *
- * @param serialRef a pointer to the serial to deserialize
- * @param len length of the serial (pass by reference)
- * @param newBlockSize block size for the current item (pass by reference)
- * @return the type parameter for the item currently being extracted
- */
-int Serializable::deserializeType(const GString& serial)
-{
-	const bool NOT_ESCAPED = false;
-	GString serialBuffer = serial;
-
-	int subBreakPoint = getDelimiterIdx(serial, GString(","), NOT_ESCAPED);
-	if (subBreakPoint != sizeof(int))
-		return GType::NULL_TYPE;
-
-	return serial.substr(0, subBreakPoint).getInt();
-}
-
-/*!
- * @brief deserialize size
- * @details deserialize the current item's size from the serial.
- *
- * The inbound data stream should look like:
- * size,contents|(rest of items)
- *
- * afterwards, it should look like:
- * contents|(rest of items)
- *
- * the process goes as follows:
- * - find the separator, i.e. ','
- * - pull all content before that (i.e. the size) out of the serial
- * - calculate size
- * - shift the serial to remove the size + separator
- *
- * @param serialRef a pointer to the serial to deserialize
- * @param len length of the serial (updatd here)
- * @param newBlockSize block size for the current item (pass by reference)
- * @return the size parameter for the item currently being extracted
- */
-unsigned int Serializable::deserializeSize(const GString& serial)
-{
-	const bool NOT_ESCAPED = false;
-	GString serialBuffer = serial;
-
-	int subBreakPoint = getDelimiterIdx(serial, GString(","), NOT_ESCAPED);
-	if (subBreakPoint != sizeof(int))
-		return 0;
-
-	return (unsigned int)(serial.substr(0, subBreakPoint).getInt());
-}
-
-/*!
  * @brief deserialize content
  * @details deserialize the current item's contents from the serial.
  *
@@ -540,30 +474,29 @@ void Serializable::Deserialize(GList& retList, const GString& serial, int maxIte
 		nextDel = getDelimiterIdx(serialCopy, GString("|"), NOT_ESCAPED);
 		int lastDel = getDelimiterIdx(serialCopy, GString("\\|"), NOT_ESCAPED);
 
-		unsigned int endIndex = 0;
-		if ((nextDel <= 0) && (lastDel <= 0))
-			endIndex = serialCopy.length()-1;
-		else if(nextDel > 0)
-		{
-			endIndex = nextDel;
-		}
-		else if(lastDel > 0)
-		{
-			endIndex = lastDel;
-		}
-		else
-			break;
-
 		bool isLastBlock = (nextDel == lastDel+1);
-		unsigned int escapedSize = isLastBlock ? lastDel : nextDel;
 		int delimiterLen = ((isLastBlock) && (lastDel > 0)) ? 2 : 1;
 
-		int newType = deserializeType(serialCopy);
-		unsigned int newSize = deserializeSize(serialCopy.substr(sizeof(int)+1));
+		// Get the Type from the buffer
+		int subBreakPoint = getDelimiterIdx(serialCopy, GString(","), NOT_ESCAPED);
+		if (subBreakPoint != sizeof(int))
+			break;
 
+		int newType = serialCopy.substr(0, subBreakPoint).getInt();
+		serialCopy = serialCopy.substr(subBreakPoint+1); // plus the comma
+
+		// Get the Size from the buffer
+		unsigned int newSize = (unsigned int)(serialCopy.substr(0, subBreakPoint).getInt());
+		subBreakPoint = getDelimiterIdx(serialCopy, GString(","), NOT_ESCAPED);
+		if (subBreakPoint != sizeof(int))
+			break;
+		serialCopy = serialCopy.substr(subBreakPoint+1); // plus the comma
+
+		// Get the Body from the buffer
 		GString newBlock = deserializeContent(serialCopy);
 		if(newBlock.length() != newSize)
 			break;
+		serialCopy = serialCopy.substr(newSize+delimiterLen); // plus the delimiter
 
 		retList.addObject(newType, newBlock, newSize);
 		++itemCounter;

@@ -57,13 +57,16 @@ public:
 	//operators
 	const char& operator[](const unsigned int&) const;
 	char& operator[](const unsigned int&);
-	bool operator==(const GString&) const;
-	bool operator!=(const GString&) const;
-	GString operator+(const char&) const;
-	GString operator+(const GType&) const;
-	GString operator+(const char*) const;
+
+	bool operator==(const GType&) const;
+	bool operator!=(const GType&) const;
+
+	bool operator==(const char*) const;
+	bool operator!=(const char*) const;
+
 	GString operator+=(const char&);
 	GString operator+=(const GType&);
+	GString operator+=(const GString&);
 	GString operator+=(const char*);
 
 	// Strng Helpers
@@ -105,5 +108,12 @@ public:
 	unsigned int cfind(const char, const char*, const unsigned int);*/
 };
 };
+
+shmea::GString operator+ (const shmea::GString& lhs, const shmea::GString& rhs);
+shmea::GString operator+ (const shmea::GString& lhs, const char* rhs);
+shmea::GString operator+ (const shmea::GString& lhs, char rhs);
+shmea::GString operator+ (const char* lhs, const shmea::GString& rhs);
+shmea::GString operator+ (char lhs, const shmea::GString& rhs);
+
 
 #endif

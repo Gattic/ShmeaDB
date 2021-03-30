@@ -51,8 +51,6 @@ private:
 	static bool isEscaped(const int, const char*);
 	static int getDelimiterIdx(const GString&, const GString&, bool);
 
-	static int deserializeType(const GString&);
-	static unsigned int deserializeSize(const GString&);
 	static GString deserializeContent(const GString&);
 
 public:

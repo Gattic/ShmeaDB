@@ -73,15 +73,15 @@ public:
 	float getFloat() const;
 	double getDouble() const;
 	bool getBoolean() const;
-	operator char() const;
+
+	operator const char*() const;
+	/*operator char() const;
 	operator short() const;
 	operator int() const;
 	operator int64_t() const;
 	operator float() const;
 	operator double() const;
-	operator bool() const;
-	operator std::string() const;
-	operator const char*() const;
+	operator bool() const;*/
 	unsigned int size() const;
 
 	// sets

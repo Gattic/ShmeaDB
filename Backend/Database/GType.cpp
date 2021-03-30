@@ -246,46 +246,8 @@ std::string GType::getString() const
 
 const char* GType::c_str() const
 {
-	if (size() <= 0)
-		return "";
-
-	if (getType() == GType::CHAR_TYPE)
-	{
-		std::string value = "";
-		value += getChar();
-		return value.c_str();
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		std::string value = "";
-		value += shortTOstring(getShort());
-		return value.c_str();
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		std::string value(intTOstring(getInt()));
-		return value.c_str();
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		std::string value(longTOstring(getLong()));
-		return value.c_str();
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		std::string value(floatTOstring(getFloat()));
-		return value.c_str();
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		std::string value(doubleTOstring(getDouble()));
-		return value.c_str();
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		std::string value = getBoolean() ? "True" : "False";
-		return value.c_str();
-	}
+	if (size() == 0)
+		return NULL;
 
 	// String Type (match)
 	return block;
@@ -293,7 +255,7 @@ const char* GType::c_str() const
 
 char GType::getChar() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::SHORT_TYPE)
@@ -340,7 +302,7 @@ char GType::getChar() const
 
 short GType::getShort() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -387,7 +349,7 @@ short GType::getShort() const
 
 int GType::getInt() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -434,7 +396,7 @@ int GType::getInt() const
 
 int64_t GType::getLong() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -481,7 +443,7 @@ int64_t GType::getLong() const
 
 float GType::getFloat() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -528,7 +490,7 @@ float GType::getFloat() const
 
 double GType::getDouble() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -575,7 +537,7 @@ double GType::getDouble() const
 
 bool GType::getBoolean() const
 {
-	if (size() <= 0)
+	if (size() == 0)
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -621,7 +583,12 @@ bool GType::getBoolean() const
 	return *((bool*)getBlockCopy());
 }
 
-GType::operator char() const
+GType::operator const char*() const
+{
+	return c_str();
+}
+
+/*GType::operator char() const
 {
 	return getChar();
 }
@@ -651,20 +618,10 @@ GType::operator double() const
 	return getDouble();
 }
 
-GType::operator const char*() const
-{
-	return c_str();
-}
-
-GType::operator std::string() const
-{
-	return getString();
-}
-
 GType::operator bool() const
 {
 	return getBoolean();
-}
+}*/
 
 unsigned int GType::size() const
 {
@@ -682,9 +639,9 @@ void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 
 void GType::clean()
 {
-	// Spam bad request and this crashes WHY
-	/*if (block)
-		free(block);*/
+	// Spam bad request and this crashes WHY: TODO CHECK THIS
+	if (block)
+		free(block);
 	block = NULL;
 
 	blockSize = 0;
