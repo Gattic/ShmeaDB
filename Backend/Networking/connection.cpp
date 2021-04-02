@@ -20,7 +20,7 @@
 
 using namespace GNet;
 
-Connection::Connection(int newSockFD, int newConnectionType, std::string newIP)
+Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newIP)
 {
 	name = "";
 	ip = newIP;
@@ -70,11 +70,11 @@ void Connection::finish()
 	this->sockfd = -1;
 }
 
-std::string Connection::getName() const
+shmea::GString Connection::getName() const
 {
 	return name;
 }
-std::string Connection::getIP() const
+shmea::GString Connection::getIP() const
 {
 	return ip;
 }
@@ -91,12 +91,12 @@ bool Connection::isFinished() const
 	return finished;
 }
 
-void Connection::setName(std::string newName)
+void Connection::setName(shmea::GString newName)
 {
 	name = newName;
 }
 
-void Connection::setIP(std::string newIP)
+void Connection::setIP(shmea::GString newIP)
 {
 	ip = newIP;
 }
@@ -106,18 +106,18 @@ void Connection::setKey(int64_t newKey)
 	key = newKey;
 }
 
-bool Connection::validName(const std::string& tempName)
+bool Connection::validName(const shmea::GString& tempName)
 {
 	// Invalid Size
 	if ((tempName.length() < 1) || (tempName.length() > 40))
 		return false;
 
-	const std::string options =
+	const shmea::GString options =
 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
 
 	for (unsigned int i = 0; i < tempName.length(); ++i)
 	{
-		int breakPoint = options.find(tempName[i]);
+		int breakPoint = options.cfind(tempName[i]);
 		if (breakPoint == -1)
 			return false;
 	}
@@ -127,9 +127,9 @@ bool Connection::validName(const std::string& tempName)
 
 int64_t Connection::generateKey()
 {
-	const std::string options = "0123456789";
+	const shmea::GString options = "0123456789";
 
-	std::string newKey = "";
+	shmea::GString newKey = "";
 	for (int i = 0; i < KEY_LENGTH; ++i)
 	{
 		int newIndex = rand() % options.length();
@@ -137,6 +137,6 @@ int64_t Connection::generateKey()
 		newKey += newChar;
 	}
 
-	int64_t key = atoll(newKey.c_str());
+	int64_t key = atoll(newKey.c_str_unesc());
 	return key;
 }

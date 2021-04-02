@@ -23,7 +23,7 @@
 using namespace shmea;
 
 const char Serializable::ESC_CHAR = '%';
-const std::string Serializable::NEED_ESCAPING = "%,\\|";
+const GString Serializable::NEED_ESCAPING = "%,\\|";
 
 /*!
  * @brief escape separators
@@ -38,7 +38,7 @@ GString Serializable::escapeSeparators(const GType& serial)
 	GString newSerial = serial;
 	for (unsigned int i = 0; i < newSerial.size(); ++i)
 	{
-		if (Serializable::NEED_ESCAPING.find(newSerial[i]) == std::string::npos)
+		if (Serializable::NEED_ESCAPING.cfind(newSerial[i]) == GString::npos)
 			continue;
 
 		newSerial = newSerial.substr(0, i) + Serializable::ESC_CHAR + newSerial.substr(i);
@@ -83,7 +83,7 @@ GString Serializable::addDelimiter(const GString& serial, bool isLastItem)
  */
 GString Serializable::addItemToSerial(const GType& cItem)
 {
-	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)cItem.size()) + "," + cItem.c_str();
+	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)cItem.size()) + "," + cItem.c_str_unesc();
 	return retSerial;
 }
 
@@ -179,7 +179,7 @@ int Serializable::getDelimiterIdx(const GString& text, const GString& delimiter,
 	do
 	{
 		breakPoint = findNextDelimiterIndex(breakPoint + delimiter.length(), text, delimiter);
-	} while ((escaped != isEscaped(breakPoint, text.c_str())) && (breakPoint >= 0));
+	} while ((escaped != isEscaped(breakPoint, text.c_str_unesc())) && (breakPoint >= 0));
 
 	return breakPoint;
 }
@@ -373,9 +373,9 @@ GString Serializable::Serialize(const ServiceData* cData)
 	metaList.addInt(cData->getType());
 	metaList.addString(cData->getCommand());
 	printf("metaList-Size: %d\n", metaList.size());
-	printf("SER-sdSID: %s\n", cData->getSID().c_str());
+	printf("SER-sdSID: %s\n", cData->getSID().c_str_esc());
 	printf("SER-sdType: %d\n", cData->getType());
-	printf("SER-sdCommand: %s\n", cData->getCommand().c_str());
+	printf("SER-sdCommand: %s\n", cData->getCommand().c_str_esc());
 
 	GString metaData = Serialize(metaList, true);
 
@@ -419,7 +419,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		}
 	}
 
-			printf("WRITE-metaData[%d]: %s\n", metaData.length(), metaData.c_str());
+			printf("WRITE-metaData[%d]: %s\n", metaData.length(), metaData.c_str_esc());
 			/*for(unsigned int rCounter=0;rCounter<metaData.length();++rCounter)
 			{
 				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, metaData[rCounter], metaData[rCounter]);
@@ -427,7 +427,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 					printf("-------------------------------\n");
 			}*/
 
-			printf("WRITE-repData[%d]: %s\n", repData.length(), repData.c_str());
+			printf("WRITE-repData[%d]: %s\n", repData.length(), repData.c_str_esc());
 			/*for(unsigned int rCounter=0;rCounter<repData.length();++rCounter)
 			{
 				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, repData[rCounter], repData[rCounter]);
@@ -522,7 +522,7 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	int cIndex = bundleIndex;
 
 	// the header
-	std::vector<std::string> header;
+	std::vector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -533,7 +533,7 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	std::vector<int> outputColumns;
 	for (int i = 0; i < columns; ++i)
 	{
-		int isOutputCol = cList.getString(cIndex + i) == std::string("True");
+		int isOutputCol = cList.getString(cIndex + i) == GString("True");
 		outputColumns.push_back(isOutputCol);
 	}
 
@@ -599,7 +599,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	cIndex = bundleIndex;
 
 	// the header
-	std::vector<std::string> header;
+	std::vector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -610,7 +610,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	std::vector<int> outputColumns;
 	for (int i = 0; i < columns; ++i)
 	{
-		int isOutputCol = cList.getString(cIndex + i) == std::string("True");
+		int isOutputCol = cList.getString(cIndex + i) == GString("True");
 		outputColumns.push_back(isOutputCol);
 	}
 
@@ -665,7 +665,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
 
 		// the header
-		std::vector<std::string> header;
+		std::vector<GString> header;
 		for (int i = 0; i < columns; ++i)
 			header.push_back(cList.getString(cIndex + i));
 
@@ -676,7 +676,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		std::vector<int> outputColumns;
 		for (int i = 0; i < columns; ++i)
 		{
-			int isOutputCol = cList.getString(cIndex + i) == std::string("True");
+			int isOutputCol = cList.getString(cIndex + i) == GString("True");
 			outputColumns.push_back(isOutputCol);
 		}
 
@@ -738,17 +738,17 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 	const char* repData = &serial[oldLen-serial.length()];
 
 	// metadata
-	std::string sdSID = metaList.getString(0);
+	GString sdSID = metaList.getString(0);
 	retData->setSID(sdSID);
-	printf("sdSID: %s\n", sdSID.c_str());
+	printf("sdSID: %s\n", sdSID.c_str_esc());
 
 	int sdType = metaList.getInt(1);
 	retData->setType(sdType);
 	printf("sdType: %d\n", sdType);
 
-	std::string sdCommand = metaList.getString(2);
+	GString sdCommand = metaList.getString(2);
 	retData->setCommand(sdCommand);
-	printf("sdCommand: %s\n", sdCommand.c_str());
+	printf("sdCommand: %s\n", sdCommand.c_str_esc());
 
 	switch(sdType)
 	{

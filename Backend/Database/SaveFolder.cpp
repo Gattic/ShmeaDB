@@ -20,7 +20,7 @@
 
 using namespace shmea;
 
-SaveFolder::SaveFolder(const std::string& newDirName)
+SaveFolder::SaveFolder(const GString& newDirName)
 {
 	clean();
 	dname = newDirName;
@@ -31,17 +31,17 @@ SaveFolder::~SaveFolder()
 	clean();
 }
 
-std::string SaveFolder::getPath() const
+GString SaveFolder::getPath() const
 {
 	if (dname.length() == 0)
 		return "";
 
 	// get the env and build the path
-	std::string dirname = "database/" + dname + "/";
+	GString dirname = "database/" + dname + "/";
 	return dirname;
 }
 
-SaveTable* SaveFolder::loadItem(const std::string& siName)
+SaveTable* SaveFolder::loadItem(const GString& siName)
 {
 	// database load single item
 	SaveTable* newSV = new SaveTable(dname, siName);
@@ -53,7 +53,7 @@ SaveTable* SaveFolder::loadItem(const std::string& siName)
 	return newSV;
 }
 
-bool SaveFolder::deleteItem(const std::string& siName)
+bool SaveFolder::deleteItem(const GString& siName)
 {
 	// database load single item
 	SaveTable* newSV = new SaveTable(dname, siName);
@@ -63,20 +63,20 @@ bool SaveFolder::deleteItem(const std::string& siName)
 	return newSV->deleteByName();
 }
 
-SaveTable* SaveFolder::newItem(const std::string& siName, const GTable& newTable)
+SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 {
 	// create the directory if we need to
 	struct stat info;
-	std::string dirname = getPath();
+	GString dirname = getPath();
 	if (dirname.length() > 0)
 	{
-		if (stat(dirname.c_str(), &info) != 0)
+		if (stat(dirname.c_str_esc(), &info) != 0)
 		{
 			// make the directory
-			int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+			int status = mkdir(dirname.c_str_esc(), S_IRWXU | S_IRWXG | S_IRWXO);
 			if (status < 0)
 			{
-				printf("[DB] %s mkdir failed\n", dirname.c_str());
+				printf("[DB] %s mkdir failed\n", dirname.c_str_esc());
 				// return;
 			}
 		}
@@ -88,7 +88,7 @@ SaveTable* SaveFolder::newItem(const std::string& siName, const GTable& newTable
 		else
 		{
 			// path is not a directory
-			printf("[DB] %s is not a directory\n", dirname.c_str());
+			printf("[DB] %s is not a directory\n", dirname.c_str_esc());
 			// return;
 		}
 	}
@@ -107,11 +107,11 @@ void SaveFolder::load()
 	if (dname.length() == 0)
 		return;
 
-	std::string folderName = getPath();
-	DIR* dir = opendir(folderName.c_str());
+	GString folderName = getPath();
+	DIR* dir = opendir(folderName.c_str_esc());
 	if (!dir)
 	{
-		printf("[DB] -%s\n", folderName.c_str());
+		printf("[DB] -%s\n", folderName.c_str_esc());
 		return;
 	}
 
@@ -120,7 +120,7 @@ void SaveFolder::load()
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// don't want the current directory, parent or hidden files/folders
-		std::string fname(ent->d_name);
+		GString fname(ent->d_name);
 		if (fname[0] == '.')
 			continue;
 
@@ -135,14 +135,14 @@ void SaveFolder::load()
 
 std::vector<SaveFolder*> SaveFolder::loadFolders()
 {
-	std::string folderName = "database/";
+	GString folderName = "database/";
 	std::vector<SaveFolder*> folderList;
 
 	DIR* dir;
 	struct dirent* ent;
-	if ((dir = opendir(folderName.c_str())) != NULL)
+	if ((dir = opendir(folderName.c_str_esc())) != NULL)
 	{
-		printf("[DB] -%s\n", folderName.c_str());
+		printf("[DB] -%s\n", folderName.c_str_esc());
 		return folderList;
 	}
 
@@ -150,11 +150,11 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// don't want the current directory, parent or hidden files/folders
-		std::string fname(ent->d_name);
+		GString fname(ent->d_name);
 		if (fname[0] == '.')
 			continue;
 
-		printf("Folder Name: %s \n", fname.c_str());
+		printf("Folder Name: %s \n", fname.c_str_esc());
 		SaveFolder* newSL = new SaveFolder(fname);
 		newSL->load();
 		folderList.push_back(newSL);
@@ -164,7 +164,7 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 	return folderList;
 }
 
-std::string SaveFolder::getName() const
+GString SaveFolder::getName() const
 {
 	return dname;
 }

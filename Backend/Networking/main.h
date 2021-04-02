@@ -17,6 +17,7 @@
 #ifndef _GNET
 #define _GNET
 
+#include "../Database/GString.h"
 #include <errno.h>
 #include <iostream>
 #include <map>
@@ -50,7 +51,7 @@ public:
 	class Connection* cConnection;
 	const shmea::ServiceData* sockData;
 	pthread_t* sThread;
-	std::string command;
+	shmea::GString command;
 };
 
 class GServer
@@ -61,8 +62,8 @@ class GServer
 	GNet::Sockets* socks;
 
 	// Key is ip address
-	std::map<std::string, Connection*>* clientConnections;
-	std::map<std::string, Connection*>* serverConnections;
+	std::map<shmea::GString, Connection*>* clientConnections;
+	std::map<shmea::GString, Connection*>* serverConnections;
 
 	int sockfd;
 	Connection* localConnection;
@@ -74,7 +75,7 @@ class GServer
 	pthread_cond_t* writersBlock;
 	bool LOCAL_ONLY;
 	bool running;
-	std::map<std::string, Service*>* service_depot;
+	std::map<shmea::GString, Service*>* service_depot;
 
 	static void* commandLauncher(void*);
 	void commandCatcher(void*);
@@ -85,12 +86,12 @@ class GServer
 	void wakeWriter();
 	static void* ListWLauncher(void*);
 	void ListWriter(void*);
-	void LaunchLocalInstance(const std::string&);
+	void LaunchLocalInstance(const shmea::GString&);
 	void LogoutInstance(Connection*);
 
 	int getSockFD();
-	const std::map<std::string, Connection*>& getClientConnections();
-	const std::map<std::string, Connection*>& getServerConnections();
+	const std::map<shmea::GString, Connection*>& getClientConnections();
+	const std::map<shmea::GString, Connection*>& getServerConnections();
 	pthread_mutex_t* getClientMutex();
 	pthread_mutex_t* getServerMutex();
 
@@ -105,10 +106,10 @@ public:
 
 	void send(const shmea::ServiceData*, bool = false);
 
-	Service* ServiceLookup(std::string);
-	unsigned int addService(std::string, Service*);
-	Connection* getConnection(std::string);
-	void LaunchInstance(const std::string&, const std::string&);
+	Service* ServiceLookup(shmea::GString);
+	unsigned int addService(shmea::GString, Service*);
+	Connection* getConnection(shmea::GString);
+	void LaunchInstance(const shmea::GString&, const shmea::GString&);
 	const bool& getRunning();
 	void stop();
 	void run(bool);
@@ -123,8 +124,8 @@ class LaunchInstanceHelperArgs
 {
 public:
 	GServer* serverInstance;
-	std::string clientName;
-	std::string serverIP;
+	shmea::GString clientName;
+	shmea::GString serverIP;
 };
 
 }; // GNet

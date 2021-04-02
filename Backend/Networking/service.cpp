@@ -136,11 +136,11 @@ void Service::StartService(newServiceArgs* x)
 
 	// Get the ip address
 	Connection* cConnection = x->cConnection;
-	std::string ipAddress = "";
+	shmea::GString ipAddress = "";
 	if (!cConnection->isFinished())
 		ipAddress = cConnection->getIP();
 
-	// const std::string& command = x->command;
+	// const shmea::GString& command = x->command;
 	// printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
 
 	// add the thread to the connection's active thread vector
@@ -159,7 +159,7 @@ void Service::ExitService(newServiceArgs* x)
 
 	// Get the ip address
 	Connection* cConnection = x->cConnection;
-	std::string ipAddress = "";
+	shmea::GString ipAddress = "";
 	if (!cConnection->isFinished())
 		ipAddress = cConnection->getIP();
 

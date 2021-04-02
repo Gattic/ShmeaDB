@@ -18,6 +18,7 @@
 #include "../Networking/main.h"
 #include "GList.h"
 #include "GType.h"
+#include "GString.h"
 
 using namespace shmea;
 
@@ -48,7 +49,7 @@ GTable::GTable(char newDelimiter)
  * @param newDelimiter the specified table delimiter
  * @param newHeaders the desired table headers
  */
-GTable::GTable(char newDelimiter, const std::vector<std::string>& newHeaders)
+GTable::GTable(char newDelimiter, const std::vector<GString>& newHeaders)
 {
 	clear();
 	delimiter = newDelimiter;
@@ -61,7 +62,7 @@ GTable::GTable(char newDelimiter, const std::vector<std::string>& newHeaders)
  * @param newDelimiter the specified table delimiter
  * @param importFlag an import flag, specifying fname as either a file path, URL, or raw string
  */
-GTable::GTable(const std::string& fname, char newDelimiter, int importFlag)
+GTable::GTable(const GString& fname, char newDelimiter, int importFlag)
 {
 	clear();
 	delimiter = newDelimiter;
@@ -111,13 +112,13 @@ void GTable::copy(const GTable& gtable2)
  * @details imports GTable data from a file
  * @param fname the file path to the desired data
  */
-void GTable::importFromFile(const std::string& fname)
+void GTable::importFromFile(const GString& fname)
 {
 	if (fname.length() == 0)
 		return;
 
-	FILE* fd = fopen(fname.c_str(), "r");
-	printf("[CSV] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
+	FILE* fd = fopen(fname.c_str_esc(), "r");
+	printf("[CSV] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str_esc());
 
 	if (!fd)
 		return;
@@ -152,12 +153,12 @@ void GTable::importFromFile(const std::string& fname)
 		// Read each column
 		int colCounter = 0;
 		bool lastCol = false;
-		std::string line(buffer);
-		int breakPoint = line.find(delimiter);
+		GString line(buffer);
+		int breakPoint = line.cfind(delimiter);
 		while (breakPoint != -1)
 		{
 			// get the cell
-			std::string word = line.substr(0, breakPoint);
+			GString word = line.substr(0, breakPoint);
 			if (!lastCol)
 				line = line.substr(breakPoint + 1);
 
@@ -171,7 +172,7 @@ void GTable::importFromFile(const std::string& fname)
 			}
 
 			// for the next column
-			breakPoint = line.find(delimiter);
+			breakPoint = line.cfind(delimiter);
 			++colCounter;
 
 			// last column?
@@ -199,7 +200,7 @@ void GTable::importFromFile(const std::string& fname)
  * @details imports data from a raw string
  * @param content the GTable data as a string
  */
-void GTable::importFromString(const std::string& newContent)
+void GTable::importFromString(const GString& newContent)
 {
 	if (!(newContent.length() > 0))
 	{
@@ -208,23 +209,23 @@ void GTable::importFromString(const std::string& newContent)
 	}
 
 	// Allocate a buffer
-	std::string content = newContent;
+	GString content = newContent;
 	int rowCounter = 0;
 	do
 	{
 		shmea::GList newRow;
-		int breakPoint = content.find('\n');
+		int breakPoint = content.cfind('\n');
 		if (breakPoint == -1)
 			break;
 
 		// get the current line
-		std::string line = content.substr(0, breakPoint);
+		GString line = content.substr(0, breakPoint);
 		content = content.substr(breakPoint + 1);
 
 		// Read each column
 		int colCounter = 0;
 		bool lastCol = false;
-		int breakPoint2 = line.find(delimiter);
+		int breakPoint2 = line.cfind(delimiter);
 		do
 		{
 			// last column?
@@ -235,11 +236,11 @@ void GTable::importFromString(const std::string& newContent)
 			}
 
 			// get the cell
-			std::string word = line.substr(0, breakPoint2);
+			GString word = line.substr(0, breakPoint2);
 			if (!lastCol)
 			{
 				line = line.substr(breakPoint2 + 1);
-				breakPoint2 = line.find(delimiter);
+				breakPoint2 = line.cfind(delimiter);
 			}
 
 			// add the col to the row
@@ -275,7 +276,7 @@ char GTable::getDelimiter() const
  * @details retrieve the GTable's headers
  * @return the header vector
  */
-std::vector<std::string> GTable::getHeaders() const
+std::vector<GString> GTable::getHeaders() const
 {
 	return header;
 }
@@ -286,7 +287,7 @@ std::vector<std::string> GTable::getHeaders() const
  * @param index the index at which the desired header resides
  * @return the header for the given index
  */
-std::string GTable::getHeader(unsigned int index) const
+GString GTable::getHeader(unsigned int index) const
 {
 	if (index >= header.size())
 		return " "; // Keep this a space character
@@ -366,7 +367,7 @@ void GTable::print() const
 			// get the data by cell
 			GType cCell = getCell(r, c);
 			if (cCell.getType() == GType::STRING_TYPE)
-				printf("%s", cCell.c_str());
+				printf("%s", cCell.c_str_esc());
 			else if (cCell.getType() == GType::CHAR_TYPE)
 				printf("%c", cCell.getChar());
 			else if (cCell.getType() == GType::SHORT_TYPE)
@@ -398,11 +399,11 @@ void GTable::printHeaders() const
 {
 	for (unsigned int i = 0; i < header.size(); ++i)
 	{
-		std::string word = header[i];
+		GString word = header[i];
 		if (isOutput(i))
 			printf("*");
 
-		printf("%s", word.c_str());
+		printf("%s", word.c_str_esc());
 		if (i < header.size() - 1)
 			printf(",");
 	}
@@ -468,12 +469,12 @@ void GTable::clear()
  * @param newCol the new column data as a vector
  * @param index the index at which to add the GTable column
  */
-void GTable::addCol(const std::string& headerName, const shmea::GList& newCol, unsigned int index)
+void GTable::addCol(const GString& headerName, const shmea::GList& newCol, unsigned int index)
 {
 	// error checking
 	if ((newCol.size() != numberOfRows()) && (numberOfRows() > 0))
 	{
-		printf("[CSV] Invalid col size: %u != %s:%u\n", numberOfRows(), headerName.c_str(),
+		printf("[CSV] Invalid col size: %u != %s:%u\n", numberOfRows(), headerName.c_str_esc(),
 			   newCol.size());
 		return;
 	}
@@ -562,11 +563,11 @@ void GTable::swapCol(unsigned int index, unsigned int index2)
 	}
 
 	// swap headers
-	std::string cHeader1 = "";
+	GString cHeader1 = "";
 	if (!(index >= header.size()))
 		cHeader1 = header[index];
 
-	std::string cHeader2 = "";
+	GString cHeader2 = "";
 	if (!(index2 >= header.size()))
 		cHeader2 = header[index2];
 
@@ -595,11 +596,11 @@ void GTable::moveCol(unsigned int index, unsigned int index2)
 		return;
 
 	// swap headers
-	std::string cHeader1 = "";
+	GString cHeader1 = "";
 	if (!(index >= header.size()))
 		cHeader1 = header[index];
 
-	std::string cHeader2 = "";
+	GString cHeader2 = "";
 	if (!(index2 >= header.size()))
 		cHeader2 = header[index2];
 
@@ -692,7 +693,7 @@ shmea::GList GTable::getCol(unsigned int index) const
  */
 shmea::GList GTable::getCol(const char* headerSearchText) const
 {
-	std::string newHeaderStr(headerSearchText);
+	GString newHeaderStr(headerSearchText);
 	shmea::GList retCol = getCol(newHeaderStr);
 	return retCol;
 }
@@ -703,13 +704,13 @@ shmea::GList GTable::getCol(const char* headerSearchText) const
  * @param headerSearchText the desired-column's header as a string
  * @return the column's data
  */
-shmea::GList GTable::getCol(const std::string& headerSearchText) const
+shmea::GList GTable::getCol(const GString& headerSearchText) const
 {
 	// does the column exist
 	unsigned int index = -1;
 	for (unsigned int i = 0; i < header.size(); ++i)
 	{
-		if (strcmp(headerSearchText.c_str(), header[i].c_str()) == 0)
+		if (strcmp(headerSearchText.c_str_esc(), header[i].c_str_esc()) == 0)
 		{
 			index = i;
 			break;
@@ -735,7 +736,7 @@ shmea::GList GTable::getCol(const std::string& headerSearchText) const
  */
 shmea::GList GTable::operator[](const char* headerSearchText) const
 {
-	std::string newHeaderStr(headerSearchText);
+	GString newHeaderStr(headerSearchText);
 	shmea::GList retCol = getCol(newHeaderStr);
 	return retCol;
 }
@@ -746,7 +747,7 @@ shmea::GList GTable::operator[](const char* headerSearchText) const
  * @param headerSearchText the header for the desired column (as a string)
  * @return the desired column's data (if it exists)
  */
-shmea::GList GTable::operator[](const std::string& headerSearchText) const
+shmea::GList GTable::operator[](const GString& headerSearchText) const
 {
 	shmea::GList retCol = getCol(headerSearchText);
 	return retCol;
@@ -792,7 +793,7 @@ float GTable::getRange() const
  * @details set the headers of the GTable to new values
  * @param newHeader the new set of headers for the GTable
  */
-void GTable::setHeaders(const std::vector<std::string>& newHeader)
+void GTable::setHeaders(const std::vector<GString>& newHeader)
 {
 	header = newHeader;
 }
@@ -803,7 +804,7 @@ void GTable::setHeaders(const std::vector<std::string>& newHeader)
  * @param index the column index at which to change the header string
  * @param newHeader the new header string
  */
-void GTable::addHeader(unsigned int index, const std::string& newHeader)
+void GTable::addHeader(unsigned int index, const GString& newHeader)
 {
 	// error checking
 	if (index >= header.size())
@@ -817,19 +818,19 @@ void GTable::addHeader(unsigned int index, const std::string& newHeader)
  * @details save the GTable to a file
  * @param fname the file path at which to save the GTable data
  */
-void GTable::save(const std::string& fname) const
+void GTable::save(const GString& fname) const
 {
 	if (fname.length() <= 0)
 		return;
 
-	FILE* fd = fopen(fname.c_str(), "w");
+	FILE* fd = fopen(fname.c_str_esc(), "w");
 	if (fd != NULL)
 	{
 		//
 		for (unsigned int i = 0; i < header.size(); ++i)
 		{
-			std::string word = header[i];
-			fprintf(fd, "%s", word.c_str());
+			GString word = header[i];
+			fprintf(fd, "%s", word.c_str_esc());
 			if (i < header.size() - 1)
 				fprintf(fd, ",");
 		}
@@ -843,8 +844,8 @@ void GTable::save(const std::string& fname) const
 				GType cCell = getCell(r, c);
 				if (cCell.getType() == GType::STRING_TYPE)
 				{
-					std::string word = getCell(r, c).getString();
-					fprintf(fd, "%s", word.c_str());
+					GString word = getCell(r, c);
+					fprintf(fd, "%s", word.c_str_esc());
 				}
 				else if (cCell.getType() == GType::CHAR_TYPE)
 				{

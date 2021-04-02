@@ -17,6 +17,7 @@
 #ifndef _HANDSHAKE_CLIENT
 #define _HANDSHAKE_CLIENT
 
+#include "../Backend/Database/GString.h"
 #include "../Backend/Database/GList.h"
 #include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/connection.h"
@@ -59,7 +60,7 @@ public:
 			return NULL;
 
 		// Check the characters in the name
-		std::string clientName = cList->getString(0);
+		shmea::GString clientName = cList->getString(0);
 		if (!GNet::Connection::validName(clientName))
 			clientName = "";
 		destination->setName(clientName);
@@ -78,7 +79,7 @@ public:
 		return new Handshake_Client(newInstance);
 	}
 
-	std::string getName() const
+	shmea::GString getName() const
 	{
 		return "Handshake_Client";
 	}

@@ -72,40 +72,44 @@ public:
 	// Strng Helpers
 	GString substr(unsigned int, unsigned int=0) const;
 
-	// members that call  GType helpers
-	/*bool isWhitespace(const char);
-	bool isWhitespace(const char*);
-	bool isWhitespace(const std::string);
+	// Member helpers
+	bool isWhitespace() const;
+	bool isInteger() const;
+	bool isFloat() const;
+	bool isUpper() const;
+	GString toUpper() const;
+	bool isLower() const;
+	GString toLower() const;
+	GString toggleCase() const;
+	GString trim() const;
+	GString Stringify() const;
 
-	bool isInteger(const char*);
-	bool isInteger(const std::string);
+	// Static helpers
+	static bool isWhitespace(char);
+	static bool isWhitespace(const char*, unsigned int);
+	static bool isInteger(const char*, unsigned int);
+	static bool isFloat(const char*, unsigned int);
+	static bool isUpper(char);
+	static bool isUpper(const char*, unsigned int);
+	static char toUpper(char);
+	static GString toUpper(const char*, unsigned int);
+	static bool isLower(char);
+	static bool isLower(const char*, unsigned int);
+	static char toLower(char);
+	static GString toLower(const char*, unsigned int);
+	static char toggleCase(char);
+	static GString toggleCase(const char*, unsigned int);
+	static GString trim(const char*, unsigned int);
 
-	bool isFloat(const char*);
-	bool isFloat(const std::string);
-
-	bool isUpper(const char);
-	bool isUpper(const std::string);
-
-	char toUpper(char);
-	std::string toUpper(const std::string);
-
-	bool isLower(const char);
-	bool isLower(const std::string);
-
-	char toLower(char);
-	std::string toLower(const std::string);
-
-	char toggleCase(char);
-	std::string toggleCase(const std::string);
-
-	std::string trim(std::string);
-	std::string trim(char*);
-
-	std::string datetimeTOstring(const int64_t);
-	std::string dateTOstring(const int64_t);
-	std::string timeTOstring(const int64_t);
-
-	unsigned int cfind(const char, const char*, const unsigned int);*/
+	static GString charTOstring(char);
+	static GString shortTOstring(short);
+	static GString intTOstring(int);
+	static GString longTOstring(int64_t);
+	static GString floatTOstring(float);
+	static GString doubleTOstring(double);
+	static GString datetimeTOstring(int64_t);
+	static GString dateTOstring(int64_t);
+	static GString timeTOstring(int64_t);
 };
 };
 

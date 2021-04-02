@@ -17,6 +17,7 @@
 #ifndef _GSERVICEDATA
 #define _GSERVICEDATA
 
+#include "../Database/GString.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +41,8 @@ class ServiceData
 private:
 
 	GNet::Connection* cConnection;
-	std::string sid;
-	std::string command;
+	shmea::GString sid;
+	shmea::GString command;
 	int type;
 
 	shmea::GList* repList;
@@ -58,20 +59,20 @@ public:
 	static const int TYPE_NETWORK_POINTER = 3;
 
 	ServiceData(GNet::Connection*);
-	ServiceData(GNet::Connection*, std::string);
-	ServiceData(GNet::Connection*, std::string, shmea::GList*);
-	ServiceData(GNet::Connection*, std::string, shmea::GTable*);
-	ServiceData(GNet::Connection*, std::string, shmea::Serializable*);
+	ServiceData(GNet::Connection*, shmea::GString);
+	ServiceData(GNet::Connection*, shmea::GString, shmea::GList*);
+	ServiceData(GNet::Connection*, shmea::GString, shmea::GTable*);
+	ServiceData(GNet::Connection*, shmea::GString, shmea::Serializable*);
 	ServiceData(const ServiceData&);
 	virtual ~ServiceData();
 
 	GNet::Connection* getConnection() const;
-	std::string getSID() const;
-	std::string getCommand() const;
+	shmea::GString getSID() const;
+	shmea::GString getCommand() const;
 	int getType() const;
 
-	void setSID(std::string);
-	void setCommand(std::string);
+	void setSID(shmea::GString);
+	void setCommand(shmea::GString);
 	void setType(int);
 
 	const GList* getList() const;
@@ -82,8 +83,8 @@ public:
 	void setTable(GTable*);
 	void setObj(GObject*);
 
-	static bool validSID(const std::string&);
-	static std::string generateSID();
+	static bool validSID(const shmea::GString&);
+	static shmea::GString generateSID();
 };
 };
 

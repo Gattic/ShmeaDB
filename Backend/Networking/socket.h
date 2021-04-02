@@ -17,6 +17,7 @@
 #ifndef _GSOCKET
 #define _GSOCKET
 
+#include "../Database/GString.h"
 #include <arpa/inet.h>
 #include <iostream>
 #include <netdb.h>
@@ -45,9 +46,9 @@ class Sockets
 {
 private:
 	static const int64_t DEFAULT_KEY = 420l;
-	static const std::string ANYADDR;
+	static const shmea::GString ANYADDR;
 
-	std::string PORT;
+	shmea::GString PORT;
 	int64_t* overflow; // dont free this
 	unsigned int overflowLen;
 	pthread_mutex_t* inMutex;
@@ -60,18 +61,18 @@ private:
 	// ServiceData* emptyResponseList();
 
 public:
-	static const std::string LOCALHOST;
+	static const shmea::GString LOCALHOST;
 
 	Sockets();
-	Sockets(const std::string&);
+	Sockets(const shmea::GString&);
 	~Sockets();
 
 	// functions
-	void initSockets(const std::string&);
+	void initSockets(const shmea::GString&);
 	void closeSockets();
-	const std::string getPort();
+	const shmea::GString getPort();
 	int openServerConnection();
-	int openClientConnection(const std::string&);
+	int openClientConnection(const shmea::GString&);
 	int64_t* reader(const int&, unsigned int&);
 	void readConnection(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
 	void readConnectionHelper(Connection*, const int&, std::vector<const shmea::ServiceData*>&);

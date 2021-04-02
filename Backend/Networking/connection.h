@@ -17,6 +17,7 @@
 #ifndef _GCONNECTION
 #define _GCONNECTION
 
+#include "../Database/GString.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,8 +34,8 @@ class Service;
 class Connection
 {
 private:
-	std::string name;
-	std::string ip;
+	shmea::GString name;
+	shmea::GString ip;
 	int connectionType;
 	int64_t key;
 	bool finished;
@@ -53,24 +54,24 @@ public:
 	unsigned int overflowLen;
 	std::vector<pthread_t*> sThreads; // all the active service threads
 
-	Connection(int, int, std::string);
+	Connection(int, int, shmea::GString);
 	Connection(const Connection&);
 	~Connection();
 	void finish();
 
 	// gets
-	std::string getName() const;
-	std::string getIP() const;
+	shmea::GString getName() const;
+	shmea::GString getIP() const;
 	int getConnectionType() const;
 	int64_t getKey() const;
 	bool isFinished() const;
 
 	// sets
-	void setName(std::string);
-	void setIP(std::string);
+	void setName(shmea::GString);
+	void setIP(shmea::GString);
 	void setKey(int64_t);
 
-	static bool validName(const std::string&);
+	static bool validName(const shmea::GString&);
 	static int64_t generateKey();
 };
 };

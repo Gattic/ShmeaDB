@@ -14,50 +14,47 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _GSAVEFOLDER
-#define _GSAVEFOLDER
+#include "GType.h"
 
-#include "GString.h"
-#include <dirent.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <string>
-#include <unistd.h>
-#include <vector>
+using namespace shmea;
 
-namespace shmea {
-
-class GTable;
-class SaveTable;
-
-class SaveFolder
+// Member helpers
+unsigned int GType::cfind(char cChar) const
 {
-private:
-	std::vector<SaveTable*> saveItems;
-	GString dname;
+	for (unsigned int i = 0; i < size(); ++i)
+	{
+		if (block[i] == cChar)
+			return i;
+	}
 
-	GString getPath() const;
-	void addItem(SaveTable*);
-	void clean();
+	return npos;
+}
 
-public:
-	// constructors & destructor
-	SaveFolder(const GString&);
-	virtual ~SaveFolder();
+unsigned int GType::find(const char* cStr, unsigned int cLen) const
+{
+	for (unsigned int i = 0; i < size(); ++i)
+	{
+		for (unsigned int j = 0; j < cLen; ++j)
+		{
+			if (block[i+j] != cStr[j])
+				break;
 
-	SaveTable* loadItem(const GString&);
-	bool deleteItem(const GString&);
-	SaveTable* newItem(const GString&, const GTable&);
-	void load();
-	static std::vector<SaveFolder*> loadFolders();
+			// Match
+			return i;
+		}
+	}
 
-	// gets
-	GString getName() const;
-	const std::vector<SaveTable*>& getItems() const;
-	int size() const;
-};
-};
+	return npos;
+}
 
-#endif
+unsigned int GType::cfind(char cChar, const char* cStr, unsigned int cLen)
+{
+	GType gTemp(STRING_TYPE, cStr, cLen);
+	return gTemp.cfind(cChar);
+}
+
+unsigned int GType::find(const char* str, unsigned int len, const char* str2, unsigned int len2)
+{
+	GType gTemp(STRING_TYPE, str, len);
+	return gTemp.find(str2, len2);
+}

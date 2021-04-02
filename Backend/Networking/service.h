@@ -17,6 +17,7 @@
 #ifndef _GSERVICE
 #define _GSERVICE
 
+#include "../Database/GString.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +44,7 @@ class Service
 
 private:
 	// timestamp variable to store service start and end time
-	static std::string name;
+	static shmea::GString name;
 	int64_t timeExecuted;
 
 	static void* launchService(void* y);
@@ -58,7 +59,7 @@ public:
 	virtual ~Service();
 
 	virtual Service* MakeService(GServer*) const = 0;
-	virtual std::string getName() const = 0;
+	virtual shmea::GString getName() const = 0;
 };
 };
 

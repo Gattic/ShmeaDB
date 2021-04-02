@@ -17,6 +17,7 @@
 #ifndef _LOGOUT_CLIENT
 #define _LOGOUT_CLIENT
 
+#include "../Backend/Database/GString.h"
 #include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/main.h"
 #include "../Backend/Networking/service.h"
@@ -49,7 +50,7 @@ public:
 		if (!serverInstance)
 			return NULL;
 
-		printf("[CLOGOUT] %s\n", destination->getIP().c_str());
+		printf("[CLOGOUT] %s\n", destination->getIP().c_str_esc());
 
 		// delete it from the data structure
 		serverInstance->removeClientConnection(destination);
@@ -65,7 +66,7 @@ public:
 		return new Logout_Client(newInstance);
 	}
 
-	std::string getName() const
+	shmea::GString getName() const
 	{
 		return "Logout_Client";
 	}

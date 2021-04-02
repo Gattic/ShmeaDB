@@ -141,23 +141,23 @@ void GList::insertPrimitive(unsigned int index, int newType, const void* newBloc
 		insertObject(index, newType, newBlock, newBlockSize);
 }
 
-void GList::addString(const std::string& newBlock)
+void GList::addString(const GString& newBlock)
 {
 	if (newBlock.length() > 0)
-		insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
+		insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str_unesc(), newBlock.length());
 }
 
-void GList::insertString(unsigned int index, const std::string& newBlock)
+void GList::insertString(unsigned int index, const GString& newBlock)
 {
 	if (newBlock.length() > 0)
-		insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
+		insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str_unesc(), newBlock.length());
 }
 
 void GList::addString(const char* newBlock)
 {
 	if (newBlock != NULL)
 	{
-		std::string newStr(newBlock);
+		GString newStr(newBlock);
 		insertString(items.size(), newStr);
 	}
 }
@@ -166,7 +166,7 @@ void GList::insertString(unsigned int index, const char* newBlock)
 {
 	if (newBlock != NULL)
 	{
-		std::string newStr(newBlock);
+		GString newStr(newBlock);
 		insertString(index, newStr);
 	}
 }
@@ -243,15 +243,15 @@ void GList::clear()
 	items.clear();
 }
 
-std::string GList::getString(unsigned int index) const
+GString GList::getString(unsigned int index) const
 {
 	if (index >= items.size())
 		return "";
 
-	if (items[index].size() <= 0)
+	if (items[index].size() == 0)
 		return "";
 
-	return items[index].getString();
+	return items[index];
 }
 
 const char* GList::c_str(unsigned int index) const
@@ -262,7 +262,7 @@ const char* GList::c_str(unsigned int index) const
 	if (items[index].size() <= 0)
 		return "";
 
-	return items[index].c_str();
+	return items[index].c_str_unesc();
 }
 
 char GList::getChar(unsigned int index) const
@@ -373,7 +373,7 @@ void GList::print() const
 	for (unsigned int i = 0; i < size(); ++i)
 	{
 		if (items[i].getType() == GType::STRING_TYPE)
-			printf("%s", items[i].getString().c_str());
+			printf("%s", items[i].c_str_esc());
 		else if (items[i].getType() == GType::CHAR_TYPE)
 			printf("%c", items[i].getChar());
 		else if (items[i].getType() == GType::SHORT_TYPE)

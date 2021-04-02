@@ -30,7 +30,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection)
 	type = TYPE_ACK;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 {
 	cConnection = newConnection;
 	sid = generateSID();
@@ -41,7 +41,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand
 	type = TYPE_ACK;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand, GList* newList)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, GList* newList)
 {
 	cConnection = newConnection;
 	sid = generateSID();
@@ -52,7 +52,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand
 	type = TYPE_LIST;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand, GTable* newTable)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, GTable* newTable)
 {
 	cConnection = newConnection;
 	sid = generateSID();
@@ -63,7 +63,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand
 	type = TYPE_TABLE;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, std::string newCommand, Serializable* newNP)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, Serializable* newNP)
 {
 	cConnection = newConnection;
 	sid = generateSID();
@@ -140,12 +140,12 @@ GNet::Connection* ServiceData::getConnection() const
 	return cConnection;
 }
 
-std::string ServiceData::getSID() const
+GString ServiceData::getSID() const
 {
 	return sid;
 }
 
-std::string ServiceData::getCommand() const
+GString ServiceData::getCommand() const
 {
 	return command;
 }
@@ -155,12 +155,12 @@ int ServiceData::getType() const
 	return type;
 }
 
-void ServiceData::setSID(std::string newSID)
+void ServiceData::setSID(GString newSID)
 {
 	sid = newSID;
 }
 
-void ServiceData::setCommand(std::string newCommand)
+void ServiceData::setCommand(GString newCommand)
 {
 	command = newCommand;
 }
@@ -170,27 +170,27 @@ void ServiceData::setType(int newType)
 	type = newType;
 }
 
-bool ServiceData::validSID(const std::string& testSID)
+bool ServiceData::validSID(const GString& testSID)
 {
 	if(testSID.length() != SID_LENGTH) return false;
 
-	const std::string options=
+	const GString options=
 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
 
 	for(unsigned int i=0;i<testSID.length();++i)
 	{
-		int breakPoint=options.find(testSID[i]);
+		int breakPoint=options.cfind(testSID[i]);
 		if(breakPoint == -1) return false;
 	}
 
 	return true;
 }
 
-std::string ServiceData::generateSID()
+GString ServiceData::generateSID()
 {
-	const std::string options=
+	const GString options=
 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[{]};:,<.>/?";
-	std::string newSID="";
+	GString newSID="";
 	do
 	{
 		newSID="";

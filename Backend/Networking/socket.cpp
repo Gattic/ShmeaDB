@@ -24,8 +24,8 @@
 
 using namespace GNet;
 
-const std::string Sockets::ANYADDR = "0.0.0.0";
-const std::string Sockets::LOCALHOST = "127.0.0.1";
+const shmea::GString Sockets::ANYADDR = "0.0.0.0";
+const shmea::GString Sockets::LOCALHOST = "127.0.0.1";
 
 void Sockets::initSockets()
 {
@@ -44,7 +44,7 @@ Sockets::Sockets()
 	initSockets();
 }
 
-Sockets::Sockets(const std::string& newPORT)
+Sockets::Sockets(const shmea::GString& newPORT)
 {
 	initSockets();
 	PORT = newPORT;
@@ -61,12 +61,12 @@ Sockets::~Sockets()
 		free(outMutex);
 }
 
-const std::string Sockets::getPort()
+const shmea::GString Sockets::getPort()
 {
 	return PORT;
 }
 
-int Sockets::openClientConnection(const std::string& serverIP)
+int Sockets::openClientConnection(const shmea::GString& serverIP)
 {
 	struct addrinfo* result;
 	struct addrinfo hints;
@@ -74,7 +74,7 @@ int Sockets::openClientConnection(const std::string& serverIP)
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int status = getaddrinfo(serverIP.c_str(), PORT.c_str(), &hints, &result);
+	int status = getaddrinfo(serverIP.c_str_esc(), PORT.c_str_esc(), &hints, &result);
 	if (status < 0)
 	{
 		printf("[SOCKS] Get client addr info fail\n");
@@ -84,7 +84,7 @@ int Sockets::openClientConnection(const std::string& serverIP)
 	// get the ip
 	char fromIP[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &result->ai_addr->sa_data[2], fromIP, INET_ADDRSTRLEN);
-	std::string clientIP = fromIP;
+	shmea::GString clientIP = fromIP;
 
 	// get the ip
 	int sockfd = -1;
@@ -140,7 +140,7 @@ int Sockets::openServerConnection()
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int status = getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
+	int status = getaddrinfo(ANYADDR.c_str_esc(), PORT.c_str_esc(), &hints, &result);
 	if (status < 0)
 	{
 		printf("[SOCKS] Get server addr info fail\n");
@@ -386,7 +386,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 
 	// Encrypt
 	Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
-	crypt->encrypt(rawData.c_str(), key, rawData.length());
+	crypt->encrypt(rawData.c_str_unesc(), key, rawData.length());
 
 	if (crypt->error)
 	{
@@ -447,7 +447,7 @@ bool Sockets::readLists(Connection* origin)
 			srvcList.erase(srvcList.begin());
 
 			// Check the version
-			/*std::string clientVersion = cData.getString(0);
+			/*shmea::GString clientVersion = cData.getString(0);
 			cData.remove(0);*/
 			/*if (version != clientVersion)
 				return false;*/

@@ -18,9 +18,9 @@
 
 using namespace shmea;
 
-std::map<std::string, int64_t> MaxID::maxID;
+std::map<GString, int64_t> MaxID::maxID;
 
-int64_t MaxID::generateID(const std::string& name)
+int64_t MaxID::generateID(const GString& name)
 {
 	// load the max id into memory
 	if (maxID.find(name) != maxID.end())
@@ -33,26 +33,26 @@ int64_t MaxID::generateID(const std::string& name)
 	return maxID[name];
 }
 
-std::string MaxID::buildMaxIDFName(const std::string& name)
+GString MaxID::buildMaxIDFName(const GString& name)
 {
 	if (name.length() == 0)
 		return "";
 
-	std::string fname = "database/" + name + ".maxid";
+	GString fname = "database/" + name + ".maxid";
 	return fname;
 }
 
-void MaxID::loadMaxID(const std::string& name)
+void MaxID::loadMaxID(const GString& name)
 {
 	if (name.length() == 0)
 		return;
 
 	// Load from the id
-	std::string fname = buildMaxIDFName(name);
+	GString fname = buildMaxIDFName(name);
 
 	// load the maxid from the file
-	FILE* fd = fopen(fname.c_str(), "r");
-	printf("[DB] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
+	FILE* fd = fopen(fname.c_str_esc(), "r");
+	printf("[DB] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str_esc());
 	if (fd != NULL)
 	{
 		// get the file size
@@ -65,7 +65,7 @@ void MaxID::loadMaxID(const std::string& name)
 		int64_t newFSize = fread(buffer, 1, fSize, fd);
 		if (newFSize != fSize)
 		{
-			printf("[DB] ~%s\n", fname.c_str());
+			printf("[DB] ~%s\n", fname.c_str_esc());
 			fclose(fd);
 		}
 
@@ -77,7 +77,7 @@ void MaxID::loadMaxID(const std::string& name)
 	}
 }
 
-void MaxID::saveMaxID(const std::string& name)
+void MaxID::saveMaxID(const GString& name)
 {
 	if (name.length() == 0)
 		return;
@@ -86,12 +86,12 @@ void MaxID::saveMaxID(const std::string& name)
 		return;
 
 	// open the file for writing
-	std::string fname = buildMaxIDFName(name);
-	FILE* fd = fopen(fname.c_str(), "w");
+	GString fname = buildMaxIDFName(name);
+	FILE* fd = fopen(fname.c_str_esc(), "w");
 	if (fd != NULL)
 	{
 		// save the max id
-		printf("[DB] !%s\n", fname.c_str());
+		printf("[DB] !%s\n", fname.c_str_esc());
 		fprintf(fd, "%lld\n", maxID[name]);
 
 		// close the fd
@@ -101,7 +101,7 @@ void MaxID::saveMaxID(const std::string& name)
 		printf("[DB] Max ID Save Error\n");
 }
 
-void MaxID::parseMaxIDFile(const std::string& name, char* fileContents, int64_t fSize)
+void MaxID::parseMaxIDFile(const GString& name, char* fileContents, int64_t fSize)
 {
 	if (name.length() == 0)
 		return;
@@ -146,7 +146,7 @@ void MaxID::parseMaxIDFile(const std::string& name, char* fileContents, int64_t 
 	maxID[name] = newMaxID;
 }
 
-int64_t MaxID::getMaxID(const std::string& tableName)
+int64_t MaxID::getMaxID(const GString& tableName)
 {
 	// requires a name
 	if (tableName.length() == 0)

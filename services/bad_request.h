@@ -17,6 +17,7 @@
 #ifndef _BAD_REQUEST
 #define _BAD_REQUEST
 
+#include "../Backend/Database/GString.h"
 #include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/main.h"
 #include "../Backend/Networking/service.h"
@@ -53,7 +54,7 @@ public:
 		return new Bad_Request(newInstance);
 	}
 
-	std::string getName() const
+	shmea::GString getName() const
 	{
 		return "Bad_Request";
 	}
