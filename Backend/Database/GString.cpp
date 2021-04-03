@@ -153,8 +153,8 @@ GString operator+ (const GString& lhs, const GString& rhs)
 {
 	unsigned int newBlockSize = lhs.length() + rhs.size();
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, lhs.c_str_unesc(), lhs.length());
-	memcpy(&newBlock[lhs.length()], rhs.c_str_unesc(), rhs.size());
+	memcpy(newBlock, lhs.c_str(), lhs.length());
+	memcpy(&newBlock[lhs.length()], rhs.c_str(), rhs.size());
 
 	GString retStr(newBlock, newBlockSize);
 	free(newBlock);
@@ -167,7 +167,7 @@ GString operator+ (const GString& lhs, const char* rhs)
 {
 	unsigned int newBlockSize = lhs.length() + strlen(rhs);
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, lhs.c_str_unesc(), lhs.length());
+	memcpy(newBlock, lhs.c_str(), lhs.length());
 	memcpy(&newBlock[lhs.length()], rhs, strlen(rhs));
 
 	GString retStr(newBlock, newBlockSize);
@@ -181,7 +181,7 @@ GString operator+ (const GString& lhs, char rhs)
 {
 	unsigned int newBlockSize = lhs.length() + 1;
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, lhs.c_str_unesc(), lhs.length());
+	memcpy(newBlock, lhs.c_str(), lhs.length());
 	newBlock[newBlockSize-1] = rhs;
 
 	GString retStr(newBlock, newBlockSize);
@@ -196,7 +196,7 @@ GString operator+ (const char* lhs, const GString& rhs)
 	unsigned int newBlockSize = strlen(lhs) + rhs.size();
 	char* newBlock = (char*)malloc(newBlockSize);
 	memcpy(newBlock, lhs, strlen(lhs));
-	memcpy(&newBlock[strlen(lhs)], rhs.c_str_unesc(), rhs.size());
+	memcpy(&newBlock[strlen(lhs)], rhs.c_str(), rhs.size());
 
 	GString retStr(newBlock, newBlockSize);
 	free(newBlock);
@@ -210,7 +210,7 @@ GString operator+ (char lhs, const GString& rhs)
 	unsigned int newBlockSize = rhs.length() + 1;
 	char* newBlock = (char*)malloc(newBlockSize);
 	newBlock[0] = lhs;
-	memcpy(&newBlock[1], rhs.c_str_unesc(), rhs.length());
+	memcpy(&newBlock[1], rhs.c_str(), rhs.length());
 
 	GString retStr(newBlock, newBlockSize);
 	free(newBlock);
@@ -236,7 +236,7 @@ GString GString::operator+=(const GType& str2)
 	unsigned int newBlockSize = length() + str2.size();
 	char* newBlock = (char*)malloc(newBlockSize);
 	memcpy(newBlock, block, length());
-	memcpy(&newBlock[length()], str2.c_str_unesc(), str2.size());
+	memcpy(&newBlock[length()], str2.c_str(), str2.size());
 
 	set(getType(), newBlock, newBlockSize);
 	free(newBlock);
@@ -249,7 +249,7 @@ GString GString::operator+=(const GString& str2)
 	unsigned int newBlockSize = length() + str2.size();
 	char* newBlock = (char*)malloc(newBlockSize);
 	memcpy(newBlock, block, length());
-	memcpy(&newBlock[length()], str2.c_str_unesc(), str2.size());
+	memcpy(&newBlock[length()], str2.c_str(), str2.size());
 
 	set(getType(), newBlock, newBlockSize);
 	free(newBlock);

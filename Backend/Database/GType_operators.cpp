@@ -20,7 +20,7 @@ using namespace shmea;
 
 GType::operator const char*() const
 {
-	return c_str_esc();
+	return c_str();
 }
 
 /*GType::operator char() const
@@ -103,7 +103,7 @@ GType& GType::operator=(const double& compValue)
 GType& GType::operator=(const char* compValue)
 {
 	GType newCompValue(compValue);
-	set(STRING_TYPE, newCompValue.c_str_unesc(), newCompValue.size());
+	set(STRING_TYPE, newCompValue.c_str(), newCompValue.size());
 	return *this;
 }
 

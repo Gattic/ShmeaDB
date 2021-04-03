@@ -117,8 +117,8 @@ void GTable::importFromFile(const GString& fname)
 	if (fname.length() == 0)
 		return;
 
-	FILE* fd = fopen(fname.c_str_esc(), "r");
-	printf("[CSV] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str_esc());
+	FILE* fd = fopen(fname.c_str(), "r");
+	printf("[CSV] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
 
 	if (!fd)
 		return;
@@ -367,7 +367,7 @@ void GTable::print() const
 			// get the data by cell
 			GType cCell = getCell(r, c);
 			if (cCell.getType() == GType::STRING_TYPE)
-				printf("%s", cCell.c_str_esc());
+				printf("%s", cCell.c_str());
 			else if (cCell.getType() == GType::CHAR_TYPE)
 				printf("%c", cCell.getChar());
 			else if (cCell.getType() == GType::SHORT_TYPE)
@@ -403,7 +403,7 @@ void GTable::printHeaders() const
 		if (isOutput(i))
 			printf("*");
 
-		printf("%s", word.c_str_esc());
+		printf("%s", word.c_str());
 		if (i < header.size() - 1)
 			printf(",");
 	}
@@ -474,7 +474,7 @@ void GTable::addCol(const GString& headerName, const shmea::GList& newCol, unsig
 	// error checking
 	if ((newCol.size() != numberOfRows()) && (numberOfRows() > 0))
 	{
-		printf("[CSV] Invalid col size: %u != %s:%u\n", numberOfRows(), headerName.c_str_esc(),
+		printf("[CSV] Invalid col size: %u != %s:%u\n", numberOfRows(), headerName.c_str(),
 			   newCol.size());
 		return;
 	}
@@ -710,7 +710,7 @@ shmea::GList GTable::getCol(const GString& headerSearchText) const
 	unsigned int index = -1;
 	for (unsigned int i = 0; i < header.size(); ++i)
 	{
-		if (strcmp(headerSearchText.c_str_esc(), header[i].c_str_esc()) == 0)
+		if (strcmp(headerSearchText.c_str(), header[i].c_str()) == 0)
 		{
 			index = i;
 			break;
@@ -823,14 +823,14 @@ void GTable::save(const GString& fname) const
 	if (fname.length() <= 0)
 		return;
 
-	FILE* fd = fopen(fname.c_str_esc(), "w");
+	FILE* fd = fopen(fname.c_str(), "w");
 	if (fd != NULL)
 	{
 		//
 		for (unsigned int i = 0; i < header.size(); ++i)
 		{
 			GString word = header[i];
-			fprintf(fd, "%s", word.c_str_esc());
+			fprintf(fd, "%s", word.c_str());
 			if (i < header.size() - 1)
 				fprintf(fd, ",");
 		}
@@ -845,7 +845,7 @@ void GTable::save(const GString& fname) const
 				if (cCell.getType() == GType::STRING_TYPE)
 				{
 					GString word = getCell(r, c);
-					fprintf(fd, "%s", word.c_str_esc());
+					fprintf(fd, "%s", word.c_str());
 				}
 				else if (cCell.getType() == GType::CHAR_TYPE)
 				{

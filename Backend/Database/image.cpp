@@ -28,14 +28,14 @@ bool Image::LoadPPM(const GString& fname)
 	int len = fname.length();
 	if (!(len > 4 && fname.substr(len - 4) == GString(".ppm")))
 	{
-		printf("ERROR: This is not a PPM fname: %s\n", fname.c_str_esc());
+		printf("ERROR: This is not a PPM fname: %s\n", fname.c_str());
 		return false;
 	}
 
-	FILE* file = fopen(fname.c_str_esc(), "rb");
+	FILE* file = fopen(fname.c_str(), "rb");
 	if (file == NULL)
 	{
-		printf("Unable to open %s for reading\n", fname.c_str_esc());
+		printf("Unable to open %s for reading\n", fname.c_str());
 		return false;
 	}
 
@@ -87,14 +87,14 @@ bool Image::LoadPBM(const GString& fname)
 	int len = fname.length();
 	if (!(len > 4 && fname.substr(len - 4) == GString(".pbm")))
 	{
-		printf("ERROR: This is not a PBM fname: %s\n", fname.c_str_esc());
+		printf("ERROR: This is not a PBM fname: %s\n", fname.c_str());
 		return false;
 	}
 
-	FILE* file = fopen(fname.c_str_esc(), "rb");
+	FILE* file = fopen(fname.c_str(), "rb");
 	if (file == NULL)
 	{
-		printf("Unable to open %s for reading\n", fname.c_str_esc());
+		printf("Unable to open %s for reading\n", fname.c_str());
 		return false;
 	}
 
@@ -169,14 +169,14 @@ bool Image::SavePPM(const GString& filename) const
 	int len = filename.length();
 	if (!(len > 4 && filename.substr(len - 4) == GString(".ppm")))
 	{
-		printf("ERROR: This is not a PPM filename: %s\n", filename.c_str_esc());
+		printf("ERROR: This is not a PPM filename: %s\n", filename.c_str());
 		return false;
 	}
 
-	FILE* file = fopen(filename.c_str_esc(), "wb");
+	FILE* file = fopen(filename.c_str(), "wb");
 	if (file == NULL)
 	{
-		printf("Unable to open %s for writing\n", filename.c_str_esc());
+		printf("Unable to open %s for writing\n", filename.c_str());
 		return false;
 	}
 
@@ -207,14 +207,14 @@ bool Image::SavePBM(const GString& filename) const
 	int len = filename.length();
 	if (!(len > 4 && filename.substr(len - 4) == GString(".pbm")))
 	{
-		printf("ERROR: This is not a PBM filename: %s\n", filename.c_str_esc());
+		printf("ERROR: This is not a PBM filename: %s\n", filename.c_str());
 		return false;
 	}
 
-	FILE* file = fopen(filename.c_str_esc(), "wb");
+	FILE* file = fopen(filename.c_str(), "wb");
 	if (file == NULL)
 	{
-		printf("Unable to open %s for writing\n", filename.c_str_esc());
+		printf("Unable to open %s for writing\n", filename.c_str());
 		return false;
 	}
 
@@ -287,14 +287,14 @@ void Image::LoadBMP(const GString& filename)
 	int len = filename.length();
 	if (!(len > 4 && filename.substr(len - 4) == GString(".bmp")))
 	{
-		printf("ERROR: This is not a BMP filename: %s\n", filename.c_str_esc());
+		printf("ERROR: This is not a BMP filename: %s\n", filename.c_str());
 		return false;
 	}
 
-	FILE* file = fopen(filename.c_str_esc(), "rb");
+	FILE* file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
 	{
-		printf("Unable to open %s for reading\n", filename.c_str_esc());
+		printf("Unable to open %s for reading\n", filename.c_str());
 		;
 		return false;
 	}

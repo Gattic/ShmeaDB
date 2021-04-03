@@ -144,13 +144,13 @@ void GList::insertPrimitive(unsigned int index, int newType, const void* newBloc
 void GList::addString(const GString& newBlock)
 {
 	if (newBlock.length() > 0)
-		insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str_unesc(), newBlock.length());
+		insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
 void GList::insertString(unsigned int index, const GString& newBlock)
 {
 	if (newBlock.length() > 0)
-		insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str_unesc(), newBlock.length());
+		insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
 void GList::addString(const char* newBlock)
@@ -262,7 +262,7 @@ const char* GList::c_str(unsigned int index) const
 	if (items[index].size() <= 0)
 		return "";
 
-	return items[index].c_str_unesc();
+	return items[index].c_str();
 }
 
 char GList::getChar(unsigned int index) const
@@ -373,7 +373,7 @@ void GList::print() const
 	for (unsigned int i = 0; i < size(); ++i)
 	{
 		if (items[i].getType() == GType::STRING_TYPE)
-			printf("%s", items[i].c_str_esc());
+			printf("%s", items[i].c_str());
 		else if (items[i].getType() == GType::CHAR_TYPE)
 			printf("%c", items[i].getChar());
 		else if (items[i].getType() == GType::SHORT_TYPE)

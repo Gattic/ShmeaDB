@@ -279,7 +279,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 		// dont overwrite an instance
 		if (clientConnections->find(clientIP) == clientConnections->end())
 		{
-			printf("[LOGIN] %s\n", clientIP.c_str_esc());
+			printf("[LOGIN] %s\n", clientIP.c_str());
 
 			// create the new client instance and add it to the data structure
 			Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
@@ -345,7 +345,7 @@ void GNet::GServer::commandCatcher(void*)
 		exit(0);
 	}
 	else
-		printf("[SOCKS] Listening on port %s\n", socks->getPort().c_str_esc());
+		printf("[SOCKS] Listening on port %s\n", socks->getPort().c_str());
 
 	// Launch a local instance of a client
 	LaunchLocalInstance("Mar");

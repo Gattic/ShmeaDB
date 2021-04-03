@@ -70,13 +70,13 @@ SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 	GString dirname = getPath();
 	if (dirname.length() > 0)
 	{
-		if (stat(dirname.c_str_esc(), &info) != 0)
+		if (stat(dirname.c_str(), &info) != 0)
 		{
 			// make the directory
-			int status = mkdir(dirname.c_str_esc(), S_IRWXU | S_IRWXG | S_IRWXO);
+			int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
 			if (status < 0)
 			{
-				printf("[DB] %s mkdir failed\n", dirname.c_str_esc());
+				printf("[DB] %s mkdir failed\n", dirname.c_str());
 				// return;
 			}
 		}
@@ -88,7 +88,7 @@ SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 		else
 		{
 			// path is not a directory
-			printf("[DB] %s is not a directory\n", dirname.c_str_esc());
+			printf("[DB] %s is not a directory\n", dirname.c_str());
 			// return;
 		}
 	}
@@ -108,10 +108,10 @@ void SaveFolder::load()
 		return;
 
 	GString folderName = getPath();
-	DIR* dir = opendir(folderName.c_str_esc());
+	DIR* dir = opendir(folderName.c_str());
 	if (!dir)
 	{
-		printf("[DB] -%s\n", folderName.c_str_esc());
+		printf("[DB] -%s\n", folderName.c_str());
 		return;
 	}
 
@@ -140,9 +140,9 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 
 	DIR* dir;
 	struct dirent* ent;
-	if ((dir = opendir(folderName.c_str_esc())) != NULL)
+	if ((dir = opendir(folderName.c_str())) != NULL)
 	{
-		printf("[DB] -%s\n", folderName.c_str_esc());
+		printf("[DB] -%s\n", folderName.c_str());
 		return folderList;
 	}
 
@@ -154,7 +154,7 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 		if (fname[0] == '.')
 			continue;
 
-		printf("Folder Name: %s \n", fname.c_str_esc());
+		printf("Folder Name: %s \n", fname.c_str());
 		SaveFolder* newSL = new SaveFolder(fname);
 		newSL->load();
 		folderList.push_back(newSL);

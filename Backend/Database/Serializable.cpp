@@ -83,7 +83,7 @@ GString Serializable::addDelimiter(const GString& serial, bool isLastItem)
  */
 GString Serializable::addItemToSerial(const GType& cItem)
 {
-	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)cItem.size()) + "," + cItem.c_str_unesc();
+	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)cItem.size()) + "," + cItem.c_str();
 	return retSerial;
 }
 
@@ -179,7 +179,7 @@ int Serializable::getDelimiterIdx(const GString& text, const GString& delimiter,
 	do
 	{
 		breakPoint = findNextDelimiterIndex(breakPoint + delimiter.length(), text, delimiter);
-	} while ((escaped != isEscaped(breakPoint, text.c_str_unesc())) && (breakPoint >= 0));
+	} while ((escaped != isEscaped(breakPoint, text.c_str())) && (breakPoint >= 0));
 
 	return breakPoint;
 }
@@ -373,9 +373,9 @@ GString Serializable::Serialize(const ServiceData* cData)
 	metaList.addInt(cData->getType());
 	metaList.addString(cData->getCommand());
 	printf("metaList-Size: %d\n", metaList.size());
-	printf("SER-sdSID: %s\n", cData->getSID().c_str_esc());
+	printf("SER-sdSID: %s\n", cData->getSID().c_str());
 	printf("SER-sdType: %d\n", cData->getType());
-	printf("SER-sdCommand: %s\n", cData->getCommand().c_str_esc());
+	printf("SER-sdCommand: %s\n", cData->getCommand().c_str());
 
 	GString metaData = Serialize(metaList, true);
 
@@ -419,7 +419,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		}
 	}
 
-			printf("WRITE-metaData[%d]: %s\n", metaData.length(), metaData.c_str_esc());
+			printf("WRITE-metaData[%d]: %s\n", metaData.length(), metaData.c_str());
 			/*for(unsigned int rCounter=0;rCounter<metaData.length();++rCounter)
 			{
 				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, metaData[rCounter], metaData[rCounter]);
@@ -427,7 +427,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 					printf("-------------------------------\n");
 			}*/
 
-			printf("WRITE-repData[%d]: %s\n", repData.length(), repData.c_str_esc());
+			printf("WRITE-repData[%d]: %s\n", repData.length(), repData.c_str());
 			/*for(unsigned int rCounter=0;rCounter<repData.length();++rCounter)
 			{
 				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, repData[rCounter], repData[rCounter]);
@@ -740,7 +740,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 	// metadata
 	GString sdSID = metaList.getString(0);
 	retData->setSID(sdSID);
-	printf("sdSID: %s\n", sdSID.c_str_esc());
+	printf("sdSID: %s\n", sdSID.c_str());
 
 	int sdType = metaList.getInt(1);
 	retData->setType(sdType);
@@ -748,7 +748,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 
 	GString sdCommand = metaList.getString(2);
 	retData->setCommand(sdCommand);
-	printf("sdCommand: %s\n", sdCommand.c_str_esc());
+	printf("sdCommand: %s\n", sdCommand.c_str());
 
 	switch(sdType)
 	{

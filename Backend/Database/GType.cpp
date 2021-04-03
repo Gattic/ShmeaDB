@@ -36,58 +36,51 @@ GType::GType(const GType& g2)
 
 GType::GType(const bool& newBlock)
 {
-	blockSize = sizeof(bool);
-	type = BOOLEAN_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(bool);
+	int newType = BOOLEAN_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const char& newBlock)
 {
-	blockSize = sizeof(char);
-	type = CHAR_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(char);
+	int newType = CHAR_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const short& newBlock)
 {
-	blockSize = sizeof(short);
-	type = SHORT_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(short);
+	int newType = SHORT_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const int& newBlock)
 {
-	blockSize = sizeof(int);
-	type = INT_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(int);
+	int newType = INT_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const int64_t& newBlock)
 {
-	blockSize = sizeof(int64_t);
-	type = LONG_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(int64_t);
+	int newType = LONG_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const float& newBlock)
 {
-	blockSize = sizeof(float);
-	type = FLOAT_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(float);
+	int newType = FLOAT_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const double& newBlock)
 {
-	blockSize = sizeof(double);
-	type = DOUBLE_TYPE;
-	block = (char*)malloc(blockSize);
-	memcpy(block, &newBlock, blockSize);
+	unsigned int newBlockSize = sizeof(double);
+	int newType = DOUBLE_TYPE;
+	set(newType, &newBlock, newBlockSize);
 }
 
 GType::GType(const char* newBlock)
@@ -130,38 +123,17 @@ GType::~GType()
 	clean();
 }
 
-char* GType::getBlockCopy() const
-{
-	if ((!block) || (size() == 0))
-		return NULL;
-
-	char* retVal = (char*)malloc(sizeof(char) * blockSize);
-	memcpy(retVal, block, blockSize);
-	return retVal;
-}
-
 int GType::getType() const
 {
 	return type;
 }
 
-const char* GType::c_str_unesc() const
+const char* GType::c_str() const
 {
 	if ((!block) || (size() == 0))
 		return NULL;
 
 	return block;
-}
-
-const char* GType::c_str_esc() const
-{
-	if ((!block) || (size() == 0))
-		return NULL;
-
-	char* retVal = (char*)malloc(sizeof(char) * blockSize+1);
-	memcpy(retVal, block, blockSize);
-	retVal[blockSize] = '\0';
-	return retVal;
 }
 
 char GType::getChar() const
@@ -200,7 +172,7 @@ char GType::getChar() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		char value = atoi(c_str_esc());
+		char value = atoi(c_str());
 		return value;
 	}
 
@@ -208,7 +180,7 @@ char GType::getChar() const
 	if (size() != sizeof(char))
 		return 0;
 
-	return *((char*)getBlockCopy());
+	return *((char*)block);
 }
 
 short GType::getShort() const
@@ -247,7 +219,7 @@ short GType::getShort() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		short value = atoi(c_str_esc());
+		short value = atoi(c_str());
 		return value;
 	}
 
@@ -255,7 +227,7 @@ short GType::getShort() const
 	if (size() != sizeof(short))
 		return 0;
 
-	return *((short*)getBlockCopy());
+	return *((short*)block);
 }
 
 int GType::getInt() const
@@ -294,7 +266,7 @@ int GType::getInt() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int value = atoi(c_str_esc());
+		int value = atoi(c_str());
 		return value;
 	}
 
@@ -302,7 +274,7 @@ int GType::getInt() const
 	if (size() != sizeof(int))
 		return 0;
 
-	return *((int*)getBlockCopy());
+	return *((int*)block);
 }
 
 int64_t GType::getLong() const
@@ -341,7 +313,7 @@ int64_t GType::getLong() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int64_t value = atoll(c_str_esc());
+		int64_t value = atoll(c_str());
 		return value;
 	}
 
@@ -349,7 +321,7 @@ int64_t GType::getLong() const
 	if (size() != sizeof(int64_t))
 		return 0;
 
-	return *((int64_t*)getBlockCopy());
+	return *((int64_t*)block);
 }
 
 float GType::getFloat() const
@@ -388,7 +360,7 @@ float GType::getFloat() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		float value = atof(c_str_esc());
+		float value = atof(c_str());
 		return value;
 	}
 
@@ -396,7 +368,7 @@ float GType::getFloat() const
 	if (size() != sizeof(float))
 		return 0.0f;
 
-	return *((float*)getBlockCopy());
+	return *((float*)block);
 }
 
 double GType::getDouble() const
@@ -435,7 +407,7 @@ double GType::getDouble() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		double value = atof(c_str_esc());
+		double value = atof(c_str());
 		return value;
 	}
 
@@ -443,7 +415,7 @@ double GType::getDouble() const
 	if (size() != sizeof(double))
 		return 0.0f;
 
-	return *((double*)getBlockCopy());
+	return *((double*)block);
 }
 
 bool GType::getBoolean() const
@@ -483,7 +455,7 @@ bool GType::getBoolean() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		bool value = atoll(c_str_esc());
+		bool value = atoll(c_str());
 		return value;
 	}
 
@@ -491,7 +463,7 @@ bool GType::getBoolean() const
 	if (size() != sizeof(bool))
 		return false;
 
-	return *((bool*)getBlockCopy());
+	return *((bool*)block);
 }
 
 unsigned int GType::size() const
@@ -504,8 +476,9 @@ void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 	clean();
 	type = newType;
 	blockSize = newBlockSize;
-	block = (char*)malloc(blockSize * sizeof(char));
-	memcpy(block, newBlock, blockSize * sizeof(char));
+	block = (char*)malloc(blockSize + 1); // plus one to escape the string, we ignore this character everywhere else
+	memcpy(block, newBlock, blockSize);
+	block[blockSize] = '\0';
 }
 
 void GType::clean()

@@ -65,10 +65,8 @@ public:
 	virtual ~GType();
 
 	// gets
-	char* getBlockCopy() const;
 	int getType() const;
-	const char* c_str_unesc() const;
-	const char* c_str_esc() const;
+	const char* c_str() const;
 	char getChar() const;
 	short getShort() const;
 	int getInt() const;

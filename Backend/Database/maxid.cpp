@@ -51,8 +51,8 @@ void MaxID::loadMaxID(const GString& name)
 	GString fname = buildMaxIDFName(name);
 
 	// load the maxid from the file
-	FILE* fd = fopen(fname.c_str_esc(), "r");
-	printf("[DB] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str_esc());
+	FILE* fd = fopen(fname.c_str(), "r");
+	printf("[DB] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
 	if (fd != NULL)
 	{
 		// get the file size
@@ -65,7 +65,7 @@ void MaxID::loadMaxID(const GString& name)
 		int64_t newFSize = fread(buffer, 1, fSize, fd);
 		if (newFSize != fSize)
 		{
-			printf("[DB] ~%s\n", fname.c_str_esc());
+			printf("[DB] ~%s\n", fname.c_str());
 			fclose(fd);
 		}
 
@@ -87,11 +87,11 @@ void MaxID::saveMaxID(const GString& name)
 
 	// open the file for writing
 	GString fname = buildMaxIDFName(name);
-	FILE* fd = fopen(fname.c_str_esc(), "w");
+	FILE* fd = fopen(fname.c_str(), "w");
 	if (fd != NULL)
 	{
 		// save the max id
-		printf("[DB] !%s\n", fname.c_str_esc());
+		printf("[DB] !%s\n", fname.c_str());
 		fprintf(fd, "%lld\n", maxID[name]);
 
 		// close the fd

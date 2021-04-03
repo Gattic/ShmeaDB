@@ -137,6 +137,6 @@ int64_t Connection::generateKey()
 		newKey += newChar;
 	}
 
-	int64_t key = atoll(newKey.c_str_unesc());
+	int64_t key = atoll(newKey.c_str());
 	return key;
 }

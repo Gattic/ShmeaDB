@@ -74,7 +74,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP)
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int status = getaddrinfo(serverIP.c_str_esc(), PORT.c_str_esc(), &hints, &result);
+	int status = getaddrinfo(serverIP.c_str(), PORT.c_str(), &hints, &result);
 	if (status < 0)
 	{
 		printf("[SOCKS] Get client addr info fail\n");
@@ -140,7 +140,7 @@ int Sockets::openServerConnection()
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int status = getaddrinfo(ANYADDR.c_str_esc(), PORT.c_str_esc(), &hints, &result);
+	int status = getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
 	if (status < 0)
 	{
 		printf("[SOCKS] Get server addr info fail\n");
@@ -386,7 +386,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 
 	// Encrypt
 	Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
-	crypt->encrypt(rawData.c_str_unesc(), key, rawData.length());
+	crypt->encrypt(rawData.c_str(), key, rawData.length());
 
 	if (crypt->error)
 	{

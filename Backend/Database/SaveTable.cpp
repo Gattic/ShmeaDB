@@ -180,7 +180,7 @@ bool SaveTable::deleteByName()
 
 	// Set the contents
 	GString fname = getPath();
-	return (remove(fname.c_str_esc()) == 0);
+	return (remove(fname.c_str()) == 0);
 }
 
 void SaveTable::clean()
@@ -205,6 +205,6 @@ void SaveTable::print() const
 	}*/
 
 	// Print the contents
-	printf("File Name: %s\n", name.c_str_esc());
+	printf("File Name: %s\n", name.c_str());
 	value.print();
 }
