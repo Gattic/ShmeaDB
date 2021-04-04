@@ -11,6 +11,7 @@
 #include "../../../Backend/Database/GList.h"
 #include "../../../Backend/Database/GTable.h"
 #include "../../../Backend/Database/GObject.h"
+#include "../../../Backend/Database/Serializable.h"
 
 // === This is the primary unit testing function:
 // void G_assert(const char* fileName, int lineNo, const char* failureMsg, bool expr)
@@ -25,6 +26,23 @@ void GListUnitTest()
 	list0.addString("burp");
 
 	G_assert (__FILE__, __LINE__, "==============GList::size() Failed==============", list0.size() == 5);
+	G_assert (__FILE__, __LINE__, "==============list0[0] Failed==============", strcmp(list0[0], "derp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0[1] Failed==============", strcmp(list0[1], "herp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0[2] Failed==============", strcmp(list0[2], "chirp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0[3] Failed==============", strcmp(list0[3], "slurp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0[4] Failed==============", strcmp(list0[4], "burp") == 0);
+
+	shmea::GList list0Copy = list0;
+	G_assert (__FILE__, __LINE__, "==============GList::size() Failed==============", list0Copy.size() == 5);
+	G_assert (__FILE__, __LINE__, "==============list0Copy[0] Failed==============", strcmp(list0Copy[0], "derp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0Copy[1] Failed==============", strcmp(list0Copy[1], "herp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0Copy[2] Failed==============", strcmp(list0Copy[2], "chirp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0Copy[3] Failed==============", strcmp(list0Copy[3], "slurp") == 0);
+	G_assert (__FILE__, __LINE__, "==============list0Copy[4] Failed==============", strcmp(list0Copy[4], "burp") == 0);
+
+	list0Copy.clear();
+	G_assert (__FILE__, __LINE__, "==============GList::copy-clear-size() Failed==============", list0Copy.size() == 0);
+	G_assert (__FILE__, __LINE__, "==============GList::clear-size() Failed==============", list0.size() == 5);
 	G_assert (__FILE__, __LINE__, "==============list0[0] Failed==============", strcmp(list0[0], "derp") == 0);
 	G_assert (__FILE__, __LINE__, "==============list0[1] Failed==============", strcmp(list0[1], "herp") == 0);
 	G_assert (__FILE__, __LINE__, "==============list0[2] Failed==============", strcmp(list0[2], "chirp") == 0);
@@ -56,6 +74,7 @@ void GListUnitTest()
 	table0.addRow(list0);
 	table0.addRow(list1);
 	G_assert (__FILE__, __LINE__, "==============GTable::getNumRows() Failed==============", table0.numberOfRows() == 2);
+	G_assert (__FILE__, __LINE__, "==============GTable::getNumCols() Failed==============", table0.numberOfCols() == 5);
 
 	shmea::GTable table1;
 	table1.addRow(list2);
@@ -69,4 +88,8 @@ void GListUnitTest()
 	cObj.setMembers(table0);
 	cObj.addTable(table1);
 	cObj.addTable(table2);
+
+	shmea::GString serializedStr = shmea::Serializable::Serialize(cObj);
+	shmea::GObject newObj;
+	shmea::Serializable::Deserialize(newObj, serializedStr);
 }
