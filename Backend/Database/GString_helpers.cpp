@@ -25,7 +25,7 @@ bool GString::isWhitespace() const
 
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		unsigned int breakPoint = cfind(options[i]);
+		unsigned int breakPoint = options.cfind(block[i]);
 		if (breakPoint == npos)
 			return false;
 	}
@@ -45,7 +45,7 @@ bool GString::isInteger() const
 
 	for (; i < size(); ++i)
 	{
-		unsigned int breakPoint = cfind(block[i]);
+		unsigned int breakPoint = options.cfind(block[i]);
 		if (breakPoint == npos)
 			return false;
 	}
@@ -65,7 +65,7 @@ bool GString::isFloat() const
 
 	for (; i < size(); ++i)
 	{
-		unsigned int breakPoint = cfind(block[i]);
+		unsigned int breakPoint = options.cfind(block[i]);
 		if (breakPoint == npos)
 			return false;
 	}
@@ -193,10 +193,22 @@ bool GString::isWhitespace(char tempNumber)
 	return (breakPoint >= 0);
 }
 
+bool GString::isWhitespace(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.isWhitespace();
+}
+
 bool GString::isWhitespace(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.isWhitespace();
+}
+
+bool GString::isInteger(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.isInteger();
 }
 
 bool GString::isInteger(const char* str, unsigned int len)
@@ -205,10 +217,26 @@ bool GString::isInteger(const char* str, unsigned int len)
 	return gTemp.isInteger();
 }
 
+bool GString::isInteger(const GString& str)
+{
+	return str.isInteger();
+}
+
+bool GString::isFloat(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.isFloat();
+}
+
 bool GString::isFloat(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.isFloat();
+}
+
+bool GString::isFloat(const GString& str)
+{
+	return str.isFloat();
 }
 
 bool GString::isUpper(char x)
@@ -216,10 +244,21 @@ bool GString::isUpper(char x)
 	return ((x >= 0x41) && (x <= 0x5A));
 }
 
+bool GString::isUpper(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.isUpper();
+}
+
 bool GString::isUpper(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.isUpper();
+}
+
+bool GString::isUpper(const GString& str)
+{
+	return str.isUpper();
 }
 
 char GString::toUpper(char x)
@@ -229,10 +268,21 @@ char GString::toUpper(char x)
 	return x;
 }
 
+GString GString::toUpper(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.toUpper();
+}
+
 GString GString::toUpper(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.toUpper();
+}
+
+GString GString::toUpper(const GString& str)
+{
+	return str.toUpper();
 }
 
 bool GString::isLower(char x)
@@ -240,10 +290,21 @@ bool GString::isLower(char x)
 	return ((x >= 0x61) && (x <= 0x7A));
 }
 
+bool GString::isLower(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.isLower();
+}
+
 bool GString::isLower(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.isLower();
+}
+
+bool GString::isLower(const GString& str)
+{
+	return str.isLower();
 }
 
 char GString::toLower(char x)
@@ -253,10 +314,21 @@ char GString::toLower(char x)
 	return x;
 }
 
+GString GString::toLower(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.toLower();
+}
+
 GString GString::toLower(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.toLower();
+}
+
+GString GString::toLower(const GString& str)
+{
+	return str.toLower();
 }
 
 char GString::toggleCase(char x)
@@ -269,16 +341,33 @@ char GString::toggleCase(char x)
 		return x;
 }
 
+GString GString::toggleCase(const char* str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.toggleCase();
+}
+
 GString GString::toggleCase(const char* str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.toggleCase();
 }
 
-GString GString::trim(const char* str, unsigned int len)
+GString GString::trim(const char*  str)
+{
+	GString gTemp(str, strlen(str));
+	return gTemp.trim();
+}
+
+GString GString::trim(const char*  str, unsigned int len)
 {
 	GString gTemp(str, len);
 	return gTemp.trim();
+}
+
+GString GString::trim(const GString&  str)
+{
+	return str.trim();
 }
 
 GString GString::charTOstring(char cChar)

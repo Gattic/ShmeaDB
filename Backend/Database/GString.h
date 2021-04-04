@@ -86,20 +86,38 @@ public:
 
 	// Static helpers
 	static bool isWhitespace(char);
+	static bool isWhitespace(const char*);
 	static bool isWhitespace(const char*, unsigned int);
+	static bool isWhitespace(const GString&);
+	static bool isInteger(const char*);
 	static bool isInteger(const char*, unsigned int);
+	static bool isInteger(const GString&);
+	static bool isFloat(const char*);
 	static bool isFloat(const char*, unsigned int);
+	static bool isFloat(const GString&);
 	static bool isUpper(char);
+	static bool isUpper(const char*);
 	static bool isUpper(const char*, unsigned int);
+	static bool isUpper(const GString&);
 	static char toUpper(char);
+	static GString toUpper(const char*);
 	static GString toUpper(const char*, unsigned int);
+	static GString toUpper(const GString&);
 	static bool isLower(char);
+	static bool isLower(const char*);
 	static bool isLower(const char*, unsigned int);
+	static bool isLower(const GString&);
 	static char toLower(char);
+	static GString toLower(const char*);
 	static GString toLower(const char*, unsigned int);
+	static GString toLower(const GString&);
 	static char toggleCase(char);
+	static GString toggleCase(const char*);
 	static GString toggleCase(const char*, unsigned int);
+	static GString toggleCase(const GString&);
+	static GString trim(const char*);
 	static GString trim(const char*, unsigned int);
+	static GString trim(const GString&);
 
 	static GString charTOstring(char);
 	static GString shortTOstring(short);

@@ -23,7 +23,7 @@ GType::operator const char*() const
 	return c_str();
 }
 
-/*GType::operator char() const
+GType::operator char() const
 {
 	return getChar();
 }
@@ -56,7 +56,9 @@ GType::operator double() const
 GType::operator bool() const
 {
 	return getBoolean();
-}*/
+}
+
+//==========EQUALS SET==========
 
 GType& GType::operator=(const GType& compValue)
 {
@@ -113,6 +115,8 @@ GType& GType::operator=(const bool& compValue)
 	return *this;
 }
 
+//==========EQUALS COMPARISON==========
+
 bool GType::operator==(const GType& cCell2) const
 {
 	// compare the known types
@@ -120,6 +124,8 @@ bool GType::operator==(const GType& cCell2) const
 	bool intFlag2 = false;
 	bool floatFlag1 = false;
 	bool floatFlag2 = false;
+	bool doubleFlag1 = false;
+	bool doubleFlag2 = false;
 	bool stringFlag1 = false;
 	bool stringFlag2 = false;
 	bool boolFlag1 = false;
@@ -128,9 +134,11 @@ bool GType::operator==(const GType& cCell2) const
 	// values
 	int64_t intValue1 = 0;
 	double floatValue1 = 0.0f;
+	double doubleValue1 = 0.0f;
 	bool boolValue1 = false;
 	int64_t intValue2 = 0;
 	double floatValue2 = 0.0f;
+	double doubleValue2 = 0.0f;
 	bool boolValue2 = false;
 
 	// get the first value
@@ -161,8 +169,8 @@ bool GType::operator==(const GType& cCell2) const
 	}
 	else if (getType() == GType::DOUBLE_TYPE)
 	{
-		floatFlag1 = true;
-		floatValue1 = getDouble();
+		doubleFlag1 = true;
+		doubleValue1 = getDouble();
 	}
 	else if (getType() == GType::BOOLEAN_TYPE)
 	{
@@ -202,8 +210,8 @@ bool GType::operator==(const GType& cCell2) const
 	}
 	else if (cCell2.getType() == GType::DOUBLE_TYPE)
 	{
-		floatFlag2 = true;
-		floatValue2 = cCell2.getDouble();
+		doubleFlag2 = true;
+		doubleValue2 = cCell2.getDouble();
 	}
 	else if (cCell2.getType() == GType::BOOLEAN_TYPE)
 	{
@@ -220,6 +228,8 @@ bool GType::operator==(const GType& cCell2) const
 		return (intValue1 == intValue2);
 	else if ((floatFlag1) && (floatFlag2))
 		return (floatValue1 == floatValue2);
+	else if ((doubleFlag1) && (doubleFlag2))
+		return (doubleValue1 == doubleValue2);
 	else if ((stringFlag1) && (stringFlag2))
 		return ((size() == cCell2.size()) && (strncmp(block, cCell2.block, size()) == 0));//strings
 	else if ((boolFlag1) && (boolFlag2))
@@ -227,63 +237,65 @@ bool GType::operator==(const GType& cCell2) const
 	// cross ints and floats
 	else if ((intFlag1) && (floatFlag2))
 		return (intValue1 == floatValue2);
+	else if ((intFlag1) && (doubleFlag2))
+		return (intValue1 == doubleValue2);
 	else if ((floatFlag1) && (intFlag2))
 		return (floatValue1 == intValue2);
+	else if ((floatFlag1) && (doubleFlag2))
+		return (floatValue1 == doubleValue2);
+	else if ((doubleFlag1) && (intFlag2))
+		return (doubleValue1 == intValue2);
+	else if ((doubleFlag1) && (floatFlag2))
+		return (doubleValue1 == floatValue2);
 
 	return false;
 }
 
 bool GType::operator==(const char& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getChar() == compValue;
 }
 
 bool GType::operator==(const short& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getShort() == compValue;
 }
 
 bool GType::operator==(const int& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getInt() == compValue;
 }
 
 bool GType::operator==(const int64_t& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getLong() == compValue;
 }
 
 bool GType::operator==(const float& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getFloat() == compValue;
 }
 
 bool GType::operator==(const double& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getDouble() == compValue;
 }
 
 bool GType::operator==(const char* compValue) const
 {
-	GType newCompValue(compValue);
-	return !((*this) == newCompValue);
+	return  strncmp(block, compValue, size());
 }
 
 bool GType::operator==(const bool& compValue) const
 {
-	GType cCell(compValue);
-	return !((*this) == compValue);
+	return getBoolean() == compValue;
 }
 
-bool GType::operator!=(const GType& cCell2) const
+//==========NOT EQUALS==========
+
+bool GType::operator!=(const GType& compValue) const
 {
-	return !((*this) == cCell2);
+	return !((*this) == compValue);
 }
 
 bool GType::operator!=(const char& compValue) const
@@ -325,4 +337,712 @@ bool GType::operator!=(const char* compValue) const
 bool GType::operator!=(const bool& compValue) const
 {
 	return !((*this) == compValue);
+}
+
+//==========LESS THAN==========
+
+bool GType::operator<(const GType& cCell2) const
+{
+	// compare the known types
+	bool intFlag1 = false;
+	bool intFlag2 = false;
+	bool floatFlag1 = false;
+	bool floatFlag2 = false;
+	bool doubleFlag1 = false;
+	bool doubleFlag2 = false;
+	bool stringFlag1 = false;
+	bool stringFlag2 = false;
+	bool boolFlag1 = false;
+	bool boolFlag2 = false;
+
+	// values
+	int64_t intValue1 = 0;
+	double floatValue1 = 0.0f;
+	double doubleValue1 = 0.0f;
+	bool boolValue1 = false;
+	int64_t intValue2 = 0;
+	double floatValue2 = 0.0f;
+	double doubleValue2 = 0.0f;
+	bool boolValue2 = false;
+
+	// get the first value
+	if (getType() == GType::CHAR_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getChar();
+	}
+	else if (getType() == GType::SHORT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getShort();
+	}
+	else if (getType() == GType::INT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getInt();
+	}
+	else if (getType() == GType::LONG_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getLong();
+	}
+	else if (getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag1 = true;
+		floatValue1 = getFloat();
+	}
+	else if (getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag1 = true;
+		doubleValue1 = getDouble();
+	}
+	else if (getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag1 = true;
+		boolValue1 = getBoolean();
+	}
+	else if (getType() == GType::STRING_TYPE)
+	{
+		stringFlag1 = true;
+	}
+
+	// get the second value
+	if (cCell2.getType() == GType::CHAR_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getChar();
+	}
+	else if (cCell2.getType() == GType::SHORT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getShort();
+	}
+	else if (cCell2.getType() == GType::INT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getInt();
+	}
+	else if (cCell2.getType() == GType::LONG_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getLong();
+	}
+	else if (cCell2.getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag2 = true;
+		floatValue2 = cCell2.getFloat();
+	}
+	else if (cCell2.getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag2 = true;
+		doubleValue2 = cCell2.getDouble();
+	}
+	else if (cCell2.getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag2 = true;
+		boolValue2 = cCell2.getBoolean();
+	}
+	else if (cCell2.getType() == GType::STRING_TYPE)
+	{
+		stringFlag2 = true;
+	}
+
+	// compare the gtypes
+	if ((intFlag1) && (intFlag2))
+		return (intValue1 < intValue2);
+	else if ((floatFlag1) && (floatFlag2))
+		return (floatValue1 < floatValue2);
+	else if ((doubleFlag1) && (doubleFlag2))
+		return (doubleValue1 < doubleValue2);
+	else if ((stringFlag1) && (stringFlag2))
+		return ((size() == cCell2.size()) && (strncmp(block, cCell2.block, size()) < 0));//strings
+	else if ((boolFlag1) && (boolFlag2))
+		return (boolValue1 < boolValue2);
+	// cross ints and floats
+	else if ((intFlag1) && (floatFlag2))
+		return (intValue1 < floatValue2);
+	else if ((intFlag1) && (doubleFlag2))
+		return (intValue1 < doubleValue2);
+	else if ((floatFlag1) && (intFlag2))
+		return (floatValue1 < intValue2);
+	else if ((floatFlag1) && (doubleFlag2))
+		return (floatValue1 < doubleValue2);
+	else if ((doubleFlag1) && (intFlag2))
+		return (doubleValue1 < intValue2);
+	else if ((doubleFlag1) && (floatFlag2))
+		return (doubleValue1 < floatValue2);
+
+	return false;
+}
+
+bool GType::operator<(const char& compValue) const
+{
+	return getChar() < compValue;
+}
+
+bool GType::operator<(const short& compValue) const
+{
+	return getShort() < compValue;
+}
+
+bool GType::operator<(const int& compValue) const
+{
+	return getInt() < compValue;
+}
+
+bool GType::operator<(const int64_t& compValue) const
+{
+	return getLong() < compValue;
+}
+
+bool GType::operator<(const float& compValue) const
+{
+	return getFloat() < compValue;
+}
+
+bool GType::operator<(const double& compValue) const
+{
+	return getDouble() < compValue;
+}
+
+bool GType::operator<(const char* compValue) const
+{
+	GType cCell(compValue);
+	return ((*this) < cCell);
+}
+
+bool GType::operator<(const bool& compValue) const
+{
+	return getBoolean() < compValue;
+}
+
+//==========GREATER THAN==========
+
+bool GType::operator>(const GType& cCell2) const
+{
+	// compare the known types
+	bool intFlag1 = false;
+	bool intFlag2 = false;
+	bool floatFlag1 = false;
+	bool floatFlag2 = false;
+	bool doubleFlag1 = false;
+	bool doubleFlag2 = false;
+	bool stringFlag1 = false;
+	bool stringFlag2 = false;
+	bool boolFlag1 = false;
+	bool boolFlag2 = false;
+
+	// values
+	int64_t intValue1 = 0;
+	double floatValue1 = 0.0f;
+	double doubleValue1 = 0.0f;
+	bool boolValue1 = false;
+	int64_t intValue2 = 0;
+	double floatValue2 = 0.0f;
+	double doubleValue2 = 0.0f;
+	bool boolValue2 = false;
+
+	// get the first value
+	if (getType() == GType::CHAR_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getChar();
+	}
+	else if (getType() == GType::SHORT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getShort();
+	}
+	else if (getType() == GType::INT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getInt();
+	}
+	else if (getType() == GType::LONG_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getLong();
+	}
+	else if (getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag1 = true;
+		floatValue1 = getFloat();
+	}
+	else if (getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag1 = true;
+		doubleValue1 = getDouble();
+	}
+	else if (getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag1 = true;
+		boolValue1 = getBoolean();
+	}
+	else if (getType() == GType::STRING_TYPE)
+	{
+		stringFlag1 = true;
+	}
+
+	// get the second value
+	if (cCell2.getType() == GType::CHAR_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getChar();
+	}
+	else if (cCell2.getType() == GType::SHORT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getShort();
+	}
+	else if (cCell2.getType() == GType::INT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getInt();
+	}
+	else if (cCell2.getType() == GType::LONG_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getLong();
+	}
+	else if (cCell2.getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag2 = true;
+		floatValue2 = cCell2.getFloat();
+	}
+	else if (cCell2.getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag2 = true;
+		doubleValue2 = cCell2.getDouble();
+	}
+	else if (cCell2.getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag2 = true;
+		boolValue2 = cCell2.getBoolean();
+	}
+	else if (cCell2.getType() == GType::STRING_TYPE)
+	{
+		stringFlag2 = true;
+	}
+
+	// compare the gtypes
+	if ((intFlag1) && (intFlag2))
+		return (intValue1 > intValue2);
+	else if ((floatFlag1) && (floatFlag2))
+		return (floatValue1 > floatValue2);
+	else if ((doubleFlag1) && (doubleFlag2))
+		return (doubleValue1 > doubleValue2);
+	else if ((stringFlag1) && (stringFlag2))
+		return ((size() == cCell2.size()) && (strncmp(block, cCell2.block, size()) > 0));//strings
+	else if ((boolFlag1) && (boolFlag2))
+		return (boolValue1 > boolValue2);
+	// cross ints and floats
+	else if ((intFlag1) && (floatFlag2))
+		return (intValue1 > floatValue2);
+	else if ((intFlag1) && (doubleFlag2))
+		return (intValue1 > doubleValue2);
+	else if ((floatFlag1) && (intFlag2))
+		return (floatValue1 > intValue2);
+	else if ((floatFlag1) && (doubleFlag2))
+		return (floatValue1 > doubleValue2);
+	else if ((doubleFlag1) && (intFlag2))
+		return (doubleValue1 > intValue2);
+	else if ((doubleFlag1) && (floatFlag2))
+		return (doubleValue1 > floatValue2);
+
+	return false;
+}
+
+bool GType::operator>(const char& compValue) const
+{
+	return getChar() > compValue;
+}
+
+bool GType::operator>(const short& compValue) const
+{
+	return getShort() > compValue;
+}
+
+bool GType::operator>(const int& compValue) const
+{
+	return getInt() > compValue;
+}
+
+bool GType::operator>(const int64_t& compValue) const
+{
+	return getLong() > compValue;
+}
+
+bool GType::operator>(const float& compValue) const
+{
+	return getFloat() > compValue;
+}
+
+bool GType::operator>(const double& compValue) const
+{
+	return getDouble() > compValue;
+}
+
+bool GType::operator>(const char* compValue) const
+{
+	GType cCell(compValue);
+	return ((*this) > cCell);
+}
+
+bool GType::operator>(const bool& compValue) const
+{
+	return getBoolean() > compValue;
+}
+
+//==========LESS THAN EQUALS TO==========
+
+bool GType::operator<=(const GType& cCell2) const
+{
+	// compare the known types
+	bool intFlag1 = false;
+	bool intFlag2 = false;
+	bool floatFlag1 = false;
+	bool floatFlag2 = false;
+	bool doubleFlag1 = false;
+	bool doubleFlag2 = false;
+	bool stringFlag1 = false;
+	bool stringFlag2 = false;
+	bool boolFlag1 = false;
+	bool boolFlag2 = false;
+
+	// values
+	int64_t intValue1 = 0;
+	double floatValue1 = 0.0f;
+	double doubleValue1 = 0.0f;
+	bool boolValue1 = false;
+	int64_t intValue2 = 0;
+	double floatValue2 = 0.0f;
+	double doubleValue2 = 0.0f;
+	bool boolValue2 = false;
+
+	// get the first value
+	if (getType() == GType::CHAR_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getChar();
+	}
+	else if (getType() == GType::SHORT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getShort();
+	}
+	else if (getType() == GType::INT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getInt();
+	}
+	else if (getType() == GType::LONG_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getLong();
+	}
+	else if (getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag1 = true;
+		floatValue1 = getFloat();
+	}
+	else if (getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag1 = true;
+		doubleValue1 = getDouble();
+	}
+	else if (getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag1 = true;
+		boolValue1 = getBoolean();
+	}
+	else if (getType() == GType::STRING_TYPE)
+	{
+		stringFlag1 = true;
+	}
+
+	// get the second value
+	if (cCell2.getType() == GType::CHAR_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getChar();
+	}
+	else if (cCell2.getType() == GType::SHORT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getShort();
+	}
+	else if (cCell2.getType() == GType::INT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getInt();
+	}
+	else if (cCell2.getType() == GType::LONG_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getLong();
+	}
+	else if (cCell2.getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag2 = true;
+		floatValue2 = cCell2.getFloat();
+	}
+	else if (cCell2.getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag2 = true;
+		doubleValue2 = cCell2.getDouble();
+	}
+	else if (cCell2.getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag2 = true;
+		boolValue2 = cCell2.getBoolean();
+	}
+	else if (cCell2.getType() == GType::STRING_TYPE)
+	{
+		stringFlag2 = true;
+	}
+
+	// compare the gtypes
+	if ((intFlag1) && (intFlag2))
+		return (intValue1 <= intValue2);
+	else if ((floatFlag1) && (floatFlag2))
+		return (floatValue1 <= floatValue2);
+	else if ((doubleFlag1) && (doubleFlag2))
+		return (doubleValue1 <= doubleValue2);
+	else if ((stringFlag1) && (stringFlag2))
+		return ((size() == cCell2.size()) && (strncmp(block, cCell2.block, size()) <= 0));//strings
+	else if ((boolFlag1) && (boolFlag2))
+		return (boolValue1 <= boolValue2);
+	// cross ints and floats
+	else if ((intFlag1) && (floatFlag2))
+		return (intValue1 <= floatValue2);
+	else if ((intFlag1) && (doubleFlag2))
+		return (intValue1 <= doubleValue2);
+	else if ((floatFlag1) && (intFlag2))
+		return (floatValue1 <= intValue2);
+	else if ((floatFlag1) && (doubleFlag2))
+		return (floatValue1 <= doubleValue2);
+	else if ((doubleFlag1) && (intFlag2))
+		return (doubleValue1 <= intValue2);
+	else if ((doubleFlag1) && (floatFlag2))
+		return (doubleValue1 <= floatValue2);
+
+	return false;
+}
+
+bool GType::operator<=(const char& compValue) const
+{
+	return getChar() <= compValue;
+}
+
+bool GType::operator<=(const short& compValue) const
+{
+	return getShort() <= compValue;
+}
+
+bool GType::operator<=(const int& compValue) const
+{
+	return getInt() <= compValue;
+}
+
+bool GType::operator<=(const int64_t& compValue) const
+{
+	return getLong() <= compValue;
+}
+
+bool GType::operator<=(const float& compValue) const
+{
+	return getFloat() <= compValue;
+}
+
+bool GType::operator<=(const double& compValue) const
+{
+	return getDouble() <= compValue;
+}
+
+bool GType::operator<=(const char* compValue) const
+{
+	GType cCell(compValue);
+	return ((*this) <= cCell);
+}
+
+bool GType::operator<=(const bool& compValue) const
+{
+	return getBoolean() <= compValue;
+}
+
+//==========GREATER THAN EQUALS TO==========
+
+bool GType::operator>=(const GType& cCell2) const
+{
+	// compare the known types
+	bool intFlag1 = false;
+	bool intFlag2 = false;
+	bool floatFlag1 = false;
+	bool floatFlag2 = false;
+	bool doubleFlag1 = false;
+	bool doubleFlag2 = false;
+	bool stringFlag1 = false;
+	bool stringFlag2 = false;
+	bool boolFlag1 = false;
+	bool boolFlag2 = false;
+
+	// values
+	int64_t intValue1 = 0;
+	double floatValue1 = 0.0f;
+	double doubleValue1 = 0.0f;
+	bool boolValue1 = false;
+	int64_t intValue2 = 0;
+	double floatValue2 = 0.0f;
+	double doubleValue2 = 0.0f;
+	bool boolValue2 = false;
+
+	// get the first value
+	if (getType() == GType::CHAR_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getChar();
+	}
+	else if (getType() == GType::SHORT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getShort();
+	}
+	else if (getType() == GType::INT_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getInt();
+	}
+	else if (getType() == GType::LONG_TYPE)
+	{
+		intFlag1 = true;
+		intValue1 = getLong();
+	}
+	else if (getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag1 = true;
+		floatValue1 = getFloat();
+	}
+	else if (getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag1 = true;
+		doubleValue1 = getDouble();
+	}
+	else if (getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag1 = true;
+		boolValue1 = getBoolean();
+	}
+	else if (getType() == GType::STRING_TYPE)
+	{
+		stringFlag1 = true;
+	}
+
+	// get the second value
+	if (cCell2.getType() == GType::CHAR_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getChar();
+	}
+	else if (cCell2.getType() == GType::SHORT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getShort();
+	}
+	else if (cCell2.getType() == GType::INT_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getInt();
+	}
+	else if (cCell2.getType() == GType::LONG_TYPE)
+	{
+		intFlag2 = true;
+		intValue2 = cCell2.getLong();
+	}
+	else if (cCell2.getType() == GType::FLOAT_TYPE)
+	{
+		floatFlag2 = true;
+		floatValue2 = cCell2.getFloat();
+	}
+	else if (cCell2.getType() == GType::DOUBLE_TYPE)
+	{
+		doubleFlag2 = true;
+		doubleValue2 = cCell2.getDouble();
+	}
+	else if (cCell2.getType() == GType::BOOLEAN_TYPE)
+	{
+		boolFlag2 = true;
+		boolValue2 = cCell2.getBoolean();
+	}
+	else if (cCell2.getType() == GType::STRING_TYPE)
+	{
+		stringFlag2 = true;
+	}
+
+	// compare the gtypes
+	if ((intFlag1) && (intFlag2))
+		return (intValue1 >= intValue2);
+	else if ((floatFlag1) && (floatFlag2))
+		return (floatValue1 >= floatValue2);
+	else if ((doubleFlag1) && (doubleFlag2))
+		return (doubleValue1 >= doubleValue2);
+	else if ((stringFlag1) && (stringFlag2))
+		return ((size() == cCell2.size()) && (strncmp(block, cCell2.block, size()) >= 0));//strings
+	else if ((boolFlag1) && (boolFlag2))
+		return (boolValue1 >= boolValue2);
+	// cross ints and floats
+	else if ((intFlag1) && (floatFlag2))
+		return (intValue1 >= floatValue2);
+	else if ((intFlag1) && (doubleFlag2))
+		return (intValue1 >= doubleValue2);
+	else if ((floatFlag1) && (intFlag2))
+		return (floatValue1 >= intValue2);
+	else if ((floatFlag1) && (doubleFlag2))
+		return (floatValue1 >= doubleValue2);
+	else if ((doubleFlag1) && (intFlag2))
+		return (doubleValue1 >= intValue2);
+	else if ((doubleFlag1) && (floatFlag2))
+		return (doubleValue1 >= floatValue2);
+	return false;
+}
+
+
+bool GType::operator>=(const char& compValue) const
+{
+	return getChar() >= compValue;
+}
+
+bool GType::operator>=(const short& compValue) const
+{
+	return getShort() >= compValue;
+}
+
+bool GType::operator>=(const int& compValue) const
+{
+	return getInt() >= compValue;
+}
+
+bool GType::operator>=(const int64_t& compValue) const
+{
+	return getLong() >= compValue;
+}
+
+bool GType::operator>=(const float& compValue) const
+{
+	return getFloat() >= compValue;
+}
+
+bool GType::operator>=(const double& compValue) const
+{
+	return getDouble() >= compValue;
+}
+
+bool GType::operator>=(const char* compValue) const
+{
+	GType cCell(compValue);
+	return ((*this) >= cCell);
+}
+
+bool GType::operator>=(const bool& compValue) const
+{
+	return getBoolean() >= compValue;
 }

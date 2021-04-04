@@ -18,8 +18,6 @@
 #define _GTYPES
 
 #include <ctime>
-#include <iomanip>
-#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,13 +74,13 @@ public:
 	bool getBoolean() const;
 
 	operator const char*() const;
-	/*operator char() const;
+	operator char() const;
 	operator short() const;
 	operator int() const;
 	operator int64_t() const;
 	operator float() const;
 	operator double() const;
-	operator bool() const;*/
+	operator bool() const;
 	unsigned int size() const;
 
 	// sets
@@ -121,6 +119,50 @@ public:
 	bool operator!=(const double&) const;
 	bool operator!=(const char*) const;
 	bool operator!=(const bool&) const;
+
+	//< operators
+	bool operator<(const GType&) const;
+	bool operator<(const char&) const;
+	bool operator<(const short&) const;
+	bool operator<(const int&) const;
+	bool operator<(const int64_t&) const;
+	bool operator<(const float&) const;
+	bool operator<(const double&) const;
+	bool operator<(const char*) const;
+	bool operator<(const bool&) const;
+
+	//> operators
+	bool operator>(const GType&) const;
+	bool operator>(const char&) const;
+	bool operator>(const short&) const;
+	bool operator>(const int&) const;
+	bool operator>(const int64_t&) const;
+	bool operator>(const float&) const;
+	bool operator>(const double&) const;
+	bool operator>(const char*) const;
+	bool operator>(const bool&) const;
+
+	//<= operators
+	bool operator<=(const GType&) const;
+	bool operator<=(const char&) const;
+	bool operator<=(const short&) const;
+	bool operator<=(const int&) const;
+	bool operator<=(const int64_t&) const;
+	bool operator<=(const float&) const;
+	bool operator<=(const double&) const;
+	bool operator<=(const char*) const;
+	bool operator<=(const bool&) const;
+
+	//>= operators
+	bool operator>=(const GType&) const;
+	bool operator>=(const char&) const;
+	bool operator>=(const short&) const;
+	bool operator>=(const int&) const;
+	bool operator>=(const int64_t&) const;
+	bool operator>=(const float&) const;
+	bool operator>=(const double&) const;
+	bool operator>=(const char*) const;
+	bool operator>=(const bool&) const;
 
 	// Member helpers
 	unsigned int cfind(char) const;
