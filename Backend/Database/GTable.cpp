@@ -734,11 +734,39 @@ shmea::GList GTable::getCol(const GString& headerSearchText) const
  * @param headerSearchText the header for the desired column (as a C-string)
  * @return the desired column's data (if it exists)
  */
+const shmea::GList& GTable::operator[](int rowIndex) const
+{
+	unsigned int rIndex = rowIndex;
+	return cells[rIndex];
+}
+
+/*!
+ * @brief GTable bracket operator [C string]
+ * @details retrieves a GTable column with a given header
+ * @param headerSearchText the header for the desired column (as a C-string)
+ * @return the desired column's data (if it exists)
+ */
+const shmea::GList& GTable::operator[](unsigned int rowIndex) const
+{
+	return cells[rowIndex];
+}
+
+/*!
+ * @brief GTable bracket operator [C string]
+ * @details retrieves a GTable column with a given header
+ * @param headerSearchText the header for the desired column (as a C-string)
+ * @return the desired column's data (if it exists)
+ */
 shmea::GList GTable::operator[](const char* headerSearchText) const
 {
+	if(!headerSearchText)
+	{ 
+		shmea::GList retCol;
+		return retCol;
+	} 
+		
 	GString newHeaderStr(headerSearchText);
-	shmea::GList retCol = getCol(newHeaderStr);
-	return retCol;
+	return getCol(newHeaderStr);
 }
 
 /*!

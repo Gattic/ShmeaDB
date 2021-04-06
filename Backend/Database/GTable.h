@@ -102,6 +102,8 @@ public:
 	void setRange(float);
 
 	// operators
+	const GList& operator[](int) const;
+	const GList& operator[](unsigned int) const;
 	GList operator[](const char*) const;
 	GList operator[](const GString&) const;
 	void operator=(const GTable&);

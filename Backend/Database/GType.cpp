@@ -186,7 +186,7 @@ char GType::getChar() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		char value = atoi(c_str());
+		char value = *block;
 		return value;
 	}
 
@@ -233,7 +233,7 @@ short GType::getShort() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		short value = atoi(c_str());
+		short value = *block;
 		return value;
 	}
 
@@ -280,7 +280,7 @@ int GType::getInt() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int value = atoi(c_str());
+		int value = *block;
 		return value;
 	}
 
@@ -327,7 +327,7 @@ int64_t GType::getLong() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int64_t value = atoll(c_str());
+		int64_t value = *block;
 		return value;
 	}
 
@@ -374,7 +374,7 @@ float GType::getFloat() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		float value = atof(c_str());
+		float value = *block;
 		return value;
 	}
 
@@ -421,7 +421,7 @@ double GType::getDouble() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		double value = atof(c_str());
+		double value = *block;
 		return value;
 	}
 
@@ -469,7 +469,7 @@ bool GType::getBoolean() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		bool value = atoll(c_str());
+		bool value = *block;
 		return value;
 	}
 

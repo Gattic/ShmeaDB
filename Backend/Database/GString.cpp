@@ -20,9 +20,10 @@ using namespace shmea;
 
 GString::GString()
 {
-	type = NULL_TYPE;
 	blockSize = 0;
 	block = NULL;
+
+	initEmpty();
 }
 
 GString::GString(const GString& g2) : GType(g2)
@@ -35,6 +36,15 @@ GString::GString(const GType& g2) : GType(g2)
 	// Calling parent constructor
 }
 
+
+void GString::initEmpty()
+{
+	clean();
+	type = STRING_TYPE;
+	block = (char*)malloc(1); // only the escape for the string
+	block[blockSize] = '\0';
+}
+
 GString::GString(const char* newBlock)
 {
 	type = NULL_TYPE;
@@ -45,6 +55,8 @@ GString::GString(const char* newBlock)
 	unsigned int newBlockSize = strlen(newBlock);
 	if (newBlockSize > 0)
 		set(STRING_TYPE, newBlock, newBlockSize);
+	else
+		initEmpty();
 }
 
 GString::GString(const char* newBlock, unsigned int len)
@@ -57,6 +69,8 @@ GString::GString(const char* newBlock, unsigned int len)
 	unsigned int newBlockSize = len;
 	if (newBlockSize > 0)
 		set(STRING_TYPE, newBlock, newBlockSize);
+	else
+		initEmpty();
 }
 
 GString::GString(const bool& cBool) : GType(cBool)

@@ -70,6 +70,7 @@ public:
 	GString operator+=(const char*);
 
 	// Strng Helpers
+	void initEmpty();
 	GString substr(unsigned int, unsigned int=0) const;
 
 	// Member helpers

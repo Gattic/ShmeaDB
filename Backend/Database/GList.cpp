@@ -345,7 +345,7 @@ bool GList::getBoolean(unsigned int index) const
 GType GList::getGType(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return GType();
 
 	return items[index];
 }
@@ -399,7 +399,7 @@ void GList::print() const
 GType GList::operator[](unsigned int index)
 {
 	if (index >= items.size())
-		return 0;
+		return GType();
 
 	return items[index];
 }
@@ -407,7 +407,7 @@ GType GList::operator[](unsigned int index)
 const GType GList::operator[](unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return GType();
 
 	return items[index];
 }

@@ -43,7 +43,7 @@ private:
 
 	static GString escapeSeparators(const GType&);
 	static GString addDelimiter(const GString&, bool);
-	static GString addItemToSerial(const GType&);
+	static GString addItemToSerial(unsigned int, const GType&);
 	static GString serializeItem(const GType&, bool);
 
 	static bool isDelimiterAt(const char*, int, const char*);

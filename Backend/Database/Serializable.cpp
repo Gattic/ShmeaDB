@@ -81,9 +81,9 @@ GString Serializable::addDelimiter(const GString& serial, bool isLastItem)
  * @param itemType the type of the contents (INT_TYPE, STRING_TYPE, etc.)
  * @return the GTable version of the bundle
  */
-GString Serializable::addItemToSerial(const GType& cItem)
+GString Serializable::addItemToSerial(unsigned int originalSize, const GType& cItem)
 {
-	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)cItem.size()) + "," + cItem.c_str();
+	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)originalSize) + "," + cItem.c_str();
 	return retSerial;
 }
 
@@ -100,7 +100,7 @@ GString Serializable::serializeItem(const GType& cItem, bool isLastItem)
 {
 	GString escapedItem = escapeSeparators(cItem);
 	GString delimittedItem = addDelimiter(cItem, isLastItem);
-	return addItemToSerial(delimittedItem);
+	return addItemToSerial(cItem.size(), delimittedItem);
 }
 
 /*!
@@ -238,6 +238,9 @@ GString Serializable::Serialize(const GList& itemizedTable, bool overrideLast)
 		bool isLastItem = (i == itemizedTable.size() - 1) && (!overrideLast);
 		retStr += serializeItem(itemizedTable[i], isLastItem);
 	}
+
+	for(unsigned int i=0; i < retStr.length(); ++i)
+		printf("retStr[%u]: 0x%02X:%c\n", i, retStr[i], retStr[i]);
 
 	return retStr;
 }
@@ -469,37 +472,70 @@ void Serializable::Deserialize(GList& retList, const GString& serial, int maxIte
 	int nextDel = 0; // delimiter
 	const bool NOT_ESCAPED = false;
 
-	do // TODO: // FIX THIS LOOP THEN LOOK OVER ENTIRE FILE AGAIN
+	do // TODO: FIX THIS LOOP
 	{
 		nextDel = getDelimiterIdx(serialCopy, GString("|"), NOT_ESCAPED);
 		int lastDel = getDelimiterIdx(serialCopy, GString("\\|"), NOT_ESCAPED);
+		printf("DELS: %d:%d\n", nextDel, lastDel);
 
 		bool isLastBlock = (nextDel == lastDel+1);
 		int delimiterLen = ((isLastBlock) && (lastDel > 0)) ? 2 : 1;
 
+		// Strip the current block off
+		GString cBlock = "";
+		if((isLastBlock) && (lastDel > 0))
+		{
+			cBlock = serialCopy.substr(0, lastDel);
+			serialCopy = "";
+			
+		}
+		else
+		{
+			cBlock = serialCopy.substr(0, nextDel);
+			serialCopy = serialCopy.substr(nextDel+1);
+		}
+
 		// Get the Type from the buffer
-		int subBreakPoint = getDelimiterIdx(serialCopy, GString(","), NOT_ESCAPED);
+		printf("HERE0: %u\n", cBlock.length());
+		int subBreakPoint = getDelimiterIdx(cBlock, GString(","), NOT_ESCAPED);
+		printf("DEER0: %u\n", subBreakPoint);
 		if (subBreakPoint != sizeof(int))
 			break;
 
-		int newType = serialCopy.substr(0, subBreakPoint).getInt();
-		serialCopy = serialCopy.substr(subBreakPoint+1); // plus the comma
+		printf("HERE1: %u\n", cBlock.length());
+		for(unsigned int i=0; i < cBlock.substr(0, subBreakPoint).length(); ++i)
+			printf("HERE1.1[%u]: 0x%02X:%c\n", i, cBlock.substr(0, subBreakPoint)[i], cBlock.substr(0, subBreakPoint)[i]);
+		int newType = cBlock.substr(0, subBreakPoint).getInt();
+		cBlock = cBlock.substr(subBreakPoint+1); // plus the comma
 
 		// Get the Size from the buffer
-		unsigned int newSize = (unsigned int)(serialCopy.substr(0, subBreakPoint).getInt());
-		subBreakPoint = getDelimiterIdx(serialCopy, GString(","), NOT_ESCAPED);
+		subBreakPoint = getDelimiterIdx(cBlock, GString(","), NOT_ESCAPED);
+		printf("DEER1: %u\n", subBreakPoint);
+		printf("sizeof(int): %lu\n", sizeof(int));
 		if (subBreakPoint != sizeof(int))
 			break;
-		serialCopy = serialCopy.substr(subBreakPoint+1); // plus the comma
+		for(unsigned int i=0; i < cBlock.substr(0, subBreakPoint).length(); ++i)
+			printf("DEER1.1[%u]: 0x%02X:%c\n", i, cBlock.substr(0, subBreakPoint)[i], cBlock.substr(0, subBreakPoint)[i]);
+		unsigned int newSize = (unsigned int)(cBlock.substr(0, subBreakPoint).getInt());
+		cBlock = cBlock.substr(subBreakPoint+1); // plus the comma
 
+		printf("HERE2: %u\n", cBlock.length());
 		// Get the Body from the buffer
-		GString newBlock = deserializeContent(serialCopy);
+		GString newBlock = deserializeContent(cBlock);
+		printf("DEER2: %u\n", subBreakPoint);
+		printf("delimiterLen: %u\n", delimiterLen);
+		printf("nbSize != newSize: %u != %u\n", newBlock.size(), newSize);
 		if(newBlock.length() != newSize)
 			break;
-		serialCopy = serialCopy.substr(newSize+delimiterLen); // plus the delimiter
+		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 
+		printf("HERE3: %u\n", cBlock.length());
 		retList.addObject(newType, newBlock, newSize);
 		++itemCounter;
+
+		for(unsigned int i=0; i < cBlock.length(); ++i)
+			printf("DESER-cBlock[%u]: 0x%02X:%c\n", i, cBlock[i], cBlock[i]);
+		printf("---\n");
 
 	} while ((nextDel > 0) && (maxItems>0? (itemCounter < maxItems):true));
 }
