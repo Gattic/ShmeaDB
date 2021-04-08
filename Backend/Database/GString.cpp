@@ -34,6 +34,7 @@ GString::GString(const GString& g2) : GType(g2)
 GString::GString(const GType& g2) : GType(g2)
 {
 	// Calling parent constructor
+	type = STRING_TYPE;
 }
 
 

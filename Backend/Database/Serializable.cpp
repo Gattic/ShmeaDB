@@ -83,7 +83,11 @@ GString Serializable::addDelimiter(const GString& serial, bool isLastItem)
  */
 GString Serializable::addItemToSerial(unsigned int originalSize, const GType& cItem)
 {
-	GString retSerial = GString((int)cItem.getType()) + "," + GString((int)originalSize) + "," + cItem.c_str();
+	//GString retSerial = GType((int)cItem.getType()) + GType((int)originalSize) + cItem.c_str();
+	//return retSerial;
+
+	GString retSerial = GString((int)cItem.getType()) + GString((int)originalSize);
+	retSerial +=  GString(cItem.c_str(), cItem.size());
 	return retSerial;
 }
 
@@ -239,9 +243,6 @@ GString Serializable::Serialize(const GList& itemizedTable, bool overrideLast)
 		retStr += serializeItem(itemizedTable[i], isLastItem);
 	}
 
-	for(unsigned int i=0; i < retStr.length(); ++i)
-		printf("retStr[%u]: 0x%02X:%c\n", i, retStr[i], retStr[i]);
-
 	return retStr;
 }
 
@@ -375,10 +376,6 @@ GString Serializable::Serialize(const ServiceData* cData)
 	metaList.addString(cData->getSID());
 	metaList.addInt(cData->getType());
 	metaList.addString(cData->getCommand());
-	printf("metaList-Size: %d\n", metaList.size());
-	printf("SER-sdSID: %s\n", cData->getSID().c_str());
-	printf("SER-sdType: %d\n", cData->getType());
-	printf("SER-sdCommand: %s\n", cData->getCommand().c_str());
 
 	GString metaData = Serialize(metaList, true);
 
@@ -472,11 +469,10 @@ void Serializable::Deserialize(GList& retList, const GString& serial, int maxIte
 	int nextDel = 0; // delimiter
 	const bool NOT_ESCAPED = false;
 
-	do // TODO: FIX THIS LOOP
+	do
 	{
 		nextDel = getDelimiterIdx(serialCopy, GString("|"), NOT_ESCAPED);
 		int lastDel = getDelimiterIdx(serialCopy, GString("\\|"), NOT_ESCAPED);
-		printf("DELS: %d:%d\n", nextDel, lastDel);
 
 		bool isLastBlock = (nextDel == lastDel+1);
 		int delimiterLen = ((isLastBlock) && (lastDel > 0)) ? 2 : 1;
@@ -496,46 +492,21 @@ void Serializable::Deserialize(GList& retList, const GString& serial, int maxIte
 		}
 
 		// Get the Type from the buffer
-		printf("HERE0: %u\n", cBlock.length());
-		int subBreakPoint = getDelimiterIdx(cBlock, GString(","), NOT_ESCAPED);
-		printf("DEER0: %u\n", subBreakPoint);
-		if (subBreakPoint != sizeof(int))
-			break;
-
-		printf("HERE1: %u\n", cBlock.length());
-		for(unsigned int i=0; i < cBlock.substr(0, subBreakPoint).length(); ++i)
-			printf("HERE1.1[%u]: 0x%02X:%c\n", i, cBlock.substr(0, subBreakPoint)[i], cBlock.substr(0, subBreakPoint)[i]);
-		int newType = cBlock.substr(0, subBreakPoint).getInt();
-		cBlock = cBlock.substr(subBreakPoint+1); // plus the comma
+		int newType = cBlock.substr(0, sizeof(int)).getInt();
+		cBlock = cBlock.substr(sizeof(int)); // plus the comma
 
 		// Get the Size from the buffer
-		subBreakPoint = getDelimiterIdx(cBlock, GString(","), NOT_ESCAPED);
-		printf("DEER1: %u\n", subBreakPoint);
-		printf("sizeof(int): %lu\n", sizeof(int));
-		if (subBreakPoint != sizeof(int))
-			break;
-		for(unsigned int i=0; i < cBlock.substr(0, subBreakPoint).length(); ++i)
-			printf("DEER1.1[%u]: 0x%02X:%c\n", i, cBlock.substr(0, subBreakPoint)[i], cBlock.substr(0, subBreakPoint)[i]);
-		unsigned int newSize = (unsigned int)(cBlock.substr(0, subBreakPoint).getInt());
-		cBlock = cBlock.substr(subBreakPoint+1); // plus the comma
+		unsigned int newSize = (unsigned int)(cBlock.substr(0, sizeof(int)).getInt());
+		cBlock = cBlock.substr(sizeof(int)); // plus the comma
 
-		printf("HERE2: %u\n", cBlock.length());
 		// Get the Body from the buffer
 		GString newBlock = deserializeContent(cBlock);
-		printf("DEER2: %u\n", subBreakPoint);
-		printf("delimiterLen: %u\n", delimiterLen);
-		printf("nbSize != newSize: %u != %u\n", newBlock.size(), newSize);
 		if(newBlock.length() != newSize)
 			break;
-		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 
-		printf("HERE3: %u\n", cBlock.length());
+		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 		retList.addObject(newType, newBlock, newSize);
 		++itemCounter;
-
-		for(unsigned int i=0; i < cBlock.length(); ++i)
-			printf("DESER-cBlock[%u]: 0x%02X:%c\n", i, cBlock[i], cBlock[i]);
-		printf("---\n");
 
 	} while ((nextDel > 0) && (maxItems>0? (itemCounter < maxItems):true));
 }
@@ -765,26 +736,19 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 
 
 	GList metaList;
-	printf("PRE-serial.length(): %u\n", serial.length());
 	unsigned int oldLen = serial.length();
 	Deserialize(metaList, serial, 3);//we want only 3 GItems
-	printf("metaList-Size: %d\n", metaList.size());
-	printf("POST-serial.length(): %u\n", serial.length());
-	printf("oldLen-serial.length(): %u\n", oldLen-serial.length());
 	const char* repData = &serial[oldLen-serial.length()];
 
 	// metadata
 	GString sdSID = metaList.getString(0);
 	retData->setSID(sdSID);
-	printf("sdSID: %s\n", sdSID.c_str());
 
 	int sdType = metaList.getInt(1);
 	retData->setType(sdType);
-	printf("sdType: %d\n", sdType);
 
 	GString sdCommand = metaList.getString(2);
 	retData->setCommand(sdCommand);
-	printf("sdCommand: %s\n", sdCommand.c_str());
 
 	switch(sdType)
 	{

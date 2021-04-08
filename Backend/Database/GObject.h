@@ -52,7 +52,7 @@ public:
 
 	// gets
 	GTable getTable(unsigned int) const;
-	GTable getMembers() const;
+	const GTable& getMembers() const;
 	unsigned int size() const;
 	bool empty() const;
 

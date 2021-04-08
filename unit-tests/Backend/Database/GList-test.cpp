@@ -92,6 +92,7 @@ void GListUnitTest()
 
 	G_assert (__FILE__, __LINE__, "==============table0[0].getType() Failed==============", table0[0][0].getType() == shmea::GType::STRING_TYPE);
 	G_assert (__FILE__, __LINE__, "==============table0[0].size() Failed==============", table0[0][0].size() == 4);
+
 	G_assert (__FILE__, __LINE__, "==============table0[0][0] Failed==============", table0[0][0] == "derp");
 	G_assert (__FILE__, __LINE__, "==============table0[0][1] Failed==============", table0[0][1] == "herp");
 	G_assert (__FILE__, __LINE__, "==============table0[0][2] Failed==============", table0[0][2] == "chirp");
@@ -103,6 +104,27 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "==============table0[1][2] Failed==============", table0[1][2] == "when");
 	G_assert (__FILE__, __LINE__, "==============table0[1][3] Failed==============", table0[1][3] == "where");
 	G_assert (__FILE__, __LINE__, "==============table0[1][4] Failed==============", table0[1][4] == "why");
+
+	shmea::GString serializedStr = shmea::Serializable::Serialize(table0);
+	shmea::GTable deserializedTable;
+	shmea::Serializable::Deserialize(deserializedTable, serializedStr);
+
+	G_assert (__FILE__, __LINE__, "==============GTable-Deserialize Failed==============", deserializedTable.numberOfRows() == 2);
+	G_assert (__FILE__, __LINE__, "==============GTable-Deserialize Failed==============", deserializedTable.numberOfCols() ==5);
+	G_assert (__FILE__, __LINE__, "==============GTable-Deserialize-size Failed==============", deserializedTable[0].size() == 5);
+
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[0][0] Failed==============", deserializedTable[0][0] == "derp");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[0][1] Failed==============", deserializedTable[0][1] == "herp");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[0][2] Failed==============", deserializedTable[0][2] == "chirp");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[0][3] Failed==============", deserializedTable[0][3] == "slurp");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[0][4] Failed==============", deserializedTable[0][4] == "burp");
+
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[1][0] Failed==============", deserializedTable[1][0] == "who");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[1][1] Failed==============", deserializedTable[1][1] == "what");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[1][2] Failed==============", deserializedTable[1][2] == "when");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[1][3] Failed==============", deserializedTable[1][3] == "where");
+	G_assert (__FILE__, __LINE__, "==============deserializedTable[1][4] Failed==============", deserializedTable[1][4] == "why");
+
 
 	shmea::GTable table1;
 	table1.addRow(list2);
@@ -117,11 +139,14 @@ void GListUnitTest()
 	cObj.addTable(table1);
 	cObj.addTable(table2);
 
-	shmea::GString serializedStr = shmea::Serializable::Serialize(cObj);
+	serializedStr = shmea::Serializable::Serialize(cObj);
 	shmea::GObject deserializedObj;
 	shmea::Serializable::Deserialize(deserializedObj, serializedStr);
 
-	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-GList::size() Failed==============", deserializedObj.getMembers()[0].size() == 5);
+	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfRows() == 2);
+	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfCols() == 5);
+	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-members-row[0]-size Failed==============", deserializedObj.getMembers()[0].size() == 5);
+
 	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][0] Failed==============", deserializedObj.getMembers()[0][0] == "derp");
 	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][1] Failed==============", deserializedObj.getMembers()[0][1] == "herp");
 	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
