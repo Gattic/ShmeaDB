@@ -382,7 +382,6 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	shmea::GString rawData = shmea::Serializable::Serialize(cData);
 	if (rawData.length() == 0)
 		return -1;
-	printf("rawData.length(): %u\n", rawData.length());
 
 	// Encrypt
 	Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
@@ -396,11 +395,11 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 		return -1;
 	}
 
+	printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
 	/*printf("Key Write: %lld\n", key);
 	for(int i=0;i<crypt->size;++i)
 		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);*/
 
-	printf("crypt->size*2: %d\n", crypt->size*2);
 	unsigned int writeLen = 0;
 	for (unsigned int i = 0; i < crypt->size * 2; ++i)
 	{
@@ -411,7 +410,6 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	if (writeLen != sizeof(int64_t) * crypt->size)
 		printf("[SOCKS] Write error: %u/%llu\n", writeLen, sizeof(int64_t) * crypt->size);
 
-	printf("writeLen: %d\n", writeLen);
 	printf("==============================================================\n");
 	// delete it after we are done
 	if (crypt)

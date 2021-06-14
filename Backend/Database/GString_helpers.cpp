@@ -18,6 +18,60 @@
 
 using namespace shmea;
 
+// TODO: ADD UNIT TESTS
+GType* GString::Typify(const char* word, unsigned int wordLen)
+{
+	// deduce the type flag
+	int newType = STRING_TYPE;
+	if (isInteger(word))
+		newType = LONG_TYPE;
+	else
+	{
+		newType = FLOAT_TYPE;
+		if (!isFloat(word))
+			newType = STRING_TYPE;
+	}
+
+	if (newType == FLOAT_TYPE)
+	{
+		float newBlock = atof(word);
+		GType* retVar = new GType(newType, &newBlock, sizeof(float));
+		return retVar;
+	}
+	else if (newType == LONG_TYPE)
+	{
+		// int
+		/*int64_t newBlock=atol(word);
+		void* pVal=NULL;
+		if(newBlock < MAX_INT)
+		{
+			newType=INT_TYPE;
+			if(newBlock < MAX_SHORT)
+			{
+				newType=SHORT_TYPE;
+				if(newBlock < MAX_CHAR)
+				{
+					newType=CHAR_TYPE;
+					//malloc for the char
+					pVal=(void*)malloc(sizeof(char));
+					*((char*)pVal)=(char)newBlock;
+				}
+				pVal=(void*)malloc(sizeof(short));
+				*((short*)pVal)=(short)newBlock;
+			}
+			pVal=(void*)malloc(sizeof(int));
+			*((int*)pVal)=(int)newBlock;
+		}*/
+
+		int64_t newBlock = atoll(word);
+		GType* retVar = new GType(newType, &newBlock, sizeof(int64_t));
+		return retVar;
+	}
+
+	GType* retVar = new GType(newType, word, wordLen);
+	return retVar;
+}
+
 // Member helpers
 bool GString::isWhitespace() const
 {

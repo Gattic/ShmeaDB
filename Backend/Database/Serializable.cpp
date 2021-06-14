@@ -419,7 +419,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		}
 	}
 
-			printf("WRITE-metaData[%d]: %s\n", metaData.length(), metaData.c_str());
+			//printf("WRITE-metaData[%d]: %s\n", metaData.length(), metaData.c_str());
 			/*for(unsigned int rCounter=0;rCounter<metaData.length();++rCounter)
 			{
 				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, metaData[rCounter], metaData[rCounter]);
@@ -427,7 +427,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 					printf("-------------------------------\n");
 			}*/
 
-			printf("WRITE-repData[%d]: %s\n", repData.length(), repData.c_str());
+			//printf("WRITE-repData[%d]: %s\n", repData.length(), repData.c_str());
 			/*for(unsigned int rCounter=0;rCounter<repData.length();++rCounter)
 			{
 				printf("WRITE[%u]: 0x%02X:%c\n", rCounter, repData[rCounter], repData[rCounter]);
@@ -437,7 +437,13 @@ GString Serializable::Serialize(const ServiceData* cData)
 
 
 	// Combine the header and body into one string
-	GString serial = repData + metaData;
+	GString serial = metaData + repData;
+	/*for(unsigned int rCounter=0;rCounter<serial.length();++rCounter)
+	{
+		printf("Serialize[%u]: 0x%02X:%c\n", rCounter, serial[rCounter], serial[rCounter]);
+		if(serial[rCounter] == 0x7C)
+			printf("-------------------------------\n");
+	}*/
 	return serial;
 }
 
@@ -457,20 +463,22 @@ GString Serializable::Serialize(const ServiceData* cData)
  * @param the length of the serial
  * @return the full list with all contents
  */
-void Serializable::Deserialize(GList& retList, const GString& serial, int maxItems)
+int Serializable::Deserialize(GList& retList, const GString& serial, int maxItems)
 {
 	if (serial.length() == 0)
-		return;
+		return 0;
 
 	// copy the serial (keep the original intact)
 	GString serialCopy = serial;
 
+	int retLen = 0;
 	int itemCounter = 0;
 	int nextDel = 0; // delimiter
 	const bool NOT_ESCAPED = false;
 
 	do
 	{
+		//printf("Des-Loop0\n");
 		nextDel = getDelimiterIdx(serialCopy, GString("|"), NOT_ESCAPED);
 		int lastDel = getDelimiterIdx(serialCopy, GString("\\|"), NOT_ESCAPED);
 
@@ -479,36 +487,47 @@ void Serializable::Deserialize(GList& retList, const GString& serial, int maxIte
 
 		// Strip the current block off
 		GString cBlock = "";
+		//printf("Des-Loop1: %d\n", serialCopy.size());
 		if((isLastBlock) && (lastDel > 0))
 		{
+			//printf("Des-Loop1A\n");
 			cBlock = serialCopy.substr(0, lastDel);
 			serialCopy = "";
 			
 		}
 		else
 		{
+			//printf("Des-Loop1B\n");
 			cBlock = serialCopy.substr(0, nextDel);
 			serialCopy = serialCopy.substr(nextDel+1);
 		}
 
+		retLen = serialCopy.size();
+		//printf("Des-Loop2: %d\n", serialCopy.size());
+
 		// Get the Type from the buffer
 		int newType = cBlock.substr(0, sizeof(int)).getInt();
 		cBlock = cBlock.substr(sizeof(int)); // plus the comma
+		//printf("Des-Loop3: %d\n", newType);
 
 		// Get the Size from the buffer
 		unsigned int newSize = (unsigned int)(cBlock.substr(0, sizeof(int)).getInt());
 		cBlock = cBlock.substr(sizeof(int)); // plus the comma
+		//printf("Des-Loop4: %d\n", newSize);
 
 		// Get the Body from the buffer
 		GString newBlock = deserializeContent(cBlock);
 		if(newBlock.length() != newSize)
 			break;
 
+		//printf("Des-Loop5: %d:%d\n", newType, newSize);
 		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 		retList.addObject(newType, newBlock, newSize);
 		++itemCounter;
 
 	} while ((nextDel > 0) && (maxItems>0? (itemCounter < maxItems):true));
+
+	return retLen;
 }
 
 /*!
@@ -734,13 +753,18 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 	if ((!serial) || (serial.length() == 0))
 		return;
 
-
 	GList metaList;
-	unsigned int oldLen = serial.length();
-	Deserialize(metaList, serial, 3);//we want only 3 GItems
-	const char* repData = &serial[oldLen-serial.length()];
+	int repLen = Deserialize(metaList, serial, 3);//we want only 3 GItems
+	GString repData = serial.substr(serial.length()-repLen);//TODO: MAKE THIS LINE WORK
+	/*for(unsigned int rCounter=0;rCounter<serial.length();++rCounter)
+	{
+		printf("Deserialize[%u]: 0x%02X:%c\n", rCounter, serial[rCounter], serial[rCounter]);
+		if(serial[rCounter] == 0x7C)
+			printf("-------------------------------\n");
+	}*/
 
 	// metadata
+	metaList.print();
 	GString sdSID = metaList.getString(0);
 	retData->setSID(sdSID);
 

@@ -280,7 +280,13 @@ int GType::getInt() const
 	}
 	else if (getType() == GType::STRING_TYPE)
 	{
-		int value = *block;
+		//int value = *block;
+		int value = 0;//TODO: PUT THIS IN LONG, AND SHORT; ADD TEST CASES
+		for(unsigned int i = 0; i < size(); ++i)
+		{
+			value<<=8;
+			value+=block[size()-i-1];
+		}
 		return value;
 	}
 

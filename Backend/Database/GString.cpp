@@ -287,18 +287,20 @@ GString GString::operator+=(const char* str2)
 
 GString GString::substr(unsigned int start, unsigned int len) const
 {
+	GString emptyStr = "";
 	if(blockSize == 0)
-		return "";
+		return emptyStr;
 
 	if(start >= blockSize)
-		return "";
+		return emptyStr;
 
 	if((len == 0) || (len > start + blockSize))
 		len = blockSize - start;
 
 	//Empty source
 	if(len == 0)
-		return "";
+		return emptyStr;
 
-	return GString(&block[start], len);
+	GString newStr(&block[start], len);
+	return newStr;
 }
