@@ -24,6 +24,19 @@ void GStringUnitTest()
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str == str_c);
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str.length() == 8);
 
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str != str3);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str2 != str3);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str_c != str3);
+
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str < str3);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str2 < str3);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str_c < str3);
+
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= "Test123!");
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= str2);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= str_c);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= str3);
+
 	//printf("GStr: %s\n", str.c_str());
 	for(unsigned int i=0;i<str.length();++i)
 	{

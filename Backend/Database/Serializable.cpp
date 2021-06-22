@@ -802,11 +802,11 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 		{
 			// {GList}
 
-			printf("---SD List---\n");
 			GList cList;
 			Deserialize(cList, repData);
 			retData->setList(new GList(cList));
 			cList.print();
+			printf("---SD List---\n");
 
 			break;
 		}

@@ -68,6 +68,7 @@ public:
 		// if (destination->getIP() != GNet::Sockets::LOCALHOST)
 		{
 			int64_t newKey = GNet::Connection::generateKey();
+			printf("newKey0: %ld\n", newKey);
 
 			// tell the client the good news
 			shmea::GList* wData = new shmea::GList();
@@ -77,6 +78,7 @@ public:
 			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client", wData);
 			// GNet::Service::ExecuteService(serverInstance, wData, destination);
 			serverInstance->send(cData);
+			printf("newKey1: %ld\n", newKey);
 
 			// Set the new Connection key
 			destination->setKey(newKey);

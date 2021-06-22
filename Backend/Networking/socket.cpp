@@ -319,12 +319,12 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			printf("READ-dText[%d]: %s\n", crypt->size, crypt->dText);
 			if(crypt->dText[crypt->size-1] == 0)
 				printf("NULL TERM ON dText\n");
-			/*for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
+			for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
 			{
 				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
 				if(crypt->dText[rCounter] == 0x7C)
 					printf("-------------------------------\n");
-			}*/
+			}
 
 			// set the text from the crypt object & add it to the data
 			shmea::ServiceData* cData = new shmea::ServiceData(origin);
@@ -396,9 +396,9 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	}
 
 	printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
-	/*printf("Key Write: %lld\n", key);
+	printf("Key Write: %lld\n", key);
 	for(int i=0;i<crypt->size;++i)
-		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);*/
+		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);
 
 	unsigned int writeLen = 0;
 	for (unsigned int i = 0; i < crypt->size * 2; ++i)

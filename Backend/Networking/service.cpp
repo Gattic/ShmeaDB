@@ -79,25 +79,31 @@ void* Service::launchService(void* y)
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
 
+	printf("DERP0\n");
 	if (!x->serverInstance)
 		return NULL;
 	GServer* serverInstance = x->serverInstance;
+	printf("DERP1\n");
 
 	// Get the command in order to tell the service what to do
 	x->command = x->sockData->getCommand();
 	if(x->command.length() == 0)//Uncomment this before commit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		return NULL;
 
+	printf("DERP2\n");
 	// Connection is dead so ignore it
 	Connection* cConnection = x->cConnection;
 	if (!cConnection)
 		return NULL;
 
+	printf("DERP3\n");
 	if (!cConnection->isFinished())
 	{
+	printf("DERP4\n");
 		Service* cService = serverInstance->ServiceLookup(x->command);
 		if (cService)
 		{
+	printf("DERP5\n");
 			// start the service
 			cService->StartService(x);
 
@@ -105,6 +111,7 @@ void* Service::launchService(void* y)
 			shmea::ServiceData* retData = cService->execute(x->sockData);
 			if(!retData)
 			{
+	printf("DERP6\n");
 				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
 			}
 

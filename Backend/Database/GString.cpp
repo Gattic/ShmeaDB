@@ -143,6 +143,16 @@ char& GString::operator[](const unsigned int& index)
 	return block[index];
 }
 
+bool GString::operator==(const GString& cCell2) const
+{
+	return GType::operator==(cCell2);
+}
+
+bool GString::operator!=(const GString& cCell2) const
+{
+	return !((*this) == cCell2);
+}
+
 bool GString::operator==(const GType& cCell2) const
 {
 	return GType::operator==(cCell2);
@@ -283,6 +293,66 @@ GString GString::operator+=(const char* str2)
 	free(newBlock);
 
 	return *this;
+}
+
+bool GString::operator<(const GString& cCell2) const
+{
+	return GType::operator<(cCell2);
+}
+
+bool GString::operator<=(const GString& cCell2) const
+{
+	return GType::operator<=(cCell2);
+}
+
+bool GString::operator<(const GType& cCell2) const
+{
+	return GType::operator<(cCell2);
+}
+
+bool GString::operator<=(const GType& cCell2) const
+{
+	return GType::operator<=(cCell2);
+}
+
+bool GString::operator<(const char* cCell2) const
+{
+	return GType::operator<(cCell2);
+}
+
+bool GString::operator<=(const char* cCell2) const
+{
+	return GType::operator<=(cCell2);
+}
+
+bool GString::operator>(const GString& cCell2) const
+{
+	return GType::operator>(cCell2);
+}
+
+bool GString::operator>=(const GString& cCell2) const
+{
+	return GType::operator>=(cCell2);
+}
+
+bool GString::operator>(const GType& cCell2) const
+{
+	return GType::operator>(cCell2);
+}
+
+bool GString::operator>=(const GType& cCell2) const
+{
+	return GType::operator>=(cCell2);
+}
+
+bool GString::operator>(const char* cCell2) const
+{
+	return GType::operator>(cCell2);
+}
+
+bool GString::operator>=(const char* cCell2) const
+{
+	return GType::operator>=(cCell2);
 }
 
 GString GString::substr(unsigned int start, unsigned int len) const

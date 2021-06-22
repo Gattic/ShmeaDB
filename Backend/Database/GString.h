@@ -58,6 +58,9 @@ public:
 	const char& operator[](const unsigned int&) const;
 	char& operator[](const unsigned int&);
 
+	bool operator==(const GString&) const;
+	bool operator!=(const GString&) const;
+
 	bool operator==(const GType&) const;
 	bool operator!=(const GType&) const;
 
@@ -68,6 +71,24 @@ public:
 	GString operator+=(const GType&);
 	GString operator+=(const GString&);
 	GString operator+=(const char*);
+
+	bool operator<(const GString&) const;
+	bool operator<=(const GString&) const;
+
+	bool operator<(const GType&) const;
+	bool operator<=(const GType&) const;
+
+	bool operator<(const char*) const;
+	bool operator<=(const char*) const;
+
+	bool operator>(const GString&) const;
+	bool operator>=(const GString&) const;
+
+	bool operator>(const GType&) const;
+	bool operator>=(const GType&) const;
+
+	bool operator>(const char*) const;
+	bool operator>=(const char*) const;
 
 	// Strng Helpers
 	void initEmpty();

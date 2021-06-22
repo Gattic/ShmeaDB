@@ -128,9 +128,11 @@ GNet::GServer::~GServer()
 
 void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
 {
+	printf("SEND-FNC0\n");
 	if (!cData)
 		return;
 
+	printf("SEND-FNC1\n");
 	// Default instance
 	 GNet::Connection* destination = cData->getConnection();
 	if (!destination)
@@ -145,6 +147,7 @@ void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisable
 		return;
 	}
 
+	printf("SEND-FNC2\n");
 	if (!networkingDisabled)
 	{
 		int bytesWritten =
@@ -167,7 +170,19 @@ GNet::Service* GNet::GServer::ServiceLookup(shmea::GString cCommand)
 
 unsigned int GNet::GServer::addService(shmea::GString newServiceName, GNet::Service* newServiceObj)
 {
-	(*service_depot)[newServiceName] = newServiceObj;
+	//(*service_depot)[newServiceName] = newServiceObj;
+	std::map<shmea::GString, Service*>::const_iterator itr = service_depot->find(newServiceName);
+	if(itr == service_depot->end())
+	{
+		service_depot->insert(std::pair<shmea::GString, Service*>(newServiceName, newServiceObj));
+		printf("service_depot-A[%ld]: %s\n", service_depot->size(), newServiceName.c_str());
+	}
+	else
+	{
+		printf("service_depot-B[%ld]: %s == %s\n", service_depot->size(), (*itr).first.c_str(), newServiceName.c_str());
+		(*service_depot)[newServiceName] = newServiceObj;
+	}
+
 	return service_depot->size();
 }
 
@@ -514,7 +529,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	if (x->serverIP == "127.0.0.1")
 		localConnection = destination;
 
-	// Login
+	// Start the Login Handshake
 	shmea::GList* wData = new shmea::GList();
 	wData->addString(x->clientName);
 	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
