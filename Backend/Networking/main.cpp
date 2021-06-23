@@ -128,11 +128,9 @@ GNet::GServer::~GServer()
 
 void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
 {
-	printf("SEND-FNC0\n");
 	if (!cData)
 		return;
 
-	printf("SEND-FNC1\n");
 	// Default instance
 	 GNet::Connection* destination = cData->getConnection();
 	if (!destination)
@@ -147,7 +145,6 @@ void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisable
 		return;
 	}
 
-	printf("SEND-FNC2\n");
 	if (!networkingDisabled)
 	{
 		int bytesWritten =
@@ -175,11 +172,11 @@ unsigned int GNet::GServer::addService(shmea::GString newServiceName, GNet::Serv
 	if(itr == service_depot->end())
 	{
 		service_depot->insert(std::pair<shmea::GString, Service*>(newServiceName, newServiceObj));
-		printf("service_depot-A[%ld]: %s\n", service_depot->size(), newServiceName.c_str());
+		//printf("service_depot-A[%ld]: %s\n", service_depot->size(), newServiceName.c_str());
 	}
 	else
 	{
-		printf("service_depot-B[%ld]: %s == %s\n", service_depot->size(), (*itr).first.c_str(), newServiceName.c_str());
+		//printf("service_depot-B[%ld]: %s == %s\n", service_depot->size(), (*itr).first.c_str(), newServiceName.c_str());
 		(*service_depot)[newServiceName] = newServiceObj;
 	}
 

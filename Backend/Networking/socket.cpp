@@ -316,21 +316,19 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		}
 		else if (crypt->linesRead == crypt->size)
 		{
-			printf("READ-dText[%d]: %s\n", crypt->size, crypt->dText);
+			/*printf("READ-dText[%d]: %s\n", crypt->size, crypt->dText);
 			if(crypt->dText[crypt->size-1] == 0)
-				printf("NULL TERM ON dText\n");
 			for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
 			{
 				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
 				if(crypt->dText[rCounter] == 0x7C)
 					printf("-------------------------------\n");
-			}
+			}*/
 
 			// set the text from the crypt object & add it to the data
 			shmea::ServiceData* cData = new shmea::ServiceData(origin);
-			printf("eTextLen: %u\n", eTextLen);
-			printf("crypt->size: %u\n", crypt->size);
-			shmea::GString cStr(crypt->dText, crypt->size - 1);//Instead of returning in this string, return via return
+			//printf("eTextLen-PRE-SER: %u\n", eTextLen);
+			shmea::GString cStr(crypt->dText, crypt->size - 1);
 			shmea::Serializable::Deserialize(cData, cStr);
 			srvcList.push_back(cData); // minus the key
 
@@ -370,7 +368,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 							 const shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
-	printf("==============================================================\n");
+	//printf("==============================================================\n");
 
 	if (cConnection != NULL)
 		key = cConnection->getKey();
@@ -395,10 +393,20 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 		return -1;
 	}
 
-	printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
+	/*printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
 	printf("Key Write: %lld\n", key);
 	for(int i=0;i<crypt->size;++i)
-		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);
+		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);*/
+
+	/*printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
+	printf("Key Write: %lld\n", key);
+	if(crypt->dText[crypt->size-1] == 0)
+	for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
+	{
+		printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
+		if(crypt->dText[rCounter] == 0x7C)
+			printf("-------------------------------\n");
+	}*/
 
 	unsigned int writeLen = 0;
 	for (unsigned int i = 0; i < crypt->size * 2; ++i)
@@ -408,9 +416,9 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	}
 
 	if (writeLen != sizeof(int64_t) * crypt->size)
-		printf("[SOCKS] Write error: %u/%llu\n", writeLen, sizeof(int64_t) * crypt->size);
+		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt->size);
 
-	printf("==============================================================\n");
+	//printf("==============================================================\n");
 	// delete it after we are done
 	if (crypt)
 		delete crypt;

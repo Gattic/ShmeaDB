@@ -81,12 +81,12 @@ GString Serializable::addDelimiter(const GString& serial, bool isLastItem)
  * @param itemType the type of the contents (INT_TYPE, STRING_TYPE, etc.)
  * @return the GTable version of the bundle
  */
-GString Serializable::addItemToSerial(unsigned int originalSize, const GType& cItem)
+GString Serializable::addItemToSerial(int originalType, unsigned int originalSize, const GType& cItem)
 {
 	//GString retSerial = GType((int)cItem.getType()) + GType((int)originalSize) + cItem.c_str();
 	//return retSerial;
 
-	GString retSerial = GString((int)cItem.getType()) + GString((int)originalSize);
+	GString retSerial = GString((int)originalType) + GString((int)originalSize);
 	retSerial +=  GString(cItem.c_str(), cItem.size());
 	return retSerial;
 }
@@ -104,7 +104,7 @@ GString Serializable::serializeItem(const GType& cItem, bool isLastItem)
 {
 	GString escapedItem = escapeSeparators(cItem);
 	GString delimittedItem = addDelimiter(cItem, isLastItem);
-	return addItemToSerial(cItem.size(), delimittedItem);
+	return addItemToSerial(cItem.getType(), cItem.size(), delimittedItem);
 }
 
 /*!
@@ -385,7 +385,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		case ServiceData::TYPE_NETWORK_POINTER:
 		{
 			// {GOBJECT}
-			printf("---SS Object---\n");
+			//printf("---SS Object---\n");
 			repData = Serialize(*(cData->getObj()));
 
 			break;
@@ -394,7 +394,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		case ServiceData::TYPE_TABLE:
 		{
 			// {GTable}
-			printf("---SS Table---\n");
+			//printf("---SS Table---\n");
 			repData = Serialize(*(cData->getTable()));
 
 			break;
@@ -403,7 +403,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		case ServiceData::TYPE_LIST:
 		{
 			// {GList}
-			printf("---SS List: %d---\n", cData->getList()->size());
+			//printf("---SS List: %d---\n", cData->getList()->size());
 			repData = Serialize(*(cData->getList()));
 			//cData->getList()->print();
 
@@ -414,7 +414,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		default:
 		{
 			// Write nothing
-			printf("---SS Nothing---\n");
+			//printf("---SS Nothing---\n");
 			break;
 		}
 	}
@@ -478,7 +478,6 @@ int Serializable::Deserialize(GList& retList, const GString& serial, int maxItem
 
 	do
 	{
-		//printf("Des-Loop0\n");
 		nextDel = getDelimiterIdx(serialCopy, GString("|"), NOT_ESCAPED);
 		int lastDel = getDelimiterIdx(serialCopy, GString("\\|"), NOT_ESCAPED);
 
@@ -487,40 +486,33 @@ int Serializable::Deserialize(GList& retList, const GString& serial, int maxItem
 
 		// Strip the current block off
 		GString cBlock = "";
-		//printf("Des-Loop1: %d\n", serialCopy.size());
 		if((isLastBlock) && (lastDel > 0))
 		{
-			//printf("Des-Loop1A\n");
 			cBlock = serialCopy.substr(0, lastDel);
 			serialCopy = "";
 			
 		}
 		else
 		{
-			//printf("Des-Loop1B\n");
 			cBlock = serialCopy.substr(0, nextDel);
 			serialCopy = serialCopy.substr(nextDel+1);
 		}
 
 		retLen = serialCopy.size();
-		//printf("Des-Loop2: %d\n", serialCopy.size());
 
 		// Get the Type from the buffer
 		int newType = cBlock.substr(0, sizeof(int)).getInt();
 		cBlock = cBlock.substr(sizeof(int)); // plus the comma
-		//printf("Des-Loop3: %d\n", newType);
 
 		// Get the Size from the buffer
 		unsigned int newSize = (unsigned int)(cBlock.substr(0, sizeof(int)).getInt());
 		cBlock = cBlock.substr(sizeof(int)); // plus the comma
-		//printf("Des-Loop4: %d\n", newSize);
 
 		// Get the Body from the buffer
 		GString newBlock = deserializeContent(cBlock);
 		if(newBlock.length() != newSize)
 			break;
 
-		//printf("Des-Loop5: %d:%d\n", newType, newSize);
 		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 		retList.addObject(newType, newBlock, newSize);
 		++itemCounter;
@@ -755,7 +747,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 
 	GList metaList;
 	int repLen = Deserialize(metaList, serial, 3);//we want only 3 GItems
-	GString repData = serial.substr(serial.length()-repLen);//TODO: MAKE THIS LINE WORK
+	GString repData = serial.substr(serial.length()-repLen);
 	/*for(unsigned int rCounter=0;rCounter<serial.length();++rCounter)
 	{
 		printf("Deserialize[%u]: 0x%02X:%c\n", rCounter, serial[rCounter], serial[rCounter]);
@@ -764,7 +756,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 	}*/
 
 	// metadata
-	metaList.print();
+	//metaList.print();
 	GString sdSID = metaList.getString(0);
 	retData->setSID(sdSID);
 
@@ -782,7 +774,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 			GObject cObj;
 			Deserialize(cObj, repData);
 			retData->setObj(new GObject(cObj));
-			printf("---SD Object---\n");
+			//printf("---SD Object---\n");
 
 			break;
 		}
@@ -793,7 +785,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 			GTable cTable;
 			Deserialize(cTable, repData);
 			retData->setTable(new GTable(cTable));
-			printf("---SD Table---\n");
+			//printf("---SD Table---\n");
 
 			break;
 		}
@@ -805,8 +797,8 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 			GList cList;
 			Deserialize(cList, repData);
 			retData->setList(new GList(cList));
-			cList.print();
-			printf("---SD List---\n");
+			//cList.print();
+			//printf("---SD List---\n");
 
 			break;
 		}
@@ -815,7 +807,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 		default:
 		{
 			// Write nothing
-			printf("---SD Nothing---\n");
+			//printf("---SD Nothing---\n");
 			break;
 		}
 	}

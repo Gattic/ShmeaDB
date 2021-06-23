@@ -49,16 +49,13 @@ public:
 		// Log the server into the client
 		class GNet::Connection* destination = data->getConnection();
 
-		printf("newKeyA\n");
 		if (!serverInstance)
 			return NULL;
 
-		printf("newKeyB\n");
 		const shmea::GList* cList = data->getList();
 		if (!cList)
 			return NULL;
 
-		printf("newKeyC\n");
 		if ((data->getType() != shmea::ServiceData::TYPE_LIST) || cList->size() < 2)
 			return NULL;
 
@@ -70,7 +67,7 @@ public:
 
 		// get the new encryption key
 		int64_t newKey = cList->getLong(1);
-		printf("newKeyA: %ld\n", newKey);
+		//printf("newKeyA: %ld\n", newKey);
 
 		// Set the new Connection key
 		destination->setKey(newKey);
