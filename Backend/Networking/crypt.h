@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "../Database/GString.h"
 
 namespace GNet {
 
@@ -35,18 +36,18 @@ private:
 
 public:
 	int64_t* eText;
-	char* dText;
+	shmea::GString dText;
 
-	unsigned int size; // size of block (in longs)
-	unsigned int linesRead;
+	unsigned int sizeClaimed; // size of block (in longs)
+	unsigned int sizeCurrent;
 	int error;
 
 	Crypt()
 	{
 		eText = NULL;
-		dText = NULL;
-		size = 0;
-		linesRead = 0;
+		dText = "";
+		sizeClaimed = 0;
+		sizeCurrent = 0;
 		cTime = 0L;
 		shmea = 0;
 		brej = 0;
@@ -62,12 +63,8 @@ public:
 			free(eText);
 		eText = NULL;
 
-		if (dText)
-			free(dText);
-		dText = NULL;
-
-		size = 0;
-		linesRead = 0;
+		sizeClaimed = 0;
+		sizeCurrent = 0;
 		cTime = 0L;
 		shmea = 0;
 		brej = 0;

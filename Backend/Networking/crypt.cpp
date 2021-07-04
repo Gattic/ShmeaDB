@@ -28,15 +28,11 @@ using namespace GNet;
 void Crypt::encrypt(const char* src, int64_t key, unsigned int tSize)
 {
 	// info
-	size = tSize;
-	if (dText)
-		free(dText);
-	dText = (char*)malloc(sizeof(char) * size);
-	bzero(dText, sizeof(char) * size);
-	memcpy(dText, src, sizeof(char) * size);
+	sizeClaimed = tSize;
+	dText = shmea::GString(src, sizeClaimed);
 
-	++size; // plus the key
-	linesRead = size;
+	++sizeClaimed; // plus the key
+	sizeCurrent = sizeClaimed;
 
 	// I can make this assumption because this time already happened lol
 	cTime = time(NULL);
@@ -57,11 +53,11 @@ void Crypt::encrypt(const char* src, int64_t key, unsigned int tSize)
 	// encrypt
 	if (eText)
 		free(eText);
-	eText = (int64_t*)malloc(sizeof(int64_t) * size);
-	bzero(eText, sizeof(int64_t) * size);
-	int64_t len = ((int64_t)size) * LEN_OFFSET;
+	eText = (int64_t*)malloc(sizeof(int64_t) * sizeClaimed);
+	bzero(eText, sizeof(int64_t) * sizeClaimed);
+	int64_t len = ((int64_t)sizeClaimed) * LEN_OFFSET;
 	eText[0] = (cTime + len) * key;
-	for (unsigned int i = 1; i < size; ++i)
+	for (unsigned int i = 1; i < sizeClaimed; ++i)
 	{
 		eText[i] = dText[i - 1];
 		eText[i] *= (int64_t)shmea;
@@ -88,8 +84,8 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 
 	int64_t y = eText[0]; // switch to little endian
 	int64_t firstLine = y / key;
-	size = (int)(firstLine / LEN_OFFSET);
-	unsigned int linesToRead = (srcLen > size) ? size : srcLen;
+	sizeClaimed = (int)(firstLine / LEN_OFFSET);
+	unsigned int linesToRead = (srcLen > sizeClaimed) ? sizeClaimed : srcLen;
 	if (linesToRead <= 0)
 	{
 		error = 2;
@@ -97,7 +93,7 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 	}
 
 	// I can make this assumption because this time already happened lol
-	cTime = firstLine - (((int64_t)size) * LEN_OFFSET);
+	cTime = firstLine - (((int64_t)sizeClaimed) * LEN_OFFSET);
 	if (cTime < LEN_OFFSET / 10)
 	{
 		error = 3;
@@ -113,10 +109,7 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 	brej = (brej == 0) ? 4 : brej; // i also like 4
 
 	// decrypt
-	if (dText)
-		free(dText);
-	dText = (char*)malloc(sizeof(char) * size);
-	bzero(dText, sizeof(char) * size);
+	dText = "";
 	unsigned int i = 1;
 	for (; i < linesToRead; ++i)
 	{
@@ -124,9 +117,9 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 		y /= key;
 		y -= (int64_t)brej;
 		y /= (int64_t)shmea;
-		dText[i - 1] = (char)y;
+		dText+=y;
 	}
 
 	// how many lines did we decrypt
-	linesRead = i;
+	sizeCurrent = i;
 }

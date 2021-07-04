@@ -30,8 +30,6 @@ const shmea::GString Sockets::LOCALHOST = "127.0.0.1";
 void Sockets::initSockets()
 {
 	PORT = "45019";
-	overflow = NULL;
-	overflowLen = 0;
 	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 
@@ -246,8 +244,8 @@ void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<
 void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
 {
 	int balance = 0;
-	int64_t* cOverflow = overflow;
-	unsigned int cOverflowLen = overflowLen;
+	unsigned int cOverflowLen = 0;
+	int64_t* cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
 	int64_t key = DEFAULT_KEY;
 
 	// we would rather use the Connection versions instead
@@ -310,26 +308,26 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		}
 
 		// starving
-		if (crypt.linesRead < crypt.size)
+		if (crypt.sizeCurrent < crypt.sizeClaimed)
 		{
 			balance = -1;
 
-			// overflow
+			// cOverflow
 			if (cOverflow)
 				free(cOverflow);
 
-			cOverflowLen = crypt.linesRead;
+			cOverflowLen = crypt.sizeCurrent;
 			cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
 			if(!cOverflow)
 				return;
 
 			memcpy(cOverflow, eText, sizeof(int64_t) * cOverflowLen);
 		}
-		else if (crypt.linesRead == crypt.size)
+		else if (crypt.sizeCurrent == crypt.sizeClaimed)
 		{
-			/*printf("READ-dText[%d]: %s\n", crypt.size, crypt.dText);
-			if(crypt.dText[crypt.size-1] == 0)
-			for(unsigned int rCounter=0;rCounter<crypt.size;++rCounter)
+			/*printf("READ-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
+			if(crypt.dText[crypt.sizeClaimed-1] == 0)
+			for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
 			{
 				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
 				if(crypt.dText[rCounter] == 0x7C)
@@ -339,22 +337,22 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			// set the text from the crypt object & add it to the data
 			shmea::ServiceData* cData = new shmea::ServiceData(origin);
 			//printf("eTextLen-PRE-SER: %u\n", eTextLen);
-			shmea::GString cStr(crypt.dText, crypt.size - 1);
+			shmea::GString cStr = crypt.dText;
 			shmea::Serializable::Deserialize(cData, cStr);
 			srvcList.push_back(cData); // minus the key
 
-			if (eTextLen == crypt.size)
+			if (eTextLen == crypt.sizeClaimed)
 				balance = 0;
-			else if (eTextLen > crypt.size)
+			else if (eTextLen > crypt.sizeClaimed)
 			{
 				balance = 1;
 
 				// overflow
 				if (cOverflow)
 					free(cOverflow);
-				cOverflowLen = eTextLen - crypt.size;
+				cOverflowLen = eTextLen - crypt.sizeClaimed;
 				cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-				memcpy(cOverflow, &eText[crypt.size], sizeof(int64_t) * cOverflowLen);
+				memcpy(cOverflow, &eText[crypt.sizeClaimed], sizeof(int64_t) * cOverflowLen);
 			}
 		}
 
@@ -398,15 +396,15 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 		return -1;
 	}
 
-	/*printf("WRITE-dText[%d]: %s\n", crypt.size, crypt.dText);
+	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
 	printf("Key Write: %lld\n", key);
-	for(int i=0;i<crypt.size;++i)
+	for(int i=0;i<crypt.sizeClaimed;++i)
 		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText[i]);*/
 
-	/*printf("WRITE-dText[%d]: %s\n", crypt.size, crypt.dText);
+	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
 	printf("Key Write: %lld\n", key);
-	if(crypt.dText[crypt.size-1] == 0)
-	for(unsigned int rCounter=0;rCounter<crypt.size;++rCounter)
+	if(crypt.dText[crypt.sizeClaimed-1] == 0)
+	for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
 	{
 		printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
 		if(crypt.dText[rCounter] == 0x7C)
@@ -414,14 +412,14 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	}*/
 
 	unsigned int writeLen = 0;
-	for (unsigned int i = 0; i < crypt.size * 2; ++i)
+	for (unsigned int i = 0; i < crypt.sizeClaimed * 2; ++i)
 	{
 		unsigned int writeVal = htonl(*(((unsigned int*)(crypt.eText)) + i));
 		writeLen += write(sockfd, &writeVal, sizeof(unsigned int));
 	}
 
-	if (writeLen != sizeof(int64_t) * crypt.size)
-		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.size);
+	if (writeLen != sizeof(int64_t) * crypt.sizeClaimed)
+		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.sizeClaimed);
 
 	//printf("==============================================================\n");
 

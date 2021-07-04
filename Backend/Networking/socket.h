@@ -49,8 +49,6 @@ private:
 	static const shmea::GString ANYADDR;
 
 	shmea::GString PORT;
-	int64_t* overflow; // dont free this
-	unsigned int overflowLen;
 	pthread_mutex_t* inMutex;
 	pthread_mutex_t* outMutex;
 	std::queue<const shmea::ServiceData*> inboundLists;
