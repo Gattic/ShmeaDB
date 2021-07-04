@@ -300,19 +300,17 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			printf("eTextRead[%d]: 0x%016llX\n", i, eText[i]);*/
 
 		// decrypt
-		Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
-		crypt->decrypt(eText, key, eTextLen);
+		Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
+		crypt.decrypt(eText, key, eTextLen);
 
-		if (crypt->error)
+		if (crypt.error)
 		{
-			printf("[CRYPT] Error: %d\n", crypt->error);
-			if (crypt)
-				delete crypt;
+			printf("[CRYPT] Error: %d\n", crypt.error);
 			return;
 		}
 
 		// starving
-		if (crypt->linesRead < crypt->size)
+		if (crypt.linesRead < crypt.size)
 		{
 			balance = -1;
 
@@ -320,49 +318,45 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			if (cOverflow)
 				free(cOverflow);
 
-			cOverflowLen = crypt->linesRead;
+			cOverflowLen = crypt.linesRead;
 			cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
 			if(!cOverflow)
 				return;
 
 			memcpy(cOverflow, eText, sizeof(int64_t) * cOverflowLen);
 		}
-		else if (crypt->linesRead == crypt->size)
+		else if (crypt.linesRead == crypt.size)
 		{
-			/*printf("READ-dText[%d]: %s\n", crypt->size, crypt->dText);
-			if(crypt->dText[crypt->size-1] == 0)
-			for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
+			/*printf("READ-dText[%d]: %s\n", crypt.size, crypt.dText);
+			if(crypt.dText[crypt.size-1] == 0)
+			for(unsigned int rCounter=0;rCounter<crypt.size;++rCounter)
 			{
-				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
-				if(crypt->dText[rCounter] == 0x7C)
+				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
+				if(crypt.dText[rCounter] == 0x7C)
 					printf("-------------------------------\n");
 			}*/
 
 			// set the text from the crypt object & add it to the data
 			shmea::ServiceData* cData = new shmea::ServiceData(origin);
 			//printf("eTextLen-PRE-SER: %u\n", eTextLen);
-			shmea::GString cStr(crypt->dText, crypt->size - 1);
+			shmea::GString cStr(crypt.dText, crypt.size - 1);
 			shmea::Serializable::Deserialize(cData, cStr);
 			srvcList.push_back(cData); // minus the key
 
-			if (eTextLen == crypt->size)
+			if (eTextLen == crypt.size)
 				balance = 0;
-			else if (eTextLen > crypt->size)
+			else if (eTextLen > crypt.size)
 			{
 				balance = 1;
 
 				// overflow
 				if (cOverflow)
 					free(cOverflow);
-				cOverflowLen = eTextLen - crypt->size;
+				cOverflowLen = eTextLen - crypt.size;
 				cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-				memcpy(cOverflow, &eText[crypt->size], sizeof(int64_t) * cOverflowLen);
+				memcpy(cOverflow, &eText[crypt.size], sizeof(int64_t) * cOverflowLen);
 			}
 		}
-
-		// delete it after we are done
-		if (crypt)
-			delete crypt;
 
 		// free the eText
 		if (eText)
@@ -395,46 +389,41 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 		return -1;
 
 	// Encrypt
-	Crypt* crypt = new Crypt();//TODO: MOVE THIS TO SERIALIZE
-	crypt->encrypt(rawData.c_str(), key, rawData.length());
+	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
+	crypt.encrypt(rawData.c_str(), key, rawData.length());
 
-	if (crypt->error)
+	if (crypt.error)
 	{
-		printf("[CRYPT] Error: %d\n", crypt->error);
-		if (crypt)
-			delete crypt;
+		printf("[CRYPT] Error: %d\n", crypt.error);
 		return -1;
 	}
 
-	/*printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
+	/*printf("WRITE-dText[%d]: %s\n", crypt.size, crypt.dText);
 	printf("Key Write: %lld\n", key);
-	for(int i=0;i<crypt->size;++i)
-		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);*/
+	for(int i=0;i<crypt.size;++i)
+		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText[i]);*/
 
-	/*printf("WRITE-dText[%d]: %s\n", crypt->size, crypt->dText);
+	/*printf("WRITE-dText[%d]: %s\n", crypt.size, crypt.dText);
 	printf("Key Write: %lld\n", key);
-	if(crypt->dText[crypt->size-1] == 0)
-	for(unsigned int rCounter=0;rCounter<crypt->size;++rCounter)
+	if(crypt.dText[crypt.size-1] == 0)
+	for(unsigned int rCounter=0;rCounter<crypt.size;++rCounter)
 	{
-		printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt->dText[rCounter], crypt->dText[rCounter]);
-		if(crypt->dText[rCounter] == 0x7C)
+		printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
+		if(crypt.dText[rCounter] == 0x7C)
 			printf("-------------------------------\n");
 	}*/
 
 	unsigned int writeLen = 0;
-	for (unsigned int i = 0; i < crypt->size * 2; ++i)
+	for (unsigned int i = 0; i < crypt.size * 2; ++i)
 	{
-		unsigned int writeVal = htonl(*(((unsigned int*)(crypt->eText)) + i));
+		unsigned int writeVal = htonl(*(((unsigned int*)(crypt.eText)) + i));
 		writeLen += write(sockfd, &writeVal, sizeof(unsigned int));
 	}
 
-	if (writeLen != sizeof(int64_t) * crypt->size)
-		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt->size);
+	if (writeLen != sizeof(int64_t) * crypt.size)
+		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.size);
 
 	//printf("==============================================================\n");
-	// delete it after we are done
-	if (crypt)
-		delete crypt;
 
 	// write to the sock
 	return writeLen;
