@@ -184,20 +184,31 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 				memcpy(&eText[oldTSize], buffer, bytesRead);
 			}
 			else
+			{
+				tSize = 0;
 				return NULL;
+			}
 		}
 		else
 		{
 			free(eText);
+			tSize = 0;
 			return NULL;
 		}
 
 		// We only write int64_t but we do it int by int
 	} while (((tSize % sizeof(int)) == 0) && ((tSize / sizeof(int)) % 2 == 1));
 
+	// Make sure we are the correct big/little endian
 	int64_t newEBlock = 0;
 	int lCounter = 0;
 	int64_t* newEText = (int64_t*)malloc(sizeof(char) * tSize);
+	if(!newEText)
+	{
+		tSize = 0;
+		return NULL;
+	}
+	
 	for (unsigned int i = 0; i < tSize / sizeof(int); ++i)
 	{
 		int64_t cIntBlock = ntohl(((unsigned int*)eText)[i]);
@@ -213,6 +224,7 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 	}
 	free(eText);
 
+	tSize /= 8;
 	return newEText;
 }
 
@@ -255,8 +267,6 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		// error in reader, whatevz
 		if (eText == NULL)
 			eText = (int64_t*)malloc(sizeof(int64_t) * 0);
-		else
-			eTextLen /= 8;
 
 		// overflow+eText
 		if (balance != 0)
@@ -312,6 +322,9 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 
 			cOverflowLen = crypt->linesRead;
 			cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
+			if(!cOverflow)
+				return;
+
 			memcpy(cOverflow, eText, sizeof(int64_t) * cOverflowLen);
 		}
 		else if (crypt->linesRead == crypt->size)
