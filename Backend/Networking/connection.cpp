@@ -30,6 +30,9 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	connectionType = newConnectionType;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
+
+	stMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(stMutex, NULL);
 }
 
 Connection::Connection(const Connection& instance2)
@@ -42,6 +45,9 @@ Connection::Connection(const Connection& instance2)
 	connectionType = instance2.connectionType;
 	key = instance2.key; // shouldnt matter what this value is
 	finished = instance2.finished;
+
+	stMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(stMutex, NULL);
 }
 
 Connection::~Connection()
@@ -56,6 +62,10 @@ Connection::~Connection()
 	connectionType = EMPTY_TYPE;
 	key = 420l;
 	finished = false;
+
+	pthread_mutex_destroy(stMutex);
+	if (stMutex)
+		free(stMutex);
 }
 
 void Connection::finish()

@@ -53,6 +53,7 @@ public:
 	int64_t* overflow;
 	unsigned int overflowLen;
 	std::vector<pthread_t*> sThreads; // all the active service threads
+	pthread_mutex_t* stMutex;
 
 	Connection(int, int, shmea::GString);
 	Connection(const Connection&);
