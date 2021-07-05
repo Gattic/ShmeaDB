@@ -243,18 +243,13 @@ void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<
 
 void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
 {
-	int balance = 0;
-	unsigned int cOverflowLen = 0;
-	int64_t* cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-	int64_t key = DEFAULT_KEY;
+	if (origin == NULL)
+		return;
 
-	// we would rather use the Connection versions instead
-	if (origin != NULL)
-	{
-		cOverflow = origin->overflow;
-		cOverflowLen = origin->overflowLen;
-		key = origin->getKey();
-	}
+	int balance = 0;
+	unsigned int cOverflowLen = origin->overflowLen;;
+	int64_t* cOverflow = origin->overflow;
+	int64_t key = origin->getKey();
 
 	do
 	{
@@ -362,11 +357,8 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 
 	} while (balance != 0);
 
-	if (origin != NULL)
-	{
-		origin->overflow = cOverflow;
-		origin->overflowLen = cOverflowLen;
-	}
+	origin->overflow = cOverflow;
+	origin->overflowLen = cOverflowLen;
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
