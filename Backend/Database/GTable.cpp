@@ -132,7 +132,7 @@ void GTable::importFromFile(const GString& fname)
 	int rowCounter = 0;
 	int MAX_LINE_SIZE = 256;
 	int linesRead = 0; // Are the lines read, not how many lines read
-	char* buffer = (char*)malloc(MAX_LINE_SIZE * sizeof(char));
+	char buffer[MAX_LINE_SIZE];
 
 	do
 	{
@@ -191,7 +191,6 @@ void GTable::importFromFile(const GString& fname)
 	} while ((linesRead > 0) && (ftell(fd) < fSize));
 
 	// EOF
-	free(buffer);
 	fclose(fd);
 }
 

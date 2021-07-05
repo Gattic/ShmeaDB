@@ -51,18 +51,16 @@ void Crypt::encrypt(const char* src, int64_t key, unsigned int tSize)
 	brej = (brej == 0) ? 4 : brej; // i also like 4
 
 	// encrypt
-	if (eText)
-		free(eText);
-	eText = (int64_t*)malloc(sizeof(int64_t) * sizeClaimed);
-	bzero(eText, sizeof(int64_t) * sizeClaimed);
 	int64_t len = ((int64_t)sizeClaimed) * LEN_OFFSET;
-	eText[0] = (cTime + len) * key;
+	int64_t newKeyRow = (cTime + len) * key;
+	eText = shmea::GString((const char*)&newKeyRow, sizeof(int64_t));
 	for (unsigned int i = 1; i < sizeClaimed; ++i)
 	{
-		eText[i] = dText[i - 1];
-		eText[i] *= (int64_t)shmea;
-		eText[i] += (int64_t)brej;
-		eText[i] *= key;
+		int64_t newERow = dText[i - 1];
+		newERow *= (int64_t)shmea;
+		newERow += (int64_t)brej;
+		newERow *= key;
+		eText += shmea::GString((const char*)&newERow, sizeof(int64_t));
 	}
 }
 
@@ -76,13 +74,9 @@ void Crypt::encrypt(const char* src, int64_t key, unsigned int tSize)
 void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 {
 	// info
-	if (eText)
-		free(eText);
-	eText = (int64_t*)malloc(sizeof(int64_t) * srcLen);
-	bzero(eText, sizeof(int64_t) * srcLen);
-	memcpy(eText, src, sizeof(int64_t) * srcLen);
+	eText = shmea::GString((const char*)src, sizeof(int64_t) * srcLen);
 
-	int64_t y = eText[0]; // switch to little endian
+	int64_t y = *(int64_t*)eText.substr(0, sizeof(int64_t)).c_str(); // switch to little endian
 	int64_t firstLine = y / key;
 	sizeClaimed = (int)(firstLine / LEN_OFFSET);
 	unsigned int linesToRead = (srcLen > sizeClaimed) ? sizeClaimed : srcLen;
@@ -113,7 +107,7 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 	unsigned int i = 1;
 	for (; i < linesToRead; ++i)
 	{
-		y = eText[i]; // switch to little endian
+		y = *(int64_t*)eText.substr(i*sizeof(int64_t), sizeof(int64_t)).c_str(); // switch to little endian
 		y /= key;
 		y -= (int64_t)brej;
 		y /= (int64_t)shmea;

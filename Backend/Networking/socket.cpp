@@ -391,7 +391,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
 	printf("Key Write: %lld\n", key);
 	for(int i=0;i<crypt.sizeClaimed;++i)
-		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText[i]);*/
+		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText.substr(i*sizeof(int64_t), sizeof(int64_t));*/
 
 	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
 	printf("Key Write: %lld\n", key);
@@ -406,7 +406,8 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	unsigned int writeLen = 0;
 	for (unsigned int i = 0; i < crypt.sizeClaimed * 2; ++i)
 	{
-		unsigned int writeVal = htonl(*(((unsigned int*)(crypt.eText)) + i));
+		unsigned int writeVal = // This will be nice with GVector
+			htonl(*((unsigned int*)(crypt.eText.substr(i*sizeof(unsigned int), sizeof(unsigned int)).c_str())));
 		writeLen += write(sockfd, &writeVal, sizeof(unsigned int));
 	}
 

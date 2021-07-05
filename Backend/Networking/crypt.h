@@ -35,7 +35,7 @@ private:
 	static const int64_t LEN_OFFSET = 10000000000L; // 10 zeros
 
 public:
-	int64_t* eText;
+	shmea::GString eText;
 	shmea::GString dText;
 
 	unsigned int sizeClaimed; // size of block (in longs)
@@ -44,7 +44,7 @@ public:
 
 	Crypt()
 	{
-		eText = NULL;
+		eText = "";
 		dText = "";
 		sizeClaimed = 0;
 		sizeCurrent = 0;
@@ -59,10 +59,6 @@ public:
 
 	~Crypt()
 	{
-		if (eText)
-			free(eText);
-		eText = NULL;
-
 		sizeClaimed = 0;
 		sizeCurrent = 0;
 		cTime = 0L;
