@@ -71,7 +71,7 @@ public:
 	const shmea::GString getPort();
 	int openServerConnection();
 	int openClientConnection(const shmea::GString&);
-	int64_t* reader(const int&, unsigned int&);
+	shmea::GString reader(const int&);
 	void readConnection(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
 	void readConnectionHelper(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
 	int writeConnection(const Connection*, const int&, const shmea::ServiceData*);

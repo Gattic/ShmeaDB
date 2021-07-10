@@ -25,8 +25,7 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	name = "";
 	ip = newIP;
 	sockfd = newSockFD;
-	overflow = NULL;
-	overflowLen = 0;
+	overflow = "";
 	connectionType = newConnectionType;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
@@ -38,7 +37,6 @@ Connection::Connection(const Connection& instance2)
 	ip = instance2.ip;
 	sockfd = instance2.sockfd;
 	overflow = instance2.overflow;
-	overflowLen = instance2.overflowLen;
 	connectionType = instance2.connectionType;
 	key = instance2.key; // shouldnt matter what this value is
 	finished = instance2.finished;
@@ -51,8 +49,6 @@ Connection::~Connection()
 	name = "";
 	ip = "";
 	sockfd = -1;
-	overflow = NULL;
-	overflowLen = 0;
 	connectionType = EMPTY_TYPE;
 	key = 420l;
 	finished = false;

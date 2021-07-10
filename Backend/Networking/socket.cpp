@@ -158,14 +158,14 @@ int Sockets::openServerConnection()
 	return sockfd;
 }
 
-int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
+shmea::GString Sockets::reader(const int& sockfd)
 {
 	char buffer[1025];
 	bzero(buffer, 1025);
-	tSize = 0;
+	unsigned int tSize = 0;
 	char* eText = (char*)malloc(sizeof(char) * tSize);
 	if (!eText)
-		return NULL;
+		return "";
 
 	do
 	{
@@ -184,14 +184,14 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 			else
 			{
 				tSize = 0;
-				return NULL;
+				return "";
 			}
 		}
 		else
 		{
 			free(eText);
 			tSize = 0;
-			return NULL;
+			return "";
 		}
 
 		// We only write int64_t but we do it int by int
@@ -204,7 +204,7 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 	if(!newEText)
 	{
 		tSize = 0;
-		return NULL;
+		return "";
 	}
 	
 	for (unsigned int i = 0; i < tSize / sizeof(int); ++i)
@@ -222,8 +222,7 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 	}
 	free(eText);
 
-	tSize /= 8;
-	return newEText;
+	return shmea::GString((const char*)newEText, tSize);
 }
 
 void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
@@ -247,54 +246,35 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		return;
 
 	int balance = 0;
-	unsigned int cOverflowLen = origin->overflowLen;;
-	int64_t* cOverflow = origin->overflow;
+	shmea::GString cOverflow = origin->overflow;
 	int64_t key = origin->getKey();
 
 	do
 	{
 		// get the things to read
-		unsigned int eTextLen = 0;
-		int64_t* eText = balance == 1 ? NULL : reader(sockfd, eTextLen);
-
-		// error in reader, whatevz
-		if (eText == NULL)
-			eText = (int64_t*)malloc(sizeof(int64_t) * 0);
+		shmea::GString eText = "";
+		if(balance != 1)
+		{
+			eText = reader(sockfd);
+		}
 
 		// overflow+eText
 		if (balance != 0)
 		{
-			// prepare a temp array
-			unsigned int eTextLen2 = cOverflowLen + eTextLen;
-			int64_t* eText2 = (int64_t*)malloc(sizeof(int64_t) * eTextLen2);
-			if (!eText2)
-				return;
-
-			// overflow+eText
-			memcpy(eText2, cOverflow, sizeof(int64_t) * cOverflowLen);
-			memcpy(&eText2[cOverflowLen], eText, sizeof(int64_t) * eTextLen);
-
-			// move eText3 over to eText
-			eText = (int64_t*)malloc(sizeof(int64_t) * eTextLen2);
-			if (!eText)
-				return;
-			memcpy(eText, eText2, sizeof(int64_t) * eTextLen2);
-			eTextLen = eTextLen2;
-
-			if (eText2)
-				free(eText2);
+			eText = cOverflow + eText;
 		}
 
-		if (eTextLen == 0)
+		//if (eText.length() == 0)
+		if (eText.length() == 0)
 			return;
 
 		/*printf("Key Read: %lld\n", key);
-		for(int i=0;i<eTextLen;++i)
-			printf("eTextRead[%d]: 0x%016llX\n", i, eText[i]);*/
+		for(int i=0;i<eText.length()/8;++i)
+			printf("eTextRead[%d]: 0x%016llX\n", i, *(int64_t*)eText.substr(i*sizeof(int64_t), sizeof(int64_t)).c_str());*/
 
 		// decrypt
 		Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
-		crypt.decrypt(eText, key, eTextLen);
+		crypt.decrypt((int64_t*)eText.c_str(), key, eText.length()/8);
 
 		if (crypt.error)
 		{
@@ -307,16 +287,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		{
 			balance = -1;
 
-			// cOverflow
-			if (cOverflow)
-				free(cOverflow);
-
-			cOverflowLen = crypt.sizeCurrent;
-			cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-			if(!cOverflow)
-				return;
-
-			memcpy(cOverflow, eText, sizeof(int64_t) * cOverflowLen);
+			cOverflow = eText;
 		}
 		else if (crypt.sizeCurrent == crypt.sizeClaimed)
 		{
@@ -331,34 +302,25 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 
 			// set the text from the crypt object & add it to the data
 			shmea::ServiceData* cData = new shmea::ServiceData(origin);
-			//printf("eTextLen-PRE-SER: %u\n", eTextLen);
+			//printf("eTextLen-PRE-SER: %u\n", eText.length()/8);
 			shmea::GString cStr = crypt.dText;
 			shmea::Serializable::Deserialize(cData, cStr);
 			srvcList.push_back(cData); // minus the key
 
-			if (eTextLen == crypt.sizeClaimed)
+			if (eText.length()/8 == crypt.sizeClaimed)
 				balance = 0;
-			else if (eTextLen > crypt.sizeClaimed)
+			else if (eText.length()/8 > crypt.sizeClaimed)
 			{
 				balance = 1;
 
-				// overflow
-				if (cOverflow)
-					free(cOverflow);
-				cOverflowLen = eTextLen - crypt.sizeClaimed;
-				cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-				memcpy(cOverflow, &eText[crypt.sizeClaimed], sizeof(int64_t) * cOverflowLen);
+				unsigned int cOverflowLen = (eText.length()/8) - crypt.sizeClaimed;
+				cOverflow = eText.substr(
+					crypt.sizeClaimed*sizeof(int64_t), cOverflowLen*sizeof(int64_t));
 			}
 		}
-
-		// free the eText
-		if (eText)
-			free(eText);
-
 	} while (balance != 0);
 
 	origin->overflow = cOverflow;
-	origin->overflowLen = cOverflowLen;
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
