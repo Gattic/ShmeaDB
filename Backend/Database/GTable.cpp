@@ -167,7 +167,7 @@ void GTable::importFromFile(const GString& fname)
 				header.push_back(word);
 			else
 			{
-				GType newCell(word);
+				GType newCell = GString::Typify(word.c_str(), word.length());
 				newRow.addGType(newCell);
 			}
 

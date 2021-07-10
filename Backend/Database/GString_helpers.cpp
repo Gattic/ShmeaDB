@@ -19,7 +19,7 @@
 using namespace shmea;
 
 // TODO: ADD UNIT TESTS
-GType* GString::Typify(const char* word, unsigned int wordLen)
+GType GString::Typify(const char* word, unsigned int wordLen)
 {
 	// deduce the type flag
 	int newType = STRING_TYPE;
@@ -35,7 +35,7 @@ GType* GString::Typify(const char* word, unsigned int wordLen)
 	if (newType == FLOAT_TYPE)
 	{
 		float newBlock = atof(word);
-		GType* retVar = new GType(newType, &newBlock, sizeof(float));
+		GType retVar(newType, &newBlock, sizeof(float));
 		return retVar;
 	}
 	else if (newType == LONG_TYPE)
@@ -64,11 +64,11 @@ GType* GString::Typify(const char* word, unsigned int wordLen)
 		}*/
 
 		int64_t newBlock = atoll(word);
-		GType* retVar = new GType(newType, &newBlock, sizeof(int64_t));
+		GType retVar(newType, &newBlock, sizeof(int64_t));
 		return retVar;
 	}
 
-	GType* retVar = new GType(newType, word, wordLen);
+	GType retVar(newType, word, wordLen);
 	return retVar;
 }
 
