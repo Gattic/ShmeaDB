@@ -15,50 +15,56 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "socket.h"
-#include "../Database/GList.h"
+#include "../Database/GString.h"
 #include "../Database/Serializable.h"
+#include "connection.h"
 #include "crypt.h"
-#include "instance.h"
 #include "main.h"
 #include "service.h"
 
 using namespace GNet;
 
-const std::string Sockets::ANYADDR = "0.0.0.0";
-const std::string Sockets::LOCALHOST = "127.0.0.1";
-const std::string Sockets::PORT = "45019";
-int64_t* Sockets::overflow = NULL;
-unsigned int Sockets::overflowLen = 0;
-pthread_mutex_t* Sockets::inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-pthread_mutex_t* Sockets::outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-pthread_cond_t* Sockets::inWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-pthread_cond_t* Sockets::outWaitCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-std::queue<shmea::GList> Sockets::inboundLists;
-std::queue<std::pair<Instance*, shmea::GList> > Sockets::outboundLists;
+const shmea::GString Sockets::ANYADDR = "0.0.0.0";
+const shmea::GString Sockets::LOCALHOST = "127.0.0.1";
 
-const std::string Sockets::getPort()
+void Sockets::initSockets()
+{
+	PORT = "45019";
+	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+
+	pthread_mutex_init(inMutex, NULL);
+	pthread_mutex_init(outMutex, NULL);
+}
+
+Sockets::Sockets()
+{
+	initSockets();
+}
+
+Sockets::Sockets(const shmea::GString& newPORT)
+{
+	initSockets();
+	PORT = newPORT;
+}
+
+Sockets::~Sockets()
+{
+	pthread_mutex_destroy(inMutex);
+	if (inMutex)
+		free(inMutex);
+
+	pthread_mutex_destroy(outMutex);
+	if (outMutex)
+		free(outMutex);
+}
+
+const shmea::GString Sockets::getPort()
 {
 	return PORT;
 }
 
-void Sockets::initSockets()
-{
-	pthread_mutex_init(inMutex, NULL);
-	pthread_mutex_init(outMutex, NULL);
-	pthread_cond_init(inWaitCond, NULL);
-	pthread_cond_init(outWaitCond, NULL);
-}
-
-void Sockets::closeSockets()
-{
-	pthread_mutex_destroy(inMutex);
-	pthread_mutex_destroy(outMutex);
-	pthread_cond_destroy(inWaitCond);
-	pthread_cond_destroy(outWaitCond);
-	free(inMutex);
-	free(outMutex);
-}
-int Sockets::openClientConnection(const std::string& serverIP)
+int Sockets::openClientConnection(const shmea::GString& serverIP)
 {
 	struct addrinfo* result;
 	struct addrinfo hints;
@@ -76,7 +82,7 @@ int Sockets::openClientConnection(const std::string& serverIP)
 	// get the ip
 	char fromIP[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &result->ai_addr->sa_data[2], fromIP, INET_ADDRSTRLEN);
-	std::string clientIP = fromIP;
+	shmea::GString clientIP = fromIP;
 
 	// get the ip
 	int sockfd = -1;
@@ -152,14 +158,14 @@ int Sockets::openServerConnection()
 	return sockfd;
 }
 
-int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
+shmea::GString Sockets::reader(const int& sockfd)
 {
 	char buffer[1025];
 	bzero(buffer, 1025);
-	tSize = 0;
+	unsigned int tSize = 0;
 	char* eText = (char*)malloc(sizeof(char) * tSize);
 	if (!eText)
-		return NULL;
+		return "";
 
 	do
 	{
@@ -176,20 +182,31 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 				memcpy(&eText[oldTSize], buffer, bytesRead);
 			}
 			else
-				return NULL;
+			{
+				tSize = 0;
+				return "";
+			}
 		}
 		else
 		{
 			free(eText);
-			return NULL;
+			tSize = 0;
+			return "";
 		}
 
 		// We only write int64_t but we do it int by int
 	} while (((tSize % sizeof(int)) == 0) && ((tSize / sizeof(int)) % 2 == 1));
 
+	// Make sure we are the correct big/little endian
 	int64_t newEBlock = 0;
 	int lCounter = 0;
 	int64_t* newEText = (int64_t*)malloc(sizeof(char) * tSize);
+	if(!newEText)
+	{
+		tSize = 0;
+		return "";
+	}
+	
 	for (unsigned int i = 0; i < tSize / sizeof(int); ++i)
 	{
 		int64_t cIntBlock = ntohl(((unsigned int*)eText)[i]);
@@ -205,195 +222,162 @@ int64_t* Sockets::reader(const int& sockfd, unsigned int& tSize)
 	}
 	free(eText);
 
-	return newEText;
+	return shmea::GString((const char*)newEText, tSize);
 }
 
-void Sockets::readConnection(Instance* cInstance, const int& sockfd, const std::string& cIP,
-							 std::vector<shmea::GList>& itemList)
+void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
 {
-	readConnectionHelper(cInstance, sockfd, cIP, itemList);
+	readConnectionHelper(origin, sockfd, srvcList);
 
 	// remove the empty data lists
-	for (unsigned int i = 0; i < itemList.size(); ++i)
+	/*for (unsigned int i = 0; i < srvcList.size(); ++i)
 	{
-		if (itemList[i].size() <= 0)
+		if (srvcList[i].size() <= 0)
 		{
-			itemList.erase(itemList.begin() + i);
+			srvcList.erase(srvcList.begin() + i);
 			--i;
 		}
-	}
+	}*/
 }
 
-void Sockets::readConnectionHelper(Instance* cInstance, const int& sockfd, const std::string& cIP,
-								   std::vector<shmea::GList>& itemList)
+void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
 {
-	int balance = 0;
-	int64_t* cOverflow = overflow;
-	unsigned int cOverflowLen = overflowLen;
-	int64_t key = DEFAULT_KEY;
+	if (origin == NULL)
+		return;
 
-	// we would rather use the instance versions instead
-	if (cInstance != NULL)
-	{
-		cOverflow = cInstance->overflow;
-		cOverflowLen = cInstance->overflowLen;
-		key = cInstance->getKey();
-	}
+	int balance = 0;
+	shmea::GString cOverflow = origin->overflow;
+	int64_t key = origin->getKey();
 
 	do
 	{
 		// get the things to read
-		unsigned int eTextLen = 0;
-		int64_t* eText = balance == 1 ? NULL : reader(sockfd, eTextLen);
-
-		// error in reader, whatevz
-		if (eText == NULL)
-			eText = (int64_t*)malloc(sizeof(int64_t) * 0);
-		else
-			eTextLen /= 8;
+		shmea::GString eText = "";
+		if(balance != 1)
+		{
+			eText = reader(sockfd);
+		}
 
 		// overflow+eText
 		if (balance != 0)
 		{
-			// prepare a temp array
-			unsigned int eTextLen2 = cOverflowLen + eTextLen;
-			int64_t* eText2 = (int64_t*)malloc(sizeof(int64_t) * eTextLen2);
-			if (!eText2)
-				return;
-
-			// overflow+eText
-			memcpy(eText2, cOverflow, sizeof(int64_t) * cOverflowLen);
-			memcpy(&eText2[cOverflowLen], eText, sizeof(int64_t) * eTextLen);
-
-			// move eText3 over to eText
-			eText = (int64_t*)malloc(sizeof(int64_t) * eTextLen2);
-			if (!eText)
-				return;
-			memcpy(eText, eText2, sizeof(int64_t) * eTextLen2);
-			eTextLen = eTextLen2;
-
-			if (eText2)
-				delete eText2;
+			eText = cOverflow + eText;
 		}
 
-		if (eTextLen == 0)
+		//if (eText.length() == 0)
+		if (eText.length() == 0)
 			return;
 
 		/*printf("Key Read: %lld\n", key);
-		for(int i=0;i<eTextLen;++i)
-			printf("eTextRead[%d]: 0x%016llX\n", i, eText[i]);*/
+		for(int i=0;i<eText.length()/8;++i)
+			printf("eTextRead[%d]: 0x%016llX\n", i, *(int64_t*)eText.substr(i*sizeof(int64_t), sizeof(int64_t)).c_str());*/
 
 		// decrypt
-		Crypt* crypt = new Crypt();
-		crypt->decrypt(eText, key, eTextLen);
+		Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
+		crypt.decrypt((int64_t*)eText.c_str(), key, eText.length()/8);
 
-		if (crypt->error)
+		if (crypt.error)
 		{
-			printf("[CRYPT] Error: %d\n", crypt->error);
-			if (crypt)
-				delete crypt;
+			printf("[CRYPT] Error: %d\n", crypt.error);
 			return;
 		}
 
 		// starving
-		if (crypt->linesRead < crypt->size)
+		if (crypt.sizeCurrent < crypt.sizeClaimed)
 		{
 			balance = -1;
 
-			// overflow
-			if (cOverflow)
-				free(cOverflow);
-
-			cOverflowLen = crypt->linesRead;
-			cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-			memcpy(cOverflow, eText, sizeof(int64_t) * cOverflowLen);
+			cOverflow = eText;
 		}
-		else if (crypt->linesRead == crypt->size)
+		else if (crypt.sizeCurrent == crypt.sizeClaimed)
 		{
-			// set the text from the crypt object & add it to the data
-			itemList.push_back(shmea::Serializable::DeserializeHelper(
-				crypt->dText, crypt->size - 1)); // minus the key
+			/*printf("READ-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
+			if(crypt.dText[crypt.sizeClaimed-1] == 0)
+			for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
+			{
+				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
+				if(crypt.dText[rCounter] == 0x7C)
+					printf("-------------------------------\n");
+			}*/
 
-			if (eTextLen == crypt->size)
+			// set the text from the crypt object & add it to the data
+			shmea::ServiceData* cData = new shmea::ServiceData(origin);
+			//printf("eTextLen-PRE-SER: %u\n", eText.length()/8);
+			shmea::GString cStr = crypt.dText;
+			shmea::Serializable::Deserialize(cData, cStr);
+			srvcList.push_back(cData); // minus the key
+
+			if (eText.length()/8 == crypt.sizeClaimed)
 				balance = 0;
-			else if (eTextLen > crypt->size)
+			else if (eText.length()/8 > crypt.sizeClaimed)
 			{
 				balance = 1;
 
-				// overflow
-				if (cOverflow)
-					delete cOverflow;
-				cOverflowLen = eTextLen - crypt->size;
-				cOverflow = (int64_t*)malloc(sizeof(int64_t) * cOverflowLen);
-				memcpy(cOverflow, &eText[crypt->size], sizeof(int64_t) * cOverflowLen);
+				unsigned int cOverflowLen = (eText.length()/8) - crypt.sizeClaimed;
+				cOverflow = eText.substr(
+					crypt.sizeClaimed*sizeof(int64_t), cOverflowLen*sizeof(int64_t));
 			}
 		}
-
-		// delete it after we are done
-		if (crypt)
-			delete crypt;
-
-		// free the eText
-		if (eText)
-			free(eText);
-
 	} while (balance != 0);
 
-	if (cInstance != NULL)
-	{
-		cInstance->overflow = cOverflow;
-		cInstance->overflowLen = cOverflowLen;
-	}
+	origin->overflow = cOverflow;
 }
 
-int Sockets::writeConnection(const Instance* cInstance, const int& sockfd,
-							 const shmea::GList& cList, int messageType)
+int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
+							 const shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
+	//printf("==============================================================\n");
 
-	if (cInstance != NULL)
-		key = cInstance->getKey();
+	if (cConnection != NULL)
+		key = cConnection->getKey();
 
-	// add the version and message type to the front of every packet
-	shmea::GList writeList = cList;
-	writeList.insertInt(0, messageType);
+	// Add the version and message type to the front of every packet
 	// writeList.insertString(0, version.getString());
 
-	// convert to packet format
-	char* writeData = (char*)malloc(0);
-	unsigned int writeDataSize = shmea::Serializable::Serialize(writeList, &writeData);
-	if (writeDataSize <= 0)
+	// Convert to packet format
+	shmea::GString rawData = shmea::Serializable::Serialize(cData);
+	if (rawData.length() == 0)
 		return -1;
 
-	// encrypt
-	Crypt* crypt = new Crypt();
-	crypt->encrypt(writeData, key, writeDataSize);
+	// Encrypt
+	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
+	crypt.encrypt(rawData.c_str(), key, rawData.length());
 
-	if (crypt->error)
+	if (crypt.error)
 	{
-		printf("[CRYPT] Error: %d\n", crypt->error);
-		if (crypt)
-			delete crypt;
+		printf("[CRYPT] Error: %d\n", crypt.error);
 		return -1;
 	}
 
-	/*printf("Key Write: %lld\n", key);
-	for(int i=0;i<crypt->size;++i)
-		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt->eText[i]);*/
+	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
+	printf("Key Write: %lld\n", key);
+	for(int i=0;i<crypt.sizeClaimed;++i)
+		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText.substr(i*sizeof(int64_t), sizeof(int64_t));*/
 
-	unsigned int writeLen = 0;
-	for (unsigned int i = 0; i < crypt->size * 2; ++i)
+	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
+	printf("Key Write: %lld\n", key);
+	if(crypt.dText[crypt.sizeClaimed-1] == 0)
+	for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
 	{
-		unsigned int writeVal = htonl(*(((unsigned int*)(crypt->eText)) + i));
-		writeLen += write(sockfd, &writeVal, sizeof(unsigned int));
+		printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
+		if(crypt.dText[rCounter] == 0x7C)
+			printf("-------------------------------\n");
+	}*/
+
+	shmea::GString writeStr = "";
+	for (unsigned int i = 0; i < crypt.sizeClaimed * 2; ++i)
+	{
+		unsigned int writeVal = // This will be nice with GVector
+			htonl(*((unsigned int*)(crypt.eText.substr(i*sizeof(unsigned int), sizeof(unsigned int)).c_str())));
+		writeStr += shmea::GString((const char*)&writeVal, sizeof(unsigned int));
 	}
 
-	if (writeLen != sizeof(int64_t) * crypt->size)
-		printf("[SOCKS] Write error: %u/%llu\n", writeLen, sizeof(int64_t) * crypt->size);
+	unsigned int writeLen = write(sockfd, writeStr.c_str(), writeStr.length());
+	if (writeLen != sizeof(int64_t) * crypt.sizeClaimed)
+		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.sizeClaimed);
 
-	// delete it after we are done
-	if (crypt)
-		delete crypt;
+	//printf("==============================================================\n");
 
 	// write to the sock
 	return writeLen;
@@ -407,44 +391,32 @@ void Sockets::closeConnection(const int& sockfd)
 /*!
  * @brief read lists from connection
  * @details read pending lists from a connection
- * @param cInstance the connection instance
- * @return false if the instance should log out (unable to read), false otherwise
+ * @param origin the connection Connection
+ * @return false if the Connection should log out (unable to read), false otherwise
  */
-bool Sockets::readLists(Instance* cInstance)
+bool Sockets::readLists(Connection* origin)
 {
-	std::vector<shmea::GList> itemList;
-	readConnection(cInstance, cInstance->sockfd, cInstance->getIP(), itemList);
+	std::vector<const shmea::ServiceData*> srvcList;
+	readConnection(origin, origin->sockfd, srvcList);
 
-	if (itemList.size() > 0)
+	if (srvcList.size() > 0)
 	{
-		// loop through the itemList
-		for (unsigned int i = 0; i < itemList.size(); ++i)
+		// loop through the srvcList
+		for (unsigned int i = 0; i < srvcList.size(); ++i)
 		{
 			// get the data from the data list
-			shmea::GList cList = itemList.front();
-			itemList.erase(itemList.begin());
+			const shmea::ServiceData* cData = srvcList.front();
+			srvcList.erase(srvcList.begin());
 
 			// Check the version
-			/*std::string clientVersion = cList.getString(0);
-			cList.remove(0);*/
+			/*shmea::GString clientVersion = cData.getString(0);
+			cData.remove(0);*/
 			/*if (version != clientVersion)
 				return false;*/
-			// check the message type as well
-			int messageType = cList.getInt(0);
-			cList.remove(0);
-			// do something with message type here!!
-			// printf("[NET] message type: %d\n", messageType);
-			/*if (messageType == GNet::RESPONSE_TYPE)
-				outboundLists.push(cList);
-			else*/
-			pthread_mutex_lock(inMutex);
-			inboundLists.push(cList);
-			pthread_mutex_unlock(inMutex);
 
-			// launch the service with the command
-			// lock
-			// unlock
-			// Service::NewCommand(cList, cInstance);
+			pthread_mutex_lock(inMutex);
+			inboundLists.push(cData);
+			pthread_mutex_unlock(inMutex);
 		}
 		return true;
 	}
@@ -455,78 +427,44 @@ bool Sockets::readLists(Instance* cInstance)
 /*!
  * @brief process lists
  * @details create new services from the lists in the "inbound" queue
- * @param cInstance the connection instance
+ * @param cConnection the connection Connection
  */
-void Sockets::processLists(Instance* cInstance)
+void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 {
 	while (!inboundLists.empty())
 	{
-		shmea::GList nextCommand = inboundLists.front();
 		pthread_mutex_lock(inMutex);
+		const shmea::ServiceData* nextSD = inboundLists.front();
 		inboundLists.pop();
 		pthread_mutex_unlock(inMutex);
-		Service::ExecuteService(nextCommand, cInstance);
+		GNet::Service::ExecuteService(serverInstance, nextSD, cConnection);
 	}
 }
 
 /*!
  * @brief write lists
  * @details write lists in the "outbound" queue to the socket
- * @param cInstance the connection instance
- * @return true if the lists were written, false otherwise
+ * @param cConnection the connection Connection
  */
-bool Sockets::writeLists()
+void Sockets::writeLists(GServer* serverInstance)
 {
-	std::pair<Instance*, shmea::GList> nextOutbound = outboundLists.front();
+	if (!serverInstance)
+		return;
+
+	if (!anyOutboundLists())
+		return;
+
 	pthread_mutex_lock(outMutex);
+	std::pair<Connection*, const shmea::ServiceData*> nextOutbound = outboundLists.front();
 	outboundLists.pop();
+	serverInstance->send(nextOutbound.second);
 	pthread_mutex_unlock(outMutex);
-	Instance* cInstance = nextOutbound.first;
-	shmea::GList nextCommand = nextOutbound.second;
+	/*Connection* cConnection = nextOutbound.first;
+	const shmea::ServiceData* nextCommand = nextOutbound.second;
 	int bytesWritten =
-		writeConnection(cInstance, cInstance->sockfd, nextCommand, GNet::RESPONSE_TYPE);
+		writeConnection(cConnection, cConnection->sockfd, nextCommand);
 
-	return !(bytesWritten < 0);
-}
-
-/*!
- * @brief get the in mutex
- * @details in mutex for Networking/main.cpp
- * @return the inbound mutex
- */
-pthread_mutex_t* Sockets::getInMutex()
-{
-	return inMutex;
-}
-
-/*!
- * @brief get the out mutex
- * @details out mutex for Networking/main.cpp
- * @return the outbound mutex
- */
-pthread_mutex_t* Sockets::getOutMutex()
-{
-	return outMutex;
-}
-
-/*!
- * @brief get the in wait cond
- * @details in wait cond for Networking/main.cpp
- * @return the inbound wait cond
- */
-pthread_cond_t* Sockets::getInWaitCond()
-{
-	return inWaitCond;
-}
-
-/*!
- * @brief get the out wait cond
- * @details out wait cond for Networking/main.cpp
- * @return the outbound wait cond
- */
-pthread_cond_t* Sockets::getOutWaitCond()
-{
-	return outWaitCond;
+	return !(bytesWritten < 0);*/
 }
 
 /*!
@@ -548,15 +486,14 @@ bool Sockets::anyOutboundLists()
 {
 	return !outboundLists.empty();
 }
-void Sockets::addResponseList(Instance* cInstance, const shmea::GList& cList)
+void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection,
+							  const shmea::ServiceData* cData)
 {
-	if (!cInstance)
+	if (!cConnection)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	outboundLists.push(std::make_pair(cInstance, cList));
+	outboundLists.push(std::make_pair(cConnection, cData));
+	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
-
-	// unlock the
-	pthread_cond_signal(outWaitCond);
 }

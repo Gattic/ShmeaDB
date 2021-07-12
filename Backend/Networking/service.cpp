@@ -15,7 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "service.h"
-#include "instance.h"
+#include "connection.h"
 #include "socket.h"
 
 using namespace GNet;
@@ -49,13 +49,15 @@ Service::~Service()
  * @brief Run execute() asynchronusly as a Service
  * @details launch new service thread (command)
  * @param sockData a package of network data
- * @param cInstance the current instance
+ * @param cConnection the current connection
  */
-void Service::ExecuteService(const shmea::GList& sockData, Instance* cInstance)
+void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* sockData,
+							 Connection* cConnection)
 {
 	// set the args to pass in
 	newServiceArgs* x = new newServiceArgs[sizeof(newServiceArgs)];
-	x->cInstance = cInstance;
+	x->serverInstance = serverInstance;
+	x->cConnection = cConnection;
 	x->sockData = sockData;
 	x->sThread = new pthread_t[sizeof(pthread_t)];
 
@@ -72,32 +74,39 @@ void Service::ExecuteService(const shmea::GList& sockData, Instance* cInstance)
  */
 void* Service::launchService(void* y)
 {
-	// helper function for pthread_create
+	// Helper function for pthread_create
 
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
 
-	// get the command
-	if (x->sockData.size() < 1)
+	if (!x->serverInstance)
+		return NULL;
+	GServer* serverInstance = x->serverInstance;
+
+	// Get the command in order to tell the service what to do
+	x->command = x->sockData->getCommand();
+	if(x->command.length() == 0)//Uncomment this before commit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		return NULL;
 
-	x->command = x->sockData.getString(0);
-	x->sockData.remove(0);
+	// Connection is dead so ignore it
+	Connection* cConnection = x->cConnection;
+	if (!cConnection)
+		return NULL;
 
-	// Instance is dead so ignore it
-	Instance* cInstance = x->cInstance;
-	if (!cInstance->isFinished())
+	if (!cConnection->isFinished())
 	{
-		Service* cService = GNet::ServiceLookup(x->command);
+		Service* cService = serverInstance->ServiceLookup(x->command);
 		if (cService)
 		{
 			// start the service
 			cService->StartService(x);
 
 			// execute the service
-			shmea::GList retList = cService->execute(cInstance, x->sockData);
-			if (!retList.empty())
-				Sockets::addResponseList(cInstance, retList);
+			shmea::ServiceData* retData = cService->execute(x->sockData);
+			if(!retData)
+			{
+				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
+			}
 
 			// exit the service
 			cService->ExitService(x);
@@ -109,9 +118,9 @@ void* Service::launchService(void* y)
 	if (x)
 		delete x;
 
-	// delete the instance
-	if (cInstance->isFinished())
-		delete cInstance;
+	// delete the Connection
+	if (cConnection->isFinished())
+		delete cConnection;
 	return NULL;
 }
 
@@ -126,16 +135,16 @@ void Service::StartService(newServiceArgs* x)
 	timeExecuted = time(NULL);
 
 	// Get the ip address
-	Instance* cInstance = x->cInstance;
-	std::string ipAddress = "";
-	if (!cInstance->isFinished())
-		ipAddress = cInstance->getIP();
+	Connection* cConnection = x->cConnection;
+	shmea::GString ipAddress = "";
+	if (!cConnection->isFinished())
+		ipAddress = cConnection->getIP();
 
-	const std::string& command = x->command;
-	printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
+	// const shmea::GString& command = x->command;
+	// printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
 
-	// add the thread to the instance's active thread vector
-	// cInstance->sThreads.push_back(x->sThread);
+	// add the thread to the connection's active thread vector
+	cThread = x->sThread;
 }
 
 /*!
@@ -145,29 +154,16 @@ void Service::StartService(newServiceArgs* x)
  */
 void Service::ExitService(newServiceArgs* x)
 {
-	// remove the thread
-	/*for(std::vector<Service*>::iterator
-	itr=cInstance->sThreads.begin();itr!=cInstance->sThreads.end();++itr)
-	{
-		Service* tempThread=(*itr);
-		if(x->sThread == tempThread)
-		{
-			sThreads.erase(itr);
-			free(tempThread);
-			break;
-		}
-	}*/
-
 	// Get the ip address
-	Instance* cInstance = x->cInstance;
-	std::string ipAddress = "";
-	if (!cInstance->isFinished())
-		ipAddress = cInstance->getIP();
+	Connection* cConnection = x->cConnection;
+	shmea::GString ipAddress = "";
+	if (!cConnection->isFinished())
+		ipAddress = cConnection->getIP();
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(),
-		   x->command.c_str(), timeExecuted);
+	// printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(),
+	//	   x->command.c_str(), timeExecuted);
 
 	pthread_exit(0);
 }

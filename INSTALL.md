@@ -14,8 +14,6 @@ Linux/Cygwin:
 
 `g++`
 
-`OpenSSL: libssl-dev`
-
 Cygwin:
 
 `xinit`
@@ -34,19 +32,17 @@ Install Xcode command line tools.
 
 `$ brew install pkgconfig`
 
-`brew install openssl`
-
-`brew link --force openssl` (Follow instructions to set environment paths)
-
-`brew install sdl2`
-
-`brew install sdl_ttf`
-
 ---
 
 ## Installation
 
 sudo make install
+
+---
+
+## Uninstall
+
+sudo make uninstall
 
 ---
 

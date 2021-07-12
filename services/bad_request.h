@@ -17,28 +17,44 @@
 #ifndef _BAD_REQUEST
 #define _BAD_REQUEST
 
-#include "../Backend/Database/GList.h"
+#include "../Backend/Database/GString.h"
+#include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/main.h"
 #include "../Backend/Networking/service.h"
 
 class Bad_Request : public GNet::Service
 {
+private:
+	GNet::GServer* serverInstance;
+
 public:
-	shmea::GList execute(class GNet::Instance* cInstance, const shmea::GList& data)
+	Bad_Request()
 	{
-		shmea::GList retList;
+		serverInstance = NULL;
+	}
 
+	Bad_Request(GNet::GServer* newInstance)
+	{
+		serverInstance = newInstance;
+	}
+
+	~Bad_Request()
+	{
+		serverInstance = NULL; // Not ours to delete
+	}
+
+	shmea::ServiceData* execute(const shmea::ServiceData* data)
+	{
 		printf("[SRVC] Bad Request\n");
-
-		return retList;
+		return NULL;
 	}
 
-	GNet::Service* MakeService() const
+	GNet::Service* MakeService(GNet::GServer* newInstance) const
 	{
-		return new Bad_Request();
+		return new Bad_Request(newInstance);
 	}
 
-	std::string getName() const
+	shmea::GString getName() const
 	{
 		return "Bad_Request";
 	}

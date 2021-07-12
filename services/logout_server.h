@@ -17,33 +17,56 @@
 #ifndef _LOGOUT_SERVER
 #define _LOGOUT_SERVER
 
-#include "../Backend/Database/GList.h"
+#include "../Backend/Database/GString.h"
+#include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/main.h"
 #include "../Backend/Networking/service.h"
 
 class Logout_Server : public GNet::Service
 {
+private:
+	GNet::GServer* serverInstance;
+
 public:
-	shmea::GList execute(class GNet::Instance* cInstance, const shmea::GList& data)
+	Logout_Server()
 	{
-		shmea::GList retList;
-		printf("[SLOGOUT] %s\n", cInstance->getIP().c_str());
+		serverInstance = NULL;
+	}
+
+	Logout_Server(GNet::GServer* newInstance)
+	{
+		serverInstance = newInstance;
+	}
+
+	~Logout_Server()
+	{
+		serverInstance = NULL; // Not ours to delete
+	}
+
+	shmea::ServiceData* execute(const shmea::ServiceData* data)
+	{
+		class GNet::Connection* destination = data->getConnection();
+
+		if (!serverInstance)
+			return NULL;
+
+		printf("[SLOGOUT] %s\n", destination->getIP().c_str());
 
 		// delete it from the data structure
-		GNet::removeServerInstance(cInstance);
+		serverInstance->removeServerConnection(destination);
 
-		// Clean up the instance
-		cInstance->finish();
+		// Clean up the Connection
+		destination->finish();
 
-		return retList;
+		return NULL;
 	}
 
-	GNet::Service* MakeService() const
+	GNet::Service* MakeService(GNet::GServer* newInstance) const
 	{
-		return new Logout_Server();
+		return new Logout_Server(newInstance);
 	}
 
-	std::string getName() const
+	shmea::GString getName() const
 	{
 		return "Logout_Server";
 	}

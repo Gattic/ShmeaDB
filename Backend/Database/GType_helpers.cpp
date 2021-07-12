@@ -14,58 +14,53 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _GQL2_SAVEITEM
-#define _GQL2_SAVEITEM
+#include "GType.h"
 
-#include "gtable.h"
-#include <fstream>
-#include <pthread.h>
-#include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <string>
-#include <unistd.h>
-#include <vector>
+using namespace shmea;
 
-namespace shmea {
-class SaveItem
+// Member helpers
+unsigned int GType::cfind(char cChar) const
 {
-private:
-	int64_t id;
-	std::string dname;
-	std::string name;
-	GTable value;
+	if(!block)
+		return npos;
 
-	std::string getPath() const;
+	for (unsigned int i = 0; i < size(); ++i)
+	{
+		if (block[i] == cChar)
+			return i;
+	}
 
-protected:
-	friend class SaveList;
+	return npos;
+}
 
-	// Load functions
-	void loadByID(int64_t);
+unsigned int GType::find(const char* cStr, unsigned int cLen) const
+{
+	if(!block)
+		return npos;
 
-	// Save Functions
-	void saveByID(const GTable&);
+	for (unsigned int i = 0; i < size(); ++i)
+	{
+		for (unsigned int j = 0; j < cLen; ++j)
+		{
+			if (block[i+j] != cStr[j])
+				break;
 
-	void clean();
+			// Match
+			return i;
+		}
+	}
 
-public:
-	// constructors & destructor
-	SaveItem(const std::string&, const std::string&);
-	~SaveItem();
+	return npos;
+}
 
-	// Database operations
-	void loadByName();
-	void saveByName(const GTable&) const;
-	bool deleteByName();
+unsigned int GType::cfind(char cChar, const char* cStr, unsigned int cLen)
+{
+	GType gTemp(STRING_TYPE, cStr, cLen);
+	return gTemp.cfind(cChar);
+}
 
-	// gets
-	int64_t getID() const;
-	std::string getName() const;
-	GTable getTable() const;
-	void print() const;
-};
-};
-
-#endif
+unsigned int GType::find(const char* str, unsigned int len, const char* str2, unsigned int len2)
+{
+	GType gTemp(STRING_TYPE, str, len);
+	return gTemp.find(str2, len2);
+}

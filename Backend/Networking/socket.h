@@ -17,7 +17,7 @@
 #ifndef _GSOCKET
 #define _GSOCKET
 
-#include "../Database/GList.h"
+#include "../Database/GString.h"
 #include <arpa/inet.h>
 #include <iostream>
 #include <netdb.h>
@@ -34,57 +34,56 @@
 #include <utility>
 #include <vector>
 
+namespace shmea {
+class ServiceData;
+};
+
 namespace GNet {
-class Instance;
+class GServer;
+class Connection;
 
 class Sockets
 {
 private:
 	static const int64_t DEFAULT_KEY = 420l;
+	static const shmea::GString ANYADDR;
 
-	static const std::string ANYADDR;
-	static const std::string PORT;
+	shmea::GString PORT;
+	pthread_mutex_t* inMutex;
+	pthread_mutex_t* outMutex;
+	std::queue<const shmea::ServiceData*> inboundLists;
+	std::queue<std::pair<Connection*, const shmea::ServiceData*> > outboundLists;
 
-	static int64_t* overflow;
-	static unsigned int overflowLen;
-	static pthread_mutex_t* inMutex;
-	static pthread_mutex_t* outMutex;
-	static pthread_cond_t* inWaitCond; // not used yet
-	static pthread_cond_t* outWaitCond;
-	static std::queue<shmea::GList> inboundLists;
-	static std::queue<std::pair<Instance*, shmea::GList> > outboundLists;
+	void initSockets();
 
-	// static GList emptyResponseList();
+	// ServiceData* emptyResponseList();
 
 public:
-	static const std::string LOCALHOST;
+	static const shmea::GString LOCALHOST;
+
+	Sockets();
+	Sockets(const shmea::GString&);
+	~Sockets();
 
 	// functions
-	static void initSockets();
-	static void closeSockets();
-	static const std::string getPort();
-	static int openServerConnection();
-	static int openClientConnection(const std::string&);
-	static int64_t* reader(const int&, unsigned int&);
-	static void readConnection(Instance*, const int&, const std::string&,
-							   std::vector<shmea::GList>&);
-	static void readConnectionHelper(Instance*, const int&, const std::string&,
-									 std::vector<shmea::GList>&);
-	static int writeConnection(const class Instance* cInstance, const int&, const shmea::GList&,
-							   int);
-	static void closeConnection(const int&);
+	void initSockets(const shmea::GString&);
+	void closeSockets();
+	const shmea::GString getPort();
+	int openServerConnection();
+	int openClientConnection(const shmea::GString&);
+	shmea::GString reader(const int&);
+	void readConnection(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
+	void readConnectionHelper(Connection*, const int&, std::vector<const shmea::ServiceData*>&);
+	int writeConnection(const Connection*, const int&, const shmea::ServiceData*);
+	void closeConnection(const int&);
 
-	static pthread_mutex_t* getInMutex();
-	static pthread_mutex_t* getOutMutex();
-	static pthread_cond_t* getInWaitCond();
-	static pthread_cond_t* getOutWaitCond();
-	static bool anyInboundLists();
-	static bool anyOutboundLists();
+	bool anyInboundLists();
+	bool anyOutboundLists();
 
-	static bool readLists(Instance*);
-	static void processLists(Instance*);
-	static bool writeLists();
-	static void addResponseList(Instance*, const shmea::GList&);
+	bool readLists(Connection*);
+	void processLists(GServer*, Connection*);
+	void writeLists(GServer*);
+	void addResponseList(GServer*, Connection*, const shmea::ServiceData*);
 };
 };
 

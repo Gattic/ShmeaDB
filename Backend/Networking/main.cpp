@@ -20,7 +20,7 @@
 #include "../../services/handshake_server.h"
 #include "../../services/logout_client.h"
 #include "../../services/logout_server.h"
-#include "instance.h"
+#include "connection.h"
 #include "service.h"
 #include "socket.h"
 
@@ -28,176 +28,246 @@
 
 using namespace GNet;
 
-std::map<std::string, GNet::Instance*>* GNet::clientInstanceList =
-	new std::map<std::string, GNet::Instance*>();
-std::map<std::string, GNet::Instance*>* GNet::serverInstanceList =
-	new std::map<std::string, GNet::Instance*>();
-std::map<std::string, GNet::Service*>* GNet::service_depot =
-	new std::map<std::string, GNet::Service*>();
-int GNet::sockfd = -1;
-bool GNet::LOCAL_ONLY = false;
-bool GNet::running = false;
-GNet::Instance* GNet::localInstance = NULL;
-pthread_mutex_t* GNet::clientMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-pthread_mutex_t* GNet::serverMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-
-void GNet::NewService(const shmea::GList& wData, GNet::Instance* cInstance, int messageType,
-					  bool networkingDisabled)
+GNet::GServer::GServer()
 {
-	if (wData.size() <= 0)
+	socks = NULL;
+	clientConnections = new std::map<shmea::GString, GNet::Connection*>();
+	serverConnections = new std::map<shmea::GString, GNet::Connection*>();
+	service_depot = new std::map<shmea::GString, GNet::Service*>();
+
+	sockfd = -1;
+	LOCAL_ONLY = false;
+	running = false;
+	localConnection = NULL;
+	commandThread = (pthread_t*)malloc(sizeof(pthread_t));
+	writerThread = (pthread_t*)malloc(sizeof(pthread_t));
+	clientMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(clientMutex, NULL);
+	serverMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(serverMutex, NULL);
+
+	writersMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(writersMutex, NULL);
+	writersBlock = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
+	pthread_cond_init(writersBlock, NULL);
+
+	Handshake_Client* hc = new Handshake_Client(this);
+	addService(hc->getName(), hc);
+
+	Handshake_Server* hs = new Handshake_Server(this);
+	addService(hs->getName(), hs);
+
+	Logout_Server* ls = new Logout_Server(this);
+	addService(ls->getName(), ls);
+
+	Logout_Client* lc = new Logout_Client(this);
+	addService(lc->getName(), lc);
+
+	Bad_Request* br = new Bad_Request(this);
+	addService(br->getName(), br);
+}
+
+GNet::GServer::~GServer()
+{
+	running = false;
+	shutdown(getSockFD(), 2);
+
+	LOCAL_ONLY = true;
+	sockfd = -1;
+
+	if (socks)
+		delete socks;
+	socks = NULL;
+
+	if (localConnection)
+		delete localConnection;
+	localConnection = NULL;
+
+	if (clientConnections)
+		delete clientConnections;
+	clientConnections = NULL;
+
+	if (serverConnections)
+		delete serverConnections;
+	serverConnections = NULL;
+
+	if (service_depot)
+		delete service_depot;
+	service_depot = NULL;
+
+	if (commandThread)
+		free(commandThread);
+	commandThread = NULL;
+
+	if (writerThread)
+		free(writerThread);
+	writerThread = NULL;
+
+	pthread_mutex_destroy(clientMutex);
+	if (clientMutex)
+		free(clientMutex);
+	clientMutex = NULL;
+
+	pthread_mutex_destroy(serverMutex);
+	if (serverMutex)
+		free(serverMutex);
+	serverMutex = NULL;
+
+	pthread_mutex_destroy(writersMutex);
+	if (writersMutex)
+		free(writersMutex);
+	writersMutex = NULL;
+
+	if (writersBlock)
+	{
+		pthread_cond_destroy(writersBlock);
+		free(writersBlock);
+	}
+	writersBlock = NULL;
+}
+
+void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
+{
+	if (!cData)
 		return;
 
 	// Default instance
-	if (!cInstance)
-		cInstance = GNet::getLocalInstance();
+	 GNet::Connection* destination = cData->getConnection();
+	if (!destination)
+		destination = getLocalConnection();
 
-	if (GNet::isNetworkingDisabled())
+	if (isNetworkingDisabled())
 		networkingDisabled = true;
 
-	// Check if we are still not null
-	if (cInstance && !networkingDisabled)
+	if (!destination)
+	{
+		printf("[NET] Invalid Local Connection\n");
+		return;
+	}
+
+	if (!networkingDisabled)
 	{
 		int bytesWritten =
-			GNet::Sockets::writeConnection(cInstance, cInstance->sockfd, wData, messageType);
+			socks->writeConnection(destination, destination->sockfd, cData);
 
 		if (bytesWritten < 0)
-			GNet::LogoutInstance(cInstance);
-	}
-	else if (cInstance && networkingDisabled)
-	{
-		GNet::Service::ExecuteService(wData, cInstance);
+			LogoutInstance(destination);
 	}
 	else
 	{
-		printf("[NET] Invalid Local Instance\n");
-		return;
+		GNet::Service::ExecuteService(this, cData, destination);
 	}
 }
 
-GNet::Service* GNet::ServiceLookup(std::string cCommand)
+GNet::Service* GNet::GServer::ServiceLookup(shmea::GString cCommand)
 {
-	GNet::Service* cService = (*service_depot)[cCommand]->MakeService();
+	GNet::Service* cService = (*service_depot)[cCommand]->MakeService(this);
 	return cService;
 }
 
-unsigned int GNet::addService(std::string newServiceName, GNet::Service* newService)
+unsigned int GNet::GServer::addService(shmea::GString newServiceName, GNet::Service* newServiceObj)
 {
-	(*service_depot)[newServiceName] = newService;
+	//(*service_depot)[newServiceName] = newServiceObj;
+	std::map<shmea::GString, Service*>::const_iterator itr = service_depot->find(newServiceName);
+	if(itr == service_depot->end())
+	{
+		service_depot->insert(std::pair<shmea::GString, Service*>(newServiceName, newServiceObj));
+		//printf("service_depot-A[%ld]: %s\n", service_depot->size(), newServiceName.c_str());
+	}
+	else
+	{
+		//printf("service_depot-B[%ld]: %s == %s\n", service_depot->size(), (*itr).first.c_str(), newServiceName.c_str());
+		(*service_depot)[newServiceName] = newServiceObj;
+	}
+
 	return service_depot->size();
 }
 
-const bool& GNet::getRunning()
+const bool& GNet::GServer::getRunning()
 {
 	return running;
 }
 
-void GNet::stop()
+void GNet::GServer::stop()
 {
 	running = false;
+
+	// cleanup the networking threads
+	pthread_join(*commandThread, NULL);
+	wakeWriter();
+	pthread_join(*writerThread, NULL);
 }
 
-void GNet::run(pthread_t*& commandThread, pthread_t*& writerThread, bool _networkingDisabled)
+void GNet::GServer::run(bool _networkingDisabled)
 {
-	Handshake_Client* hc = new Handshake_Client();
-	addService(hc->getName(), hc);
+	LOCAL_ONLY = _networkingDisabled;
+	running = true;
 
-	Handshake_Server* hs = new Handshake_Server();
-	addService(hs->getName(), hs);
-
-	Logout_Server* ls = new Logout_Server();
-	addService(ls->getName(), ls);
-
-	Logout_Client* lc = new Logout_Client();
-	addService(lc->getName(), lc);
-
-	Bad_Request* br = new Bad_Request();
-	addService(br->getName(), br);
-
-	SSL_library_init();
-	OpenSSL_add_all_algorithms();
-	SSL_load_error_strings();
-
-	GNet::LOCAL_ONLY = _networkingDisabled;
-	GNet::running = true;
-
-	// initialize the mutexes
-	pthread_mutex_init(getClientMutex(), NULL);
-	pthread_mutex_init(getServerMutex(), NULL);
-
-	Sockets::initSockets();
+	socks = new Sockets("45019");
 
 	// Launch the server server
-	pthread_create(commandThread, NULL, commandCatcher, NULL);
-	// pthread_create(writerThread, NULL, ListWriter, NULL);
+	pthread_create(commandThread, NULL, commandLauncher, this);
+	pthread_create(writerThread, NULL, ListWLauncher, this);
 }
 
-bool GNet::isNetworkingDisabled()
+bool GNet::GServer::isNetworkingDisabled()
 {
-	return GNet::LOCAL_ONLY;
+	return LOCAL_ONLY;
 }
 
-int GNet::getSockFD()
+int GNet::GServer::getSockFD()
 {
 	return sockfd;
 }
 
-Instance* GNet::getLocalInstance()
+Connection* GNet::GServer::getLocalConnection()
 {
-	return localInstance;
+	return localConnection;
 }
 
-const std::map<std::string, GNet::Instance*>& GNet::getClientInstanceList()
+const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getClientConnections()
 {
-	return *clientInstanceList;
+	return *clientConnections;
 }
 
-void GNet::removeClientInstance(Instance* cInstance)
+void GNet::GServer::removeClientConnection(Connection* cConnection)
 {
-	if (!cInstance)
+	if (!cConnection)
 		return;
 
 	// delete it from the data structure
-	std::map<std::string, Instance*>::iterator itr = clientInstanceList->find(cInstance->getIP());
-	if (itr != clientInstanceList->end())
+	std::map<shmea::GString, Connection*>::iterator itr =
+		clientConnections->find(cConnection->getIP());
+	if (itr != clientConnections->end())
 	{
-		pthread_mutex_lock(getClientMutex());
-		clientInstanceList->erase(itr);
-		pthread_mutex_unlock(getClientMutex());
+		pthread_mutex_lock(clientMutex);
+		clientConnections->erase(itr);
+		pthread_mutex_unlock(clientMutex);
 	}
 }
 
-const std::map<std::string, GNet::Instance*>& GNet::getServerInstanceList()
+const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getServerConnections()
 {
-	return *serverInstanceList;
+	return *serverConnections;
 }
 
-void GNet::removeServerInstance(GNet::Instance* cInstance)
+void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 {
-	if (!cInstance)
+	if (!cConnection)
 		return;
 
 	// delete it from the data structure
-	pthread_mutex_lock(getServerMutex());
-	serverInstanceList->erase(serverInstanceList->find(cInstance->getIP()));
-	pthread_mutex_unlock(getServerMutex());
+	pthread_mutex_lock(serverMutex);
+	serverConnections->erase(serverConnections->find(cConnection->getIP()));
+	pthread_mutex_unlock(serverMutex);
 }
 
-pthread_mutex_t* GNet::getClientMutex()
-{
-	return clientMutex;
-}
-
-pthread_mutex_t* GNet::getServerMutex()
-{
-	return serverMutex;
-}
-
-bool GNet::isConnection(int _sockfd, const fd_set& fdarr)
+bool GNet::GServer::isConnection(int _sockfd, const fd_set& fdarr)
 {
 	return FD_ISSET(_sockfd, &fdarr);
 }
 
-GNet::Instance* GNet::setupNewConnection(int max_sock)
+GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 {
 	struct sockaddr_in from;
 	socklen_t clientLength = sizeof(from);
@@ -216,42 +286,62 @@ GNet::Instance* GNet::setupNewConnection(int max_sock)
 		// get the ip
 		char fromIP[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
-		std::string clientIP = fromIP;
+		shmea::GString clientIP = fromIP;
 
 		// dont overwrite an instance
-		if (clientInstanceList->find(clientIP) == clientInstanceList->end())
+		if (clientConnections->find(clientIP) == clientConnections->end())
 		{
 			printf("[LOGIN] %s\n", clientIP.c_str());
 
 			// create the new client instance and add it to the data structure
-			Instance* cInstance = new Instance(sockfd2, Instance::CLIENT_TYPE, clientIP);
+			Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
 			pthread_mutex_lock(clientMutex);
-			clientInstanceList->insert(std::pair<std::string, Instance*>(clientIP, cInstance));
+			clientConnections->insert(std::pair<shmea::GString, Connection*>(clientIP, cConnection));
 			pthread_mutex_unlock(clientMutex);
-			return cInstance;
+			return cConnection;
 		}
 	}
 	return NULL;
 }
 
-GNet::Instance* GNet::findExistingConnectionInstance(const std::vector<GNet::Instance*>& instances,
-													 const fd_set& fdarr)
+GNet::Connection*
+GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& instances,
+									  const fd_set& fdarr)
 {
 	for (unsigned int i = 0; i < instances.size(); ++i)
 	{
-		Instance* cInstance = instances[i];
-		if (isConnection(cInstance->sockfd, fdarr))
-			return cInstance;
+		Connection* cConnection = instances[i];
+		if (isConnection(cConnection->sockfd, fdarr))
+			return cConnection;
 	}
-	/*std::vector<Instance*>::iterator itr=instances.begin();
+	/*std::vector<Connection*>::iterator itr=instances.begin();
 	for(;itr!=instances.end();++itr)
 	{
-		Instance* cInstance=(*itr);
+		Connection* cConnection=(*itr);
 	}*/
 	return NULL;
 }
 
-void* GNet::commandCatcher(void*)
+GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP)
+{
+	std::map<shmea::GString, Connection*>::iterator itr = serverConnections->find(newServerIP);
+
+	if (itr != serverConnections->end())
+		return itr->second;
+
+	return NULL;
+}
+
+void* GNet::GServer::commandLauncher(void* y)
+{
+	GServer* x = (GServer*)y;
+	if (x)
+		x->commandCatcher(y);
+
+	return NULL;
+}
+
+void GNet::GServer::commandCatcher(void*)
 {
 	// socket stuff
 	sockfd = -1;
@@ -260,14 +350,14 @@ void* GNet::commandCatcher(void*)
 	// dont want to crash unnecassarily
 	signal(SIGPIPE, SIG_IGN);
 
-	sockfd = Sockets::openServerConnection();
+	sockfd = socks->openServerConnection();
 	if (sockfd < 0)
 	{
 		printf("[SOCKS] Could not create server socket");
 		exit(0);
 	}
 	else
-		printf("[SOCKS] Listening on port %s\n", Sockets::getPort().c_str());
+		printf("[SOCKS] Listening on port %s\n", socks->getPort().c_str());
 
 	// Launch a local instance of a client
 	LaunchLocalInstance("Mar");
@@ -277,45 +367,46 @@ void* GNet::commandCatcher(void*)
 	{
 		fd_set fdarr;
 		struct timeval tv;
-		tv.tv_sec = 10;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		FD_ZERO(&fdarr);
 		FD_SET(sockfd, &fdarr);
 		max_sock = sockfd;
 
-		// clientInstanceList+serverInstanceList
-		std::vector<Instance*> instanceList;
+		// clientConnections+serverConnections
+		std::vector<Connection*> instanceList;
 
-		// set the max sock from the clientInstanceList
-		std::map<std::string, Instance*>::const_iterator itr = clientInstanceList->begin();
-		for (; itr != clientInstanceList->end(); ++itr)
+		// set the max sock from the clientConnections
+		std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections->begin();
+		for (; itr != clientConnections->end(); ++itr)
 		{
-			Instance* cInstance = (itr->second);
+			Connection* cConnection = (itr->second);
 
 			// Valid socket descriptor?
-			if (cInstance->sockfd < 0)
+			if (cConnection->sockfd < 0)
 				continue;
 
-			instanceList.push_back(cInstance);
-			FD_SET(cInstance->sockfd, &fdarr);
-			if (cInstance->sockfd > max_sock)
-				max_sock = cInstance->sockfd;
+			instanceList.push_back(cConnection);
+			FD_SET(cConnection->sockfd, &fdarr);
+			if (cConnection->sockfd > max_sock)
+				max_sock = cConnection->sockfd;
 		}
 
-		// set the max sock from the serverInstanceList
-		itr = serverInstanceList->begin();
-		for (; itr != serverInstanceList->end(); ++itr)
+		// set the max sock from the serverConnections
+		itr = serverConnections->begin();
+		for (; itr != serverConnections->end(); ++itr)
 		{
-			Instance* cInstance = (itr->second);
+			Connection* cConnection = (itr->second);
 
 			// Valid socket descriptor?
-			if (cInstance->sockfd < 0)
+			if (cConnection->sockfd < 0)
 				continue;
 
-			instanceList.push_back(cInstance);
-			FD_SET(cInstance->sockfd, &fdarr);
-			if (cInstance->sockfd > max_sock)
-				max_sock = cInstance->sockfd;
+			instanceList.push_back(cConnection);
+			FD_SET(cConnection->sockfd, &fdarr);
+			if (cConnection->sockfd > max_sock)
+				max_sock = cConnection->sockfd;
 		}
 
 		// Listen for packets, blocking call
@@ -329,540 +420,194 @@ void* GNet::commandCatcher(void*)
 		else if (status == 0)
 			continue;
 
-		Instance* cInstance = NULL;
+		Connection* cConnection = NULL;
 		if (isConnection(sockfd, fdarr))
-			cInstance = setupNewConnection(max_sock);
+			cConnection = setupNewConnection(max_sock);
 		else
-			cInstance = findExistingConnectionInstance(instanceList, fdarr);
+			cConnection = findExistingConnection(instanceList, fdarr);
 
-		if (cInstance && !Sockets::readLists(cInstance))
+		if (!cConnection)
 		{
-			// LogoutInstance(cInstance);
+			// LogoutInstance(cConnection);
 			continue;
 		}
-		else if (!cInstance)
-			break;
 
-		if (cInstance && Sockets::anyInboundLists())
-			Sockets::processLists(cInstance);
+		// Put together new services from the socket
+		if (!socks->readLists(cConnection))
+		{
+			// LogoutInstance(cConnection);
+			continue;
+		}
+
+		// Run a service if we have any
+		if (socks->anyInboundLists())
+			socks->processLists(this, cConnection);
 	}
 
 	// stop everything
 	running = false;
 
 	// close the client connections
-	std::map<std::string, Instance*>::const_iterator itr = clientInstanceList->begin();
-	for (; itr != clientInstanceList->end(); ++itr)
+	std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections->begin();
+	for (; itr != clientConnections->end(); ++itr)
 	{
-		Instance* cInstance = (itr->second);
+		Connection* cConnection = (itr->second);
 
 		// Valid socket descriptor?
-		if (cInstance->sockfd < 0)
+		if (cConnection->sockfd < 0)
 			continue;
 
 		// close the client connection
-		shutdown(cInstance->sockfd, 2);
-		close(cInstance->sockfd);
+		shutdown(cConnection->sockfd, 2);
+		close(cConnection->sockfd);
 	}
 
 	// empty the client list
-	clientInstanceList->clear();
+	clientConnections->clear();
 
 	// close the server connections
-	itr = serverInstanceList->begin();
-	for (; itr != serverInstanceList->end(); ++itr)
+	itr = serverConnections->begin();
+	for (; itr != serverConnections->end(); ++itr)
 	{
-		Instance* cInstance = (itr->second);
+		Connection* cConnection = (itr->second);
 
 		// Valid socket descriptor?
-		if (cInstance->sockfd < 0)
+		if (cConnection->sockfd < 0)
 			continue;
 
 		// close the server connection
-		shutdown(cInstance->sockfd, 2);
-		close(cInstance->sockfd);
+		shutdown(cConnection->sockfd, 2);
+		close(cConnection->sockfd);
 	}
 
 	// empty the server list
-	serverInstanceList->clear();
+	serverConnections->clear();
 
 	// close the socket
 	close(sockfd);
+}
 
-	// Clean mutexes
-	pthread_mutex_destroy(clientMutex);
-	pthread_mutex_destroy(serverMutex);
-	free(clientMutex);
-	free(serverMutex);
+void* GNet::GServer::LaunchInstanceLauncher(void* y)
+{
+	LaunchInstanceHelperArgs* x = (LaunchInstanceHelperArgs*)y;
+	if (x->serverInstance)
+		x->serverInstance->LaunchInstanceHelper(y);
 
 	return NULL;
 }
 
-void* GNet::LaunchInstanceHelper(void* y)
+void GNet::GServer::LaunchInstanceHelper(void* y)
 {
 	LaunchInstanceHelperArgs* x = (LaunchInstanceHelperArgs*)y;
+	if (!x->serverInstance)
+		return;
+	GServer* serverInstance = x->serverInstance;
 
-	int sockfd2 = Sockets::openClientConnection(x->serverIP);
+	int sockfd2 = serverInstance->socks->openClientConnection(x->serverIP);
 	if (sockfd2 < 0)
 	{
 		if (x->serverIP == "127.0.0.1")
 		{
 			printf("[SOCKS] Could not create client socket");
-			exit(0); // Cannot connect to itself
+			exit(0); // Cannot connect to itself, probably want to change this to error instead
 		}
 		else
 		{
 			printf("[SOCKS] Could not create client socket\n");
-			return NULL;
 		}
 	}
 
 	// create the new server instance and add it to the data structure
-	Instance* cInstance = new Instance(sockfd2, Instance::SERVER_TYPE, x->serverIP);
+	Connection* destination = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
 	pthread_mutex_lock(serverMutex);
-	serverInstanceList->insert(std::pair<std::string, Instance*>(x->serverIP, cInstance));
+	serverConnections->insert(std::pair<shmea::GString, Connection*>(x->serverIP, destination));
 	pthread_mutex_unlock(serverMutex);
 
-	// Login
-	shmea::GList wData;
-	wData.addString("Handshake_Server");
-	wData.addString(x->clientName);
-	Sockets::writeConnection(cInstance, sockfd2, wData, ACK_TYPE);
-
 	if (x->serverIP == "127.0.0.1")
-		localInstance = cInstance;
+		localConnection = destination;
 
-	return NULL;
+	// Start the Login Handshake
+	shmea::GList* wData = new shmea::GList();
+	wData->addString(x->clientName);
+	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
+	socks->writeConnection(destination, sockfd2, cData);
 }
 
-void GNet::LaunchInstance(const std::string& serverIP, const std::string& clientName)
+void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& clientName)
 {
 	// login to the server
-	if (serverInstanceList->find(serverIP) == serverInstanceList->end())
+	if (serverConnections->find(serverIP) == serverConnections->end())
 	{
 		LaunchInstanceHelperArgs* x = new LaunchInstanceHelperArgs();
+		x->serverInstance = this;
 		x->clientName = clientName;
 		x->serverIP = serverIP;
 
-		// Launch the Instance with a connection request
-		pthread_t* launchInstanceThread = (pthread_t*)malloc(sizeof(pthread_t));
-		pthread_create(launchInstanceThread, NULL, LaunchInstanceHelper, x);
+		// Launch the Connection with a connection request
+		pthread_t* launchInstanceThread =
+			(pthread_t*)malloc(sizeof(pthread_t)); // TODO: WE NEED TO FREE THIS
+		pthread_create(launchInstanceThread, NULL, LaunchInstanceLauncher, x);
 		pthread_detach(*launchInstanceThread);
 	}
 	/*else//For Testing Logouts
 	{
-		Instance* cInstance=(serverInstanceList->find(serverIP))->second;
+		Connection* cConnection=(serverConnections->find(serverIP))->second;
 
 		//Log the client out of the server
-		LogoutInstance(cInstance);
+		LogoutInstance(cConnection);
 
 		//Log the server out of the client
-		GList wData;
+		ServiceData* wData;
 		wData.addInt(Service::LOGOUT_SERVER);
-		GNet::ExecuteService(wData, cInstance);
+		GNet::Service::ExecuteService(this, wData, cConnection);
 	}*/
 }
 
-void* GNet::ListWriter(void*)
+void GNet::GServer::wakeWriter()
+{
+	pthread_cond_signal(writersBlock); // wake the ListWriter thread
+}
+
+void* GNet::GServer::ListWLauncher(void* y)
+{
+	GServer* x = (GServer*)y;
+	if (x)
+		x->ListWriter(y);
+
+	return NULL;
+}
+
+void GNet::GServer::ListWriter(void*)
 {
 	while (getRunning())
 	{
 		int waitError = 0;
 
-		// how long to wait on a fail
-		struct timespec timeToWait;
-		timeToWait.tv_nsec = 10000;
-
 		// Blocking call
-		pthread_mutex_lock(Sockets::getOutMutex());
-		waitError =
-			pthread_cond_timedwait(Sockets::getOutWaitCond(), Sockets::getOutMutex(), &timeToWait);
-		pthread_mutex_unlock(Sockets::getOutMutex());
+		pthread_mutex_lock(writersMutex);
+		waitError = pthread_cond_wait(writersBlock, writersMutex);
+		pthread_mutex_unlock(writersMutex);
 
-		// We found a GList!
+		// We found a ServiceData!
 		if (waitError == 0)
-			Sockets::writeLists();
+			socks->writeLists(this);
 		else if (waitError != ETIMEDOUT)
 			printf("[SOCKS] ListWriter Err: %d\n", waitError);
 	}
-
-	return NULL;
 }
 
-void GNet::LaunchLocalInstance(const std::string& clientName)
+void GNet::GServer::LaunchLocalInstance(const shmea::GString& clientName)
 {
-	std::string serverIP = "127.0.0.1";
+	shmea::GString serverIP = "127.0.0.1";
 	LaunchInstance(serverIP, clientName);
 }
 
-void GNet::LogoutInstance(Instance* cInstance)
+void GNet::GServer::LogoutInstance(Connection* cConnection)
 {
-	if (!cInstance)
+	if (!cConnection)
 		return;
 
 	// Log out the connection
-	shmea::GList wData;
-	wData.addString("Logout_Client");
-	GNet::Service::ExecuteService(wData, cInstance);
-}
-
-std::string GNet::getWebContents(std::string url)
-{
-	printf("[URL] %s\n", url.c_str());
-	std::string stream = "";
-	//"Usage: http[s]://www.address.com:[port]/directory/\n"
-
-	// Parse the URL
-	std::string hostURL = "";
-	std::string port = "80";
-	std::string dir = "";
-	bool isHTTPS = true;
-	GetURLInfo(url, hostURL, port, dir, isHTTPS);
-
-	// Parse the directory
-	std::vector<std::string> subdirs;
-	std::map<std::string, std::string> urlArgs;
-	GetDirInfo(dir, subdirs, urlArgs);
-
-	// print the subdirectories
-	/*for(int i=0;i<subdirs.size();++i)
-		printf("subdir[%d]: %s\n", i, subdirs[i].c_str());
-
-	//print the urlArgs
-	std::map<std::string, std::string>::const_iterator itr=urlArgs.begin();
-	for(;itr!=urlArgs.end();++itr)
-		printf("urlArgs[%s:%s]\n", (itr->first).c_str(), (itr->second).c_str());*/
-
-	if (isHTTPS)
-	{
-		// initialize SSL
-		SSL* ssl;
-		SSL_CTX* ctx;
-
-		ctx = SSL_CTX_new(SSLv23_client_method());
-		if (ctx == NULL)
-		{
-			ERR_print_errors_fp(stderr);
-			printf("SSL_CTX_new fail\n");
-			return "";
-		}
-
-		int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (sockfd < 0)
-		{
-			printf("Could not open socket\n");
-			return "";
-		}
-
-		struct addrinfo* result;
-		struct addrinfo hints;
-		memset(&hints, 0, sizeof hints);
-		hints.ai_family = AF_INET;
-		hints.ai_socktype = SOCK_STREAM;
-
-		int status = getaddrinfo(hostURL.c_str(), port.c_str(), &hints, &result);
-		if (status < 0)
-		{
-			printf("Get addr info fail\n");
-			return "";
-		}
-
-		for (struct addrinfo* x = result; x != NULL; x = x->ai_next)
-			status = connect(sockfd, x->ai_addr, x->ai_addrlen);
-
-		if (status < 0)
-		{
-			printf("Could not connect\n");
-			return "";
-		}
-
-		ssl = SSL_new(ctx);
-		SSL_set_fd(ssl, sockfd);
-		if (SSL_connect(ssl) <= 0)
-		{
-			printf("SSL printfors\n");
-			return "";
-		}
-
-		// send the headers
-		std::string req = "GET /" + dir + " HTTP/1.1\r\n";
-		SSL_write(ssl, req.c_str(), req.length());
-
-		std::string hostHeader = "Host: " + hostURL + ":" + port + "\r\n";
-		SSL_write(ssl, hostHeader.c_str(), hostHeader.length());
-
-		std::string userAgentHeader = "User-Agent: robo-cap\r\n\r\n";
-		SSL_write(ssl, userAgentHeader.c_str(), userAgentHeader.length());
-
-		char buffer[512];
-		int contentPoint = -1;
-		int bytesRead = 0;
-		int fileRead = 0;
-		int contentSize = -1;
-		std::string responseHeader = "";
-		do
-		{
-
-			fflush(stdout);
-			bzero(buffer, 512); // clean buffer
-			bytesRead = SSL_read(ssl, buffer, 511);
-			if (bytesRead < 0)
-			{
-				printf("Could not read\n");
-				return "";
-			}
-
-			int32_t ssl_error = SSL_get_error(ssl, bytesRead);
-			if (ssl_error < 0)
-				break;
-
-			if (bytesRead == 0)
-				break;
-
-			std::string msg = buffer;
-			if (msg.find("\r\n\r\n") != std::string::npos)
-			{
-				contentPoint = msg.find("\r\n\r\n");
-				// printf("%s", msg.substr(0,contentPoint).c_str());
-				stream = msg.substr(contentPoint + 4).c_str();
-				responseHeader += msg.substr(0, contentPoint + 4);
-				fileRead = stream.length();
-			}
-			else
-			{
-				if (contentPoint > -1)
-				{
-					stream += buffer;
-					fileRead += bytesRead;
-				}
-				else
-				{
-					responseHeader += buffer;
-
-					if (msg.find("Content-Length: ") != std::string::npos)
-					{
-						int contentBegin = msg.find("Content-Length: ");
-						int contentEnd = msg.find('\n', contentBegin);
-						std::string sizeValue =
-							msg.substr(contentBegin + 16, contentEnd - (contentBegin + 16));
-						contentSize = atoi(sizeValue.c_str());
-					}
-				}
-
-				// if ((contentSize >-1) && (fileRead == contentSize)) break;
-			}
-
-		} while (!(contentSize > -1 && fileRead == contentSize)); // is still reading
-
-		// reading complete
-		fflush(stdout);
-		freeaddrinfo(result);
-		shutdown(sockfd, 2);
-		close(sockfd);
-
-		// return file
-		// printf("\nSTREAM: %s\n", stream.c_str());
-		return stream;
-	}
-	else // HTTP
-	{
-		int sockfd, sockfd2;
-
-		sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (sockfd < 0)
-		{
-			printf("Could not open socket\n");
-			return "";
-		}
-
-		struct addrinfo* result;
-		struct addrinfo hints;
-		memset(&hints, 0, sizeof hints);
-		hints.ai_family = AF_INET;
-		hints.ai_socktype = SOCK_STREAM;
-
-		int status = getaddrinfo(hostURL.c_str(), port.c_str(), &hints, &result);
-		if (status < 0)
-		{
-			printf("Get addr info fail\n");
-			return "";
-		}
-
-		for (struct addrinfo* x = result; x != NULL; x = x->ai_next)
-			status = connect(sockfd, x->ai_addr, x->ai_addrlen);
-		if (status < 0)
-		{
-			printf("Could not connect\n");
-			return "";
-		}
-
-		// send the headers
-		std::string req = "GET /" + dir + " HTTP/1.1\r\n";
-		sockfd2 = write(sockfd, req.c_str(), req.length());
-		if (sockfd2 < 0)
-		{
-			printf("Could not write\n");
-			return "";
-		}
-
-		std::string hostHeader = "Host: " + hostURL + ":" + port + "\r\n";
-		sockfd2 = write(sockfd, hostHeader.c_str(), hostHeader.length());
-		if (sockfd2 < 0)
-		{
-			printf("Could not write\n");
-			return "";
-		}
-
-		std::string userAgentHeader = "User-Agent: ROBO-CAP\r\n\r\n";
-		sockfd2 = write(sockfd, userAgentHeader.c_str(), userAgentHeader.length());
-		if (sockfd2 < 0)
-		{
-			printf("Could not write\n");
-			return "";
-		}
-
-		char buffer[256];
-		int contentPoint = -1;
-		do
-		{
-			bzero(buffer, 256);
-			sockfd2 = read(sockfd, buffer, 255);
-			if (sockfd2 < 0)
-			{
-				printf("Could not read\n");
-				return "";
-			}
-			std::string msg = buffer;
-			if (msg.find("\r\n\r\n") != std::string::npos)
-			{
-				contentPoint = msg.find("\r\n\r\n");
-				// fprintf(stderr, "%s", msg.substr(0, contentPoint).c_str());
-				printf("%s", msg.substr(contentPoint + 1).c_str());
-			}
-			else
-			{
-				if (contentPoint > -1)
-					printf("%s", buffer);
-				// else fprintf(stderr, "%s", buffer);
-			}
-		} while (sockfd2 > 0); // is still reading
-
-		freeaddrinfo(result);
-		close(sockfd);
-		close(sockfd2);
-	}
-
-	return "";
-}
-
-void GNet::GetDirInfo(std::string dir, std::vector<std::string>& subdirs,
-					  std::map<std::string, std::string>& urlArgs)
-{
-	// Example: 1.0/stock/amzn/chart/1d?format=csv
-	int breakPoint = dir.find('/');
-	do
-	{
-		// Chop the information, Hi-ya!
-		std::string subdir = dir.substr(0, breakPoint);
-		subdirs.push_back(subdir);
-		dir = dir.substr(breakPoint + 1);
-		breakPoint = dir.find('/');
-
-	} while (breakPoint > -1);
-
-	// Last directory, possibly arguments
-	if (dir.size() > 0)
-	{
-		// Get the last directory
-		breakPoint = dir.find('?');
-		std::string subdir = dir.substr(0, breakPoint);
-		subdirs.push_back(subdir);
-		dir = dir.substr(breakPoint + 1);
-
-		// Look for Arguments
-		breakPoint = dir.find('&');
-		do
-		{
-			int breakPoint2 = dir.find('=');
-			do
-			{
-				// new key
-				std::string newKey = dir.substr(0, breakPoint2);
-				dir = dir.substr(breakPoint2 + 1);
-				// breakPoint-=breakPoint2;
-
-				// new value
-				std::string newValue = "";
-				if (breakPoint > -1)
-				{
-					//
-					newValue = dir.substr(0, breakPoint);
-					if (dir.length() > breakPoint)
-						dir = dir.substr(breakPoint + 1);
-				}
-				else
-				{
-					//
-					newValue = dir;
-					dir = "";
-				}
-
-				// add the new key, value to the map
-				urlArgs.insert(std::pair<std::string, std::string>(newKey, newValue));
-
-				breakPoint2 = dir.find('=');
-			} while (breakPoint2 > -1);
-
-			breakPoint = dir.find('&');
-		} while (breakPoint > -1);
-	}
-}
-
-void GNet::GetURLInfo(std::string url, std::string& hostURL, std::string& port, std::string& dir,
-					  bool& isHTTPS)
-{
-	port = "80";
-	dir = "";
-	isHTTPS = false;
-
-	// does it have http:// or https://
-	int breakPoint = url.find("//");
-	if (breakPoint != -1)
-	{
-		int breakPoint2 = url.find("https");
-		if (breakPoint2 == 0)
-		{
-			port = "443";
-			isHTTPS = true;
-		}
-		url = url.substr(breakPoint + 2); // take out the http:// or https://
-	}
-	// does it have a port specified
-	breakPoint = url.find(":");
-	if (breakPoint != -1) // yes
-	{
-		hostURL = url.substr(0, breakPoint);
-		int breakPoint2 = url.find("/");
-		if (breakPoint2 != -1)
-		{
-			port = url.substr(breakPoint + 1, breakPoint2 - breakPoint - 1);
-			url = url.substr(breakPoint2 + 1);
-			dir = url;
-		}
-		else
-			port = url.substr(breakPoint + 1).c_str();
-		// dir is left blank, there is none
-	}
-	else // no, port defaults to 80 or 443
-	{
-		breakPoint = url.find("/");
-		if (breakPoint != -1)
-		{
-			hostURL = url.substr(0, breakPoint);
-			dir = url.substr(breakPoint + 1);
-		}
-		else
-			hostURL = url;
-		// otherwise the directory is blank
-	}
+	shmea::ServiceData* cData = new shmea::ServiceData(localConnection, "Logout_Client");
+	GNet::Service::ExecuteService(this, cData, cConnection);
 }

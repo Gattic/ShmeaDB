@@ -4,25 +4,20 @@ find_package(Threads REQUIRED)
 
 set(DB_src_files
 	image.cpp
-	image.h
-	oldjson.cpp
-	oldjson.h
-	gtype.cpp
-	gtype.h
+	GType.cpp
+	GType_helpers.cpp
+	GType_operators.cpp
 	GList.cpp
-	GList.h
-	gtable.cpp
-	gtable.h
+	GTable.cpp
+	GObject.cpp
+	GString.cpp
+	GString_helpers.cpp
 	GAnalysis.cpp
-	GAnalysis.h
 	maxid.cpp
-	maxid.h
-	saveitem.cpp
-	saveitem.h
-	savelist.cpp
-	savelist.h
+	SaveTable.cpp
+	SaveFolder.cpp
 	Serializable.cpp
-	Serializable.h
+	ServiceData.cpp
 )
 add_library(DB ${DB_src_files})
 

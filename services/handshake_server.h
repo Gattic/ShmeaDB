@@ -17,53 +17,83 @@
 #ifndef _HANDSHAKE_SERVER
 #define _HANDSHAKE_SERVER
 
-#include "../Backend/Database/GList.h"
+#include "../Backend/Database/GString.h"
+#include "../Backend/Database/ServiceData.h"
 #include "../Backend/Networking/main.h"
 #include "../Backend/Networking/service.h"
 #include "../Backend/Networking/socket.h"
 
 class Handshake_Server : public GNet::Service
 {
+private:
+	GNet::GServer* serverInstance;
+
 public:
-	shmea::GList execute(class GNet::Instance* cInstance, const shmea::GList& data)
+	Handshake_Server()
 	{
-		// Log the client into the server
-		shmea::GList retList;
-		if (data.size() < 1)
-			return retList;
-
-		// Check the characters in the name
-		std::string clientName = data.getString(0);
-		if (GNet::Instance::validName(clientName))
-			cInstance->setName(clientName);
-
-		// generate a new key for the sockets
-		if (cInstance->getIP() != GNet::Sockets::LOCALHOST)
-		{
-			int64_t newKey = GNet::Instance::generateKey();
-
-			// tell the client the good news
-			shmea::GList wData;
-			wData.addString("Handshake_Client");
-			wData.addString(cInstance->getName());
-			wData.addLong(newKey);
-			GNet::Sockets::writeConnection(cInstance, cInstance->sockfd, wData, GNet::ACK_TYPE);
-
-			// Set the new instance key
-			cInstance->setKey(newKey);
-		}
-
-		return retList;
+		serverInstance = NULL;
 	}
 
-	std::string getName() const
+	Handshake_Server(GNet::GServer* newInstance)
+	{
+		serverInstance = newInstance;
+	}
+
+	~Handshake_Server()
+	{
+		serverInstance = NULL; // Not ours to delete
+	}
+
+	shmea::ServiceData* execute(const shmea::ServiceData* data)
+	{
+		// Log the client into the server
+		class GNet::Connection* destination = data->getConnection();
+
+		if (!serverInstance)
+			return NULL;
+
+		if (data->getType() != shmea::ServiceData::TYPE_LIST)
+			return NULL;
+
+		const shmea::GList* cList = data->getList();
+		if ((!cList) || cList->size() < 1)
+			return NULL;
+
+		// Check the characters in the name
+		shmea::GString clientName = cList->getString(0);
+		if (GNet::Connection::validName(clientName))
+			destination->setName(clientName);
+
+		// generate a new key for the sockets
+		// if (destination->getIP() != GNet::Sockets::LOCALHOST)
+		{
+			int64_t newKey = GNet::Connection::generateKey();
+			//printf("newKey0: %ld\n", newKey);
+
+			// tell the client the good news
+			shmea::GList* wData = new shmea::GList();
+			wData->addString(destination->getName());
+			wData->addLong(newKey);
+
+			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client", wData);
+			serverInstance->send(cData);
+			//printf("newKey1: %ld:%ld\n", newKey, wData->getLong(1));
+
+			// Set the new Connection key
+			destination->setKey(newKey);
+		}
+
+		return NULL;
+	}
+
+	shmea::GString getName() const
 	{
 		return "Handshake_Server";
 	}
 
-	GNet::Service* MakeService() const
+	GNet::Service* MakeService(GNet::GServer* newInstance) const
 	{
-		return new Handshake_Server();
+		return new Handshake_Server(newInstance);
 	}
 };
 

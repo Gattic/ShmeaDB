@@ -14,38 +14,37 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#include "savelist.h"
-#include "gtable.h"
-#include "maxid.h"
-#include "saveitem.h"
+#include "SaveFolder.h"
+#include "GTable.h"
+#include "SaveTable.h"
 
 using namespace shmea;
 
-SaveList::SaveList(const std::string& newDirName)
+SaveFolder::SaveFolder(const GString& newDirName)
 {
 	clean();
 	dname = newDirName;
 }
 
-SaveList::~SaveList()
+SaveFolder::~SaveFolder()
 {
 	clean();
 }
 
-std::string SaveList::getPath() const
+GString SaveFolder::getPath() const
 {
 	if (dname.length() == 0)
 		return "";
 
 	// get the env and build the path
-	std::string dirname = "database/" + dname + "/";
+	GString dirname = "database/" + dname + "/";
 	return dirname;
 }
 
-SaveItem* SaveList::loadItem(const std::string& siName)
+SaveTable* SaveFolder::loadItem(const GString& siName)
 {
 	// database load single item
-	SaveItem* newSV = new SaveItem(dname, siName);
+	SaveTable* newSV = new SaveTable(dname, siName);
 	if (!newSV)
 		return NULL;
 
@@ -54,21 +53,21 @@ SaveItem* SaveList::loadItem(const std::string& siName)
 	return newSV;
 }
 
-bool SaveList::deleteItem(const std::string& siName)
+bool SaveFolder::deleteItem(const GString& siName)
 {
 	// database load single item
-	SaveItem* newSV = new SaveItem(dname, siName);
+	SaveTable* newSV = new SaveTable(dname, siName);
 	if (!newSV)
 		return false;
 
 	return newSV->deleteByName();
 }
 
-SaveItem* SaveList::newItem(const std::string& siName, const GTable& newTable)
+SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 {
 	// create the directory if we need to
 	struct stat info;
-	std::string dirname = getPath();
+	GString dirname = getPath();
 	if (dirname.length() > 0)
 	{
 		if (stat(dirname.c_str(), &info) != 0)
@@ -95,7 +94,7 @@ SaveItem* SaveList::newItem(const std::string& siName, const GTable& newTable)
 	}
 
 	// database load single item
-	SaveItem* newSV = new SaveItem(dname, siName);
+	SaveTable* newSV = new SaveTable(dname, siName);
 	newSV->saveByName(newTable);
 	if (!newSV)
 		addItem(newSV);
@@ -103,12 +102,12 @@ SaveItem* SaveList::newItem(const std::string& siName, const GTable& newTable)
 	return newSV;
 }
 
-void SaveList::load()
+void SaveFolder::load()
 {
 	if (dname.length() == 0)
 		return;
 
-	std::string folderName = getPath();
+	GString folderName = getPath();
 	DIR* dir = opendir(folderName.c_str());
 	if (!dir)
 	{
@@ -121,12 +120,12 @@ void SaveList::load()
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// don't want the current directory, parent or hidden files/folders
-		std::string fname(ent->d_name);
+		GString fname(ent->d_name);
 		if (fname[0] == '.')
 			continue;
 
 		// Load each file by the name
-		SaveItem* newSV = new SaveItem(dname, fname);
+		SaveTable* newSV = new SaveTable(dname, fname);
 		newSV->loadByName();
 		addItem(newSV);
 	}
@@ -134,10 +133,10 @@ void SaveList::load()
 	closedir(dir);
 }
 
-std::vector<SaveList*> SaveList::loadFolders()
+std::vector<SaveFolder*> SaveFolder::loadFolders()
 {
-	std::string folderName = "database/";
-	std::vector<SaveList*> folderList;
+	GString folderName = "database/";
+	std::vector<SaveFolder*> folderList;
 
 	DIR* dir;
 	struct dirent* ent;
@@ -151,12 +150,12 @@ std::vector<SaveList*> SaveList::loadFolders()
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// don't want the current directory, parent or hidden files/folders
-		std::string fname(ent->d_name);
+		GString fname(ent->d_name);
 		if (fname[0] == '.')
 			continue;
 
 		printf("Folder Name: %s \n", fname.c_str());
-		SaveList* newSL = new SaveList(fname);
+		SaveFolder* newSL = new SaveFolder(fname);
 		newSL->load();
 		folderList.push_back(newSL);
 	}
@@ -165,28 +164,28 @@ std::vector<SaveList*> SaveList::loadFolders()
 	return folderList;
 }
 
-std::string SaveList::getName() const
+GString SaveFolder::getName() const
 {
 	return dname;
 }
 
-const std::vector<SaveItem*>& SaveList::getItems() const
+const std::vector<SaveTable*>& SaveFolder::getItems() const
 {
 	return saveItems;
 }
 
-int SaveList::size() const
+int SaveFolder::size() const
 {
 	return saveItems.size();
 }
 
-void SaveList::addItem(SaveItem* newItem)
+void SaveFolder::addItem(SaveTable* newItem)
 {
 	if (newItem)
 		saveItems.push_back(newItem);
 }
 
-void SaveList::clean()
+void SaveFolder::clean()
 {
 	dname = "";
 	saveItems.clear();

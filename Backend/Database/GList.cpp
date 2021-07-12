@@ -141,13 +141,13 @@ void GList::insertPrimitive(unsigned int index, int newType, const void* newBloc
 		insertObject(index, newType, newBlock, newBlockSize);
 }
 
-void GList::addString(const std::string& newBlock)
+void GList::addString(const GString& newBlock)
 {
 	if (newBlock.length() > 0)
 		insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
-void GList::insertString(unsigned int index, const std::string& newBlock)
+void GList::insertString(unsigned int index, const GString& newBlock)
 {
 	if (newBlock.length() > 0)
 		insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
@@ -157,7 +157,7 @@ void GList::addString(const char* newBlock)
 {
 	if (newBlock != NULL)
 	{
-		std::string newStr(newBlock);
+		GString newStr(newBlock);
 		insertString(items.size(), newStr);
 	}
 }
@@ -166,7 +166,7 @@ void GList::insertString(unsigned int index, const char* newBlock)
 {
 	if (newBlock != NULL)
 	{
-		std::string newStr(newBlock);
+		GString newStr(newBlock);
 		insertString(index, newStr);
 	}
 }
@@ -205,7 +205,7 @@ void GList::insertObject(unsigned int index, int newType, const void* newBlock,
  */
 void GList::addGType(const GType& item)
 {
-	items.push_back(item);
+		items.push_back(item);
 }
 
 /*!
@@ -243,18 +243,18 @@ void GList::clear()
 	items.clear();
 }
 
-std::string GList::getString(unsigned int index) const
+GString GList::getString(unsigned int index) const
 {
 	if (index >= items.size())
 		return "";
 
-	if (items[index].size() <= 0)
+	if (items[index].size() == 0)
 		return "";
 
-	return items[index].getString();
+	return items[index];
 }
 
-const char* GList::getCString(unsigned int index) const
+const char* GList::c_str(unsigned int index) const
 {
 	if (index >= items.size())
 		return "";
@@ -262,7 +262,7 @@ const char* GList::getCString(unsigned int index) const
 	if (items[index].size() <= 0)
 		return "";
 
-	return items[index].getCString();
+	return items[index].c_str();
 }
 
 char GList::getChar(unsigned int index) const
@@ -345,7 +345,7 @@ bool GList::getBoolean(unsigned int index) const
 GType GList::getGType(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return GType();
 
 	return items[index];
 }
@@ -373,7 +373,7 @@ void GList::print() const
 	for (unsigned int i = 0; i < size(); ++i)
 	{
 		if (items[i].getType() == GType::STRING_TYPE)
-			printf("%s", items[i].getString().c_str());
+			printf("%s", items[i].c_str());
 		else if (items[i].getType() == GType::CHAR_TYPE)
 			printf("%c", items[i].getChar());
 		else if (items[i].getType() == GType::SHORT_TYPE)
@@ -399,7 +399,7 @@ void GList::print() const
 GType GList::operator[](unsigned int index)
 {
 	if (index >= items.size())
-		return 0;
+		return GType();
 
 	return items[index];
 }
@@ -407,7 +407,7 @@ GType GList::operator[](unsigned int index)
 const GType GList::operator[](unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return GType();
 
 	return items[index];
 }
