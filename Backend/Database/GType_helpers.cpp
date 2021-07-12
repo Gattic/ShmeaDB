@@ -14,62 +14,53 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _LOGOUT_CLIENT
-#define _LOGOUT_CLIENT
+#include "GType.h"
 
-#include "../Backend/Database/GString.h"
-#include "../Backend/Database/ServiceData.h"
-#include "../Backend/Networking/main.h"
-#include "../Backend/Networking/service.h"
+using namespace shmea;
 
-class Logout_Client : public GNet::Service
+// Member helpers
+unsigned int GType::cfind(char cChar) const
 {
-private:
-	GNet::GServer* serverInstance;
+	if(!block)
+		return npos;
 
-public:
-	Logout_Client()
+	for (unsigned int i = 0; i < size(); ++i)
 	{
-		serverInstance = NULL;
+		if (block[i] == cChar)
+			return i;
 	}
 
-	Logout_Client(GNet::GServer* newInstance)
+	return npos;
+}
+
+unsigned int GType::find(const char* cStr, unsigned int cLen) const
+{
+	if(!block)
+		return npos;
+
+	for (unsigned int i = 0; i < size(); ++i)
 	{
-		serverInstance = newInstance;
+		for (unsigned int j = 0; j < cLen; ++j)
+		{
+			if (block[i+j] != cStr[j])
+				break;
+
+			// Match
+			return i;
+		}
 	}
 
-	~Logout_Client()
-	{
-		serverInstance = NULL; // Not ours to delete
-	}
+	return npos;
+}
 
-	shmea::ServiceData* execute(const shmea::ServiceData* data)
-	{
-		class GNet::Connection* destination = data->getConnection();
+unsigned int GType::cfind(char cChar, const char* cStr, unsigned int cLen)
+{
+	GType gTemp(STRING_TYPE, cStr, cLen);
+	return gTemp.cfind(cChar);
+}
 
-		if (!serverInstance)
-			return NULL;
-
-		printf("[CLOGOUT] %s\n", destination->getIP().c_str());
-
-		// delete it from the data structure
-		serverInstance->removeClientConnection(destination);
-
-		// Clean up the Connection
-		destination->finish();
-
-		return NULL;
-	}
-
-	GNet::Service* MakeService(GNet::GServer* newInstance) const
-	{
-		return new Logout_Client(newInstance);
-	}
-
-	shmea::GString getName() const
-	{
-		return "Logout_Client";
-	}
-};
-
-#endif
+unsigned int GType::find(const char* str, unsigned int len, const char* str2, unsigned int len2)
+{
+	GType gTemp(STRING_TYPE, str, len);
+	return gTemp.find(str2, len2);
+}

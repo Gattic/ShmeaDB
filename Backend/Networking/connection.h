@@ -17,6 +17,7 @@
 #ifndef _GCONNECTION
 #define _GCONNECTION
 
+#include "../Database/GString.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,8 +34,8 @@ class Service;
 class Connection
 {
 private:
-	std::string name;
-	std::string ip;
+	shmea::GString name;
+	shmea::GString ip;
 	int connectionType;
 	int64_t key;
 	bool finished;
@@ -49,54 +50,26 @@ public:
 	static const int CLIENT_TYPE = 1;
 
 	int sockfd;
-	int64_t* overflow;
-	unsigned int overflowLen;
-	std::vector<pthread_t*> sThreads; // all the active service threads
+	shmea::GString overflow;
 
-	Connection(int, int, std::string);
+	Connection(int, int, shmea::GString);
 	Connection(const Connection&);
 	~Connection();
 	void finish();
 
 	// gets
-	std::string getName() const
-	{
-		return name;
-	}
-	// std::string getSID() const { return sid; }
-	std::string getIP() const
-	{
-		return ip;
-	}
-	int getConnectionType() const
-	{
-		return connectionType;
-	}
-	int64_t getKey() const
-	{
-		return key;
-	}
-	bool isFinished() const
-	{
-		return finished;
-	}
+	shmea::GString getName() const;
+	shmea::GString getIP() const;
+	int getConnectionType() const;
+	int64_t getKey() const;
+	bool isFinished() const;
 
 	// sets
-	void setName(std::string newName)
-	{
-		name = newName;
-	}
-	// void setSID(std::string newSID) { sid=newSID; }
-	void setIP(std::string newIP)
-	{
-		ip = newIP;
-	}
-	void setKey(int64_t newKey)
-	{
-		key = newKey;
-	}
+	void setName(shmea::GString);
+	void setIP(shmea::GString);
+	void setKey(int64_t);
 
-	static bool validName(const std::string&);
+	static bool validName(const shmea::GString&);
 	static int64_t generateKey();
 };
 };

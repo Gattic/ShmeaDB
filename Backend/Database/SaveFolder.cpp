@@ -20,7 +20,7 @@
 
 using namespace shmea;
 
-SaveFolder::SaveFolder(const std::string& newDirName)
+SaveFolder::SaveFolder(const GString& newDirName)
 {
 	clean();
 	dname = newDirName;
@@ -31,17 +31,17 @@ SaveFolder::~SaveFolder()
 	clean();
 }
 
-std::string SaveFolder::getPath() const
+GString SaveFolder::getPath() const
 {
 	if (dname.length() == 0)
 		return "";
 
 	// get the env and build the path
-	std::string dirname = "database/" + dname + "/";
+	GString dirname = "database/" + dname + "/";
 	return dirname;
 }
 
-SaveTable* SaveFolder::loadItem(const std::string& siName)
+SaveTable* SaveFolder::loadItem(const GString& siName)
 {
 	// database load single item
 	SaveTable* newSV = new SaveTable(dname, siName);
@@ -53,7 +53,7 @@ SaveTable* SaveFolder::loadItem(const std::string& siName)
 	return newSV;
 }
 
-bool SaveFolder::deleteItem(const std::string& siName)
+bool SaveFolder::deleteItem(const GString& siName)
 {
 	// database load single item
 	SaveTable* newSV = new SaveTable(dname, siName);
@@ -63,11 +63,11 @@ bool SaveFolder::deleteItem(const std::string& siName)
 	return newSV->deleteByName();
 }
 
-SaveTable* SaveFolder::newItem(const std::string& siName, const GTable& newTable)
+SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 {
 	// create the directory if we need to
 	struct stat info;
-	std::string dirname = getPath();
+	GString dirname = getPath();
 	if (dirname.length() > 0)
 	{
 		if (stat(dirname.c_str(), &info) != 0)
@@ -107,7 +107,7 @@ void SaveFolder::load()
 	if (dname.length() == 0)
 		return;
 
-	std::string folderName = getPath();
+	GString folderName = getPath();
 	DIR* dir = opendir(folderName.c_str());
 	if (!dir)
 	{
@@ -120,7 +120,7 @@ void SaveFolder::load()
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// don't want the current directory, parent or hidden files/folders
-		std::string fname(ent->d_name);
+		GString fname(ent->d_name);
 		if (fname[0] == '.')
 			continue;
 
@@ -135,7 +135,7 @@ void SaveFolder::load()
 
 std::vector<SaveFolder*> SaveFolder::loadFolders()
 {
-	std::string folderName = "database/";
+	GString folderName = "database/";
 	std::vector<SaveFolder*> folderList;
 
 	DIR* dir;
@@ -150,7 +150,7 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// don't want the current directory, parent or hidden files/folders
-		std::string fname(ent->d_name);
+		GString fname(ent->d_name);
 		if (fname[0] == '.')
 			continue;
 
@@ -164,7 +164,7 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 	return folderList;
 }
 
-std::string SaveFolder::getName() const
+GString SaveFolder::getName() const
 {
 	return dname;
 }

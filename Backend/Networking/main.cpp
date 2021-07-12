@@ -31,9 +31,9 @@ using namespace GNet;
 GNet::GServer::GServer()
 {
 	socks = NULL;
-	clientConnections = new std::map<std::string, GNet::Connection*>();
-	serverConnections = new std::map<std::string, GNet::Connection*>();
-	service_depot = new std::map<std::string, GNet::Service*>();
+	clientConnections = new std::map<shmea::GString, GNet::Connection*>();
+	serverConnections = new std::map<shmea::GString, GNet::Connection*>();
+	service_depot = new std::map<shmea::GString, GNet::Service*>();
 
 	sockfd = -1;
 	LOCAL_ONLY = false;
@@ -126,20 +126,20 @@ GNet::GServer::~GServer()
 	writersBlock = NULL;
 }
 
-void GNet::GServer::NewService(const shmea::GList& wData, GNet::Connection* cConnection,
-							   int messageType, bool networkingDisabled)
+void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
 {
-	if (wData.size() <= 0)
+	if (!cData)
 		return;
 
 	// Default instance
-	if (!cConnection)
-		cConnection = getLocalConnection();
+	 GNet::Connection* destination = cData->getConnection();
+	if (!destination)
+		destination = getLocalConnection();
 
 	if (isNetworkingDisabled())
 		networkingDisabled = true;
 
-	if (!cConnection)
+	if (!destination)
 	{
 		printf("[NET] Invalid Local Connection\n");
 		return;
@@ -148,26 +148,38 @@ void GNet::GServer::NewService(const shmea::GList& wData, GNet::Connection* cCon
 	if (!networkingDisabled)
 	{
 		int bytesWritten =
-			socks->writeConnection(cConnection, cConnection->sockfd, wData, messageType);
+			socks->writeConnection(destination, destination->sockfd, cData);
 
 		if (bytesWritten < 0)
-			LogoutInstance(cConnection);
+			LogoutInstance(destination);
 	}
 	else
 	{
-		GNet::Service::ExecuteService(this, wData, cConnection);
+		GNet::Service::ExecuteService(this, cData, destination);
 	}
 }
 
-GNet::Service* GNet::GServer::ServiceLookup(std::string cCommand)
+GNet::Service* GNet::GServer::ServiceLookup(shmea::GString cCommand)
 {
 	GNet::Service* cService = (*service_depot)[cCommand]->MakeService(this);
 	return cService;
 }
 
-unsigned int GNet::GServer::addService(std::string newServiceName, GNet::Service* newService)
+unsigned int GNet::GServer::addService(shmea::GString newServiceName, GNet::Service* newServiceObj)
 {
-	(*service_depot)[newServiceName] = newService;
+	//(*service_depot)[newServiceName] = newServiceObj;
+	std::map<shmea::GString, Service*>::const_iterator itr = service_depot->find(newServiceName);
+	if(itr == service_depot->end())
+	{
+		service_depot->insert(std::pair<shmea::GString, Service*>(newServiceName, newServiceObj));
+		//printf("service_depot-A[%ld]: %s\n", service_depot->size(), newServiceName.c_str());
+	}
+	else
+	{
+		//printf("service_depot-B[%ld]: %s == %s\n", service_depot->size(), (*itr).first.c_str(), newServiceName.c_str());
+		(*service_depot)[newServiceName] = newServiceObj;
+	}
+
 	return service_depot->size();
 }
 
@@ -213,7 +225,7 @@ Connection* GNet::GServer::getLocalConnection()
 	return localConnection;
 }
 
-const std::map<std::string, GNet::Connection*>& GNet::GServer::getClientConnections()
+const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getClientConnections()
 {
 	return *clientConnections;
 }
@@ -224,7 +236,7 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 		return;
 
 	// delete it from the data structure
-	std::map<std::string, Connection*>::iterator itr =
+	std::map<shmea::GString, Connection*>::iterator itr =
 		clientConnections->find(cConnection->getIP());
 	if (itr != clientConnections->end())
 	{
@@ -234,7 +246,7 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 	}
 }
 
-const std::map<std::string, GNet::Connection*>& GNet::GServer::getServerConnections()
+const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getServerConnections()
 {
 	return *serverConnections;
 }
@@ -274,7 +286,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 		// get the ip
 		char fromIP[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
-		std::string clientIP = fromIP;
+		shmea::GString clientIP = fromIP;
 
 		// dont overwrite an instance
 		if (clientConnections->find(clientIP) == clientConnections->end())
@@ -284,7 +296,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 			// create the new client instance and add it to the data structure
 			Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
 			pthread_mutex_lock(clientMutex);
-			clientConnections->insert(std::pair<std::string, Connection*>(clientIP, cConnection));
+			clientConnections->insert(std::pair<shmea::GString, Connection*>(clientIP, cConnection));
 			pthread_mutex_unlock(clientMutex);
 			return cConnection;
 		}
@@ -310,9 +322,9 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 	return NULL;
 }
 
-GNet::Connection* GNet::GServer::getConnection(std::string newServerIP)
+GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP)
 {
-	std::map<std::string, Connection*>::iterator itr = serverConnections->find(newServerIP);
+	std::map<shmea::GString, Connection*>::iterator itr = serverConnections->find(newServerIP);
 
 	if (itr != serverConnections->end())
 		return itr->second;
@@ -366,7 +378,7 @@ void GNet::GServer::commandCatcher(void*)
 		std::vector<Connection*> instanceList;
 
 		// set the max sock from the clientConnections
-		std::map<std::string, Connection*>::const_iterator itr = clientConnections->begin();
+		std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections->begin();
 		for (; itr != clientConnections->end(); ++itr)
 		{
 			Connection* cConnection = (itr->second);
@@ -436,7 +448,7 @@ void GNet::GServer::commandCatcher(void*)
 	running = false;
 
 	// close the client connections
-	std::map<std::string, Connection*>::const_iterator itr = clientConnections->begin();
+	std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections->begin();
 	for (; itr != clientConnections->end(); ++itr)
 	{
 		Connection* cConnection = (itr->second);
@@ -506,22 +518,22 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	}
 
 	// create the new server instance and add it to the data structure
-	Connection* cConnection = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
+	Connection* destination = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
 	pthread_mutex_lock(serverMutex);
-	serverConnections->insert(std::pair<std::string, Connection*>(x->serverIP, cConnection));
+	serverConnections->insert(std::pair<shmea::GString, Connection*>(x->serverIP, destination));
 	pthread_mutex_unlock(serverMutex);
 
 	if (x->serverIP == "127.0.0.1")
-		localConnection = cConnection;
+		localConnection = destination;
 
-	// Login
-	shmea::GList wData;
-	wData.addString("Handshake_Server");
-	wData.addString(x->clientName);
-	socks->writeConnection(cConnection, sockfd2, wData, ACK_TYPE);
+	// Start the Login Handshake
+	shmea::GList* wData = new shmea::GList();
+	wData->addString(x->clientName);
+	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
+	socks->writeConnection(destination, sockfd2, cData);
 }
 
-void GNet::GServer::LaunchInstance(const std::string& serverIP, const std::string& clientName)
+void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& clientName)
 {
 	// login to the server
 	if (serverConnections->find(serverIP) == serverConnections->end())
@@ -545,7 +557,7 @@ void GNet::GServer::LaunchInstance(const std::string& serverIP, const std::strin
 		LogoutInstance(cConnection);
 
 		//Log the server out of the client
-		GList wData;
+		ServiceData* wData;
 		wData.addInt(Service::LOGOUT_SERVER);
 		GNet::Service::ExecuteService(this, wData, cConnection);
 	}*/
@@ -576,7 +588,7 @@ void GNet::GServer::ListWriter(void*)
 		waitError = pthread_cond_wait(writersBlock, writersMutex);
 		pthread_mutex_unlock(writersMutex);
 
-		// We found a GList!
+		// We found a ServiceData!
 		if (waitError == 0)
 			socks->writeLists(this);
 		else if (waitError != ETIMEDOUT)
@@ -584,9 +596,9 @@ void GNet::GServer::ListWriter(void*)
 	}
 }
 
-void GNet::GServer::LaunchLocalInstance(const std::string& clientName)
+void GNet::GServer::LaunchLocalInstance(const shmea::GString& clientName)
 {
-	std::string serverIP = "127.0.0.1";
+	shmea::GString serverIP = "127.0.0.1";
 	LaunchInstance(serverIP, clientName);
 }
 
@@ -596,7 +608,6 @@ void GNet::GServer::LogoutInstance(Connection* cConnection)
 		return;
 
 	// Log out the connection
-	shmea::GList wData;
-	wData.addString("Logout_Client");
-	GNet::Service::ExecuteService(this, wData, cConnection);
+	shmea::ServiceData* cData = new shmea::ServiceData(localConnection, "Logout_Client");
+	GNet::Service::ExecuteService(this, cData, cConnection);
 }

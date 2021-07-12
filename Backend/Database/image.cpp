@@ -15,17 +15,18 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "image.h"
+#include "GString.h"
 
 using namespace shmea;
 
-bool Image::LoadPPM(const std::string& fname)
+bool Image::LoadPPM(const GString& fname)
 {
 	// valid file name?
 	if (fname.length() == 0)
 		return false;
 
 	int len = fname.length();
-	if (!(len > 4 && fname.substr(len - 4) == std::string(".ppm")))
+	if (!(len > 4 && fname.substr(len - 4) == GString(".ppm")))
 	{
 		printf("ERROR: This is not a PPM fname: %s\n", fname.c_str());
 		return false;
@@ -77,14 +78,14 @@ bool Image::LoadPPM(const std::string& fname)
 	return true;
 }
 
-bool Image::LoadPBM(const std::string& fname)
+bool Image::LoadPBM(const GString& fname)
 {
 	// valid file name?
 	if (fname.length() == 0)
 		return false;
 
 	int len = fname.length();
-	if (!(len > 4 && fname.substr(len - 4) == std::string(".pbm")))
+	if (!(len > 4 && fname.substr(len - 4) == GString(".pbm")))
 	{
 		printf("ERROR: This is not a PBM fname: %s\n", fname.c_str());
 		return false;
@@ -163,10 +164,10 @@ bool Image::LoadPBM(const std::string& fname)
 	return true;
 }
 
-bool Image::SavePPM(const std::string& filename) const
+bool Image::SavePPM(const GString& filename) const
 {
 	int len = filename.length();
-	if (!(len > 4 && filename.substr(len - 4) == std::string(".ppm")))
+	if (!(len > 4 && filename.substr(len - 4) == GString(".ppm")))
 	{
 		printf("ERROR: This is not a PPM filename: %s\n", filename.c_str());
 		return false;
@@ -201,10 +202,10 @@ bool Image::SavePPM(const std::string& filename) const
 	return true;
 }
 
-bool Image::SavePBM(const std::string& filename) const
+bool Image::SavePBM(const GString& filename) const
 {
 	int len = filename.length();
-	if (!(len > 4 && filename.substr(len - 4) == std::string(".pbm")))
+	if (!(len > 4 && filename.substr(len - 4) == GString(".pbm")))
 	{
 		printf("ERROR: This is not a PBM filename: %s\n", filename.c_str());
 		return false;
@@ -264,7 +265,7 @@ bool Image::SavePBM(const std::string& filename) const
 	return true;
 }
 
-void Image::LoadBMP(const std::string& filename)
+void Image::LoadBMP(const GString& filename)
 {
 	/*unsigned int rmask = 0;
 	unsigned int gmask = 0;
@@ -284,7 +285,7 @@ void Image::LoadBMP(const std::string& filename)
 #endif
 
 	int len = filename.length();
-	if (!(len > 4 && filename.substr(len - 4) == std::string(".bmp")))
+	if (!(len > 4 && filename.substr(len - 4) == GString(".bmp")))
 	{
 		printf("ERROR: This is not a BMP filename: %s\n", filename.c_str());
 		return false;

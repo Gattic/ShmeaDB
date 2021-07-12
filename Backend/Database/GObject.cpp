@@ -35,6 +35,7 @@ GObject::~GObject()
 
 void GObject::copy(const GObject& otherObj)
 {
+	members = otherObj.members;
 	memberTables = otherObj.memberTables;
 }
 
@@ -95,7 +96,7 @@ GTable GObject::getTable(unsigned int index) const
 	return memberTables[index];
 }
 
-GTable GObject::getMembers() const
+const GTable& GObject::getMembers() const
 {
 	return members;
 }

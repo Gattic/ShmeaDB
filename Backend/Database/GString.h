@@ -36,53 +36,129 @@ private:
 public:
 	GString();
 	GString(const GString&);
+	GString(const GType&);
 	GString(const char*);
+	GString(const char*, unsigned int);
+
+	// Our GType constructors
+	GString(const bool&);
+	GString(const char&);
+	GString(const short&);
+	GString(const int&);
+	GString(const int64_t&);
+	GString(const float&);
+	GString(const double&);
+
 	virtual ~GString();
 
 	// gets
-	const char* c_str() const;
 	unsigned int length() const;
 
 	//operators
-	char operator[](const unsigned int&);
-	bool operator==(const GString&);
-	bool operator!=(const GString&);
+	const char& operator[](const unsigned int&) const;
+	char& operator[](const unsigned int&);
 
-	// helpers
-	/*static bool isWhitespace(const char);
+	bool operator==(const GString&) const;
+	bool operator!=(const GString&) const;
+
+	bool operator==(const GType&) const;
+	bool operator!=(const GType&) const;
+
+	bool operator==(const char*) const;
+	bool operator!=(const char*) const;
+
+	GString operator+=(const char&);
+	GString operator+=(const GType&);
+	GString operator+=(const GString&);
+	GString operator+=(const char*);
+
+	bool operator<(const GString&) const;
+	bool operator<=(const GString&) const;
+
+	bool operator<(const GType&) const;
+	bool operator<=(const GType&) const;
+
+	bool operator<(const char*) const;
+	bool operator<=(const char*) const;
+
+	bool operator>(const GString&) const;
+	bool operator>=(const GString&) const;
+
+	bool operator>(const GType&) const;
+	bool operator>=(const GType&) const;
+
+	bool operator>(const char*) const;
+	bool operator>=(const char*) const;
+
+	// Strng Helpers
+	void initEmpty();
+	GString substr(unsigned int, unsigned int=0) const;
+
+	// Member helpers
+	static GType Typify(const char*, unsigned int);
+	bool isWhitespace() const;
+	bool isInteger() const;
+	bool isFloat() const;
+	bool isUpper() const;
+	GString toUpper() const;
+	bool isLower() const;
+	GString toLower() const;
+	GString toggleCase() const;
+	GString trim() const;
+	GString Stringify() const;
+
+	// Static helpers
+	static bool isWhitespace(char);
 	static bool isWhitespace(const char*);
-	static bool isWhitespace(const std::string);
-
+	static bool isWhitespace(const char*, unsigned int);
+	static bool isWhitespace(const GString&);
 	static bool isInteger(const char*);
-	static bool isInteger(const std::string);
-
+	static bool isInteger(const char*, unsigned int);
+	static bool isInteger(const GString&);
 	static bool isFloat(const char*);
-	static bool isFloat(const std::string);
-
-	static bool isUpper(const char);
-	static bool isUpper(const std::string);
-
+	static bool isFloat(const char*, unsigned int);
+	static bool isFloat(const GString&);
+	static bool isUpper(char);
+	static bool isUpper(const char*);
+	static bool isUpper(const char*, unsigned int);
+	static bool isUpper(const GString&);
 	static char toUpper(char);
-	static std::string toUpper(const std::string);
-
-	static bool isLower(const char);
-	static bool isLower(const std::string);
-
+	static GString toUpper(const char*);
+	static GString toUpper(const char*, unsigned int);
+	static GString toUpper(const GString&);
+	static bool isLower(char);
+	static bool isLower(const char*);
+	static bool isLower(const char*, unsigned int);
+	static bool isLower(const GString&);
 	static char toLower(char);
-	static std::string toLower(const std::string);
-
+	static GString toLower(const char*);
+	static GString toLower(const char*, unsigned int);
+	static GString toLower(const GString&);
 	static char toggleCase(char);
-	static std::string toggleCase(const std::string);
+	static GString toggleCase(const char*);
+	static GString toggleCase(const char*, unsigned int);
+	static GString toggleCase(const GString&);
+	static GString trim(const char*);
+	static GString trim(const char*, unsigned int);
+	static GString trim(const GString&);
 
-	static std::string trim(std::string);
-	static std::string trim(char*);
-
-	static std::string datetimeTOstring(const int64_t);
-	static std::string dateTOstring(const int64_t);
-	static std::string timeTOstring(const int64_t);
-
-	static unsigned int cfind(const char, const char*, const unsigned int);*/
+	static GString charTOstring(char);
+	static GString shortTOstring(short);
+	static GString intTOstring(int);
+	static GString longTOstring(int64_t);
+	static GString floatTOstring(float);
+	static GString doubleTOstring(double);
+	static GString datetimeTOstring(int64_t);
+	static GString dateTOstring(int64_t);
+	static GString timeTOstring(int64_t);
 };
 };
+
+shmea::GString operator+ (const shmea::GString& lhs, const shmea::GString& rhs);
+shmea::GString operator+ (const shmea::GString& lhs, const char* rhs);
+shmea::GString operator+ (const shmea::GString& lhs, char rhs);
+shmea::GString operator+ (const char* lhs, const shmea::GString& rhs);
+shmea::GString operator+ (char lhs, const shmea::GString& rhs);
+
 
 #endif

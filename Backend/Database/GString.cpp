@@ -20,18 +20,30 @@ using namespace shmea;
 
 GString::GString()
 {
-	type = NULL_TYPE;
 	blockSize = 0;
 	block = NULL;
+
+	initEmpty();
 }
 
 GString::GString(const GString& g2) : GType(g2)
 {
-	type = NULL_TYPE;
-	blockSize = 0;
-	block = NULL;
-	if (g2.blockSize > 0)
-		set(g2.type, g2.block, g2.blockSize);
+	// Calling parent constructor
+}
+
+GString::GString(const GType& g2) : GType(g2)
+{
+	// Calling parent constructor
+	type = STRING_TYPE;
+}
+
+
+void GString::initEmpty()
+{
+	clean();
+	type = STRING_TYPE;
+	block = (char*)malloc(1); // only the escape for the string
+	block[blockSize] = '\0';
 }
 
 GString::GString(const char* newBlock)
@@ -44,16 +56,62 @@ GString::GString(const char* newBlock)
 	unsigned int newBlockSize = strlen(newBlock);
 	if (newBlockSize > 0)
 		set(STRING_TYPE, newBlock, newBlockSize);
+	else
+		initEmpty();
+}
+
+GString::GString(const char* newBlock, unsigned int len)
+{
+	type = NULL_TYPE;
+	blockSize = 0;
+	block = NULL;
+
+	// Add the object if its valid
+	unsigned int newBlockSize = len;
+	if (newBlockSize > 0)
+		set(STRING_TYPE, newBlock, newBlockSize);
+	else
+		initEmpty();
+}
+
+GString::GString(const bool& cBool) : GType(cBool)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const char& cChar) : GType(cChar)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const short& cShort) : GType(cShort)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const int& cInt) : GType(cInt)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const int64_t& cLong) : GType(cLong)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const float& cFloat) : GType(cFloat)
+{
+	type = STRING_TYPE;
+}
+
+GString::GString(const double& cDouble) : GType(cDouble)
+{
+	type = STRING_TYPE;
 }
 
 GString::~GString()
 {
-	clean();
-}
-
-const char* GString::c_str() const
-{
-	return getCString();
+	//
 }
 
 unsigned int GString::length() const
@@ -61,7 +119,7 @@ unsigned int GString::length() const
 	return size();
 }
 
-char GString::operator[](const unsigned int& index)
+const char& GString::operator[](const unsigned int& index) const
 {
 	if(index >= length())
 	{
@@ -70,427 +128,249 @@ char GString::operator[](const unsigned int& index)
 		throw std::out_of_range(buffer);
 	}
 
-	return getBlockCopy()[index];
+	return block[index];
 }
 
-bool GString::operator==(const GString& cCell2)
+char& GString::operator[](const unsigned int& index)
 {
-	// compare the known types
-	bool intFlag1 = false;
-	bool intFlag2 = false;
-	bool floatFlag1 = false;
-	bool floatFlag2 = false;
-	bool stringFlag1 = false;
-	bool stringFlag2 = false;
-	bool boolFlag1 = false;
-	bool boolFlag2 = false;
-
-	// values
-	int64_t intValue1 = 0;
-	double floatValue1 = 0.0f;
-	std::string stringValue1 = "";
-	bool boolValue1 = false;
-	int64_t intValue2 = 0;
-	double floatValue2 = 0.0f;
-	std::string stringValue2 = "";
-	bool boolValue2 = false;
-
-	// get the first value
-	if (getType() == GString::CHAR_TYPE)
+	if(index >= length())
 	{
-		intFlag1 = true;
-		intValue1 = getChar();
-	}
-	else if (getType() == GString::SHORT_TYPE)
-	{
-		intFlag1 = true;
-		intValue1 = getShort();
-	}
-	else if (getType() == GString::INT_TYPE)
-	{
-		intFlag1 = true;
-		intValue1 = getInt();
-	}
-	else if (getType() == GString::LONG_TYPE)
-	{
-		intFlag1 = true;
-		intValue1 = getLong();
-	}
-	else if (getType() == GString::FLOAT_TYPE)
-	{
-		floatFlag1 = true;
-		floatValue1 = getFloat();
-	}
-	else if (getType() == GString::DOUBLE_TYPE)
-	{
-		floatFlag1 = true;
-		floatValue1 = getDouble();
-	}
-	else if (getType() == GString::BOOLEAN_TYPE)
-	{
-		boolFlag1 = true;
-		boolValue1 = getBoolean();
-	}
-	else if (getType() == GString::STRING_TYPE)
-	{
-		stringFlag1 = true;
-		stringValue1 = getString();
+		char buffer[256];
+		sprintf(buffer, "GStr[%d] out of range", index);
+		throw std::out_of_range(buffer);
 	}
 
-	// get the second value
-	if (cCell2.getType() == GString::CHAR_TYPE)
-	{
-		intFlag2 = true;
-		intValue2 = cCell2.getChar();
-	}
-	else if (cCell2.getType() == GString::SHORT_TYPE)
-	{
-		intFlag2 = true;
-		intValue2 = cCell2.getShort();
-	}
-	else if (cCell2.getType() == GString::INT_TYPE)
-	{
-		intFlag2 = true;
-		intValue2 = cCell2.getInt();
-	}
-	else if (cCell2.getType() == GString::LONG_TYPE)
-	{
-		intFlag2 = true;
-		intValue2 = cCell2.getLong();
-	}
-	else if (cCell2.getType() == GString::FLOAT_TYPE)
-	{
-		floatFlag2 = true;
-		floatValue2 = cCell2.getFloat();
-	}
-	else if (cCell2.getType() == GString::DOUBLE_TYPE)
-	{
-		floatFlag2 = true;
-		floatValue2 = cCell2.getDouble();
-	}
-	else if (cCell2.getType() == GString::BOOLEAN_TYPE)
-	{
-		boolFlag2 = true;
-		boolValue2 = cCell2.getBoolean();
-	}
-	else if (cCell2.getType() == GString::STRING_TYPE)
-	{
-		stringFlag2 = true;
-		stringValue2 = cCell2.getString();
-	}
-
-	// compare the gtypes
-	if ((intFlag1) && (intFlag2))
-		return (intValue1 == intValue2);
-	else if ((floatFlag1) && (floatFlag2))
-		return (floatValue1 == floatValue2);
-	else if ((stringFlag1) && (stringFlag2))
-		return (stringValue1 == stringValue2);
-	else if ((boolFlag1) && (boolFlag2))
-		return (boolValue1 == boolValue2);
-	// cross ints and floats
-	else if ((intFlag1) && (floatFlag2))
-		return (intValue1 == floatValue2);
-	else if ((floatFlag1) && (intFlag2))
-		return (floatValue1 == intValue2);
-
-	return false;
+	return block[index];
 }
 
-bool GString::operator!=(const GString& cCell2)
+bool GString::operator==(const GString& cCell2) const
+{
+	return GType::operator==(cCell2);
+}
+
+bool GString::operator!=(const GString& cCell2) const
 {
 	return !((*this) == cCell2);
 }
 
-/*bool GString::isWhitespace(const char tempNumber)
+bool GString::operator==(const GType& cCell2) const
 {
-	const std::string options = " \t\r\n";
-
-	int breakPoint = options.find(tempNumber);
-	return (breakPoint >= 0);
+	return GType::operator==(cCell2);
 }
 
-bool GString::isWhitespace(const char* tempNumber)
+bool GString::operator!=(const GType& cCell2) const
 {
-	std::string newStr(tempNumber);
-	return isWhitespace(newStr);
+	return !((*this) == cCell2);
 }
 
-bool GString::isWhitespace(const std::string tempNumber)
+bool GString::operator==(const char* cCell2) const
 {
-	const std::string options = " \t\r\n";
-
-	for (unsigned int i = 0; i < tempNumber.size(); ++i)
-	{
-		int breakPoint = options.find(tempNumber[i]);
-		if (breakPoint == -1)
-			return false;
-	}
-
-	return true;
+	return (*this == GString(cCell2));
 }
 
-bool GString::isInteger(const char* tempNumber)
+bool GString::operator!=(const char* cCell2) const
 {
-	std::string newStr(tempNumber);
-	return isInteger(newStr);
+	return (*this != GString(cCell2));
 }
 
-bool GString::isInteger(const std::string tempNumber)
+// NOT APART OF THE CLASS
+GString operator+ (const GString& lhs, const GString& rhs)
 {
-	const std::string options = "0123456789";
+	unsigned int newBlockSize = lhs.length() + rhs.size();
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, lhs.c_str(), lhs.length());
+	memcpy(&newBlock[lhs.length()], rhs.c_str(), rhs.size());
 
-	unsigned int negNumber = tempNumber.find('-'), i = 0;
-	if ((negNumber != (unsigned int)std::string::npos) && (negNumber > 0))
-		return false;
-	else if (negNumber == 0)
-		i = 1;
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
 
-	for (; i < tempNumber.length(); ++i)
-	{
-		int breakPoint = options.find(tempNumber[i]);
-		if (breakPoint == -1)
-			return false;
-	}
-
-	return true;
+	return retStr;
 }
 
-bool GString::isFloat(const char* tempNumber)
+// NOT APART OF THE CLASS
+GString operator+ (const GString& lhs, const char* rhs)
 {
-	std::string newStr(tempNumber);
-	return isFloat(newStr);
+	unsigned int newBlockSize = lhs.length() + strlen(rhs);
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, lhs.c_str(), lhs.length());
+	memcpy(&newBlock[lhs.length()], rhs, strlen(rhs));
+
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
+
+	return retStr;
 }
 
-bool GString::isFloat(const std::string tempNumber)
+// NOT APART OF THE CLASS
+GString operator+ (const GString& lhs, char rhs)
 {
-	const std::string options = "0123456789.f";
+	unsigned int newBlockSize = lhs.length() + 1;
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, lhs.c_str(), lhs.length());
+	newBlock[newBlockSize-1] = rhs;
 
-	unsigned int negNumber = tempNumber.find('-'), i = 0;
-	if ((negNumber != (unsigned int)std::string::npos) && (negNumber > 0))
-		return false;
-	else if (negNumber == 0)
-		i = 1;
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
 
-	for (; i < tempNumber.size(); ++i)
-	{
-		int breakPoint = options.find(tempNumber[i]);
-		if (breakPoint == -1)
-			return false;
-	}
-
-	return true;
+	return retStr;
 }
 
-bool GString::isUpper(const char x)
+// NOT APART OF THE CLASS
+GString operator+ (const char* lhs, const GString& rhs)
 {
-	return ((x >= 0x41) && (x <= 0x5A));
+	unsigned int newBlockSize = strlen(lhs) + rhs.size();
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, lhs, strlen(lhs));
+	memcpy(&newBlock[strlen(lhs)], rhs.c_str(), rhs.size());
+
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
+
+	return retStr;
 }
 
-bool GString::isUpper(const std::string x)
+// NOT APART OF THE CLASS
+GString operator+ (char lhs, const GString& rhs)
 {
-	std::string y = "";
-	for (unsigned int i = 0; i < x.length(); ++i)
-	{
-		char letter = *x.substr(i, 1).c_str();
-		if (!isUpper(letter))
-			return false;
-	}
-	return true;
+	unsigned int newBlockSize = rhs.length() + 1;
+	char* newBlock = (char*)malloc(newBlockSize);
+	newBlock[0] = lhs;
+	memcpy(&newBlock[1], rhs.c_str(), rhs.length());
+
+	GString retStr(newBlock, newBlockSize);
+	free(newBlock);
+
+	return retStr;
 }
 
-char GString::toUpper(char x)
+GString GString::operator+=(const char& cChar)
 {
-	if (isLower(x))
-		x -= 0x20;
-	return x;
+	unsigned int newBlockSize = length() + 1;
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	newBlock[newBlockSize-1] = cChar;
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
 }
 
-std::string GString::toUpper(const std::string x)
+GString GString::operator+=(const GType& str2)
 {
-	std::string y = "";
-	for (unsigned int i = 0; i < x.length(); ++i)
-	{
-		char letter = *x.substr(i, 1).c_str();
-		letter = toUpper(letter);
-		y += letter;
-	}
-	return y;
+	unsigned int newBlockSize = length() + str2.size();
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2.c_str(), str2.size());
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
 }
 
-bool GString::isLower(const char x)
+GString GString::operator+=(const GString& str2)
 {
-	return ((x >= 0x61) && (x <= 0x7A));
+	unsigned int newBlockSize = length() + str2.size();
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2.c_str(), str2.size());
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
 }
 
-bool GString::isLower(const std::string x)
+GString GString::operator+=(const char* str2)
 {
-	std::string y = "";
-	for (unsigned int i = 0; i < x.length(); ++i)
-	{
-		char letter = *x.substr(i, 1).c_str();
-		if (!isLower(letter))
-			return false;
-	}
-	return true;
+	unsigned int newBlockSize = length() + strlen(str2);
+	char* newBlock = (char*)malloc(newBlockSize);
+	memcpy(newBlock, block, length());
+	memcpy(&newBlock[length()], str2, strlen(str2));
+
+	set(getType(), newBlock, newBlockSize);
+	free(newBlock);
+
+	return *this;
 }
 
-char GString::toLower(char x)
+bool GString::operator<(const GString& cCell2) const
 {
-	if ((x >= 0x41) && (x <= 0x5A))
-		x += 0x20;
-	return x;
+	return GType::operator<(cCell2);
 }
 
-std::string GString::toLower(const std::string x)
+bool GString::operator<=(const GString& cCell2) const
 {
-	std::string y = "";
-	for (unsigned int i = 0; i < x.length(); ++i)
-	{
-		char letter = *x.substr(i, 1).c_str();
-		letter = toLower(letter);
-		y += letter;
-	}
-	return y;
+	return GType::operator<=(cCell2);
 }
 
-char GString::toggleCase(char x)
+bool GString::operator<(const GType& cCell2) const
 {
-	if (isUpper(x))
-		return toLower(x);
-	else if (isLower(x))
-		return toUpper(x);
-	else
-		return x;
+	return GType::operator<(cCell2);
 }
 
-std::string GString::toggleCase(const std::string x)
+bool GString::operator<=(const GType& cCell2) const
 {
-	std::string y = "";
-	for (unsigned int i = 0; i < x.length(); ++i)
-	{
-		char letter = *x.substr(i, 1).c_str();
-		letter = toggleCase(letter);
-		y += letter;
-	}
-	return y;
+	return GType::operator<=(cCell2);
 }
 
-std::string GString::trim(char* x)
+bool GString::operator<(const char* cCell2) const
 {
-	std::string newStr(x);
-	return trim(newStr);
+	return GType::operator<(cCell2);
 }
 
-std::string GString::trim(std::string x)
+bool GString::operator<=(const char* cCell2) const
 {
-	while ((x.length() > 0) && (isWhitespace(x.substr(0, 1))))
-		x = x.substr(1);
-	while ((x.length() > 0) && (isWhitespace(x.substr(x.length() - 1, 1))))
-		x = x.substr(0, x.length() - 1);
-	return x;
+	return GType::operator<=(cCell2);
 }
 
-std::string GString::charTOstring(const char number)
+bool GString::operator>(const GString& cCell2) const
 {
-	std::stringstream ss;
-	ss << number;
-	return ss.str();
+	return GType::operator>(cCell2);
 }
 
-std::string GString::shortTOstring(const short number)
+bool GString::operator>=(const GString& cCell2) const
 {
-	std::stringstream ss;
-	ss << number;
-	return ss.str();
+	return GType::operator>=(cCell2);
 }
 
-std::string GString::intTOstring(const int number)
+bool GString::operator>(const GType& cCell2) const
 {
-	std::stringstream ss;
-	ss << number;
-	return ss.str();
+	return GType::operator>(cCell2);
 }
 
-std::string GString::GString::longTOstring(const int64_t number)
+bool GString::operator>=(const GType& cCell2) const
 {
-	std::stringstream ss;
-	ss << number;
-	return ss.str();
+	return GType::operator>=(cCell2);
 }
 
-std::string GString::floatTOstring(const float number)
+bool GString::operator>(const char* cCell2) const
 {
-	int precision = 6; // automatically calculate this
-	std::stringstream ss;
-	if (precision <= 0)
-		ss << number;
-	else
-		ss << std::fixed << std::setprecision(precision) << number;
-
-	return ss.str();
+	return GType::operator>(cCell2);
 }
 
-std::string GString::doubleTOstring(const double number)
+bool GString::operator>=(const char* cCell2) const
 {
-	std::stringstream ss;
-	ss << number;
-	return ss.str();
-}*/
-
-/*!
- * @brief convert timestamp to date string
- * @details convert a timestamp to the a string formatted for use in the Polygon API (mm-d-yyyy)
- * @param ts the timestamp to convert
- * @return the formatted date string
- */
-/*std::string GString::datetimeTOstring(const int64_t ts)
-{
-	return (dateTOstring(ts) + " " + timeTOstring(ts));
+	return GType::operator>=(cCell2);
 }
 
-std::string GString::dateTOstring(const int64_t ts)
+GString GString::substr(unsigned int start, unsigned int len) const
 {
-	struct tm tstruct;
-	tstruct = *localtime((time_t*)&ts);
-	int cDay = tstruct.tm_mday;
-	int cMonth = tstruct.tm_mon + 1;
-	int cYear = tstruct.tm_year + 1900;
-	int cHour = tstruct.tm_hour;
-	int cMinute = tstruct.tm_min;
-	int cSeconds = tstruct.tm_sec;
+	GString emptyStr = "";
+	if(blockSize == 0)
+		return emptyStr;
 
-	time_t time = (time_t)ts;
-	std::tm* date = localtime(&time);
-	return intTOstring(cMonth) + "-" + intTOstring(cDay) + "-" + intTOstring(cYear);
+	if(start >= blockSize)
+		return emptyStr;
+
+	if((len == 0) || (len > start + blockSize))
+		len = blockSize - start;
+
+	//Empty source
+	if(len == 0)
+		return emptyStr;
+
+	GString newStr(&block[start], len);
+	return newStr;
 }
-
-std::string GString::timeTOstring(const int64_t ts)
-{
-	struct tm tstruct;
-	tstruct = *localtime((time_t*)&ts);
-	int cDay = tstruct.tm_mday;
-	int cMonth = tstruct.tm_mon + 1;
-	int cYear = tstruct.tm_year + 1900;
-	int cHour = tstruct.tm_hour;
-	int cMinute = tstruct.tm_min;
-	int cSeconds = tstruct.tm_sec;
-
-	time_t time = (time_t)ts;
-	std::tm* date = localtime(&time);
-	char buffer[80];
-	sprintf(buffer, "%d:%d:%d", cHour, cMinute, cSeconds);
-	std::string retString(buffer);
-	return retString;
-}
-
-unsigned int GString::cfind(const char needle, const char* haystack, const unsigned int len)
-{
-	for (unsigned int i = 0; i < len; ++i)
-	{
-		if (haystack[i] == needle)
-			return i;
-	}
-
-	return (unsigned int)std::string::npos;
-}*/

@@ -20,7 +20,7 @@
 
 using namespace shmea;
 
-SaveTable::SaveTable(const std::string& newDirName, const std::string& newName)
+SaveTable::SaveTable(const GString& newDirName, const GString& newName)
 {
 	clean();
 	dname = newDirName;
@@ -32,7 +32,7 @@ SaveTable::~SaveTable()
 	clean();
 }
 
-std::string SaveTable::getPath() const
+GString SaveTable::getPath() const
 {
 	if (dname.length() == 0)
 		return "";
@@ -49,7 +49,7 @@ int64_t SaveTable::getID() const
 	return id;
 }
 
-std::string SaveTable::getName() const
+GString SaveTable::getName() const
 {
 	return name;
 }
@@ -68,7 +68,7 @@ void SaveTable::loadByName()
 		return;
 
 	// Set the contents
-	std::string fname = getPath();
+	GString fname = getPath();
 	GTable newValue(fname, ',', GTable::TYPE_FILE);
 	value = newValue;
 }
@@ -100,7 +100,7 @@ void SaveTable::saveByName(const GTable& newTable) const
 	// TODO
 
 	// save the file
-	std::string fname = getPath();
+	GString fname = getPath();
 	newTable.save(fname);
 }
 
@@ -114,14 +114,14 @@ void SaveTable::saveByID(const GTable& newTable)
 		id = MaxID::generateID(name);
 
 	// save the file
-	std::string fname = getPath();
+	GString fname = getPath();
 	newTable.save(fname);*/
 }
 
-/*void SaveTable::saveUID(std::string nuid)
+/*void SaveTable::saveUID(GString nuid)
 {
 	struct stat info;
-	std::string dirname = buildDataDir();
+	GString dirname = buildDataDir();
 	if (dirname.length() > 0)
 	{
 		if (stat(dirname.c_str(), &info) != 0)
@@ -148,7 +148,7 @@ void SaveTable::saveByID(const GTable& newTable)
 	}
 
 	// open file for writing
-	std::string fname = buildUIDPath(name);
+	GString fname = buildUIDPath(name);
 	FILE* fd = fopen(fname.c_str(), "a");
 	if (fd != NULL)
 	{
@@ -157,9 +157,9 @@ void SaveTable::saveByID(const GTable& newTable)
 
 		// check if ID already exist
 		std::ifstream infile(fname.c_str());
-		std::stringstream buffer;
+		GStringstream buffer;
 		buffer << infile.rdbuf();
-		std::string content = buffer.str();
+		GString content = buffer.str();
 		if (content.find(nuid) == -1)
 			fprintf(fd, "%s\n", nuid.c_str());
 
@@ -179,7 +179,7 @@ bool SaveTable::deleteByName()
 		return false;
 
 	// Set the contents
-	std::string fname = getPath();
+	GString fname = getPath();
 	return (remove(fname.c_str()) == 0);
 }
 
