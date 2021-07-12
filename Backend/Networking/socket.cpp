@@ -365,14 +365,15 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 			printf("-------------------------------\n");
 	}*/
 
-	unsigned int writeLen = 0;
+	shmea::GString writeStr = "";
 	for (unsigned int i = 0; i < crypt.sizeClaimed * 2; ++i)
 	{
 		unsigned int writeVal = // This will be nice with GVector
 			htonl(*((unsigned int*)(crypt.eText.substr(i*sizeof(unsigned int), sizeof(unsigned int)).c_str())));
-		writeLen += write(sockfd, &writeVal, sizeof(unsigned int));
+		writeStr += shmea::GString((const char*)&writeVal, sizeof(unsigned int));
 	}
 
+	unsigned int writeLen = write(sockfd, writeStr.c_str(), writeStr.length());
 	if (writeLen != sizeof(int64_t) * crypt.sizeClaimed)
 		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.sizeClaimed);
 
