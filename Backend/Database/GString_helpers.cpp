@@ -508,3 +508,42 @@ GString GString::timeTOstring(int64_t ts)
 	GString retString = buffer;
 	return retString;
 }
+
+int64_t GString::parseDate(const std::string sd, const std::string sm, const std::string sy,
+	const std::string shour, const std::string smin, const std::string ssec)
+{
+	shmea::GType d = shmea::GString::Typify(sd.c_str(), sd.length());
+	shmea::GType m = shmea::GString::Typify(sm.c_str(), sm.length());
+	shmea::GType y = shmea::GString::Typify(sy.c_str(), sy.length());
+	shmea::GType hour = shmea::GString::Typify(shour.c_str(), shour.length());
+	shmea::GType min = shmea::GString::Typify(smin.c_str(), smin.length());
+	shmea::GType sec = shmea::GString::Typify(ssec.c_str(), ssec.length());
+
+	if ((d.getType() != shmea::GType::LONG_TYPE) || (m.getType() != shmea::GType::LONG_TYPE) ||
+		(y.getType() != shmea::GType::LONG_TYPE))
+		return 0l;
+
+	if ((d.getLong() > 31) || (d.getLong() < 1) ||
+		(m.getLong() > 12) || (m.getLong() < 1) ||
+		(y.getLong() > 9999) || (y.getLong() < 1900) ||
+		(hour.getLong() > 23) || (hour.getLong() < 0) ||
+		(min.getLong() > 59) || (min.getLong() < 0) ||
+		(sec.getLong() > 59) || (sec.getLong() < 0))
+			return 0l;
+
+	// create a timestamp
+	std::tm t = {};
+	t.tm_mday = d.getLong();
+	t.tm_mon = m.getLong();
+	t.tm_mon -= 1;
+	t.tm_year = y.getLong();
+	t.tm_year -= 1900;
+
+	// get the hour and min
+	t.tm_hour = hour.getLong();
+	t.tm_min = min.getLong();
+	t.tm_sec = sec.getLong();
+
+	int64_t retTime = std::mktime(&t);
+	return retTime;
+}
