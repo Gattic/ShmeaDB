@@ -220,6 +220,10 @@ GString Serializable::deserializeContent(const GString& serial)
 			continue;
 
 		//Cut out the escape character
+		if((j+1 < newSerial.length()) &&
+			(Serializable::NEED_ESCAPING.cfind(newSerial.substr(j+1)) == GString::npos))
+				continue;
+
 		newSerial = newSerial.substr(0, j) + newSerial.substr(j+1);
 	}
 
@@ -512,6 +516,7 @@ int Serializable::Deserialize(GList& retList, const GString& serial, int maxItem
 		GString newBlock = deserializeContent(cBlock);
 		if(newBlock.length() != newSize)
 			break;
+
 
 		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 		retList.addObject(newType, newBlock, newSize);

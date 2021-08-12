@@ -141,7 +141,7 @@ void Service::StartService(newServiceArgs* x)
 		ipAddress = cConnection->getIP();
 
 	// const shmea::GString& command = x->command;
-	// printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
+	//printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), x->command.c_str());
 
 	// add the thread to the connection's active thread vector
 	cThread = x->sThread;
@@ -162,8 +162,7 @@ void Service::ExitService(newServiceArgs* x)
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	// printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(),
-	//	   x->command.c_str(), timeExecuted);
+	//printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), timeExecuted);
 
 	pthread_exit(0);
 }
