@@ -50,11 +50,28 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "==============list0[4] Failed==============", list0[4] == "burp");
 
 	// This list tests a corner case in deserializing a coincidental escape character
+	shmea::GList listCornerSer;
+	listCornerSer.addString("TECL");
+	listCornerSer.addInt(4);
+	listCornerSer.addLong(1597122000);
+	listCornerSer.addLong(1628658000);
+
+	shmea::GString serializedCornerTable = shmea::Serializable::Serialize(listCornerSer);
+	shmea::GList deserializedListCorner;
+	shmea::Serializable::Deserialize(deserializedListCorner, serializedCornerTable);
+
+	G_assert (__FILE__, __LINE__, "==============Serialize-GList::size() Failed==============", deserializedListCorner.size() == 4);
+	G_assert (__FILE__, __LINE__, "==============deserializedListCorner[0] Failed==============", deserializedListCorner[0] == "TECL");
+	G_assert (__FILE__, __LINE__, "==============deserializedListCorner[1] Failed==============", deserializedListCorner[1] == 4);
+	G_assert (__FILE__, __LINE__, "==============deserializedListCorner[2] Failed==============", deserializedListCorner[2] == 1597122000);
+	G_assert (__FILE__, __LINE__, "==============deserializedListCorner[3] Failed==============", deserializedListCorner[3] == 1628658000);
+
+	//
 	shmea::GList listEscSer;
 	listEscSer.addString("TECL");
 	listEscSer.addInt(4);
-	listEscSer.addLong(1597122000);
-	listEscSer.addLong(1628658000);
+	listEscSer.addLong(1598245200);
+	listEscSer.addLong(1629781200);
 
 	shmea::GString serializedEscTable = shmea::Serializable::Serialize(listEscSer);
 	shmea::GList deserializedListEsc;
@@ -63,8 +80,8 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "==============Serialize-GList::size() Failed==============", deserializedListEsc.size() == 4);
 	G_assert (__FILE__, __LINE__, "==============deserializedListEsc[0] Failed==============", deserializedListEsc[0] == "TECL");
 	G_assert (__FILE__, __LINE__, "==============deserializedListEsc[1] Failed==============", deserializedListEsc[1] == 4);
-	G_assert (__FILE__, __LINE__, "==============deserializedListEsc[2] Failed==============", deserializedListEsc[2] == 1597122000);
-	G_assert (__FILE__, __LINE__, "==============deserializedListEsc[3] Failed==============", deserializedListEsc[3] == 1628658000);
+	G_assert (__FILE__, __LINE__, "==============deserializedListEsc[2] Failed==============", deserializedListEsc[2] == 1598245200);
+	G_assert (__FILE__, __LINE__, "==============deserializedListEsc[3] Failed==============", deserializedListEsc[3] == 1629781200);
 
 	shmea::GString serializedList0 = shmea::Serializable::Serialize(list0);
 	shmea::GList deserializedList0;

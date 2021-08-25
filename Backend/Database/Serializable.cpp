@@ -41,7 +41,10 @@ GString Serializable::escapeSeparators(const GType& serial)
 		if (Serializable::NEED_ESCAPING.cfind(newSerial[i]) == GString::npos)
 			continue;
 
-		newSerial = newSerial.substr(0, i) + Serializable::ESC_CHAR + newSerial.substr(i);
+		if(i == 0)
+			newSerial = Serializable::ESC_CHAR + newSerial.substr(i);
+		else
+			newSerial = newSerial.substr(0, i) + Serializable::ESC_CHAR + newSerial.substr(i);
 		++i;
 	}
 
@@ -103,7 +106,7 @@ GString Serializable::addItemToSerial(int originalType, unsigned int originalSiz
 GString Serializable::serializeItem(const GType& cItem, bool isLastItem)
 {
 	GString escapedItem = escapeSeparators(cItem);
-	GString delimittedItem = addDelimiter(cItem, isLastItem);
+	GString delimittedItem = addDelimiter(escapedItem, isLastItem);
 	return addItemToSerial(cItem.getType(), cItem.size(), delimittedItem);
 }
 
@@ -219,12 +222,10 @@ GString Serializable::deserializeContent(const GString& serial)
 		if(newSerial[j] != ESC_CHAR)
 			continue;
 
-		//Cut out the escape character
-		if((j+1 < newSerial.length()) &&
-			(Serializable::NEED_ESCAPING.cfind(newSerial.substr(j+1)) == GString::npos))
-				continue;
-
-		newSerial = newSerial.substr(0, j) + newSerial.substr(j+1);
+		if(j == 0)
+			newSerial = newSerial.substr(j+1);
+		else
+			newSerial = newSerial.substr(0, j) + newSerial.substr(j+1);
 	}
 
 	return newSerial;
@@ -456,10 +457,10 @@ GString Serializable::Serialize(const ServiceData* cData)
  * @details deserializes a serial into a GList
  *
  * We expect the serial to look like this:
- * type,size,contents|type,size,contents|...|type,size,contents\|
+ * typesizecontents|typesizecontents|...|typesizecontents\|
  *
  * this function goes through, one item at a time, and extracts
- * the GType components (type, size, contents) and puts them in the list
+ * the GType components (type size contents) and puts them in the list
  *
  * if any of the extractions fail, the loop quits and the partial list is returned
  *
@@ -516,7 +517,6 @@ int Serializable::Deserialize(GList& retList, const GString& serial, int maxItem
 		GString newBlock = deserializeContent(cBlock);
 		if(newBlock.length() != newSize)
 			break;
-
 
 		cBlock = cBlock.substr(newSize+delimiterLen); // plus the delimiter
 		retList.addObject(newType, newBlock, newSize);
