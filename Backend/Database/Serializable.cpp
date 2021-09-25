@@ -391,7 +391,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		{
 			// {GOBJECT}
 			//printf("---SS Object---\n");
-			repData = Serialize(*(cData->getObj()));
+			repData = Serialize(cData->getObj());
 
 			break;
 		}
@@ -400,7 +400,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		{
 			// {GTable}
 			//printf("---SS Table---\n");
-			repData = Serialize(*(cData->getTable()));
+			repData = Serialize(cData->getTable());
 
 			break;
 		}
@@ -409,7 +409,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 		{
 			// {GList}
 			//printf("---SS List: %d---\n", cData->getList()->size());
-			repData = Serialize(*(cData->getList()));
+			repData = Serialize(cData->getList());
 			//cData->getList()->print();
 
 			break;
@@ -778,7 +778,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 			// {GOBJECT}
 			GObject cObj;
 			Deserialize(cObj, repData);
-			retData->setObj(new GObject(cObj));
+			retData->setObj(cObj);
 			//printf("---SD Object---\n");
 
 			break;
@@ -789,7 +789,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 			// {GTable}
 			GTable cTable;
 			Deserialize(cTable, repData);
-			retData->setTable(new GTable(cTable));
+			retData->setTable(cTable);
 			//printf("---SD Table---\n");
 
 			break;
@@ -801,7 +801,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 
 			GList cList;
 			Deserialize(cList, repData);
-			retData->setList(new GList(cList));
+			retData->setList(cList);
 			//cList.print();
 			//printf("---SD List---\n");
 

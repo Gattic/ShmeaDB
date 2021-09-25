@@ -505,8 +505,8 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		localConnection = destination;
 
 	// Start the Login Handshake
-	shmea::GList* wData = new shmea::GList();
-	wData->addString(x->clientName);
+	shmea::GList wData;
+	wData.addString(x->clientName);
 	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
 	socks->writeConnection(destination, sockfd2, cData);
 }

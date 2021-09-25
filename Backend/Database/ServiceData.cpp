@@ -24,9 +24,6 @@ ServiceData::ServiceData(GNet::Connection* newConnection)
 	cConnection = newConnection;
 	sid = generateSID();
 	command = "";
-	repList = NULL;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_ACK;
 }
 
@@ -35,42 +32,33 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
-	repList = NULL;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_ACK;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, GList* newList)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GList& newList)
 {
 	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
 	repList = newList;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_LIST;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, GTable* newTable)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GTable& newTable)
 {
 	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
-	repList = NULL;
 	repTable = newTable;
-	repObj = NULL;
 	type = TYPE_TABLE;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, Serializable* newNP)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const Serializable& newNP)
 {
 	cConnection = newConnection;
 	sid = generateSID();
 	command = newCommand;
-	repList = NULL;
-	repTable = NULL;
-	repObj = newNP->serialize();
+	repObj = newNP.serialize();
 	type = TYPE_NETWORK_POINTER;
 }
 
@@ -90,48 +78,36 @@ ServiceData::~ServiceData()
 	cConnection = NULL;
 	sid = "";
 	command = "";
-	repList = NULL;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_ACK;
 }
 
-const GList* ServiceData::getList() const
+const GList& ServiceData::getList() const
 {
 	return repList;
 }
 
-const GTable* ServiceData::getTable() const
+const GTable& ServiceData::getTable() const
 {
 	return repTable;
 }
 
-const GObject* ServiceData::getObj() const
+const GObject& ServiceData::getObj() const
 {
 	return repObj;
 }
 
-void ServiceData::setList(GList* newList)
+void ServiceData::setList(const GList& newList)
 {
-	if(!newList)
-		return;
-
 	repList = newList;
 }
 
-void ServiceData::setTable(GTable* newTable)
+void ServiceData::setTable(const GTable& newTable)
 {
-	if(!newTable)
-		return;
-
 	repTable = newTable;
 }
 
-void ServiceData::setObj(GObject* newObj)
+void ServiceData::setObj(const GObject& newObj)
 {
-	if(!newObj)
-		return;
-
 	repObj = newObj;
 }
 
