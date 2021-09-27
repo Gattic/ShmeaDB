@@ -493,12 +493,20 @@ unsigned int GType::size() const
 
 void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 {
-	clean();
-	type = newType;
-	blockSize = newBlockSize;
-	block = (char*)malloc(blockSize + 1); // plus one to escape the string, we ignore this character everywhere else
-	memcpy(block, newBlock, blockSize);
-	block[blockSize] = '\0';
+	if(blockSize == newBlockSize)
+	{
+		type = newType;
+		memcpy(block, newBlock, blockSize); // this is a copy so safe to assume it has the \0 from the block else below
+	}
+	else
+	{
+		clean();
+		type = newType;
+		blockSize = newBlockSize;
+		block = (char*)malloc(blockSize + 1); // plus one to escape the string, we ignore this character everywhere else
+		memcpy(block, newBlock, blockSize);
+		block[blockSize] = '\0';
+	}
 }
 
 void GType::clean()
