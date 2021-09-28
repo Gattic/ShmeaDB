@@ -165,7 +165,10 @@ shmea::GString Sockets::reader(const int& sockfd)
 	unsigned int tSize = 0;
 	char* eText = (char*)malloc(sizeof(char) * tSize);
 	if (!eText)
+	{
+		printf("[READER] Error: 0\n");
 		return "";
+	}
 
 	do
 	{
@@ -183,12 +186,14 @@ shmea::GString Sockets::reader(const int& sockfd)
 			}
 			else
 			{
+				printf("[READER] Error: 1\n");
 				tSize = 0;
 				return "";
 			}
 		}
 		else
 		{
+			printf("[READER] Error: 2\n");
 			free(eText);
 			tSize = 0;
 			return "";
@@ -203,6 +208,7 @@ shmea::GString Sockets::reader(const int& sockfd)
 	int64_t* newEText = (int64_t*)malloc(sizeof(char) * tSize);
 	if(!newEText)
 	{
+		printf("[READER] Error: 3\n");
 		tSize = 0;
 		return "";
 	}
@@ -220,8 +226,8 @@ shmea::GString Sockets::reader(const int& sockfd)
 			++lCounter;
 		}
 	}
-	free(eText);
 
+	free(eText);
 	return shmea::GString((const char*)newEText, tSize);
 }
 
@@ -338,7 +344,10 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	// Convert to packet format
 	shmea::GString rawData = shmea::Serializable::Serialize(cData);
 	if (rawData.length() == 0)
+	{
+		printf("[WRITER] Error: 0\n");
 		return -1;
+	}
 
 	// Encrypt
 	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
