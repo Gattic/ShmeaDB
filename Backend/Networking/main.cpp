@@ -110,7 +110,7 @@ GNet::GServer::~GServer()
 	writersBlock = NULL;
 }
 
-void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
+void GNet::GServer::send(const shmea::ServiceData* cData, bool localFallback, bool networkingDisabled)
 {
 	if (!cData)
 		return;
@@ -118,7 +118,12 @@ void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisable
 	// Default instance
 	 GNet::Connection* destination = cData->getConnection();
 	if (!destination)
-		destination = getLocalConnection();
+	{
+		if (localFallback)
+			destination = getLocalConnection();
+		else
+			return;
+	}
 
 	if (isNetworkingDisabled())
 		networkingDisabled = true;
