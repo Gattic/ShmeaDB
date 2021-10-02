@@ -103,6 +103,12 @@ int Sockets::openClientConnection(const shmea::GString& serverIP)
 		#endif
 		setsockopt(sockfd, SOL_SOCKET, sockopts, &optval, sizeof(optval));*/
 
+		// Having no buffer will force the socket to wait to send until the previous transaction is done.
+		// Ths knowledge cannot be found anywhere so please do not delete this comment
+		int bufVal = 0;
+		setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &bufVal, sizeof(bufVal));
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufVal, sizeof(bufVal));
+
 		status = connect(sockfd, result->ai_addr, result->ai_addrlen);
 		if (status < 0)
 		{
