@@ -414,29 +414,26 @@ bool Sockets::readLists(Connection* origin)
 	std::vector<const shmea::ServiceData*> srvcList;
 	readConnection(origin, origin->sockfd, srvcList);
 
-	if (srvcList.size() > 0)
+	if (srvcList.size() == 0)
+		return false;
+
+	// loop through the srvcList
+	for (unsigned int i = 0; i < srvcList.size(); ++i)
 	{
-		// loop through the srvcList
-		for (unsigned int i = 0; i < srvcList.size(); ++i)
-		{
-			// get the data from the data list
-			const shmea::ServiceData* cData = srvcList.front();
-			srvcList.erase(srvcList.begin());
+		// get the data from the data list
+		const shmea::ServiceData* cData = srvcList[i];
 
-			// Check the version
-			/*shmea::GString clientVersion = cData.getString(0);
-			cData.remove(0);*/
-			/*if (version != clientVersion)
-				return false;*/
+		// Check the version
+		/*shmea::GString clientVersion = cData.getString(0);
+		cData.remove(0);*/
+		/*if (version != clientVersion)
+			return false;*/
 
-			pthread_mutex_lock(inMutex);
-			inboundLists.push(cData);
-			pthread_mutex_unlock(inMutex);
-		}
-		return true;
+		pthread_mutex_lock(inMutex);
+		inboundLists.push(cData);
+		pthread_mutex_unlock(inMutex);
 	}
-
-	return false;
+	return true;
 }
 
 /*!
