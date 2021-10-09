@@ -12,6 +12,7 @@
 #include "../../../Backend/Database/GTable.h"
 #include "../../../Backend/Database/GObject.h"
 #include "../../../Backend/Database/Serializable.h"
+#include "../../../Backend/Database/ServiceData.h"
 
 // === This is the primary unit testing function:
 // void G_assert(const char* fileName, int lineNo, const char* failureMsg, bool expr)
@@ -176,13 +177,74 @@ void GListUnitTest()
 	shmea::GObject deserializedObj;
 	shmea::Serializable::Deserialize(deserializedObj, serializedStr);
 
-	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfRows() == 2);
-	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfCols() == 5);
-	G_assert (__FILE__, __LINE__, "==============GObject-Deserialize-members-row[0]-size Failed==============", deserializedObj.getMembers()[0].size() == 5);
+	G_assert (__FILE__, __LINE__, "==============GObject0-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfRows() == 2);
+	G_assert (__FILE__, __LINE__, "==============GObject0-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfCols() == 5);
+	G_assert (__FILE__, __LINE__, "==============GObject0-Deserialize-members-row[0]-size Failed==============", deserializedObj.getMembers()[0].size() == 5);
 
-	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][0] Failed==============", deserializedObj.getMembers()[0][0] == "derp");
-	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][1] Failed==============", deserializedObj.getMembers()[0][1] == "herp");
-	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
-	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
-	G_assert (__FILE__, __LINE__, "=============GObject-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
+	G_assert (__FILE__, __LINE__, "=============GObject0-Deserialize-=deserializedObj.getMembers()[0][0] Failed==============", deserializedObj.getMembers()[0][0] == "derp");
+	G_assert (__FILE__, __LINE__, "=============GObject0-Deserialize-=deserializedObj.getMembers()[0][1] Failed==============", deserializedObj.getMembers()[0][1] == "herp");
+	G_assert (__FILE__, __LINE__, "=============GObject0-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
+	G_assert (__FILE__, __LINE__, "=============GObject0-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
+	G_assert (__FILE__, __LINE__, "=============GObject0-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
+
+	// Serialize a Service Data WITH an arg list
+	shmea::GList argList;
+	argList.addString("NO ME");
+	argList.addString("NO YOU");
+	argList.addString("OK");
+	argList.addString("FINE");
+	argList.addString("FINE!!!");
+	argList.addString("im sorry%");
+	argList.addString("its ok");
+	argList.addString("no problem, these things happen");
+	argList.addString("ok it wont|happen again");
+
+	GNet::Connection* cConnection = NULL;
+	shmea::ServiceData* cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"), cObj);
+	cData->setArgList(argList);
+
+	serializedStr = shmea::Serializable::Serialize(cData);
+	shmea::ServiceData* deserializedCD = new shmea::ServiceData(cConnection);
+	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
+
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-type Failed==============", deserializedCD->getType() == shmea::ServiceData::TYPE_NETWORK_POINTER);
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList-size Failed==============", deserializedCD->getArgList().size() == 9);
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[0] Failed==============", deserializedCD->getArgList()[0] == "NO ME");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[1] Failed==============", deserializedCD->getArgList()[1] == "NO YOU");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[2] Failed==============", deserializedCD->getArgList()[2] == "OK");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[3] Failed==============", deserializedCD->getArgList()[3] == "FINE");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[4] Failed==============", deserializedCD->getArgList()[4] == "FINE!!!");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[5] Failed==============", deserializedCD->getArgList()[5] == "im sorry%");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[6] Failed==============", deserializedCD->getArgList()[6] == "its ok");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[7] Failed==============", deserializedCD->getArgList()[7] == "no problem, these things happen");
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[8] Failed==============", deserializedCD->getArgList()[8] == "ok it wont|happen again");
+
+	deserializedObj = deserializedCD->getObj();
+
+	G_assert (__FILE__, __LINE__, "==============GObject1-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfRows() == 2);
+	G_assert (__FILE__, __LINE__, "==============GObject1-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfCols() == 5);
+	G_assert (__FILE__, __LINE__, "==============GObject1-Deserialize-members-row[0]-size Failed==============", deserializedObj.getMembers()[0].size() == 5);
+
+	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][0] Failed==============", deserializedObj.getMembers()[0][0] == "derp");
+	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][1] Failed==============", deserializedObj.getMembers()[0][1] == "herp");
+	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
+	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
+	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
+
+	// No arg list
+	cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"), cObj);
+	serializedStr = shmea::Serializable::Serialize(cData);
+	deserializedCD = new shmea::ServiceData(cConnection);
+	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
+	deserializedObj = deserializedCD->getObj();
+
+	G_assert (__FILE__, __LINE__, "==============GObject2-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfRows() == 2);
+	G_assert (__FILE__, __LINE__, "==============GObject2-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfCols() == 5);
+	G_assert (__FILE__, __LINE__, "==============GObject2-Deserialize-members-row[0]-size Failed==============", deserializedObj.getMembers()[0].size() == 5);
+
+	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][0] Failed==============", deserializedObj.getMembers()[0][0] == "derp");
+	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][1] Failed==============", deserializedObj.getMembers()[0][1] == "herp");
+	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
+	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
+	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
 }

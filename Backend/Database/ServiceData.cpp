@@ -53,6 +53,15 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 	type = TYPE_TABLE;
 }
 
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GObject& newObj)
+{
+	cConnection = newConnection;
+	sid = generateSID();
+	command = newCommand;
+	repObj = newObj;
+	type = TYPE_NETWORK_POINTER;
+}
+
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const Serializable& newNP)
 {
 	cConnection = newConnection;
@@ -131,6 +140,11 @@ int ServiceData::getType() const
 	return type;
 }
 
+const GList& ServiceData::getArgList() const
+{
+	return argList;
+}
+
 void ServiceData::setSID(GString newSID)
 {
 	sid = newSID;
@@ -144,6 +158,11 @@ void ServiceData::setCommand(GString newCommand)
 void ServiceData::setType(int newType)
 {
 	type = newType;
+}
+
+void ServiceData::setArgList(const GList& newList)
+{
+	argList = newList;
 }
 
 bool ServiceData::validSID(const GString& testSID)
