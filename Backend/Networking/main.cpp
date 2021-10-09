@@ -150,6 +150,10 @@ void GNet::GServer::send(const shmea::ServiceData* cData, bool localFallback, bo
 
 GNet::Service* GNet::GServer::ServiceLookup(shmea::GString cCommand)
 {
+	std::map<shmea::GString, Service*>::const_iterator itr = service_depot.find(cCommand);
+	if(itr == service_depot.end())
+		return NULL;
+
 	GNet::Service* cService = service_depot[cCommand]->MakeService(this);
 	return cService;
 }
