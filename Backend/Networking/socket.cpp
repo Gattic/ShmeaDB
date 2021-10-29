@@ -317,6 +317,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			//printf("eTextLen-PRE-SER: %u\n", eText.length()/8);
 			shmea::GString cStr = crypt.dText;
 			shmea::Serializable::Deserialize(cData, cStr);
+			cData->setTimesent(crypt.getTimesent());
 			srvcList.push_back(cData); // minus the key
 
 			if (eText.length()/8 == crypt.sizeClaimed)
@@ -467,9 +468,9 @@ void Sockets::writeLists(GServer* serverInstance)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	std::pair<Connection*, const shmea::ServiceData*> nextOutbound = outboundLists.front();
+	const shmea::ServiceData* nextOutbound = outboundLists.front();
 	outboundLists.pop();
-	serverInstance->send(nextOutbound.second);
+	serverInstance->send(nextOutbound);
 	pthread_mutex_unlock(outMutex);
 	/*Connection* cConnection = nextOutbound.first;
 	const shmea::ServiceData* nextCommand = nextOutbound.second;
@@ -505,7 +506,7 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection,
 		return;
 
 	pthread_mutex_lock(outMutex);
-	outboundLists.push(std::make_pair(cConnection, cData));
+	outboundLists.push(cData);
 	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
 }

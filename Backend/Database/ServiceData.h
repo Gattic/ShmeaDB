@@ -41,6 +41,7 @@ class ServiceData
 private:
 
 	GNet::Connection* cConnection;
+	int64_t timesent;
 	shmea::GString sid;
 	shmea::GString command;
 	int type;
@@ -69,11 +70,13 @@ public:
 	virtual ~ServiceData();
 
 	GNet::Connection* getConnection() const;
+	int64_t getTimesent() const;
 	shmea::GString getSID() const;
 	shmea::GString getCommand() const;
 	int getType() const;
 	const GList& getArgList() const;
 
+	void setTimesent(int64_t);
 	void setSID(shmea::GString);
 	void setCommand(shmea::GString);
 	void setType(int);

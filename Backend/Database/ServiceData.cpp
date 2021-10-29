@@ -22,6 +22,7 @@ using namespace shmea;
 ServiceData::ServiceData(GNet::Connection* newConnection)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = "";
 	type = TYPE_ACK;
@@ -30,6 +31,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection)
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
 	type = TYPE_ACK;
@@ -38,6 +40,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GList& newList)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
 	repList = newList;
@@ -47,6 +50,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GTable& newTable)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
 	repTable = newTable;
@@ -56,6 +60,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GObject& newObj)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
 	repObj = newObj;
@@ -65,6 +70,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const Serializable& newNP)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
 	repObj = newNP.serialize();
@@ -74,6 +80,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 ServiceData::ServiceData(const ServiceData& instance2)
 {
 	cConnection = instance2.cConnection;
+	timesent = 0;
 	sid = instance2.sid;
 	command = instance2.command;
 	repList = instance2.repList;
@@ -85,6 +92,7 @@ ServiceData::ServiceData(const ServiceData& instance2)
 ServiceData::~ServiceData()
 {
 	cConnection = NULL;
+	timesent = 0;
 	sid = "";
 	command = "";
 	type = TYPE_ACK;
@@ -125,6 +133,11 @@ GNet::Connection* ServiceData::getConnection() const
 	return cConnection;
 }
 
+int64_t ServiceData::getTimesent() const
+{
+	return timesent;
+}
+
 GString ServiceData::getSID() const
 {
 	return sid;
@@ -143,6 +156,11 @@ int ServiceData::getType() const
 const GList& ServiceData::getArgList() const
 {
 	return argList;
+}
+
+void ServiceData::setTimesent(int64_t newTS)
+{
+	timesent = newTS;
 }
 
 void ServiceData::setSID(GString newSID)

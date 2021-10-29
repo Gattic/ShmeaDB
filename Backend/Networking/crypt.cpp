@@ -117,3 +117,9 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 	// how many lines did we decrypt
 	sizeCurrent = i;
 }
+
+int64_t Crypt::getTimesent() const
+{
+	return cTime;
+}
+

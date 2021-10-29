@@ -433,35 +433,35 @@ GString GString::charTOstring(char cChar)
 
 GString GString::shortTOstring(short cShort)
 {
-	char buffer[20];
+	char buffer[100];
 	sprintf(buffer, "%d", cShort);//make the number into string using sprintf function
 	return GString(buffer, strlen(buffer));
 }
 
 GString GString::intTOstring(int cInt)
 {
-	char buffer[20];
+	char buffer[100];
 	sprintf(buffer, "%d", cInt);//make the number into string using sprintf function
 	return GString(buffer, strlen(buffer));
 }
 
 GString GString::longTOstring(int64_t cLong)
 {
-	char buffer[20];
+	char buffer[100];
 	sprintf(buffer, "%ld", cLong);//make the number into string using sprintf function
 	return GString(buffer, strlen(buffer));
 }
 
 GString GString::floatTOstring(float cFloat)
 {
-	char buffer[20];
+	char buffer[100];
 	sprintf(buffer, "%f", cFloat);//make the number into string using sprintf function
 	return GString(buffer, strlen(buffer));
 }
 
 GString GString::doubleTOstring(double cDouble)
 {
-	char buffer[20];
+	char buffer[100];
 	sprintf(buffer, "%f", cDouble);//make the number into string using sprintf function
 	return GString(buffer, strlen(buffer));
 }
