@@ -201,6 +201,7 @@ void GListUnitTest()
 
 	GNet::Connection* cConnection = NULL;
 	shmea::ServiceData* cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"), cObj);
+	cData->assignServiceNum(); // We usually call this in writeConnection
 	cData->setArgList(argList);
 
 	serializedStr = shmea::Serializable::Serialize(cData);
@@ -208,6 +209,7 @@ void GListUnitTest()
 	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
 
 	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-type Failed==============", deserializedCD->getType() == shmea::ServiceData::TYPE_NETWORK_POINTER);
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-serviceNum Failed==============", deserializedCD->getServiceNum() == 1);
 	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList-size Failed==============", deserializedCD->getArgList().size() == 9);
 	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[0] Failed==============", deserializedCD->getArgList()[0] == "NO ME");
 	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-argList[1] Failed==============", deserializedCD->getArgList()[1] == "NO YOU");
@@ -233,11 +235,13 @@ void GListUnitTest()
 
 	// No arg list
 	cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"), cObj);
+	cData->assignServiceNum(); // We usually call this in writeConnection
 	serializedStr = shmea::Serializable::Serialize(cData);
 	deserializedCD = new shmea::ServiceData(cConnection);
 	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
 	deserializedObj = deserializedCD->getObj();
 
+	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-serviceNum Failed==============", deserializedCD->getServiceNum() == 2);
 	G_assert (__FILE__, __LINE__, "==============GObject2-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfRows() == 2);
 	G_assert (__FILE__, __LINE__, "==============GObject2-Deserialize-members-rows Failed==============", deserializedObj.getMembers().numberOfCols() == 5);
 	G_assert (__FILE__, __LINE__, "==============GObject2-Deserialize-members-row[0]-size Failed==============", deserializedObj.getMembers()[0].size() == 5);

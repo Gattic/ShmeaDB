@@ -26,6 +26,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection)
 	sid = generateSID();
 	command = "";
 	type = TYPE_ACK;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
@@ -35,6 +36,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 	sid = generateSID();
 	command = newCommand;
 	type = TYPE_ACK;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GList& newList)
@@ -45,6 +47,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 	command = newCommand;
 	repList = newList;
 	type = TYPE_LIST;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GTable& newTable)
@@ -55,6 +58,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 	command = newCommand;
 	repTable = newTable;
 	type = TYPE_TABLE;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GObject& newObj)
@@ -65,6 +69,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 	command = newCommand;
 	repObj = newObj;
 	type = TYPE_NETWORK_POINTER;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const Serializable& newNP)
@@ -75,6 +80,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, co
 	command = newCommand;
 	repObj = newNP.serialize();
 	type = TYPE_NETWORK_POINTER;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(const ServiceData& instance2)
@@ -87,6 +93,7 @@ ServiceData::ServiceData(const ServiceData& instance2)
 	repTable = instance2.repTable;
 	repObj = instance2.repObj;
 	type = instance2.type;
+	serviceNum = instance2.serviceNum;
 }
 
 ServiceData::~ServiceData()
@@ -96,6 +103,7 @@ ServiceData::~ServiceData()
 	sid = "";
 	command = "";
 	type = TYPE_ACK;
+	serviceNum = -1;
 }
 
 const GList& ServiceData::getList() const
@@ -148,6 +156,11 @@ GString ServiceData::getCommand() const
 	return command;
 }
 
+int64_t ServiceData::getServiceNum() const
+{
+	return serviceNum;
+}
+
 int ServiceData::getType() const
 {
 	return type;
@@ -171,6 +184,17 @@ void ServiceData::setSID(GString newSID)
 void ServiceData::setCommand(GString newCommand)
 {
 	command = newCommand;
+}
+
+void ServiceData::assignServiceNum()
+{
+	static int64_t serviceCounter = 0;
+	serviceNum = ++serviceCounter;
+}
+
+void ServiceData::setServiceNum(int64_t newServiceNum)
+{
+	serviceNum = newServiceNum;
 }
 
 void ServiceData::setType(int newType)
@@ -216,4 +240,14 @@ GString ServiceData::generateSID()
 	} while(!validSID(newSID));// && check if its in the data structure to avoid hijacking
 
 	return newSID;
+}
+
+bool ServiceData::operator<(const ServiceData& sd2) const
+{
+	return getServiceNum() < sd2.getServiceNum();
+}
+
+bool ServiceData::operator>(const ServiceData& sd2) const
+{
+	return getServiceNum() > sd2.getServiceNum();
 }

@@ -110,7 +110,7 @@ GNet::GServer::~GServer()
 	writersBlock = NULL;
 }
 
-void GNet::GServer::send(const shmea::ServiceData* cData, bool localFallback, bool networkingDisabled)
+void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool networkingDisabled)
 {
 	if (!cData)
 		return;
