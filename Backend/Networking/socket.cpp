@@ -431,7 +431,6 @@ bool Sockets::readLists(Connection* origin)
 			return false;*/
 
 		pthread_mutex_lock(inMutex);
-		//inboundLists.push(cData);
 
 		int64_t serviceNum = cData->getServiceNum();
 		std::map<int64_t, shmea::ServiceData*>::iterator itr = inboundLists.find(serviceNum);
@@ -479,16 +478,10 @@ void Sockets::writeLists(GServer* serverInstance)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	shmea::ServiceData* nextOutbound = outboundLists.front();
-	outboundLists.pop();
+	shmea::ServiceData* nextOutbound = (*outboundLists.begin()).second;
+	outboundLists.erase(outboundLists.begin());
 	serverInstance->send(nextOutbound);
 	pthread_mutex_unlock(outMutex);
-	/*Connection* cConnection = nextOutbound.first;
-	shmea::ServiceData* nextCommand = nextOutbound.second;
-	int bytesWritten =
-		writeConnection(cConnection, cConnection->sockfd, nextCommand);
-
-	return !(bytesWritten < 0);*/
 }
 
 /*!
@@ -515,8 +508,21 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, 
 	if (!cConnection)
 		return;
 
+	if (!cData)
+		return;
+
 	pthread_mutex_lock(outMutex);
-	outboundLists.push(cData);
+
+	int64_t serviceNum = cData->getServiceNum();
+	std::map<int64_t, shmea::ServiceData*>::iterator itr = outboundLists.find(serviceNum);
+	if(itr == outboundLists.end())
+		outboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, cData));
+	else
+	{
+		printf("ServiceNum colision: %ld !!!!\n", serviceNum);
+		outboundLists[serviceNum] = cData;
+	}
+
 	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
 }
