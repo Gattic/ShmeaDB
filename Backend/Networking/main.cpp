@@ -110,7 +110,7 @@ GNet::GServer::~GServer()
 	writersBlock = NULL;
 }
 
-void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisabled)
+void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool networkingDisabled)
 {
 	if (!cData)
 		return;
@@ -118,7 +118,12 @@ void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisable
 	// Default instance
 	 GNet::Connection* destination = cData->getConnection();
 	if (!destination)
-		destination = getLocalConnection();
+	{
+		if (localFallback)
+			destination = getLocalConnection();
+		else
+			return;
+	}
 
 	if (isNetworkingDisabled())
 		networkingDisabled = true;
@@ -145,6 +150,10 @@ void GNet::GServer::send(const shmea::ServiceData* cData, bool networkingDisable
 
 GNet::Service* GNet::GServer::ServiceLookup(shmea::GString cCommand)
 {
+	std::map<shmea::GString, Service*>::const_iterator itr = service_depot.find(cCommand);
+	if(itr == service_depot.end())
+		return NULL;
+
 	GNet::Service* cService = service_depot[cCommand]->MakeService(this);
 	return cService;
 }
@@ -505,8 +514,8 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		localConnection = destination;
 
 	// Start the Login Handshake
-	shmea::GList* wData = new shmea::GList();
-	wData->addString(x->clientName);
+	shmea::GList wData;
+	wData.addString(x->clientName);
 	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
 	socks->writeConnection(destination, sockfd2, cData);
 }

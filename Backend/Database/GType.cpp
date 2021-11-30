@@ -38,6 +38,7 @@ GType::GType(const bool& newBlock)
 {
 	unsigned int newBlockSize = sizeof(bool);
 	int newType = BOOLEAN_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -47,6 +48,7 @@ GType::GType(const char& newBlock)
 {
 	unsigned int newBlockSize = sizeof(char);
 	int newType = CHAR_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -56,6 +58,7 @@ GType::GType(const short& newBlock)
 {
 	unsigned int newBlockSize = sizeof(short);
 	int newType = SHORT_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -65,6 +68,7 @@ GType::GType(const int& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int);
 	int newType = INT_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -74,6 +78,7 @@ GType::GType(const int64_t& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int64_t);
 	int newType = LONG_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -83,6 +88,7 @@ GType::GType(const float& newBlock)
 {
 	unsigned int newBlockSize = sizeof(float);
 	int newType = FLOAT_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -92,6 +98,7 @@ GType::GType(const double& newBlock)
 {
 	unsigned int newBlockSize = sizeof(double);
 	int newType = DOUBLE_TYPE;
+	blockSize = 0;
 	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
@@ -493,12 +500,20 @@ unsigned int GType::size() const
 
 void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 {
-	clean();
-	type = newType;
-	blockSize = newBlockSize;
-	block = (char*)malloc(blockSize + 1); // plus one to escape the string, we ignore this character everywhere else
-	memcpy(block, newBlock, blockSize);
-	block[blockSize] = '\0';
+	if(blockSize == newBlockSize)
+	{
+		type = newType;
+		memcpy(block, newBlock, blockSize); // this is a copy so safe to assume it has the \0 from the block else below
+	}
+	else
+	{
+		clean();
+		type = newType;
+		blockSize = newBlockSize;
+		block = (char*)malloc(blockSize + 1); // plus one to escape the string, we ignore this character everywhere else
+		memcpy(block, newBlock, blockSize);
+		block[blockSize] = '\0';
+	}
 }
 
 void GType::clean()

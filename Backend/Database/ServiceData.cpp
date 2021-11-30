@@ -22,122 +22,128 @@ using namespace shmea;
 ServiceData::ServiceData(GNet::Connection* newConnection)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = "";
-	repList = NULL;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_ACK;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
-	repList = NULL;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_ACK;
+	serviceNum = -1;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, GList* newList)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GList& newList)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
 	repList = newList;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_LIST;
+	serviceNum = -1;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, GTable* newTable)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GTable& newTable)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
-	repList = NULL;
 	repTable = newTable;
-	repObj = NULL;
 	type = TYPE_TABLE;
+	serviceNum = -1;
 }
 
-ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, Serializable* newNP)
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const GObject& newObj)
 {
 	cConnection = newConnection;
+	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
-	repList = NULL;
-	repTable = NULL;
-	repObj = newNP->serialize();
+	repObj = newObj;
 	type = TYPE_NETWORK_POINTER;
+	serviceNum = -1;
+}
+
+ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand, const Serializable& newNP)
+{
+	cConnection = newConnection;
+	timesent = 0;
+	sid = generateSID();
+	command = newCommand;
+	repObj = newNP.serialize();
+	type = TYPE_NETWORK_POINTER;
+	serviceNum = -1;
 }
 
 ServiceData::ServiceData(const ServiceData& instance2)
 {
 	cConnection = instance2.cConnection;
+	timesent = 0;
 	sid = instance2.sid;
 	command = instance2.command;
 	repList = instance2.repList;
 	repTable = instance2.repTable;
 	repObj = instance2.repObj;
 	type = instance2.type;
+	serviceNum = instance2.serviceNum;
 }
 
 ServiceData::~ServiceData()
 {
 	cConnection = NULL;
+	timesent = 0;
 	sid = "";
 	command = "";
-	repList = NULL;
-	repTable = NULL;
-	repObj = NULL;
 	type = TYPE_ACK;
+	serviceNum = -1;
 }
 
-const GList* ServiceData::getList() const
+const GList& ServiceData::getList() const
 {
 	return repList;
 }
 
-const GTable* ServiceData::getTable() const
+const GTable& ServiceData::getTable() const
 {
 	return repTable;
 }
 
-const GObject* ServiceData::getObj() const
+const GObject& ServiceData::getObj() const
 {
 	return repObj;
 }
 
-void ServiceData::setList(GList* newList)
+void ServiceData::setList(const GList& newList)
 {
-	if(!newList)
-		return;
-
 	repList = newList;
 }
 
-void ServiceData::setTable(GTable* newTable)
+void ServiceData::setTable(const GTable& newTable)
 {
-	if(!newTable)
-		return;
-
 	repTable = newTable;
 }
 
-void ServiceData::setObj(GObject* newObj)
+void ServiceData::setObj(const GObject& newObj)
 {
-	if(!newObj)
-		return;
-
 	repObj = newObj;
 }
 
 GNet::Connection* ServiceData::getConnection() const
 {
 	return cConnection;
+}
+
+int64_t ServiceData::getTimesent() const
+{
+	return timesent;
 }
 
 GString ServiceData::getSID() const
@@ -150,9 +156,24 @@ GString ServiceData::getCommand() const
 	return command;
 }
 
+int64_t ServiceData::getServiceNum() const
+{
+	return serviceNum;
+}
+
 int ServiceData::getType() const
 {
 	return type;
+}
+
+const GList& ServiceData::getArgList() const
+{
+	return argList;
+}
+
+void ServiceData::setTimesent(int64_t newTS)
+{
+	timesent = newTS;
 }
 
 void ServiceData::setSID(GString newSID)
@@ -165,9 +186,25 @@ void ServiceData::setCommand(GString newCommand)
 	command = newCommand;
 }
 
+void ServiceData::assignServiceNum()
+{
+	static int64_t serviceCounter = 0;
+	serviceNum = ++serviceCounter;
+}
+
+void ServiceData::setServiceNum(int64_t newServiceNum)
+{
+	serviceNum = newServiceNum;
+}
+
 void ServiceData::setType(int newType)
 {
 	type = newType;
+}
+
+void ServiceData::setArgList(const GList& newList)
+{
+	argList = newList;
 }
 
 bool ServiceData::validSID(const GString& testSID)
@@ -203,4 +240,14 @@ GString ServiceData::generateSID()
 	} while(!validSID(newSID));// && check if its in the data structure to avoid hijacking
 
 	return newSID;
+}
+
+bool ServiceData::operator<(const ServiceData& sd2) const
+{
+	return getServiceNum() < sd2.getServiceNum();
+}
+
+bool ServiceData::operator>(const ServiceData& sd2) const
+{
+	return getServiceNum() > sd2.getServiceNum();
 }

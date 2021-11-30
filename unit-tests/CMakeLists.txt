@@ -15,7 +15,7 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
 #Project
 project(shmea-unit-tests)
 set(G_VERSION_MAJOR 0)
-set(G_VERSION_MINOR 55)
+set(G_VERSION_MINOR 56)
 
 set(DEFAULT_BUILD_TYPE "Release")
 
