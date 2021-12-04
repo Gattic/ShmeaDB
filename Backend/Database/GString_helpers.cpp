@@ -509,8 +509,8 @@ GString GString::timeTOstring(int64_t ts)
 	return retString;
 }
 
-int64_t GString::parseDate(const std::string sd, const std::string sm, const std::string sy,
-	const std::string shour, const std::string smin, const std::string ssec)
+int64_t GString::parseDate(const shmea::GString sd, const shmea::GString sm, const shmea::GString sy,
+	const shmea::GString shour, const shmea::GString smin, const shmea::GString ssec)
 {
 	shmea::GType d = shmea::GString::Typify(sd.c_str(), sd.length());
 	shmea::GType m = shmea::GString::Typify(sm.c_str(), sm.length());
