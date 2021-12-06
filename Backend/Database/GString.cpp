@@ -364,7 +364,7 @@ GString GString::substr(unsigned int start, unsigned int len) const
 	if(start >= blockSize)
 		return emptyStr;
 
-	if((len == 0) || (len > start + blockSize))
+	if((len == npos) || (len > start + blockSize))
 		len = blockSize - start;
 
 	//Empty source
