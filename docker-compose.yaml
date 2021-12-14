@@ -1,0 +1,7 @@
+version: '3.6'
+
+services:
+  base:
+    build: .
+    image: gattic/shmea-db
+
