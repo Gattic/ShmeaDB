@@ -200,12 +200,13 @@ void GListUnitTest()
 	argList.addString("ok it wont|happen again");
 
 	GNet::Connection* cConnection = NULL;
-	shmea::ServiceData* cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"), cObj);
+	shmea::ServiceData* cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
+	cData->set(cObj);
 	cData->assignServiceNum(); // We usually call this in writeConnection
 	cData->setArgList(argList);
 
 	serializedStr = shmea::Serializable::Serialize(cData);
-	shmea::ServiceData* deserializedCD = new shmea::ServiceData(cConnection);
+	shmea::ServiceData* deserializedCD = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
 	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
 
 	G_assert (__FILE__, __LINE__, "==============ServiceData-Deserialize-type Failed==============", deserializedCD->getType() == shmea::ServiceData::TYPE_NETWORK_POINTER);
@@ -234,10 +235,11 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
 
 	// No arg list
-	cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"), cObj);
+	cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
+	cData->set(cObj);
 	cData->assignServiceNum(); // We usually call this in writeConnection
 	serializedStr = shmea::Serializable::Serialize(cData);
-	deserializedCD = new shmea::ServiceData(cConnection);
+	deserializedCD = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
 	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
 	deserializedObj = deserializedCD->getObj();
 

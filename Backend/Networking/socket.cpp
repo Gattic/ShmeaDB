@@ -313,7 +313,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			}*/
 
 			// set the text from the crypt object & add it to the data
-			shmea::ServiceData* cData = new shmea::ServiceData(origin);
+			shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
 			//printf("eTextLen-PRE-SER: %u\n", eText.length()/8);
 			shmea::GString cStr = crypt.dText;
 			shmea::Serializable::Deserialize(cData, cStr);

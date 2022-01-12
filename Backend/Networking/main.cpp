@@ -148,16 +148,6 @@ void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool net
 	}
 }
 
-GNet::Service* GNet::GServer::ServiceLookup(shmea::GString cCommand)
-{
-	std::map<shmea::GString, Service*>::const_iterator itr = service_depot.find(cCommand);
-	if(itr == service_depot.end())
-		return NULL;
-
-	GNet::Service* cService = service_depot[cCommand]->MakeService(this);
-	return cService;
-}
-
 unsigned int GNet::GServer::addService(GNet::Service* newServiceObj)
 {
 	shmea::GString newServiceName = newServiceObj->getName();
@@ -168,6 +158,37 @@ unsigned int GNet::GServer::addService(GNet::Service* newServiceObj)
 		service_depot[newServiceName] = newServiceObj;
 
 	return service_depot.size();
+}
+
+GNet::Service* GNet::GServer::DoService(shmea::GString cCommand, shmea::GString newKey)
+{
+	// Does it exist at all?
+	std::map<shmea::GString, Service*>::const_iterator itr = service_depot.find(cCommand);
+	if(itr == service_depot.end())
+		return NULL;
+
+	if(newKey.length() == 0)
+	{
+		GNet::Service* cService = service_depot[cCommand]->MakeService(this);
+		return cService;
+	}
+	else if(newKey.length() > 0)
+	{
+		std::map<shmea::GString, Service*>::const_iterator itr2 = running_services.find(newKey);
+		if(itr2 == running_services.end())
+		{
+			GNet::Service* cService = service_depot[cCommand]->MakeService(this);
+			running_services[newKey] = cService;
+			return cService;
+		}
+		else
+		{
+			GNet::Service* cService = cService = running_services[newKey];
+			return cService;
+		}
+	}
+
+	return NULL;
 }
 
 const bool& GNet::GServer::getRunning()
@@ -516,7 +537,8 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	// Start the Login Handshake
 	shmea::GList wData;
 	wData.addString(x->clientName);
-	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server", wData);
+	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server");
+	cData->set(wData);
 	socks->writeConnection(destination, sockfd2, cData);
 }
 

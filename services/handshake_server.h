@@ -75,7 +75,8 @@ public:
 			wData.addString(destination->getName());
 			wData.addLong(newKey);
 
-			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client", wData);
+			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client");
+			cData->set(wData);
 			serverInstance->send(cData);
 			//printf("newKey1: %ld:%ld\n", newKey, wData.getLong(1));
 

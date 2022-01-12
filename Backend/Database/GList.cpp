@@ -143,14 +143,12 @@ void GList::insertPrimitive(unsigned int index, int newType, const void* newBloc
 
 void GList::addString(const GString& newBlock)
 {
-	if (newBlock.length() > 0)
-		insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
+	insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
 void GList::insertString(unsigned int index, const GString& newBlock)
 {
-	if (newBlock.length() > 0)
-		insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
+	insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
 void GList::addString(const char* newBlock)
@@ -173,29 +171,23 @@ void GList::insertString(unsigned int index, const char* newBlock)
 
 void GList::addObject(int newType, const void* newBlock, int64_t newBlockSize)
 {
-	// Add the object if its valid
-	if ((newBlockSize > 0) && (newBlock != NULL))
-		insertObject(items.size(), newType, newBlock, newBlockSize);
+	insertObject(items.size(), newType, newBlock, newBlockSize);
 }
 
 // All add & insert functions go to this one
 void GList::insertObject(unsigned int index, int newType, const void* newBlock,
 						 int64_t newBlockSize)
 {
-	// Add the object if its valid
-	if ((newBlockSize > 0) && (newBlock != NULL))
-	{
-		// fix the index if need be
-		if (index > items.size())
-			index = items.size();
+	// fix the index if need be
+	if (index > items.size())
+		index = items.size();
 
-		// Add the bundle item
-		GType newItem(newType, newBlock, newBlockSize);
-		if (index == items.size())
-			addGType(newItem);
-		else // insert
-			insertGType(index, newItem);
-	}
+	// Add the bundle item
+	GType newItem(newType, newBlock, newBlockSize);
+	if (index == items.size())
+		addGType(newItem);
+	else // insert
+		insertGType(index, newItem);
 }
 
 /*!
