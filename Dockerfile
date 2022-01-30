@@ -16,3 +16,4 @@ WORKDIR /ShmeaDB/unit-tests/build
 RUN cmake ../
 RUN make run
 
+WORKDIR / 
