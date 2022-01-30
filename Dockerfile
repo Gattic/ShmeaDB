@@ -1,18 +1,18 @@
 FROM gattic/base:latest
 MAINTAINER Lerring
 
-RUN mkdir -p /app
-COPY . /app
+RUN mkdir -p /ShmeaDB
+COPY . /ShmeaDB
 
 #INSTALL
-RUN mkdir /app/build
-WORKDIR /app/build
+RUN mkdir /ShmeaDB/build
+WORKDIR /ShmeaDB/build
 RUN cmake  ../
 RUN make install
 
-RUN TESTS
-RUN mkdir /app/unit-tests/build
-WORKDIR /app/unit-tests/build
+#TESTS
+RUN mkdir /ShmeaDB/unit-tests/build
+WORKDIR /ShmeaDB/unit-tests/build
 RUN cmake ../
 RUN make run
 
