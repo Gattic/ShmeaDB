@@ -1,6 +1,6 @@
 
-function catch {
+{
+  cmake ../ 
+} || {
   echo "TEST"
 }
-
-cmake ../ || catch
