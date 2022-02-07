@@ -7,7 +7,10 @@ COPY . /ShmeaDB
 #INSTALL
 RUN mkdir /ShmeaDB/build
 WORKDIR /ShmeaDB/build
-RUN cmake  ../ --trace-expand
+RUN COPY ../install.sh .
+RUN chmod +x ./install.sh
+RUN ./install.sh
+# RUN cmake  ../ --trace-expand
 RUN make install
 
 # #TESTS
