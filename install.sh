@@ -1,5 +1,5 @@
 
-catch {
+function catch {
   echo "TEST"
 }
 
