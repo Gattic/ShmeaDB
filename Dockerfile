@@ -1,4 +1,4 @@
-FROM gattic/base:latest
+FROM c8n.io/lerring/base:main
 MAINTAINER Lerring
 
 RUN mkdir -p /ShmeaDB
