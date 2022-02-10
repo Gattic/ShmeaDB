@@ -3,9 +3,9 @@ name: ci
 on:
   push:
     branches:
-      - 'docker/master'
-      - 'docker/fancy'
-      - 'docker/pants'
+      - 'docker-master'
+      - 'docker-fancy'
+      - 'docker-pants'
 
 jobs:
   docker:
