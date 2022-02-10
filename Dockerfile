@@ -1,4 +1,4 @@
-FROM c8n.io/lerring/base:main
+FROM haskellol/base:main
 MAINTAINER Lerring
 
 RUN mkdir -p /ShmeaDB
