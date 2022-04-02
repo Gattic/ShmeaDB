@@ -103,6 +103,12 @@ int Sockets::openClientConnection(const shmea::GString& serverIP)
 		#endif
 		setsockopt(sockfd, SOL_SOCKET, sockopts, &optval, sizeof(optval));*/
 
+		// Having no buffer will force the socket to wait to send until the previous transaction is done.
+		// Ths knowledge cannot be found anywhere so please do not delete this comment
+		int bufVal = 0;
+		setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &bufVal, sizeof(bufVal));
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufVal, sizeof(bufVal));
+
 		status = connect(sockfd, result->ai_addr, result->ai_addrlen);
 		if (status < 0)
 		{
@@ -165,7 +171,10 @@ shmea::GString Sockets::reader(const int& sockfd)
 	unsigned int tSize = 0;
 	char* eText = (char*)malloc(sizeof(char) * tSize);
 	if (!eText)
+	{
+		printf("[READER] Error: 0\n");
 		return "";
+	}
 
 	do
 	{
@@ -183,12 +192,14 @@ shmea::GString Sockets::reader(const int& sockfd)
 			}
 			else
 			{
+				printf("[READER] Error: 1\n");
 				tSize = 0;
 				return "";
 			}
 		}
 		else
 		{
+			printf("[READER] Error: 2\n");
 			free(eText);
 			tSize = 0;
 			return "";
@@ -203,6 +214,7 @@ shmea::GString Sockets::reader(const int& sockfd)
 	int64_t* newEText = (int64_t*)malloc(sizeof(char) * tSize);
 	if(!newEText)
 	{
+		printf("[READER] Error: 3\n");
 		tSize = 0;
 		return "";
 	}
@@ -220,12 +232,12 @@ shmea::GString Sockets::reader(const int& sockfd)
 			++lCounter;
 		}
 	}
-	free(eText);
 
+	free(eText);
 	return shmea::GString((const char*)newEText, tSize);
 }
 
-void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
+void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<shmea::ServiceData*>& srvcList)
 {
 	readConnectionHelper(origin, sockfd, srvcList);
 
@@ -240,7 +252,7 @@ void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<
 	}*/
 }
 
-void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<const shmea::ServiceData*>& srvcList)
+void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<shmea::ServiceData*>& srvcList)
 {
 	if (origin == NULL)
 		return;
@@ -301,10 +313,11 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			}*/
 
 			// set the text from the crypt object & add it to the data
-			shmea::ServiceData* cData = new shmea::ServiceData(origin);
+			shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
 			//printf("eTextLen-PRE-SER: %u\n", eText.length()/8);
 			shmea::GString cStr = crypt.dText;
 			shmea::Serializable::Deserialize(cData, cStr);
+			cData->setTimesent(crypt.getTimesent());
 			srvcList.push_back(cData); // minus the key
 
 			if (eText.length()/8 == crypt.sizeClaimed)
@@ -323,8 +336,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	origin->overflow = cOverflow;
 }
 
-int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
-							 const shmea::ServiceData* cData)
+int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
 	//printf("==============================================================\n");
@@ -336,9 +348,13 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd,
 	// writeList.insertString(0, version.getString());
 
 	// Convert to packet format
+	cData->assignServiceNum();
 	shmea::GString rawData = shmea::Serializable::Serialize(cData);
 	if (rawData.length() == 0)
+	{
+		printf("[WRITER] Error: 0\n");
 		return -1;
+	}
 
 	// Encrypt
 	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
@@ -396,37 +412,44 @@ void Sockets::closeConnection(const int& sockfd)
  */
 bool Sockets::readLists(Connection* origin)
 {
-	std::vector<const shmea::ServiceData*> srvcList;
+	std::vector<shmea::ServiceData*> srvcList;
 	readConnection(origin, origin->sockfd, srvcList);
 
-	if (srvcList.size() > 0)
+	if (srvcList.size() == 0)
+		return false;
+
+	// loop through the srvcList
+	for (unsigned int i = 0; i < srvcList.size(); ++i)
 	{
-		// loop through the srvcList
-		for (unsigned int i = 0; i < srvcList.size(); ++i)
+		// get the data from the data list
+		shmea::ServiceData* cData = srvcList[i];
+
+		// Check the version
+		/*shmea::GString clientVersion = cData.getString(0);
+		cData.remove(0);*/
+		/*if (version != clientVersion)
+			return false;*/
+
+		pthread_mutex_lock(inMutex);
+
+		int64_t serviceNum = cData->getServiceNum();
+		std::map<int64_t, shmea::ServiceData*>::iterator itr = inboundLists.find(serviceNum);
+		if(itr == inboundLists.end())
+			inboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, cData));
+		else
 		{
-			// get the data from the data list
-			const shmea::ServiceData* cData = srvcList.front();
-			srvcList.erase(srvcList.begin());
-
-			// Check the version
-			/*shmea::GString clientVersion = cData.getString(0);
-			cData.remove(0);*/
-			/*if (version != clientVersion)
-				return false;*/
-
-			pthread_mutex_lock(inMutex);
-			inboundLists.push(cData);
-			pthread_mutex_unlock(inMutex);
+			printf("ServiceNum colision: %ld !!!!\n", serviceNum);
+			inboundLists[serviceNum] = cData;
 		}
-		return true;
-	}
 
-	return false;
+		pthread_mutex_unlock(inMutex);
+	}
+	return true;
 }
 
 /*!
  * @brief process lists
- * @details create new services from the lists in the "inbound" queue
+ * @details create new services from the lists in the "inbound" map
  * @param cConnection the connection Connection
  */
 void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
@@ -434,8 +457,8 @@ void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 	while (!inboundLists.empty())
 	{
 		pthread_mutex_lock(inMutex);
-		const shmea::ServiceData* nextSD = inboundLists.front();
-		inboundLists.pop();
+		shmea::ServiceData* nextSD = (*inboundLists.begin()).second;
+		inboundLists.erase(inboundLists.begin());
 		pthread_mutex_unlock(inMutex);
 		GNet::Service::ExecuteService(serverInstance, nextSD, cConnection);
 	}
@@ -443,7 +466,7 @@ void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 
 /*!
  * @brief write lists
- * @details write lists in the "outbound" queue to the socket
+ * @details write lists in the "outbound" map to the socket
  * @param cConnection the connection Connection
  */
 void Sockets::writeLists(GServer* serverInstance)
@@ -455,16 +478,10 @@ void Sockets::writeLists(GServer* serverInstance)
 		return;
 
 	pthread_mutex_lock(outMutex);
-	std::pair<Connection*, const shmea::ServiceData*> nextOutbound = outboundLists.front();
-	outboundLists.pop();
-	serverInstance->send(nextOutbound.second);
+	shmea::ServiceData* nextOutbound = (*outboundLists.begin()).second;
+	outboundLists.erase(outboundLists.begin());
+	serverInstance->send(nextOutbound);
 	pthread_mutex_unlock(outMutex);
-	/*Connection* cConnection = nextOutbound.first;
-	const shmea::ServiceData* nextCommand = nextOutbound.second;
-	int bytesWritten =
-		writeConnection(cConnection, cConnection->sockfd, nextCommand);
-
-	return !(bytesWritten < 0);*/
 }
 
 /*!
@@ -486,14 +503,26 @@ bool Sockets::anyOutboundLists()
 {
 	return !outboundLists.empty();
 }
-void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection,
-							  const shmea::ServiceData* cData)
+void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, shmea::ServiceData* cData)
 {
 	if (!cConnection)
 		return;
 
+	if (!cData)
+		return;
+
 	pthread_mutex_lock(outMutex);
-	outboundLists.push(std::make_pair(cConnection, cData));
+
+	int64_t serviceNum = cData->getServiceNum();
+	std::map<int64_t, shmea::ServiceData*>::iterator itr = outboundLists.find(serviceNum);
+	if(itr == outboundLists.end())
+		outboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, cData));
+	else
+	{
+		printf("ServiceNum colision: %ld !!!!\n", serviceNum);
+		outboundLists[serviceNum] = cData;
+	}
+
 	serverInstance->wakeWriter();
 	pthread_mutex_unlock(outMutex);
 }

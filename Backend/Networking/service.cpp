@@ -45,6 +45,11 @@ Service::~Service()
 	timeExecuted = 0;
 }
 
+bool Service::getRunning() const
+{
+	return running;
+}
+
 /*!
  * @brief Run execute() asynchronusly as a Service
  * @details launch new service thread (command)
@@ -85,8 +90,11 @@ void* Service::launchService(void* y)
 
 	// Get the command in order to tell the service what to do
 	x->command = x->sockData->getCommand();
-	if(x->command.length() == 0)//Uncomment this before commit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if(x->command.length() == 0)
 		return NULL;
+
+	// Can be 0 len
+	x->serviceKey = x->sockData->getServiceKey();
 
 	// Connection is dead so ignore it
 	Connection* cConnection = x->cConnection;
@@ -95,7 +103,7 @@ void* Service::launchService(void* y)
 
 	if (!cConnection->isFinished())
 	{
-		Service* cService = serverInstance->ServiceLookup(x->command);
+		Service* cService = serverInstance->DoService(x->command, x->serviceKey);
 		if (cService)
 		{
 			// start the service
@@ -141,10 +149,12 @@ void Service::StartService(newServiceArgs* x)
 		ipAddress = cConnection->getIP();
 
 	// const shmea::GString& command = x->command;
-	// printf("---------Service Start: %s (%s)---------\n", ipAddress.c_str(), command.c_str());
+	// const shmea::GString& serviceKey = x->serviceKey;
+	//printf("---------Service Start: %s (%s: %s)---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str());
 
 	// add the thread to the connection's active thread vector
 	cThread = x->sThread;
+	running = true;
 }
 
 /*!
@@ -154,6 +164,8 @@ void Service::StartService(newServiceArgs* x)
  */
 void Service::ExitService(newServiceArgs* x)
 {
+	running = false;
+
 	// Get the ip address
 	Connection* cConnection = x->cConnection;
 	shmea::GString ipAddress = "";
@@ -162,8 +174,7 @@ void Service::ExitService(newServiceArgs* x)
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	// printf("---------Service Exit: %s (%s); %llds---------\n", ipAddress.c_str(),
-	//	   x->command.c_str(), timeExecuted);
+	//printf("---------Service Exit: %s (%s: %s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str(), timeExecuted);
 
 	pthread_exit(0);
 }

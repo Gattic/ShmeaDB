@@ -52,21 +52,21 @@ public:
 		if (!serverInstance)
 			return NULL;
 
-		const shmea::GList* cList = data->getList();
-		if (!cList)
+		if (data->getType() != shmea::ServiceData::TYPE_LIST)
 			return NULL;
 
-		if ((data->getType() != shmea::ServiceData::TYPE_LIST) || cList->size() < 2)
+		shmea::GList cList = data->getList();
+		if (cList.size() < 2)
 			return NULL;
 
 		// Check the characters in the name
-		shmea::GString clientName = cList->getString(0);
+		shmea::GString clientName = cList.getString(0);
 		if (!GNet::Connection::validName(clientName))
 			clientName = "";
 		destination->setName(clientName);
 
 		// get the new encryption key
-		int64_t newKey = cList->getLong(1);
+		int64_t newKey = cList.getLong(1);
 		//printf("newKeyA: %ld\n", newKey);
 
 		// Set the new Connection key

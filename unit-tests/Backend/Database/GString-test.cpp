@@ -51,6 +51,7 @@ void GStringUnitTest()
 	str = str + "!";
 	G_assert (__FILE__, __LINE__, "==============GString::operator+ Failed==============", str == "abcTest123!?!!");
 
+	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(0,0).length() == 0);
 	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(3) == "Test123!?!!");
 	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(3, 4) == "Test");
 

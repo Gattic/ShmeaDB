@@ -55,12 +55,12 @@ public:
 		if (data->getType() != shmea::ServiceData::TYPE_LIST)
 			return NULL;
 
-		const shmea::GList* cList = data->getList();
-		if ((!cList) || cList->size() < 1)
+		shmea::GList cList = data->getList();
+		if (cList.size() < 1)
 			return NULL;
 
 		// Check the characters in the name
-		shmea::GString clientName = cList->getString(0);
+		shmea::GString clientName = cList.getString(0);
 		if (GNet::Connection::validName(clientName))
 			destination->setName(clientName);
 
@@ -71,13 +71,14 @@ public:
 			//printf("newKey0: %ld\n", newKey);
 
 			// tell the client the good news
-			shmea::GList* wData = new shmea::GList();
-			wData->addString(destination->getName());
-			wData->addLong(newKey);
+			shmea::GList wData;
+			wData.addString(destination->getName());
+			wData.addLong(newKey);
 
-			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client", wData);
+			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client");
+			cData->set(wData);
 			serverInstance->send(cData);
-			//printf("newKey1: %ld:%ld\n", newKey, wData->getLong(1));
+			//printf("newKey1: %ld:%ld\n", newKey, wData.getLong(1));
 
 			// Set the new Connection key
 			destination->setKey(newKey);
