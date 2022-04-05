@@ -158,7 +158,7 @@ int Sockets::openServerConnection()
 		return -1;
 	}
 
-	listen(sockfd, 5);
+	listen(sockfd, 64);
 	freeaddrinfo(result);
 
 	return sockfd;

@@ -126,4 +126,12 @@ void GStringUnitTest()
 	static GString datetimeTOstring(int64_t);
 	static GString dateTOstring(int64_t);
 	static GString timeTOstring(int64_t);*/
+
+	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::intTOstring(4) == "4");
+	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::intTOstring(-16) == "-16");
+	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::intTOstring(2.8f) == "2"); // It truncates
+
+	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::floatTOstring(0.5) == "0.500000");
+	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::floatTOstring(0.05) == "0.050000");
+	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::floatTOstring(-0.0943159163) == "-0.094316"); // It rounds
 }
