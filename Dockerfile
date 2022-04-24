@@ -1,11 +1,19 @@
-FROM gattic/base:latest
+FROM haskellol/base:main
 MAINTAINER Lerring
 
-RUN mkdir -p /app
-COPY . /app
+RUN mkdir -p /ShmeaDB
+COPY . /ShmeaDB
 
-RUN mkdir /app/build
-WORKDIR /app/build
-RUN cmake  ../
+#INSTALL
+RUN mkdir /ShmeaDB/build
+WORKDIR /ShmeaDB/build
+RUN cmake  ../ --trace-expand
 RUN make install
 
+#TESTS
+RUN mkdir /ShmeaDB/unit-tests/build
+WORKDIR /ShmeaDB/unit-tests/build
+RUN cmake ../
+RUN make run
+
+WORKDIR / 
