@@ -234,6 +234,7 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
 	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
 
+
 	// No arg list
 	cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
 	cData->set(cObj);
@@ -253,4 +254,26 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
 	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
 	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
+
+
+
+	// Bug in this specific data
+	shmea::GTable decimalData = shmea::GTable("testTable.csv", ',', shmea::GTable::TYPE_FILE);
+	shmea::GList mcArgs;
+	mcArgs.addString("MONTE-CARLO");
+
+	shmea::ServiceData* mcData = new shmea::ServiceData(cConnection, "GUI_Callback");
+	mcData->set(decimalData);
+	cData->assignServiceNum(); // We usually call this in writeConnection
+	mcData->setArgList(mcArgs);
+
+	serializedStr = shmea::Serializable::Serialize(mcData);
+	deserializedCD = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
+	shmea::Serializable::Deserialize(deserializedCD, serializedStr);
+	deserializedTable = deserializedCD->getTable();
+	//deserializedTable.print();
+
+
+
+
 }
