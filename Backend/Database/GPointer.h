@@ -45,15 +45,6 @@ public:
 		pthread_mutex_init(refMutex, NULL);
 	}
 
-	GPointer(long int newData)
-	{
-		data = (T*)newData;
-		refCount = 1;//inc
-
-		refMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-		pthread_mutex_init(refMutex, NULL);
-	}
-
 	GPointer(T* newData)
 	{
 		data = newData;
@@ -74,24 +65,34 @@ public:
 
 	virtual ~GPointer()
 	{
-		// Decrement the refCount count
-		// if refCount become zero delete the data
+		reset();
+	}
+
+	void reset()
+	{
 		if(decrement() == 0)
 		{
 			delete data;
+			data=NULL;
 			refCount = 0;
 
 			pthread_mutex_destroy(refMutex);
 			if (refMutex)
 				free(refMutex);
+			refMutex=NULL;
 		}
+	}
+
+	T* get() const
+	{
+		return data;
 	}
 
 	unsigned int decrement()
 	{
-		pthread_mutex_lock(refMutex);
+		//pthread_mutex_lock(refMutex);
 		--refCount; //dec
-		pthread_mutex_unlock(refMutex);
+		//pthread_mutex_unlock(refMutex);
 
 		return refCount;
 	}
@@ -104,6 +105,16 @@ public:
 	T* operator->()
 	{
 		return data;
+	}
+
+	operator T*() const
+	{
+		return data;
+	}
+
+	operator bool() const
+	{
+		return (data!=NULL);
 	}
 
 	GPointer<T>& operator=(const GPointer<T>& g2)
