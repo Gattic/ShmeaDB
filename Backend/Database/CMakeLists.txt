@@ -12,6 +12,7 @@ set(DB_src_files
 	GObject.cpp
 	GString.cpp
 	GString_helpers.cpp
+	GPointer.h
 	GAnalysis.cpp
 	maxid.cpp
 	SaveTable.cpp

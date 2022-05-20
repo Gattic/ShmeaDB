@@ -183,7 +183,7 @@ GNet::Service* GNet::GServer::DoService(shmea::GString cCommand, shmea::GString 
 		}
 		else
 		{
-			GNet::Service* cService = cService = running_services[newKey];
+			GNet::Service* cService = running_services[newKey];
 			return cService;
 		}
 	}
