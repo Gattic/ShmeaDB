@@ -35,4 +35,35 @@ void GPointerUnitTest()
 	G_assert (__FILE__, __LINE__, "==============list0[2] Failed==============", (*p0)[2] == "chirp");
 	G_assert (__FILE__, __LINE__, "==============list0[3] Failed==============", (*p0)[3] == "slurp");
 	G_assert (__FILE__, __LINE__, "==============list0[4] Failed==============", (*p0)[4] == "burp");
+
+	GPointer<GList> p1(new GList());
+	p1->addString("who");
+	p1->addString("what");
+	p1->addString("when");
+	p1->addString("where");
+	p1->addString("why");
+
+	G_assert (__FILE__, __LINE__, "==============GList::size() Failed==============", p0->size() == 5);
+	G_assert (__FILE__, __LINE__, "==============list0[0] Failed==============", (*p0)[0] == "derp");
+	G_assert (__FILE__, __LINE__, "==============list0[1] Failed==============", (*p0)[1] == "herp");
+	G_assert (__FILE__, __LINE__, "==============list0[2] Failed==============", (*p0)[2] == "chirp");
+	G_assert (__FILE__, __LINE__, "==============list0[3] Failed==============", (*p0)[3] == "slurp");
+	G_assert (__FILE__, __LINE__, "==============list0[4] Failed==============", (*p0)[4] == "burp");
+
+	G_assert (__FILE__, __LINE__, "==============GList::size() Failed==============", p1->size() == 5);
+	G_assert (__FILE__, __LINE__, "==============list1[0] Failed==============", (*p1)[0] == "who");
+	G_assert (__FILE__, __LINE__, "==============list1[1] Failed==============", (*p1)[1] == "what");
+	G_assert (__FILE__, __LINE__, "==============list1[2] Failed==============", (*p1)[2] == "when");
+	G_assert (__FILE__, __LINE__, "==============list1[3] Failed==============", (*p1)[3] == "where");
+	G_assert (__FILE__, __LINE__, "==============list1[4] Failed==============", (*p1)[4] == "why");
+
+	GPointer<GList> p1ShallowCopy = p1;
+
+	G_assert (__FILE__, __LINE__, "==============GList::size() Failed==============", p1ShallowCopy->size() == 5);
+	G_assert (__FILE__, __LINE__, "==============list1[0] Failed==============", (*p1ShallowCopy)[0] == "who");
+	G_assert (__FILE__, __LINE__, "==============list1[1] Failed==============", (*p1ShallowCopy)[1] == "what");
+	G_assert (__FILE__, __LINE__, "==============list1[2] Failed==============", (*p1ShallowCopy)[2] == "when");
+	G_assert (__FILE__, __LINE__, "==============list1[3] Failed==============", (*p1ShallowCopy)[3] == "where");
+	G_assert (__FILE__, __LINE__, "==============list1[4] Failed==============", (*p1ShallowCopy)[4] == "why");
+
 }

@@ -36,16 +36,7 @@ protected:
 
 public:
 
-	GPointer()
-	{
-		data = NULL;
-		refCount = 1;//inc
-
-		refMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-		pthread_mutex_init(refMutex, NULL);
-	}
-
-	GPointer(T* newData)
+	explicit GPointer(T* newData = NULL)
 	{
 		data = newData;
 		refCount = 1;//inc
