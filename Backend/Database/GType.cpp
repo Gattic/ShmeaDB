@@ -22,16 +22,14 @@ GType::GType()
 {
 	type = NULL_TYPE;
 	blockSize = 0;
-	block = NULL;
 }
 
 GType::GType(const GType& g2)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
-	block = NULL;
 	if (g2.blockSize > 0)
-		set(g2.type, g2.block, g2.blockSize);
+		set(g2.type, g2.block.get(), g2.blockSize);
 }
 
 GType::GType(const bool& newBlock)
@@ -39,7 +37,6 @@ GType::GType(const bool& newBlock)
 	unsigned int newBlockSize = sizeof(bool);
 	int newType = BOOLEAN_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -49,7 +46,6 @@ GType::GType(const char& newBlock)
 	unsigned int newBlockSize = sizeof(char);
 	int newType = CHAR_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -59,7 +55,6 @@ GType::GType(const short& newBlock)
 	unsigned int newBlockSize = sizeof(short);
 	int newType = SHORT_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -69,7 +64,6 @@ GType::GType(const int& newBlock)
 	unsigned int newBlockSize = sizeof(int);
 	int newType = INT_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -79,7 +73,6 @@ GType::GType(const int64_t& newBlock)
 	unsigned int newBlockSize = sizeof(int64_t);
 	int newType = LONG_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -89,7 +82,6 @@ GType::GType(const float& newBlock)
 	unsigned int newBlockSize = sizeof(float);
 	int newType = FLOAT_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -99,7 +91,6 @@ GType::GType(const double& newBlock)
 	unsigned int newBlockSize = sizeof(double);
 	int newType = DOUBLE_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	set(newType, &newBlock, newBlockSize);
 }
@@ -108,7 +99,6 @@ GType::GType(const char* newBlock)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	// Add the object if its valid
 	unsigned int newBlockSize = strlen(newBlock);
@@ -120,7 +110,6 @@ GType::GType(const char* newBlock, unsigned int len)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	// Add the object if its valid
 	unsigned int newBlockSize = len;
@@ -132,7 +121,6 @@ GType::GType(int newType, const void* newBlock, int64_t newBlockSize)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
-	block = NULL;
 
 	// Add the object if its valid
 	if (newBlockSize > 0)
@@ -141,7 +129,8 @@ GType::GType(int newType, const void* newBlock, int64_t newBlockSize)
 
 GType::~GType()
 {
-	clean();
+	blockSize = 0;
+	type = NULL_TYPE;
 }
 
 int GType::getType() const
@@ -151,15 +140,15 @@ int GType::getType() const
 
 const char* GType::c_str() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return NULL;
 
-	return block;
+	return block.get();
 }
 
 char GType::getChar() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::SHORT_TYPE)
@@ -201,12 +190,12 @@ char GType::getChar() const
 	if (size() != sizeof(char))
 		return 0;
 
-	return *((char*)block);
+	return *((char*)block.get());
 }
 
 short GType::getShort() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -248,12 +237,12 @@ short GType::getShort() const
 	if (size() != sizeof(short))
 		return 0;
 
-	return *((short*)block);
+	return *((short*)block.get());
 }
 
 int GType::getInt() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -301,12 +290,12 @@ int GType::getInt() const
 	if (size() != sizeof(int))
 		return 0;
 
-	return *((int*)block);
+	return *((int*)block.get());
 }
 
 int64_t GType::getLong() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -348,12 +337,12 @@ int64_t GType::getLong() const
 	if (size() != sizeof(int64_t))
 		return 0;
 
-	return *((int64_t*)block);
+	return *((int64_t*)block.get());
 }
 
 float GType::getFloat() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -395,12 +384,12 @@ float GType::getFloat() const
 	if (size() != sizeof(float))
 		return 0.0f;
 
-	return *((float*)block);
+	return *((float*)block.get());
 }
 
 double GType::getDouble() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -442,12 +431,12 @@ double GType::getDouble() const
 	if (size() != sizeof(double))
 		return 0.0f;
 
-	return *((double*)block);
+	return *((double*)block.get());
 }
 
 bool GType::getBoolean() const
 {
-	if ((!block) || (size() == 0))
+	if ((!block.get()) || (size() == 0))
 		return 0;
 
 	if (getType() == GType::CHAR_TYPE)
@@ -490,7 +479,7 @@ bool GType::getBoolean() const
 	if (size() != sizeof(bool))
 		return false;
 
-	return *((bool*)block);
+	return *((bool*)block.get());
 }
 
 unsigned int GType::size() const
@@ -503,26 +492,15 @@ void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 	if(blockSize == newBlockSize)
 	{
 		type = newType;
-		memcpy(block, newBlock, blockSize); // this is a copy so safe to assume it has the \0 from the block else below
+		memcpy(block.get(), newBlock, blockSize); // this is a copy so safe to assume it has the \0 from the block else below
 	}
 	else
 	{
-		clean();
 		type = newType;
 		blockSize = newBlockSize;
-		block = (char*)malloc(blockSize + 1); // plus one to escape the string, we ignore this character everywhere else
-		memcpy(block, newBlock, blockSize);
+		char* newMem = new char[blockSize + 1];
+		block = GPointer<char>(newMem); // plus one to escape the string, we ignore this character everywhere else
+		memcpy(block.get(), newBlock, blockSize);
 		block[blockSize] = '\0';
 	}
-}
-
-void GType::clean()
-{
-	// Spam bad request and this crashes WHY: TODO CHECK THIS
-	if (block)
-		free(block);
-	block = NULL;
-
-	blockSize = 0;
-	type = NULL_TYPE;
 }

@@ -234,6 +234,7 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
 	G_assert (__FILE__, __LINE__, "=============GObject1-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
 
+
 	// No arg list
 	cData = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
 	cData->set(cObj);
