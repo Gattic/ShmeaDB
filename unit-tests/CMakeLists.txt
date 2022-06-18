@@ -33,7 +33,7 @@ find_package(shmea REQUIRED)
 
 #Subdirectories
 add_subdirectory("Backend/Database")
-# add_subdirectory("Backend/Networking")
+ add_subdirectory("Backend/Networking")
 
 #Executable
 set(MAIN_src_files
@@ -46,7 +46,7 @@ add_executable(${PROJECT_NAME} ${MAIN_src_files})
 
 #Link libraries
 target_link_libraries(${PROJECT_NAME}
-	DBTests shmea)#custom libs
+	DBTests GNetTests shmea)#custom libs
 
 target_include_directories(${PROJECT_NAME} PRIVATE "Backend")
 

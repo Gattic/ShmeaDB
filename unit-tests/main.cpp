@@ -8,18 +8,22 @@
 #include "main.h"
 #include "Backend/Database/GType-test.h"
 #include "Backend/Database/GString-test.h"
+#include "Backend/Database/GPointer-test.h"
 #include "Backend/Database/GList-test.h"
 #include "Backend/Database/GTable-test.h"
 #include "Backend/Database/GObjects-test.h"
+#include "Backend/Networking/crypt-test.h"
 
 int main(int argc, char* argv[])
 {
 	GTypeUnitTest();
 	GStringUnitTest();
 	GStringUnitTest();
+	GPointerUnitTest();
 	GListUnitTest();
 	GTableUnitTest();
 	GObjectsUnitTest();
+	CryptUnitTest();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");

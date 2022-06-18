@@ -1,6 +1,7 @@
 set(DBTests_src_files
 GType-test.cpp
 GString-test.cpp
+GPointer-test.cpp
 GList-test.cpp
 GTable-test.cpp
 GObjects-test.cpp
