@@ -3,12 +3,12 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 endif()
 
 set (CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
 
 #Init
 cmake_minimum_required(VERSION 3.5.1)
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set(shmea_FOUND 1)
 
 #Compiler Flags
 set(CMAKE_BUILD_TYPE Debug) # -g
@@ -30,6 +30,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+#Import libs
 include(GNUInstallDirs)
 
 #Subdirectories
