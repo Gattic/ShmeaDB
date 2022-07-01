@@ -2,6 +2,8 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
+set (CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+
 #Init
 cmake_minimum_required(VERSION 3.5.1)
 set(CMAKE_CXX_STANDARD 98)
@@ -11,7 +13,7 @@ set(shmea_FOUND 1)
 #Compiler Flags
 set(CMAKE_BUILD_TYPE Debug) # -g
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 #Project
