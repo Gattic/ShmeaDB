@@ -19,6 +19,7 @@ set(DB_src_files
 	SaveFolder.cpp
 	Serializable.cpp
 	ServiceData.cpp
+	standardizable.cpp
 )
 add_library(DB ${DB_src_files})
 
