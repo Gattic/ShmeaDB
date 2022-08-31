@@ -267,36 +267,18 @@ bool Image::SavePBM(const GString& filename) const
 
 void Image::LoadBMP(const GString& filename)
 {
-	/*unsigned int rmask = 0;
-	unsigned int gmask = 0;
-	unsigned int bmask = 0;
-	unsigned int amask = 0;
-
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-	rmask = 0xFF000000;
-	gmask = 0x00FF0000;
-	bmask = 0x0000FF00;
-	amask = 0x000000FF;
-#else
-	rmask = 0x000000FF;
-	gmask = 0x0000FF00;
-	bmask = 0x00FF0000;
-	amask = 0xFF000000;
-#endif
-
 	int len = filename.length();
 	if (!(len > 4 && filename.substr(len - 4) == GString(".bmp")))
 	{
 		printf("ERROR: This is not a BMP filename: %s\n", filename.c_str());
-		return false;
+		return;
 	}
 
 	FILE* file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
 	{
 		printf("Unable to open %s for reading\n", filename.c_str());
-		;
-		return false;
+		return;
 	}
 
 	// misc header information
@@ -306,24 +288,26 @@ void Image::LoadBMP(const GString& filename)
 	// extract image height and width from header
 	int fileSize = *(int*)&info[2];
 	int dataOffset = *(int*)&info[10];
-	int width = *(int*)&info[18];
-	int height = *(int*)&info[22];
+	width = *(int*)&info[18];
+	height = *(int*)&info[22];
 	int depth = *(int*)&info[28];
 
 	// flip y so that (0,0) is bottom left corner
-	for (int y = height - 1; y >= 0; y--)
+	data = new RGBA[height * width];
+	for (int y = height - 1; y >= 0; --y)
 	{
-		for (int x = 0; x < width; x++)
+		for (int x = 0; x < width; ++x)
 		{
 			RGBA c;
-			c.r = fgetc(file);
+			c.a = fgetc(file);
 			c.g = fgetc(file);
+			c.r = fgetc(file);
 			c.b = fgetc(file);
-			c.a = 0xFF;
 			SetPixel(x, y, c);
 		}
 	}
 
 	fclose(file);
-	return true;*/
+
+	printf("[IMG] Loaded BMP: %s(%d,%d)\n", filename.c_str(), width, height);
 }
