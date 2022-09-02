@@ -2,6 +2,9 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
+set (CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
+
 #Init
 cmake_minimum_required(VERSION 3.5.1)
 set(CMAKE_CXX_STANDARD 98)
@@ -10,12 +13,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 #Compiler Flags
 set(CMAKE_BUILD_TYPE Debug) # -g
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 #Project
 project(shmea-unit-tests)
 set(G_VERSION_MAJOR 0)
-set(G_VERSION_MINOR 56)
+set(G_VERSION_MINOR 57)
 
 set(DEFAULT_BUILD_TYPE "Release")
 

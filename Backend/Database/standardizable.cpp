@@ -14,11 +14,73 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _SHMEADB_MAIN
-#define _SHMEADB_MAIN
+#include "standardizable.h"
 
-//#include "core/version.h"
+using namespace shmea;
 
-// extern Version version;
+GStandardizable::GStandardizable()
+{
+	xMin = FLT_MAX;
+	xMax = FLT_MIN;
+	yMin = FLT_MAX;
+	yMax = FLT_MIN;
+	redoRange = true;
+}
 
-#endif
+GStandardizable::~GStandardizable()
+{
+	clear();
+}
+
+float GStandardizable::getXMin() const
+{
+	return xMin;
+}
+
+float GStandardizable::getXMax() const
+{
+	return xMax;
+}
+
+float GStandardizable::getYMin() const
+{
+	return yMin;
+}
+
+float GStandardizable::getYMax() const
+{
+	return yMax;
+}
+
+void GStandardizable::setXMin(float newXMin)
+{
+	if(newXMin < xMin)
+		xMin = newXMin;
+}
+
+void GStandardizable::setXMax(float newXMax)
+{
+	if(newXMax > xMax)
+		xMax = newXMax;
+}
+
+void GStandardizable::setYMin(float newYMin)
+{
+	if(newYMin < yMin)
+		yMin = newYMin;
+}
+
+void GStandardizable::setYMax(float newYMax)
+{
+	if(newYMax > yMax)
+		yMax = newYMax;
+}
+
+void GStandardizable::clear()
+{
+	xMin = FLT_MAX;
+	xMax = FLT_MIN;
+	yMin = FLT_MAX;
+	yMax = FLT_MIN;
+	redoRange = true;
+}

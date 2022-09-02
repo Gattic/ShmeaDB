@@ -2,16 +2,18 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
+set (CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
+
 #Init
 cmake_minimum_required(VERSION 3.5.1)
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set(shmea_FOUND 1)
 
 #Compiler Flags
 set(CMAKE_BUILD_TYPE Debug) # -g
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 #Project
@@ -28,6 +30,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+#Import libs
 include(GNUInstallDirs)
 
 #Subdirectories
@@ -96,6 +99,6 @@ add_custom_target(debug
 
 #make uninstall
 	add_custom_target(uninstall
-	COMMAND sudo xargs rm < ./build/install_manifest.txt
+	COMMAND xargs rm < ./build/install_manifest.txt
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )

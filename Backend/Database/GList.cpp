@@ -360,6 +360,117 @@ bool GList::empty() const
 	return !(size() > 0);
 }
 
+/*!
+ * @brief standardize GList
+ * @details standardize the values in a GList; that is, map the values from their existing range to
+ * the range of -1.0 to 1.0
+ */
+void GList::standardize()
+{
+	// Standardize the initialization of the weights
+	if (size() <= 0)
+		return;
+
+	// Set the min and max of the weights
+	xMin = 0.0f;
+	xMax = 0.0f;
+
+	// iterate through the rows
+	for (unsigned int r = 0; r < size(); ++r)
+	{
+		GType cCell = getGType(r);
+		float cell = 0.0f;
+		if (cCell.getType() == GType::STRING_TYPE)
+		{
+			// OHE: total unique words
+		}
+		else if (cCell.getType() == GType::CHAR_TYPE)
+			cell = cCell.getChar();
+		else if (cCell.getType() == GType::SHORT_TYPE)
+			cell = cCell.getShort();
+		else if (cCell.getType() == GType::INT_TYPE)
+			cell = cCell.getInt();
+		else if (cCell.getType() == GType::LONG_TYPE)
+			cell = cCell.getLong();
+		else if (cCell.getType() == GType::FLOAT_TYPE)
+			cell = cCell.getFloat();
+		else if (cCell.getType() == GType::DOUBLE_TYPE)
+			cell = cCell.getDouble();
+		else if (cCell.getType() == GType::BOOLEAN_TYPE)
+			cell = cCell.getBoolean() ? 1.0f : 0.0f;
+
+		if (r == 0)
+		{
+			xMin = cell;
+			xMax = cell;
+		}
+
+		// Check the mins and maxes
+		if (cell < xMin)
+			xMin = cell;
+		if (cell > xMax)
+			xMax = cell;
+	}
+
+	// standardize the weights
+	xRange = xMax - xMin;
+	if (xRange == 0.0f)
+		return;
+	// iterate through the rows
+	for (unsigned int r = 0; r < size(); ++r)
+	{
+		// Adjust the children
+		GType cCell = getGType(r);
+		float cell = 0.0f;
+		if (cCell.getType() == GType::STRING_TYPE)
+		{
+			// OHE: total unique words
+		}
+		else if (cCell.getType() == GType::CHAR_TYPE)
+		{
+			cell = cCell.getChar();
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+		else if (cCell.getType() == GType::SHORT_TYPE)
+		{
+			cell = cCell.getShort();
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+		else if (cCell.getType() == GType::INT_TYPE)
+		{
+			cell = cCell.getInt();
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+		else if (cCell.getType() == GType::LONG_TYPE)
+		{
+			cell = cCell.getLong();
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+		else if (cCell.getType() == GType::FLOAT_TYPE)
+		{
+			cell = cCell.getFloat();
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+		else if (cCell.getType() == GType::DOUBLE_TYPE)
+		{
+			cell = cCell.getDouble();
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+		else if (cCell.getType() == GType::BOOLEAN_TYPE)
+		{
+			cell = cCell.getBoolean() ? 1.0f : 0.0f; // 1 or 0 if sigmoid
+			cell = (((cell - xMin) / (xRange)) - 0.5f);
+			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+		}
+	}
+}
+
 void GList::print() const
 {
 	for (unsigned int i = 0; i < size(); ++i)
