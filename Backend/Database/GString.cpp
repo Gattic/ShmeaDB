@@ -15,6 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GString.h"
+#include <vector>
 
 using namespace shmea;
 
@@ -388,4 +389,21 @@ GString GString::substr(unsigned int start, unsigned int len) const
 
 	GString newStr(&block[start], len);
 	return newStr;
+}
+
+std::vector<GString> GString::split(const shmea::GString& delimiter) const
+{
+	unsigned int pos = 0;
+	unsigned int prevPos = 0;
+	std::vector<GString> ret;
+	while (((pos = find(&block[prevPos], blockSize-prevPos, delimiter.c_str(), delimiter.length()))) ) {
+		ret.push_back(substr(prevPos, pos));
+		//the last iteration
+		if(pos == shmea::GString::npos)
+			break;
+		//skip space character
+		++pos;
+		prevPos+=pos;
+	}
+	return ret;
 }
