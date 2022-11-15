@@ -206,12 +206,12 @@ void GNet::GServer::stop()
 	pthread_join(*writerThread, NULL);
 }
 
-void GNet::GServer::run(bool _networkingDisabled)
+void GNet::GServer::run(shmea::GString PORT, bool _networkingDisabled)
 {
 	LOCAL_ONLY = _networkingDisabled;
 	running = true;
 
-	socks = new Sockets("45019");
+	socks = new Sockets(PORT);
 
 	// Launch the server server
 	pthread_create(commandThread, NULL, commandLauncher, this);
