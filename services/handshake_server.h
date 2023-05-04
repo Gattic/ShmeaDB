@@ -60,7 +60,7 @@ public:
 			return NULL;
 
 		// Check the characters in the name
-		shmea::GString clientName = cList.getString(0);
+		shmea::GString clientName = cList.getString(0).unwrap();
 		if (GNet::Connection::validName(clientName))
 			destination->setName(clientName);
 

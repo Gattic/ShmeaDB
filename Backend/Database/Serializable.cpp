@@ -298,7 +298,7 @@ GString Serializable::Serialize(const GTable& cTable, bool overrideLast)
  * @param serial the new serial
  * @return the length of the new serial
  */
-GString Serializable::Serialize(const shmea::GObject& cObject, bool overrideLast)
+GString Serializable::Serialize(const GObject& cObject, bool overrideLast)
 {
 	unsigned int memberTablesCount = cObject.memberTables.size();
 
@@ -543,16 +543,16 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	Deserialize(cList, serial);
 
 	// metadata
-	int rows = cList.getInt(0), columns = cList.getInt(1);
-	char delimiter = cList.getChar(2);
-	float min = cList.getFloat(3), max = cList.getFloat(4), range = cList.getFloat(5);
+	int rows = cList.getInt(0).unwrap(), columns = cList.getInt(1).unwrap();
+	char delimiter = cList.getChar(2).unwrap();
+	float min = cList.getFloat(3).unwrap(), max = cList.getFloat(4).unwrap(), range = cList.getFloat(5).unwrap();
 	int bundleIndex = 6; // Index to mark the end of the input args
 	int cIndex = bundleIndex;
 
 	// the header
 	std::vector<GString> header;
 	for (int i = 0; i < columns; ++i)
-		header.push_back(cList.getString(cIndex + i));
+		header.push_back(cList.getString(cIndex + i).unwrap());
 
 	// Because we cycled through the header
 	cIndex += columns;
@@ -561,7 +561,7 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	std::vector<int> outputColumns;
 	for (int i = 0; i < columns; ++i)
 	{
-		int isOutputCol = cList.getString(cIndex + i) == GString("True");
+		int isOutputCol = cList.getString(cIndex + i).unwrap() == GString("True");
 		outputColumns.push_back(isOutputCol);
 	}
 
@@ -616,20 +616,20 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	// Add the members
 	GList cList;
 	Deserialize(cList, serial);
-	unsigned int memberTablesCount = cList.getInt(0);
+	unsigned int memberTablesCount = cList.getInt(0).unwrap();
 	int cIndex = 1;
 
 	// metadata
-	int rows = cList.getInt(cIndex + 0), columns = cList.getInt(cIndex + 1);
-	char delimiter = cList.getChar(cIndex + 2);
-	float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
+	int rows = cList.getInt(cIndex + 0).unwrap(), columns = cList.getInt(cIndex + 1).unwrap();
+	char delimiter = cList.getChar(cIndex + 2).unwrap();
+	float min = cList.getFloat(cIndex + 3).unwrap(), max = cList.getFloat(cIndex + 4).unwrap(), range = cList.getFloat(cIndex + 5).unwrap();
 	int bundleIndex = cIndex + 6; // Index to mark the end of the input args
 	cIndex = bundleIndex;
 
 	// the header
 	std::vector<GString> header;
 	for (int i = 0; i < columns; ++i)
-		header.push_back(cList.getString(cIndex + i));
+		header.push_back(cList.getString(cIndex + i).unwrap());
 
 	// Because we cycled through the header
 	cIndex += columns;
@@ -638,7 +638,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	std::vector<int> outputColumns;
 	for (int i = 0; i < columns; ++i)
 	{
-		int isOutputCol = cList.getString(cIndex + i) == GString("True");
+		int isOutputCol = cList.getString(cIndex + i).unwrap() == GString("True");
 		outputColumns.push_back(isOutputCol);
 	}
 
@@ -688,14 +688,14 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	for(unsigned int mCounter = 0; mCounter < memberTablesCount; ++mCounter)
 	{
 		// metadata
-		int rows = cList.getInt(cIndex + 0), columns = cList.getInt(cIndex + 1);
-		char delimiter = cList.getChar(cIndex + 2);
-		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
+		int rows = cList.getInt(cIndex + 0).unwrap(), columns = cList.getInt(cIndex + 1).unwrap();
+		char delimiter = cList.getChar(cIndex + 2).unwrap();
+		float min = cList.getFloat(cIndex + 3).unwrap(), max = cList.getFloat(cIndex + 4).unwrap(), range = cList.getFloat(cIndex + 5).unwrap();
 
 		// the header
 		std::vector<GString> header;
 		for (int i = 0; i < columns; ++i)
-			header.push_back(cList.getString(cIndex + i));
+			header.push_back(cList.getString(cIndex + i).unwrap());
 
 		// Because we cycled through the header
 		cIndex += columns;
@@ -704,7 +704,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		std::vector<int> outputColumns;
 		for (int i = 0; i < columns; ++i)
 		{
-			int isOutputCol = cList.getString(cIndex + i) == GString("True");
+			int isOutputCol = cList.getString(cIndex + i).unwrap() == GString("True");
 			outputColumns.push_back(isOutputCol);
 		}
 
@@ -730,7 +730,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 			GList row;
 			for (int j = 0; j < columns; ++j)
 				row.addGType(cList[cIndex + j]);
-	
+
 			cTable.addRow(row);
 
 			// Because we cycled through another row
@@ -767,22 +767,22 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 
 	// metadata
 	// metaList.print();
-	GString sdSID = metaList.getString(0);
+	GString sdSID = metaList.getString(0).unwrap();
 	retData->setSID(sdSID);
 
-	int64_t sdServiceNum = metaList.getLong(1);
+	int64_t sdServiceNum = metaList.getLong(1).unwrap();
 	retData->setServiceNum(sdServiceNum);
 
-	int sdType = metaList.getInt(2);
+	int sdType = metaList.getInt(2).unwrap();
 	retData->setType(sdType);
 
-	GString sdCommand = metaList.getString(3);
+	GString sdCommand = metaList.getString(3).unwrap();
 	retData->setCommand(sdCommand);
 
-	GString sdSKey = metaList.getString(4);
+	GString sdSKey = metaList.getString(4).unwrap();
 	retData->setServiceKey(sdSKey);
 
-	unsigned int argListLen = metaList.getInt(5);
+	unsigned int argListLen = metaList.getInt(5).unwrap();
 	GList argList;
 	if(argListLen > 0)
 		repLen = Deserialize(argList, repData, argListLen);
