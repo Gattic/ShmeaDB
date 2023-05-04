@@ -15,6 +15,9 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GList.h"
+#include "GResult.h"
+#include "GString.h"
+#include "GType.h"
 
 using namespace shmea;
 
@@ -48,9 +51,9 @@ void GList::addChar(char newBlock)
 	addPrimitive(GType::CHAR_TYPE, &newBlock);
 }
 
-void GList::insertChar(unsigned int index, char newBlock)
+GResult<void> GList::insertChar(unsigned int index, char newBlock)
 {
-	insertPrimitive(index, GType::CHAR_TYPE, &newBlock);
+	return insertPrimitive(index, GType::CHAR_TYPE, &newBlock);
 }
 
 void GList::addShort(short newBlock)
@@ -58,9 +61,9 @@ void GList::addShort(short newBlock)
 	addPrimitive(GType::SHORT_TYPE, &newBlock);
 }
 
-void GList::insertShort(unsigned int index, short newBlock)
+GResult<void> GList::insertShort(unsigned int index, short newBlock)
 {
-	insertPrimitive(index, GType::SHORT_TYPE, &newBlock);
+	return insertPrimitive(index, GType::SHORT_TYPE, &newBlock);
 }
 
 void GList::addInt(int newBlock)
@@ -68,9 +71,9 @@ void GList::addInt(int newBlock)
 	addPrimitive(GType::INT_TYPE, &newBlock);
 }
 
-void GList::insertInt(unsigned int index, int newBlock)
+GResult<void> GList::insertInt(unsigned int index, int newBlock)
 {
-	insertPrimitive(index, GType::INT_TYPE, &newBlock);
+	return insertPrimitive(index, GType::INT_TYPE, &newBlock);
 }
 
 void GList::addLong(int64_t newBlock)
@@ -78,9 +81,9 @@ void GList::addLong(int64_t newBlock)
 	addPrimitive(GType::LONG_TYPE, &newBlock);
 }
 
-void GList::insertLong(unsigned int index, int64_t newBlock)
+GResult<void> GList::insertLong(unsigned int index, int64_t newBlock)
 {
-	insertPrimitive(index, GType::LONG_TYPE, &newBlock);
+	return insertPrimitive(index, GType::LONG_TYPE, &newBlock);
 }
 
 void GList::addFloat(float newBlock)
@@ -88,9 +91,9 @@ void GList::addFloat(float newBlock)
 	addPrimitive(GType::FLOAT_TYPE, &newBlock);
 }
 
-void GList::insertFloat(unsigned int index, float newBlock)
+GResult<void> GList::insertFloat(unsigned int index, float newBlock)
 {
-	insertPrimitive(index, GType::FLOAT_TYPE, &newBlock);
+	return insertPrimitive(index, GType::FLOAT_TYPE, &newBlock);
 }
 
 void GList::addDouble(double newBlock)
@@ -98,9 +101,9 @@ void GList::addDouble(double newBlock)
 	addPrimitive(GType::DOUBLE_TYPE, &newBlock);
 }
 
-void GList::insertDouble(unsigned int index, double newBlock)
+GResult<void> GList::insertDouble(unsigned int index, double newBlock)
 {
-	insertPrimitive(index, GType::DOUBLE_TYPE, &newBlock);
+	return insertPrimitive(index, GType::DOUBLE_TYPE, &newBlock);
 }
 
 void GList::addBoolean(bool newBlock)
@@ -108,9 +111,9 @@ void GList::addBoolean(bool newBlock)
 	addPrimitive(GType::BOOLEAN_TYPE, &newBlock);
 }
 
-void GList::insertBoolean(unsigned int index, bool newBlock)
+GResult<void> GList::insertBoolean(unsigned int index, bool newBlock)
 {
-	insertPrimitive(index, GType::BOOLEAN_TYPE, &newBlock);
+	return insertPrimitive(index, GType::BOOLEAN_TYPE, &newBlock);
 }
 
 void GList::addPrimitive(int newType, const void* newBlock)
@@ -118,7 +121,7 @@ void GList::addPrimitive(int newType, const void* newBlock)
 	insertPrimitive(items.size(), newType, newBlock);
 }
 
-void GList::insertPrimitive(unsigned int index, int newType, const void* newBlock)
+GResult<void> GList::insertPrimitive(unsigned int index, int newType, const void* newBlock)
 {
 	int64_t newBlockSize = 0;
 	if (newType == GType::CHAR_TYPE)
@@ -138,7 +141,9 @@ void GList::insertPrimitive(unsigned int index, int newType, const void* newBloc
 
 	// Add the object if its valid
 	if (newBlockSize > 0)
-		insertObject(index, newType, newBlock, newBlockSize);
+		return insertObject(index, newType, newBlock, newBlockSize);
+	else
+		return result::ERROR_INSERTION_FAILURE;
 }
 
 void GList::addString(const GString& newBlock)
@@ -146,9 +151,9 @@ void GList::addString(const GString& newBlock)
 	insertObject(items.size(), GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
-void GList::insertString(unsigned int index, const GString& newBlock)
+GResult<void> GList::insertString(unsigned int index, const GString& newBlock)
 {
-	insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
+	return insertObject(index, GType::STRING_TYPE, (void*)newBlock.c_str(), newBlock.length());
 }
 
 void GList::addString(const char* newBlock)
@@ -160,13 +165,14 @@ void GList::addString(const char* newBlock)
 	}
 }
 
-void GList::insertString(unsigned int index, const char* newBlock)
+GResult<void> GList::insertString(unsigned int index, const char* newBlock)
 {
 	if (newBlock != NULL)
 	{
 		GString newStr(newBlock);
-		insertString(index, newStr);
+		return insertString(index, newStr);
 	}
+	return result::ERROR_NULL_POINTER;
 }
 
 void GList::addObject(int newType, const void* newBlock, int64_t newBlockSize)
@@ -175,19 +181,18 @@ void GList::addObject(int newType, const void* newBlock, int64_t newBlockSize)
 }
 
 // All add & insert functions go to this one
-void GList::insertObject(unsigned int index, int newType, const void* newBlock,
+GResult<void> GList::insertObject(unsigned int index, int newType, const void* newBlock,
 						 int64_t newBlockSize)
 {
-	// fix the index if need be
+	// OLD fix the index if need be
+	// if (index > items.size())
+	// 	index = items.size();
 	if (index > items.size())
-		index = items.size();
+		return result::ERROR_OUT_OF_RANGE;
 
 	// Add the bundle item
 	GType newItem(newType, newBlock, newBlockSize);
-	if (index == items.size())
-		addGType(newItem);
-	else // insert
-		insertGType(index, newItem);
+	return insertGType(index, newItem);
 }
 
 /*!
@@ -197,7 +202,7 @@ void GList::insertObject(unsigned int index, int newType, const void* newBlock,
  */
 void GList::addGType(const GType& item)
 {
-		items.push_back(item);
+	items.push_back(item);
 }
 
 /*!
@@ -206,28 +211,36 @@ void GList::addGType(const GType& item)
  * @param index the index at which to add the item
  * @param item the GType item to add
  */
-void GList::insertGType(unsigned int index, const GType& item)
+GResult<void> GList::insertGType(unsigned int index, const GType& item)
 {
 	if (index == items.size())
+	{
 		addGType(item);
+		return result::SUCCESS;
+	}
 	else
+	{
 		items.insert(items.begin() + index, item);
+		return result::SUCCESS;
+	}
 }
 
-void GList::setGType(unsigned int index, const GType& item)
+GResult<void> GList::setGType(unsigned int index, const GType& item)
 {
 	if (index >= items.size())
-		return;
+		return result::ERROR_OUT_OF_RANGE;
 
 	items[index] = item;
+	return result::SUCCESS;
 }
 
-void GList::remove(unsigned int index)
+GResult<void> GList::remove(unsigned int index)
 {
 	if (index >= items.size())
-		return;
+		return result::ERROR_OUT_OF_RANGE;
 
 	items.erase(items.begin() + index);
+	return result::SUCCESS;
 }
 
 void GList::clear()
@@ -235,21 +248,21 @@ void GList::clear()
 	items.clear();
 }
 
-GString GList::getString(unsigned int index) const
+GResult<GString> GList::getString(unsigned int index) const
 {
 	if (index >= items.size())
-		return "";
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() == 0)
-		return "";
+		return GString("");
 
-	return items[index];
+	return GString(items[index]);
 }
 
-const char* GList::c_str(unsigned int index) const
+GResult<const char*> GList::c_str(unsigned int index) const
 {
 	if (index >= items.size())
-		return "";
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() <= 0)
 		return "";
@@ -257,95 +270,95 @@ const char* GList::c_str(unsigned int index) const
 	return items[index].c_str();
 }
 
-char GList::getChar(unsigned int index) const
+GResult<char> GList::getChar(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(char))
-		return 0;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getChar();
 }
 
-short GList::getShort(unsigned int index) const
+GResult<short> GList::getShort(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(short))
-		return 0;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getShort();
 }
 
-int GList::getInt(unsigned int index) const
+GResult<int> GList::getInt(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(int))
-		return 0;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getInt();
 }
 
-int64_t GList::getLong(unsigned int index) const
+GResult<int64_t> GList::getLong(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(int64_t))
-		return 0;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getLong();
 }
 
-float GList::getFloat(unsigned int index) const
+GResult<float> GList::getFloat(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0.0f;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(float))
-		return 0.0f;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getFloat();
 }
 
-double GList::getDouble(unsigned int index) const
+GResult<double> GList::getDouble(unsigned int index) const
 {
 	if (index >= items.size())
-		return 0.0f;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(double))
-		return 0.0f;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getDouble();
 }
 
-bool GList::getBoolean(unsigned int index) const
+GResult<bool> GList::getBoolean(unsigned int index) const
 {
 	if (index >= items.size())
-		return false;
+		return result::ERROR_OUT_OF_RANGE;
 
 	if (items[index].size() != sizeof(bool))
-		return false;
+		return result::ERROR_TYPE_ERROR;
 
 	return items[index].getBoolean();
 }
 
-GType GList::getGType(unsigned int index) const
+GResult<GType> GList::getGType(unsigned int index) const
 {
 	if (index >= items.size())
-		return GType();
+		return result::ERROR_OUT_OF_RANGE;
 
 	return items[index];
 }
 
-int GList::getType(unsigned int index) const
+GResult<int> GList::getType(unsigned int index) const
 {
 	if (index >= items.size())
-		return GType::NULL_TYPE;
+		return result::ERROR_OUT_OF_RANGE;
 
 	return items[index].getType();
 }
@@ -378,26 +391,35 @@ void GList::standardize()
 	// iterate through the rows
 	for (unsigned int r = 0; r < size(); ++r)
 	{
-		GType cCell = getGType(r);
+		GType cCell = getGType(r).unwrap(); // panics on error
 		float cell = 0.0f;
-		if (cCell.getType() == GType::STRING_TYPE)
-		{
-			// OHE: total unique words
+
+		switch (cCell.getType()) {
+			case GType::STRING_TYPE:
+				// OHE: total unique words
+				break;
+			case GType::CHAR_TYPE:
+				cell = cCell.getChar();
+				break;
+			case GType::SHORT_TYPE:
+				cell = cCell.getShort();
+				break;
+			case GType::INT_TYPE:
+				cell = cCell.getInt();
+				break;
+			case GType::LONG_TYPE:
+				cell = cCell.getLong();
+				break;
+			case GType::FLOAT_TYPE:
+				cell = cCell.getFloat();
+				break;
+			case GType::DOUBLE_TYPE:
+				cell = cCell.getDouble();
+				break;
+			case GType::BOOLEAN_TYPE:
+				cell = cCell.getBoolean() ? 1.0f : 0.0f;
+				break;
 		}
-		else if (cCell.getType() == GType::CHAR_TYPE)
-			cell = cCell.getChar();
-		else if (cCell.getType() == GType::SHORT_TYPE)
-			cell = cCell.getShort();
-		else if (cCell.getType() == GType::INT_TYPE)
-			cell = cCell.getInt();
-		else if (cCell.getType() == GType::LONG_TYPE)
-			cell = cCell.getLong();
-		else if (cCell.getType() == GType::FLOAT_TYPE)
-			cell = cCell.getFloat();
-		else if (cCell.getType() == GType::DOUBLE_TYPE)
-			cell = cCell.getDouble();
-		else if (cCell.getType() == GType::BOOLEAN_TYPE)
-			cell = cCell.getBoolean() ? 1.0f : 0.0f;
 
 		if (r == 0)
 		{
@@ -420,7 +442,7 @@ void GList::standardize()
 	for (unsigned int r = 0; r < size(); ++r)
 	{
 		// Adjust the children
-		GType cCell = getGType(r);
+		GType cCell = getGType(r).unwrap(); // panics on error
 		float cell = 0.0f;
 		if (cCell.getType() == GType::STRING_TYPE)
 		{
