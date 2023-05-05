@@ -33,7 +33,7 @@ class Serializable;
 class GTable
 {
 private:
-	friend class Serializable;
+	friend Serializable;
 
 	char delimiter;
 	std::vector<GString> header;

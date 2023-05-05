@@ -60,13 +60,13 @@ public:
 			return NULL;
 
 		// Check the characters in the name
-		shmea::GString clientName = cList.getString(0).unwrap();
+		shmea::GString clientName = cList.getString(0);
 		if (!GNet::Connection::validName(clientName))
 			clientName = "";
 		destination->setName(clientName);
 
 		// get the new encryption key
-		int64_t newKey = cList.getLong(1).unwrap();
+		int64_t newKey = cList.getLong(1);
 		//printf("newKeyA: %ld\n", newKey);
 
 		// Set the new Connection key

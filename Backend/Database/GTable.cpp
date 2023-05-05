@@ -309,7 +309,7 @@ GType GTable::getCell(unsigned int row, unsigned int col) const
 	if (col >= numberOfCols())
 		return 0;
 
-	return cells[row].getGType(col).unwrap();
+	return cells[row].getGType(col);
 }
 
 /*!
@@ -488,9 +488,9 @@ void GTable::addCol(const GString& headerName, const shmea::GList& newCol, unsig
 		for (unsigned int r = 0; r < numberOfRows(); ++r)
 		{
 			if (index == numberOfCols())
-				cells[r].addGType(newCol.getGType(r).unwrap());
+				cells[r].addGType(newCol.getGType(r));
 			else
-				cells[r].insertGType(index, newCol.getGType(r).unwrap());
+				cells[r].insertGType(index, newCol.getGType(r));
 		}
 	}
 	else
@@ -499,7 +499,7 @@ void GTable::addCol(const GString& headerName, const shmea::GList& newCol, unsig
 		for (unsigned int i = 0; i < newCol.size(); ++i)
 		{
 			shmea::GList cCol;
-			cCol.addGType(newCol.getGType(i).unwrap());
+			cCol.addGType(newCol.getGType(i));
 			cells.push_back(cCol);
 		}
 	}
@@ -679,7 +679,7 @@ shmea::GList GTable::getCol(unsigned int index) const
 
 	// get column
 	for (unsigned int r = 0; r < numberOfRows(); ++r)
-		col.addGType(cells[r].getGType(index).unwrap());
+		col.addGType(cells[r].getGType(index));
 
 	return col;
 }

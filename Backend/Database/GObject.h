@@ -29,7 +29,7 @@ class Serializable;
 
 class GObject
 {
-	friend class Serializable;
+	friend Serializable;
 
 private:
 	//

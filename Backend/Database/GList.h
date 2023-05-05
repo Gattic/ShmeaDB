@@ -17,7 +17,6 @@
 #ifndef _GLIST
 #define _GLIST
 
-#include "GResult.h"
 #include "GType.h"
 #include "GString.h"
 #include <stdio.h>
@@ -31,7 +30,7 @@ class Serializable;
 
 class GList
 {
-	friend class Serializable;
+	friend Serializable;
 
 private:
 	//
@@ -42,9 +41,9 @@ private:
 
 	//
 	void addPrimitive(int, const void*);
+	void insertPrimitive(unsigned int, int, const void*);
 	void addObject(int, const void*, int64_t);
-	GResult<void> insertPrimitive(unsigned int, int, const void*);
-	GResult<void> insertObject(unsigned int, int, const void*, int64_t);
+	void insertObject(unsigned int, int, const void*, int64_t);
 
 public:
 	GList();
@@ -54,55 +53,42 @@ public:
 
 	// sets
 	void copy(const GList&);
-
 	void addChar(char);
-	GResult<void> insertChar(unsigned int, char);
-
+	void insertChar(unsigned int, char);
 	void addShort(short);
-	GResult<void> insertShort(unsigned int, short);
-
+	void insertShort(unsigned int, short);
 	void addInt(int);
-	GResult<void> insertInt(unsigned int, int);
-
+	void insertInt(unsigned int, int);
 	void addLong(int64_t);
-	GResult<void> insertLong(unsigned int, int64_t);
-
+	void insertLong(unsigned int, int64_t);
 	void addFloat(float);
-	GResult<void> insertFloat(unsigned int, float);
-
+	void insertFloat(unsigned int, float);
 	void addDouble(double);
-	GResult<void> insertDouble(unsigned int, double);
-
+	void insertDouble(unsigned int, double);
 	void addBoolean(bool);
-	GResult<void> insertBoolean(unsigned int, bool);
-
+	void insertBoolean(unsigned int, bool);
 	void addString(const GString&);
-	GResult<void> insertString(unsigned int, const GString&);
-
+	void insertString(unsigned int, const GString&);
 	void addString(const char*);
-	GResult<void> insertString(unsigned int, const char*);
-
+	void insertString(unsigned int, const char*);
 	void addGType(const GType&);
-	GResult<void> insertGType(unsigned int, const GType&);
-	GResult<void> setGType(unsigned int, const GType&);
-
-	GResult<void> remove(unsigned int);
+	void insertGType(unsigned int, const GType&);
+	void setGType(unsigned int, const GType&);
+	void remove(unsigned int);
 	void clear();
 
 	// gets
-	GResult<GString> getString(unsigned int) const;
-	GResult<const char*> c_str(unsigned int) const;
-	GResult<char> getChar(unsigned int) const;
-	GResult<short> getShort(unsigned int) const;
-	GResult<int> getInt(unsigned int) const;
-	GResult<int64_t> getLong(unsigned int) const;
-	GResult<float> getFloat(unsigned int) const;
-	GResult<double> getDouble(unsigned int) const;
-	GResult<bool> getBoolean(unsigned int) const;
-	GResult<GType> getGType(unsigned int) const;
-	GResult<int> getType(unsigned int) const;
-
-	//
+	GString getString(unsigned int) const;
+	const char* c_str(unsigned int) const;
+	char getChar(unsigned int) const;
+	short getShort(unsigned int) const;
+	int getInt(unsigned int) const;
+	int64_t getLong(unsigned int) const;
+	float getFloat(unsigned int) const;
+	double getDouble(unsigned int) const;
+	bool getBoolean(unsigned int) const;
+	GType getGType(unsigned int) const;
+	int getType(unsigned int) const;
 	unsigned int size() const;
 	bool empty() const;
 	void standardize();

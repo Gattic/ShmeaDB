@@ -13,7 +13,7 @@ set(DB_src_files
 	GString.cpp
 	GString_helpers.cpp
 	GPointer.h
-	# GAnalysis.cpp
+	GAnalysis.cpp
 	maxid.cpp
 	SaveTable.cpp
 	SaveFolder.cpp
