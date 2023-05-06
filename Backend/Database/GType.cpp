@@ -151,39 +151,22 @@ char GType::getChar() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::SHORT_TYPE)
+	switch (this->getType())
 	{
-		char value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		char value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		char value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		char value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		char value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (char)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		char value = *block;
-		return value;
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
 	}
 
 	// Char Type (match)
@@ -198,39 +181,22 @@ short GType::getShort() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
+	switch (this->getType())
 	{
-		short value = getChar();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		short value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		short value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		short value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		short value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (short)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		short value = *block;
-		return value;
+		case CHAR_TYPE:
+			return this->getChar();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
 	}
 
 	// Short Type (match)
@@ -245,45 +211,30 @@ int GType::getInt() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
+	switch (this->getType())
 	{
-		int value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		int value = getShort();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		int value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		int value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		int value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (int)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		//int value = *block;
-		int value = 0;//TODO: PUT THIS IN LONG, AND SHORT; ADD TEST CASES
-		for(unsigned int i = 0; i < size(); ++i)
-		{
-			value<<=8;
-			value+=block[size()-i-1];
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE: {
+			//int value = *block;
+			int value = 0;//TODO: PUT THIS IN LONG, AND SHORT; ADD TEST CASES
+			for(unsigned int i = 0; i < size(); ++i)
+			{
+				value<<=8;
+				value+=block[size()-i-1];
+			}
+			return value;
 		}
-		return value;
 	}
 
 	// int Type (match)
@@ -298,39 +249,22 @@ int64_t GType::getLong() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
+	switch (this->getType())
 	{
-		int64_t value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		int64_t value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		int64_t value = getInt();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		int64_t value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		int64_t value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (int64_t)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		int64_t value = *block;
-		return value;
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
 	}
 
 	// Long Type (match)
@@ -345,39 +279,22 @@ float GType::getFloat() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
+	switch (this->getType())
 	{
-		float value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		float value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		float value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		float value = getLong();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		float value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (float)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		float value = *block;
-		return value;
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
 	}
 
 	// Float Type (match)
@@ -392,39 +309,22 @@ double GType::getDouble() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
+	switch (this->getType())
 	{
-		double value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		double value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		double value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		double value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		double value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (double)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		double value = *block;
-		return value;
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
 	}
 
 	// Double Type (match)
@@ -439,40 +339,22 @@ bool GType::getBoolean() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
+	switch (this->getType())
 	{
-		bool value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		bool value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		bool value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		bool value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		bool value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		bool value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		bool value = *block;
-		return value;
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case STRING_TYPE:
+			return *this->block;
 	}
 
 	// Boolean Type (match)
