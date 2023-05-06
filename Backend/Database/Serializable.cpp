@@ -500,7 +500,7 @@ int Serializable::Deserialize(GList& retList, const GString& serial, int maxItem
 		{
 			cBlock = serialCopy.substr(0, lastDel);
 			serialCopy = "";
-			
+
 		}
 		else
 		{
@@ -511,7 +511,7 @@ int Serializable::Deserialize(GList& retList, const GString& serial, int maxItem
 		retLen = serialCopy.size();
 
 		// Get the Type from the buffer
-		int newType = cBlock.substr(0, sizeof(int)).getInt();
+		GType::Type newType = (GType::Type)cBlock.substr(0, sizeof(int)).getInt();
 		cBlock = cBlock.substr(sizeof(int)); // plus the comma
 
 		// Get the Size from the buffer
@@ -730,7 +730,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 			GList row;
 			for (int j = 0; j < columns; ++j)
 				row.addGType(cList[cIndex + j]);
-	
+
 			cTable.addRow(row);
 
 			// Because we cycled through another row

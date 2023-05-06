@@ -15,6 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GString.h"
+#include "GType.h"
 
 using namespace shmea;
 
@@ -22,7 +23,7 @@ using namespace shmea;
 GType GString::Typify(const char* word, unsigned int wordLen)
 {
 	// deduce the type flag
-	int newType = STRING_TYPE;
+	GType::Type newType = STRING_TYPE;
 	if (isInteger(word))
 		newType = LONG_TYPE;
 	else

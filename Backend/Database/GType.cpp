@@ -35,64 +35,57 @@ GType::GType(const GType& g2)
 GType::GType(const bool& newBlock)
 {
 	unsigned int newBlockSize = sizeof(bool);
-	int newType = BOOLEAN_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(BOOLEAN_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const char& newBlock)
 {
 	unsigned int newBlockSize = sizeof(char);
-	int newType = CHAR_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(CHAR_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const short& newBlock)
 {
 	unsigned int newBlockSize = sizeof(short);
-	int newType = SHORT_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(SHORT_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const int& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int);
-	int newType = INT_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(INT_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const int64_t& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int64_t);
-	int newType = LONG_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(LONG_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const float& newBlock)
 {
 	unsigned int newBlockSize = sizeof(float);
-	int newType = FLOAT_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(FLOAT_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const double& newBlock)
 {
 	unsigned int newBlockSize = sizeof(double);
-	int newType = DOUBLE_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(DOUBLE_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const char* newBlock)
@@ -117,7 +110,7 @@ GType::GType(const char* newBlock, unsigned int len)
 		set(STRING_TYPE, newBlock, newBlockSize);
 }
 
-GType::GType(int newType, const void* newBlock, int64_t newBlockSize)
+GType::GType(Type newType, const void* newBlock, int64_t newBlockSize)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
@@ -133,7 +126,7 @@ GType::~GType()
 	type = NULL_TYPE;
 }
 
-int GType::getType() const
+GType::Type GType::getType() const
 {
 	return type;
 }
@@ -369,7 +362,7 @@ unsigned int GType::size() const
 	return blockSize;
 }
 
-void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
+void GType::set(Type newType, const void* newBlock, int64_t newBlockSize)
 {
 	if(blockSize == newBlockSize)
 	{

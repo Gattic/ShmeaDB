@@ -15,6 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GList.h"
+#include "GType.h"
 
 using namespace shmea;
 
@@ -113,12 +114,12 @@ void GList::insertBoolean(unsigned int index, bool newBlock)
 	insertPrimitive(index, GType::BOOLEAN_TYPE, &newBlock);
 }
 
-void GList::addPrimitive(int newType, const void* newBlock)
+void GList::addPrimitive(GType::Type newType, const void* newBlock)
 {
 	insertPrimitive(items.size(), newType, newBlock);
 }
 
-void GList::insertPrimitive(unsigned int index, int newType, const void* newBlock)
+void GList::insertPrimitive(unsigned int index, GType::Type newType, const void* newBlock)
 {
 	int64_t newBlockSize = 0;
 	if (newType == GType::CHAR_TYPE)
@@ -169,13 +170,13 @@ void GList::insertString(unsigned int index, const char* newBlock)
 	}
 }
 
-void GList::addObject(int newType, const void* newBlock, int64_t newBlockSize)
+void GList::addObject(GType::Type newType, const void* newBlock, int64_t newBlockSize)
 {
 	insertObject(items.size(), newType, newBlock, newBlockSize);
 }
 
 // All add & insert functions go to this one
-void GList::insertObject(unsigned int index, int newType, const void* newBlock,
+void GList::insertObject(unsigned int index, GType::Type newType, const void* newBlock,
 						 int64_t newBlockSize)
 {
 	// fix the index if need be
