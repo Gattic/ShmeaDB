@@ -13,6 +13,7 @@
 #include "Backend/Database/GTable-test.h"
 #include "Backend/Database/GObjects-test.h"
 #include "Backend/Networking/crypt-test.h"
+#include "Backend/Database/GVector-test.h"
 
 int main(int argc, char* argv[])
 {
@@ -24,6 +25,7 @@ int main(int argc, char* argv[])
 	GTableUnitTest();
 	GObjectsUnitTest();
 	CryptUnitTest();
+	GVectorUnitTest();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
