@@ -4,6 +4,7 @@ find_package(Threads REQUIRED)
 
 set(DB_src_files
 	image.cpp
+	GVector.h
 	GType.cpp
 	GType_helpers.cpp
 	GType_operators.cpp
