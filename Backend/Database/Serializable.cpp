@@ -19,6 +19,7 @@
 #include "GTable.h"
 #include "GType.h"
 #include "GObject.h"
+#include "GVector.h"
 
 using namespace shmea;
 
@@ -550,7 +551,8 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	int cIndex = bundleIndex;
 
 	// the header
-	std::vector<GString> header;
+	/* std::vector<GString> header; */
+	shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -627,7 +629,8 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	cIndex = bundleIndex;
 
 	// the header
-	std::vector<GString> header;
+	/* std::vector<GString> header; */
+	shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -693,7 +696,8 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
 
 		// the header
-		std::vector<GString> header;
+		/* std::vector<GString> header; */
+		GVector<GString> header;
 		for (int i = 0; i < columns; ++i)
 			header.push_back(cList.getString(cIndex + i));
 

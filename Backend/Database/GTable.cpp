@@ -19,6 +19,7 @@
 #include "GList.h"
 #include "GType.h"
 #include "GString.h"
+#include "GVector.h"
 
 using namespace shmea;
 
@@ -49,7 +50,7 @@ GTable::GTable(char newDelimiter)
  * @param newDelimiter the specified table delimiter
  * @param newHeaders the desired table headers
  */
-GTable::GTable(char newDelimiter, const std::vector<GString>& newHeaders)
+GTable::GTable(char newDelimiter, const GVector<GString>& newHeaders)
 {
 	clear();
 	delimiter = newDelimiter;
@@ -275,7 +276,7 @@ char GTable::getDelimiter() const
  * @details retrieve the GTable's headers
  * @return the header vector
  */
-std::vector<GString> GTable::getHeaders() const
+GVector<GString> GTable::getHeaders() const
 {
 	return header;
 }
@@ -443,7 +444,8 @@ void GTable::removeRow(unsigned int index)
 	if (index >= cells.size())
 		return;
 
-	cells.erase(cells.begin() + index);
+	/* cells.erase(cells.begin() + index); */
+	cells.erase(index);
 }
 
 /*!
@@ -525,7 +527,8 @@ void GTable::removeCol(unsigned int index)
 
 	// remove header
 	if (index < header.size())
-		header.erase(header.begin() + index);
+		header.erase(index);
+		/* header.erase(header.begin() + index); */
 
 	// Remove the output column
 	for (unsigned int i = 0; i < outputColumns.size(); ++i)
@@ -759,11 +762,11 @@ const shmea::GList& GTable::operator[](unsigned int rowIndex) const
 shmea::GList GTable::operator[](const char* headerSearchText) const
 {
 	if(!headerSearchText)
-	{ 
+	{
 		shmea::GList retCol;
 		return retCol;
-	} 
-		
+	}
+
 	GString newHeaderStr(headerSearchText);
 	return getCol(newHeaderStr);
 }
@@ -820,7 +823,7 @@ float GTable::getRange() const
  * @details set the headers of the GTable to new values
  * @param newHeader the new set of headers for the GTable
  */
-void GTable::setHeaders(const std::vector<GString>& newHeader)
+void GTable::setHeaders(const GVector<GString>& newHeader)
 {
 	header = newHeader;
 }
@@ -837,7 +840,7 @@ void GTable::addHeader(unsigned int index, const GString& newHeader)
 	if (index >= header.size())
 		header.push_back(newHeader);
 	else
-		header.insert(header.begin() + index, newHeader);
+		header.insert(index, newHeader);
 }
 
 /*!
