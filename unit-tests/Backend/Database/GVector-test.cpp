@@ -1,6 +1,8 @@
 #include "GVector-test.h"
 #include "../../unit-test.h"
 #include "../../../Backend/Database/GVector.h"
+#include "../../../Backend/Database/GType.h"
+#include "../../../Backend/Database/GString.h"
 #include <iostream>
 
 #define ASSERT(failmsg, predicate) \
@@ -64,5 +66,34 @@ void GVectorUnitTest()
 
 		ASSERT("GVector::clear() failed", vec.empty());
 		ASSERT("Copy shouldn't be cleared", !vec1.empty());
+	}
+	{
+		using namespace shmea;
+
+		GVector<GType> vec;
+		ASSERT("GVector::capacity() failed", vec.capacity() == 0);
+		ASSERT("GVector::size() failed", vec.size() == 0);
+		ASSERT("GVector::empty() failed", vec.empty());
+
+		vec.push_back(4);
+		vec.push_back(4.5f);
+		vec.push_back(10.6);
+		vec.push_back('a');
+		vec.push_back("foo");
+
+		ASSERT("vec[0] failed", vec[0].getType() == GType::INT_TYPE);
+		ASSERT("vec[0] failed", vec[0].getInt() == 4);
+
+		ASSERT("vec[1] failed", vec[1].getType() == GType::FLOAT_TYPE);
+		ASSERT("vec[1] failed", vec[1].getFloat() == 4.5f);
+
+		ASSERT("vec[2] failed", vec[2].getType() == GType::DOUBLE_TYPE);
+		ASSERT("vec[2] failed", vec[2].getDouble() == 10.6);
+
+		ASSERT("vec[3] failed", vec[3].getType() == GType::CHAR_TYPE);
+		ASSERT("vec[3] failed", vec[3].getChar() == 'a');
+
+		ASSERT("vec[4] failed", vec[4].getType() == GType::STRING_TYPE);
+		ASSERT("vec[4] failed", (GString&)vec[4] == "foo");
 	}
 }
