@@ -19,13 +19,12 @@ int main(int argc, char* argv[])
 {
 	GTypeUnitTest();
 	GStringUnitTest();
-	GStringUnitTest();
+	GVectorUnitTest();
 	GPointerUnitTest();
 	GListUnitTest();
 	GTableUnitTest();
 	GObjectsUnitTest();
 	CryptUnitTest();
-	GVectorUnitTest();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
