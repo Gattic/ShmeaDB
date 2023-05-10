@@ -17,7 +17,7 @@
 #ifndef GVECTOR_H_
 #define GVECTOR_H_
 
-//TODO: REPLACE ASSERT WITH GRESULT
+// TODO: REPLACE ASSERT WITH GRESULT
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -27,10 +27,15 @@ namespace shmea
 template<typename T>
 class GVector {
 public:
+	// TODO: Implement custom iterators
 	typedef T* iterator;
 	typedef const T* const_iterator;
 	typedef unsigned int size_type;
-
+private:
+	T* m_data;
+	size_type m_capacity;
+	size_type m_size;
+public:
 	GVector() : m_size(0), m_capacity(0), m_data(0) {}
 
 	GVector(size_type capacity) :
@@ -43,7 +48,7 @@ public:
 		m_capacity(capacity),
 		m_data(new T[capacity])
 	{
-		for(unsigned int i =0; i<capacity; ++i)
+		for(size_type i = 0; i < capacity; ++i)
 			m_data[i] = value;
 	}
 	GVector(const GVector& value) :
@@ -51,9 +56,9 @@ public:
 		m_capacity(value.m_capacity),
 		m_size(value.m_size)
 	{
-		memcpy(m_data, value.m_data, value.m_size * sizeof(T));
+		(void)memcpy(m_data, value.m_data, value.m_size * sizeof(T));
 	}
-	virtual ~GVector() { delete [] m_data; }
+	/* virtual ~GVector() { delete [] m_data; } */
 
 	iterator begin() { return m_data; }
 	const_iterator cbegin() const { return m_data; }
@@ -65,6 +70,12 @@ public:
 	size_type capacity() const { return m_capacity; }
 	bool empty() const { return m_size == 0; }
 
+	void reserve(size_type new_cap)
+	{
+		if (new_cap <= m_capacity) return;
+
+
+	}
 	void clear() { m_size = 0; }
 	void push_back(T newValue)
 	{
@@ -92,7 +103,7 @@ public:
 		else
 		{
 			// NOTE: the allocator should be responsible for this
-			memmove(&m_data[idx],
+			(void)memmove(&m_data[idx],
 					&m_data[idx+1],
 					sizeof(T) * (m_size - idx - 1));// because we remove 1
 			m_size--;
@@ -109,7 +120,7 @@ public:
 		else
 		{
 			// NOTE: the allocator should be responsible for this
-			memmove(&m_data[idx + 1],
+			(void)memmove(&m_data[idx + 1],
 					&m_data[idx],
 					sizeof(T) * (m_size - idx));
 			m_data[idx] = value;
@@ -130,9 +141,6 @@ public:
 	T& operator[](size_type idx) { return at(idx); }
 	const T& operator[](size_type idx) const { return at(idx); }
 private:
-	T* m_data;
-	size_type m_size;
-	size_type m_capacity;
 	void expand()
 	{
 		if (m_capacity == 0)
@@ -142,9 +150,22 @@ private:
 			return;
 		}
 		// NOTE: the allocator should be responsible for this
-		// TODO: Implement custom iterators
-		realloc(m_data, 2 * m_capacity);
+		/* T* newData = (T*)realloc(m_data, 2 * m_capacity * sizeof(T)); */
+		/* T* newData = new T[2 * m_capacity]; */
+
+		/* printf("cap: %d, size: %d, \n", m_capacity, m_size); */
+		T* oldBuffer = m_data;
+		T* newBuffer = new T[2 * m_capacity];
+		memcpy(newBuffer, oldBuffer, m_size * sizeof(T));
+		/* for (size_type i = 0; i < m_size; i++) */
+		/* { */
+		/* 	newBuffer[i] = oldBuffer[i]; */
+		/* } */
+
+		m_data = newBuffer;
+		/* if (newBuffer != oldBuffer) delete [] oldBuffer; */
 		m_capacity *= 2;
+		/* printf("cap: %d, size: %d, \n", m_capacity, m_size); */
 	}
 };
 }
