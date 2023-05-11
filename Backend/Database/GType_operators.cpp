@@ -283,7 +283,7 @@ bool GType::operator==(const double& compValue) const
 
 bool GType::operator==(const char* compValue) const
 {
-	if (this->type != STRING_TYPE) return false;
+	if (this->blockSize != strlen(compValue)) return false;
 	return (strncmp(block, compValue, strlen(compValue)) == 0);
 }
 
