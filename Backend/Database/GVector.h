@@ -25,16 +25,18 @@
 namespace shmea
 {
 template<typename T>
-class GVector {
+class GVector
+{
 public:
 	// TODO: Implement custom iterators
 	typedef T* iterator;
 	typedef const T* const_iterator;
 	typedef unsigned int size_type;
 private:
-	T* m_data;
-	size_type m_capacity;
+	/* T* m_data; */
 	size_type m_size;
+	size_type m_capacity;
+	T* m_data;
 public:
 	GVector() : m_size(0), m_capacity(0), m_data(0) {}
 
@@ -49,16 +51,17 @@ public:
 		m_data(new T[capacity])
 	{
 		for(size_type i = 0; i < capacity; ++i)
-			m_data[i] = value;
+			this->push_back(value);
 	}
 	GVector(const GVector& value) :
-		m_data(new T[value.m_capacity]),
+		m_size(0),
 		m_capacity(value.m_capacity),
-		m_size(value.m_size)
+		m_data(new T[value.m_capacity])
 	{
-		(void)memcpy(m_data, value.m_data, value.m_size * sizeof(T));
+		for (size_type i = 0; i < value.m_size; i++)
+			this->push_back(value[i]);
 	}
-	/* virtual ~GVector() { delete [] m_data; } */
+	virtual ~GVector() { delete [] m_data; }
 
 	iterator begin() { return m_data; }
 	const_iterator cbegin() const { return m_data; }
@@ -74,7 +77,14 @@ public:
 	{
 		if (new_cap <= m_capacity) return;
 
+		T* newBuffer = new T[new_cap];
 
+		for (unsigned int i = 0; i < m_size; i++)
+			newBuffer[i] = m_data[i];
+
+		m_capacity = new_cap;
+		delete [] m_data;
+		m_data = newBuffer;
 	}
 	void clear() { m_size = 0; }
 	void push_back(T newValue)
@@ -145,27 +155,12 @@ private:
 	{
 		if (m_capacity == 0)
 		{
+			/* m_data = new T[1]; */
 			m_data = new T[1];
 			m_capacity = 1;
 			return;
 		}
-		// NOTE: the allocator should be responsible for this
-		/* T* newData = (T*)realloc(m_data, 2 * m_capacity * sizeof(T)); */
-		/* T* newData = new T[2 * m_capacity]; */
-
-		/* printf("cap: %d, size: %d, \n", m_capacity, m_size); */
-		T* oldBuffer = m_data;
-		T* newBuffer = new T[2 * m_capacity];
-		memcpy(newBuffer, oldBuffer, m_size * sizeof(T));
-		/* for (size_type i = 0; i < m_size; i++) */
-		/* { */
-		/* 	newBuffer[i] = oldBuffer[i]; */
-		/* } */
-
-		m_data = newBuffer;
-		/* if (newBuffer != oldBuffer) delete [] oldBuffer; */
-		m_capacity *= 2;
-		/* printf("cap: %d, size: %d, \n", m_capacity, m_size); */
+		reserve(m_capacity * 2);
 	}
 };
 }
