@@ -17,4 +17,7 @@
 
 void G_assert(const char* fileName, int lineNo, const char* failureMsg, bool expr);
 
+#define ASSERT(failmsg, predicate) \
+	G_assert(__FILE__, __LINE__, failmsg, predicate)
+
 #endif
