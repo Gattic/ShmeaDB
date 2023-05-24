@@ -15,7 +15,7 @@ set(CMAKE_BUILD_TYPE Debug) # -g
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_compile_options(-fsanitize=address)
+
 add_link_options(-fsanitize=address)
 
 #Project

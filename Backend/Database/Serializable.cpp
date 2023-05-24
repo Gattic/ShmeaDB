@@ -24,7 +24,8 @@
 using namespace shmea;
 
 const char Serializable::ESC_CHAR = '%';
-const GString Serializable::NEED_ESCAPING = "%,\\|";
+/* const GString Serializable::NEED_ESCAPING = "%,\\|"; */
+const char* Serializable::NEED_ESCAPING = "%,\\|";
 
 /*!
  * @brief escape separators
@@ -39,7 +40,7 @@ GString Serializable::escapeSeparators(const GType& serial)
 	GString newSerial = serial;
 	for (unsigned int i = 0; i < newSerial.size(); ++i)
 	{
-		if (Serializable::NEED_ESCAPING.cfind(newSerial[i]) == GString::npos)
+		if (GType::cfind(newSerial[i], Serializable::NEED_ESCAPING, 4) == GString::npos)
 			continue;
 
 		if(i == 0)
