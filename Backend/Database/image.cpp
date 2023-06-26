@@ -16,6 +16,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "image.h"
 #include "GString.h"
+#include "png-helper.h"
 
 using namespace shmea;
 
@@ -310,4 +311,19 @@ void Image::LoadBMP(const GString& filename)
 	fclose(file);
 
 	printf("[IMG] Loaded BMP: %s(%d,%d)\n", filename.c_str(), width, height);
+}
+
+void Image::LoadPNG(const GString& filename)
+{
+	int len = filename.length();
+	if (!(len > 4 && filename.substr(len - 4) == GString(".png")))
+	{
+		printf("ERROR: This is not a PNG filename: %s\n", filename.c_str());
+		return;
+	}
+
+	// Load the image
+	PNGHelper::LoadPNG(*this, filename.c_str());
+
+	printf("[IMG] Loaded PNG: %s(%d,%d)\n", filename.c_str(), width, height);
 }
