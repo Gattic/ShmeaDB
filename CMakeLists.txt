@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 #Compiler Flags
-set(CMAKE_BUILD_TYPE Debug) # -g
+set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -21,7 +21,7 @@ project(shmea)
 set(G_VERSION_MAJOR 0)
 set(G_VERSION_MINOR 57)
 
-set(DEFAULT_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE Debug) # -g
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
@@ -29,6 +29,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
+
+add_link_options(-fsanitize=address)
 
 #Import libs
 include(GNUInstallDirs)

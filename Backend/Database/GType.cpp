@@ -15,6 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GType.h"
+#include "GDeleter.h"
 
 using namespace shmea;
 
@@ -374,7 +375,7 @@ void GType::set(Type newType, const void* newBlock, int64_t newBlockSize)
 		type = newType;
 		blockSize = newBlockSize;
 		char* newMem = new char[blockSize + 1];
-		block = GPointer<char>(newMem); // plus one to escape the string, we ignore this character everywhere else
+		block.copy(GPointer<char, array_deleter<char> >(newMem)); // plus one to escape the string, we ignore this character everywhere else
 		memcpy(block.get(), newBlock, blockSize);
 		block[blockSize] = '\0';
 	}
