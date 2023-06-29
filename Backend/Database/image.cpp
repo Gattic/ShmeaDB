@@ -16,6 +16,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "image.h"
 #include "GString.h"
+#include "GList.h"
 #include "png-helper.h"
 
 using namespace shmea;
@@ -326,4 +327,23 @@ void Image::LoadPNG(const GString& filename)
 	PNGHelper::LoadPNG(*this, filename.c_str());
 
 	printf("[IMG] Loaded PNG: %s(%d,%d)\n", filename.c_str(), width, height);
+}
+
+shmea::GList Image::flatten() const
+{
+    shmea::GList retList;
+
+    for (int y = 0; y < height; ++y)
+    {
+	for (int x = 0; x < width; ++x)
+	{
+		RGBA c = GetPixel(x, y);
+		retList.addInt(c.r);
+		retList.addInt(c.g);
+		retList.addInt(c.b);
+		retList.addInt(c.a);
+	}
+    }
+
+    return retList;
 }
