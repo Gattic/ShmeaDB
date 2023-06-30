@@ -42,8 +42,14 @@ unsigned int GType::find(const char* cStr, unsigned int cLen) const
 	{
 		for (unsigned int j = 0; j < cLen; ++j)
 		{
+			if(i+j >= size())
+				break;
+
 			if (block[i+j] != cStr[j])
 				break;
+
+			if (j < cLen - 1)
+			    continue;
 
 			// Match
 			return i;
