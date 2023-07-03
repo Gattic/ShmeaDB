@@ -347,3 +347,25 @@ shmea::GList Image::flatten() const
 
     return retList;
 }
+
+bool Image::unflatten(const shmea::GList& pixels)
+{
+    if (pixels.size() != (unsigned int)width * height * 4)
+	return false;
+
+    int i = 0;
+    for (int y = 0; y < height; ++y)
+    {
+	for (int x = 0; x < width; ++x)
+	{
+	    RGBA c;
+	    c.r = pixels.getInt(i++);
+	    c.g = pixels.getInt(i++);
+	    c.b = pixels.getInt(i++);
+	    c.a = pixels.getInt(i++);
+	    SetPixel(x, y, c);
+	}
+    }
+
+    return true;
+}
