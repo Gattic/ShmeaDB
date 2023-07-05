@@ -277,6 +277,10 @@ void PNGHelper::pngTest(const char* inputPath, const char* outputPath)
     }
 
     writeImage(outputPath, png, info, rowPointers, width, height, bitDepth, colorType);
+
+    // Clean up
+    png_destroy_read_struct(&png, &info, NULL);
+    delete[] rowPointers;
 }
 
 void PNGHelper::LoadPNG(Image& image, const char* inputPath)
@@ -303,4 +307,8 @@ void PNGHelper::LoadPNG(Image& image, const char* inputPath)
             image.SetPixel(x, y, rgba);
         }
     }
+
+    // Clean up
+    png_destroy_read_struct(&png, &info, NULL);
+    delete[] rowPointers;
 }

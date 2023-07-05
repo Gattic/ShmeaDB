@@ -369,3 +369,32 @@ bool Image::unflatten(const shmea::GList& pixels)
 
     return true;
 }
+
+shmea::GString Image::hash() const
+{
+    shmea::GString ret;
+
+    for (int y = 0; y < height; ++y)
+    {
+	for (int x = 0; x < width; ++x)
+	{
+	    RGBA c = GetPixel(x, y);
+	    ret += shmea::GString::intTOstring(c.r);
+	    ret += shmea::GString::intTOstring(c.g);
+	    ret += shmea::GString::intTOstring(c.b);
+	    ret += shmea::GString::intTOstring(c.a);
+	}
+    }
+
+    return ret;
+}
+
+bool Image::operator<(const Image& sd2) const
+{
+	return hash() < sd2.hash();
+}
+
+bool Image::operator>(const Image& sd2) const
+{
+	return hash() > sd2.hash();
+}
