@@ -158,11 +158,9 @@ void PNGHelper::readImage(const char* inputPath, png_structp& png, png_infop& in
         bitDepth = 8;
         png_set_expand_gray_1_2_4_to_8(png);
     }
-
-    // Expand bit depths less than 8 to 8
-    if (bitDepth < 8)
+    else if (colorType == PNG_COLOR_TYPE_GRAY)
     {
-        png_set_expand(png);
+        png_set_gray_to_rgb(png);
     }
 
     // Add alpha channel if image doesn't have one
@@ -171,15 +169,25 @@ void PNGHelper::readImage(const char* inputPath, png_structp& png, png_infop& in
     {
         png_set_add_alpha(png, 0xFF, PNG_FILLER_AFTER);
     }
+    else if (colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+    {
+        // Convert grayscale with alpha to RGBA
+        png_set_gray_to_rgb(png);
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+    }
 
     // Update the info structure
     png_read_update_info(png, info);
 
     // Allocate memory for image data
     rowPointers = new png_bytep[height];
+    const int channels = png_get_channels(png, info);
+    const png_uint_32 rowBytes = png_get_rowbytes(png, info);
+    const png_uint_32 imageBytes = rowBytes * height;
+    png_bytep imageData = new png_byte[imageBytes];
     for (png_uint_32 y = 0; y < height; y++)
     {
-        rowPointers[y] = new png_byte[png_get_rowbytes(png, info)];
+        rowPointers[y] = imageData + y * rowBytes;
     }
 
     // Read the image data
@@ -252,6 +260,8 @@ void PNGHelper::writeImage(const char* outputPath, png_structp png, png_infop in
     printf("Image processed and saved to: %s\n", outputPath);
 }
 
+// TODO: FIX THIS TO INCLUDE NEW COLOR TYPE AND BIT DEPTH PARAMS (work off of rep invarient then write)
+// TODO: Also check writeImage to make sure it's writing the correct color type and bit depth
 void PNGHelper::pngTest(const char* inputPath, const char* outputPath)
 {
     png_structp png = NULL;
@@ -277,6 +287,10 @@ void PNGHelper::pngTest(const char* inputPath, const char* outputPath)
     }
 
     writeImage(outputPath, png, info, rowPointers, width, height, bitDepth, colorType);
+
+    // Clean up
+    png_destroy_read_struct(&png, &info, NULL);
+    delete[] rowPointers;
 }
 
 void PNGHelper::LoadPNG(Image& image, const char* inputPath)
@@ -298,9 +312,23 @@ void PNGHelper::LoadPNG(Image& image, const char* inputPath)
         png_bytep row = rowPointers[y];
         for (png_uint_32 x = 0; x < width; ++x)
         {
-            png_bytep pixel = &(row[x * 4]);
-            shmea::RGBA rgba(pixel[0], pixel[1], pixel[2], pixel[3]);
-            image.SetPixel(x, y, rgba);
+            const int channels = png_get_channels(png, info);
+            png_bytep pixel = &(row[x * channels]);
+
+            if (colorType == PNG_COLOR_TYPE_RGB || colorType == PNG_COLOR_TYPE_GRAY)
+            {
+                shmea::RGBA rgba(pixel[0], pixel[1], pixel[2], 0xFF);
+                image.SetPixel(x, y, rgba);
+            }
+            else if (colorType == PNG_COLOR_TYPE_RGB_ALPHA || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+            {
+                shmea::RGBA rgba(pixel[0], pixel[1], pixel[2], pixel[3]);
+                image.SetPixel(x, y, rgba);
+            }
         }
     }
+
+    // Clean up
+    png_destroy_read_struct(&png, &info, NULL);
+    delete[] rowPointers;
 }

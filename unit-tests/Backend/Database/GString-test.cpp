@@ -133,6 +133,13 @@ void GStringUnitTest()
 	G_assert (__FILE__, __LINE__, "==============GString::trim Failed==============", shmea::GString::trim("  Abc") == "Abc");
 	G_assert (__FILE__, __LINE__, "==============GString::trim Failed==============", shmea::GString::trim("  Abc  ") == "Abc");
 
+	shmea::GString alphabet = "abcdefghijklmnopqrstuvwxyz";
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("a", 1) == 0);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("z", 1) == 25);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("def", 1) == 3);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("csddf", 5) == shmea::GString::npos);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("zsdfsdf", 7) == shmea::GString::npos);
+
 	/*static GString charTOstring(char);
 	static GString shortTOstring(short);
 	static GString intTOstring(int);
