@@ -259,7 +259,9 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 
 	int balance = 0;
 	shmea::GString cOverflow = origin->overflow;
-	int64_t key = origin->getKey();
+	int64_t key = DEFAULT_KEY;
+	if ((origin != NULL) && (origin->getStatus() >= GNet::Connection::STATUS_HS_DONE))
+		key = origin->getKey();
 
 	do
 	{
@@ -293,7 +295,6 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 			printf("[CRYPT] Error: %d\n", crypt.error);
 			return;
 		}
-
 		// starving
 		if (crypt.sizeCurrent < crypt.sizeClaimed)
 		{
@@ -336,12 +337,12 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	origin->overflow = cOverflow;
 }
 
-int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
+int Sockets::writeConnection(Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
 	//printf("==============================================================\n");
 
-	if (cConnection != NULL)
+	if ((cConnection != NULL) && (cConnection->getStatus() >= GNet::Connection::STATUS_HS_DONE))
 		key = cConnection->getKey();
 
 	// Add the version and message type to the front of every packet
@@ -394,6 +395,9 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.sizeClaimed);
 
 	//printf("==============================================================\n");
+
+	if ((cConnection != NULL) && (cConnection->getStatus() == GNet::Connection::STATUS_HS_PENDING))
+		cConnection->setStatus(GNet::Connection::STATUS_HS_DONE);
 
 	// write to the sock
 	return writeLen;

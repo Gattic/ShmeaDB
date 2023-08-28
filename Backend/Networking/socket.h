@@ -75,7 +75,7 @@ public:
 	shmea::GString reader(const int&);
 	void readConnection(Connection*, const int&, std::vector<shmea::ServiceData*>&);
 	void readConnectionHelper(Connection*, const int&, std::vector<shmea::ServiceData*>&);
-	int writeConnection(const Connection*, const int&, shmea::ServiceData*);
+	int writeConnection(Connection*, const int&, shmea::ServiceData*);
 	void closeConnection(const int&);
 
 	bool anyInboundLists();

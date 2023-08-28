@@ -28,7 +28,7 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	overflow = "";
 	connectionType = newConnectionType;
 	key = 420l; // shouldnt matter what this value is
-	finished = false;
+	status = STATUS_INIT;
 }
 
 Connection::Connection(const Connection& instance2)
@@ -39,7 +39,7 @@ Connection::Connection(const Connection& instance2)
 	overflow = instance2.overflow;
 	connectionType = instance2.connectionType;
 	key = instance2.key; // shouldnt matter what this value is
-	finished = instance2.finished;
+	status = instance2.status;
 }
 
 Connection::~Connection()
@@ -51,7 +51,7 @@ Connection::~Connection()
 	sockfd = -1;
 	connectionType = EMPTY_TYPE;
 	key = 420l;
-	finished = false;
+	status = STATUS_INIT;
 }
 
 void Connection::finish()
@@ -59,7 +59,7 @@ void Connection::finish()
 	// tell the client?
 
 	// cleanup on next exitService
-	finished = true;
+	status = STATUS_FINISHED;
 
 	// close the connection
 	close(this->sockfd);
@@ -70,21 +70,30 @@ shmea::GString Connection::getName() const
 {
 	return name;
 }
+
 shmea::GString Connection::getIP() const
 {
 	return ip;
 }
+
 int Connection::getConnectionType() const
 {
 	return connectionType;
 }
+
 int64_t Connection::getKey() const
 {
 	return key;
 }
+
+int Connection::getStatus() const
+{
+	return status;
+}
+
 bool Connection::isFinished() const
 {
-	return finished;
+	return status == STATUS_FINISHED;
 }
 
 void Connection::setName(shmea::GString newName)
@@ -100,6 +109,11 @@ void Connection::setIP(shmea::GString newIP)
 void Connection::setKey(int64_t newKey)
 {
 	key = newKey;
+}
+
+void Connection::setStatus(int newStatus)
+{
+	status = newStatus;
 }
 
 bool Connection::validName(const shmea::GString& tempName)

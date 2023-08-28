@@ -38,7 +38,8 @@ private:
 	shmea::GString ip;
 	int connectionType;
 	int64_t key;
-	bool finished;
+
+	int status;
 
 public:
 	// member limits
@@ -49,12 +50,18 @@ public:
 	static const int SERVER_TYPE = 0;
 	static const int CLIENT_TYPE = 1;
 
+	// status
+	static const int STATUS_INIT = 0;
+	static const int STATUS_HS_PENDING = 1;
+	static const int STATUS_HS_DONE = 2;
+	static const int STATUS_FINISHED = 3;
+
 	int sockfd;
 	shmea::GString overflow;
 
 	Connection(int, int, shmea::GString);
 	Connection(const Connection&);
-	~Connection();
+	virtual ~Connection();
 	void finish();
 
 	// gets
@@ -62,12 +69,14 @@ public:
 	shmea::GString getIP() const;
 	int getConnectionType() const;
 	int64_t getKey() const;
+	int getStatus() const;
 	bool isFinished() const;
 
 	// sets
 	void setName(shmea::GString);
 	void setIP(shmea::GString);
 	void setKey(int64_t);
+	void setStatus(int);
 
 	static bool validName(const shmea::GString&);
 	static int64_t generateKey();

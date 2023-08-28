@@ -539,7 +539,8 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	wData.addString(x->clientName);
 	shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Server");
 	cData->set(wData);
-	socks->writeConnection(destination, sockfd2, cData);
+	//socks->writeConnection(destination, sockfd2, cData);
+	GNet::Service::ExecuteService(this, cData, destination);
 }
 
 void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& clientName)

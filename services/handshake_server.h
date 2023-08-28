@@ -82,6 +82,7 @@ public:
 
 			// Set the new Connection key
 			destination->setKey(newKey);
+			destination->setStatus(GNet::Connection::STATUS_HS_PENDING);
 		}
 
 		return NULL;
