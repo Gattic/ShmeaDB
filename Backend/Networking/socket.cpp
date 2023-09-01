@@ -132,7 +132,7 @@ int Sockets::openServerConnection()
 	}
 
 	int optval = 1;
-	int sockopts = SO_REUSEADDR;
+	int sockopts = SO_REUSEADDR | SO_KEEPALIVE | TCP_NODELAY;
 #if (SO_REUSEPORT)
 	sockopts |= SO_REUSEPORT;
 #endif

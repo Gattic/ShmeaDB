@@ -19,6 +19,7 @@
 
 #include "../Database/GString.h"
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <iostream>
 #include <netdb.h>
 #include <pthread.h>
