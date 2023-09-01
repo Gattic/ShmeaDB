@@ -169,12 +169,7 @@ shmea::GString Sockets::reader(const int& sockfd)
 	char buffer[1025];
 	bzero(buffer, 1025);
 	unsigned int tSize = 0;
-	char* eText = (char*)malloc(sizeof(char) * tSize);
-	if (!eText)
-	{
-		printf("[READER] Error: 0\n");
-		return "";
-	}
+	shmea::GString eText = "";
 
 	do
 	{
@@ -183,24 +178,11 @@ shmea::GString Sockets::reader(const int& sockfd)
 		{
 			int oldTSize = tSize;
 			tSize += bytesRead;
-			char* pText = (char*)realloc(eText, sizeof(char) * tSize);
-
-			if (pText)
-			{
-				eText = pText;
-				memcpy(&eText[oldTSize], buffer, bytesRead);
-			}
-			else
-			{
-				printf("[READER] Error: 1\n");
-				tSize = 0;
-				return "";
-			}
+			eText += shmea::GString(buffer, bytesRead);
 		}
 		else
 		{
 			printf("[READER] Error: 2\n");
-			free(eText);
 			tSize = 0;
 			return "";
 		}
@@ -221,7 +203,7 @@ shmea::GString Sockets::reader(const int& sockfd)
 	
 	for (unsigned int i = 0; i < tSize / sizeof(int); ++i)
 	{
-		int64_t cIntBlock = ntohl(((unsigned int*)eText)[i]);
+		int64_t cIntBlock = ntohl(((unsigned int*)eText.c_str())[i]);
 		if (i % 2 == 0)
 			newEBlock = cIntBlock;
 		else
@@ -233,7 +215,6 @@ shmea::GString Sockets::reader(const int& sockfd)
 		}
 	}
 
-	free(eText);
 	return shmea::GString((const char*)newEText, tSize);
 }
 

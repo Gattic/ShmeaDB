@@ -84,6 +84,8 @@ public:
 			destination->setKey(newKey);
 		}
 
+		printf("Handshake_Server: %s\n", destination->getName().c_str());
+
 		return NULL;
 	}
 
