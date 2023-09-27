@@ -200,60 +200,6 @@ int Sockets::openServerConnection()
 	return sockfd;
 }
 
-shmea::GString Sockets::reader(const int& sockfd)
-{
-	char buffer[1025];
-	bzero(buffer, 1025);
-	unsigned int tSize = 0;
-	shmea::GString eText = "";
-
-	do
-	{
-		int bytesRead = read(sockfd, buffer, 1024);
-		if (bytesRead > 0)
-		{
-			int oldTSize = tSize;
-			tSize += bytesRead;
-			eText += shmea::GString(buffer, bytesRead);
-		}
-		else
-		{
-			printf("[READER] Error: 2\n");
-			tSize = 0;
-			return "";
-		}
-
-		// We only write int64_t but we do it int by int
-	} while (((tSize % sizeof(int)) == 0) && ((tSize / sizeof(int)) % 2 == 1));
-
-	// Make sure we are the correct big/little endian
-	int64_t newEBlock = 0;
-	int lCounter = 0;
-	int64_t* newEText = (int64_t*)malloc(sizeof(char) * tSize);
-	if(!newEText)
-	{
-		printf("[READER] Error: 3\n");
-		tSize = 0;
-		return "";
-	}
-	
-	for (unsigned int i = 0; i < tSize / sizeof(int); ++i)
-	{
-		int64_t cIntBlock = ntohl(((unsigned int*)eText.c_str())[i]);
-		if (i % 2 == 0)
-			newEBlock = cIntBlock;
-		else
-		{
-			newEBlock += cIntBlock * 0x100000000ll;
-			newEText[lCounter] = newEBlock;
-			newEBlock = 0;
-			++lCounter;
-		}
-	}
-
-	return shmea::GString((const char*)newEText, tSize);
-}
-
 void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<shmea::ServiceData*>& srvcList)
 {
 	readConnectionHelper(origin, sockfd, srvcList);
@@ -274,54 +220,63 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	if (origin == NULL)
 		return;
 
-	int balance = 0;
 	shmea::GString cOverflow = origin->overflow;
 	int64_t key = origin->getKey();
 
-
-
-
-
-    //TODO: FIX END HANG (LAST ITERATION FIX)
 	shmea::GString eText = "";
-	unsigned int eCounter = 0; // in bytes
 	unsigned int eTotal = 0; // in bytes
 	unsigned int endPadding = 0; // in bytes
-	unsigned int eByteCounter = 0; // in bytes
-	unsigned int headerSize = 8; // in bytes
-	unsigned int overflowContent = 0;
-	unsigned int overflowSize = 0; // in bytes
+
+	// bytes read
+	unsigned int eByteCounter = 0;
+
+	// Incase we read an amount that is not divisible by 4
+	unsigned int readOverflow = 0;
+	unsigned int readOverflowLen = 0; // in bytes
 
 	do
 	{
 		char buffer[1025];
 		bzero(buffer, 1025);
-		*buffer = overflowContent;
-		unsigned int bytesRead = read(sockfd, &buffer[overflowSize], 1024-overflowSize);
-		bytesRead+=overflowSize;
+		*buffer = readOverflow;
+		unsigned int bytesLeft = eTotal-eByteCounter;
+		if(bytesLeft == 0) bytesLeft = 1024;
+		bytesLeft = bytesLeft > 1024 ? 1024-readOverflow : bytesLeft;
+		unsigned int bytesRead = read(sockfd, &buffer[readOverflowLen], bytesLeft);
+		bytesRead+=readOverflowLen;
 		//if ((bytesRead == 0) || (bytesRead == -1))
-		if (bytesRead == -1)
+		if (bytesRead == (unsigned int)-1)
 		{
 			printf("[READER] Error: 3\n");
 			return;
 		}
 
-		//printf("bytesRead: %u\n", bytesRead);
+		shmea::GString bufferStr = shmea::GString(buffer, bytesRead);
+		if(cOverflow.length() > 0)
+		{
+		    printf("cOverflow.length(): %u\n", cOverflow.length());
+		    bytesRead += cOverflow.length();
+		    bufferStr = cOverflow + bufferStr;
+		    cOverflow = "";
+		    origin->overflow = "";
+		}
+
 		bool headerIteration = false;
 		if(eTotal == 0)
 		{
 		    headerIteration = true;
+
 		    // The total bytes to read
-		    unsigned int newSize = ntohl(*(unsigned int*)(buffer+0));
+		    unsigned int newSize = ntohl(*(unsigned int*)(&bufferStr[0]));
 		    eTotal = newSize;
 		    eByteCounter += sizeof(unsigned int);
-		    printf("eTotal: %u\n", eTotal);
+		    //printf("eTotal: %u\n", eTotal);
 
 		    // Padding at the end in bytes
-		    unsigned int newPadding = ntohl(*(unsigned int*)(buffer+4));
+		    unsigned int newPadding = ntohl(*(unsigned int*)(&bufferStr[4]));
 		    endPadding = newPadding;
 		    eByteCounter += sizeof(unsigned int);
-		    printf("endPadding: %u\n", endPadding);
+		    //printf("endPadding: %u\n", endPadding);
 		}
 
 		unsigned int headerOffset = 0;
@@ -329,118 +284,75 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		    headerOffset = 8;
 
 		// We will deal with the overflow later
-		overflowSize = bytesRead % sizeof(unsigned int);
-		bytesRead -= overflowSize;
+		readOverflowLen = bytesRead % sizeof(unsigned int);
+		bytesRead -= readOverflowLen;
 
 		// Convert the content from network byte order
 		shmea::GString newStr = "";
 		for(unsigned int i=headerOffset; i < bytesRead; i+=sizeof(unsigned int))
 		{
-		    unsigned int cIntBlock = ntohl(*(unsigned int*)(buffer+i));
+		    unsigned int cIntBlock = ntohl(*(unsigned int*)(&bufferStr[i]));
 		    newStr += shmea::GString((const char*)&cIntBlock, sizeof(unsigned int));
 		    eByteCounter += sizeof(unsigned int);
 		}
 
-		if(overflowSize > 0)
-		{
-		    overflowContent = *(unsigned int*)(buffer+bytesRead);
-		    /*printf("overflowSize: %u!!!!!!!!!!!!!!!!!\n", overflowSize);
-		    unsigned int cIntBlock = ntohl(*(unsigned int*)(buffer+bytesRead));
-		    newStr += shmea::GString((const char*)&cIntBlock, overflowSize);
-		    eByteCounter += overflowSize;*/
-		}
-
-		if(eByteCounter >= 65535)
-		    printf("UPPER WRITE OR READ LIMIT???????\n");
+		if(readOverflowLen > 0)
+		    readOverflow = *(unsigned int*)(&bufferStr[bytesRead]);
 
 		eText += newStr;
-		printf("newStr: %s\n", newStr.c_str());
 
 		//printf("eByteCounter: %u/%u/%u\n", eByteCounter, eText.length(), eTotal);
-	} while (eByteCounter < eTotal);
+	} while ((eByteCounter < eTotal) || (readOverflowLen > 0));
 
-	printf("eByteCounter: %u/%u/%u\n", eByteCounter, eText.length(), eTotal);
-	//if(endPadding > 0)
-	    //eText = eText.substr(0, eText.length()-endPadding);
-	//printf("eText: %s\n", eText.c_str());
-
-	return;
-
-
-
-	do
+	// We read a part of the next request
+	unsigned int extraSize = eByteCounter - eTotal;
+	if(extraSize > 0)
 	{
-		// get the things to read
-		shmea::GString eText = "";
-		if(balance != 1)
-		{
-			eText = reader(sockfd);
-		}
+	    //printf("Extra Size: %u\n", extraSize);
+	    origin->overflow = eText.substr(eTotal);
 
-		// overflow+eText
-		if (balance != 0)
-		{
-			eText = cOverflow + eText;
-		}
+	    eText = eText.substr(0, eByteCounter-extraSize-sizeof(int)*2);
+	    //printf("new-eTextLen: %u\n", eText.length());
+	}
+	else
+	    origin->overflow = "";
 
-		//if (eText.length() == 0)
-		if (eText.length() == 0)
-			return;
+	// Decrypt
+	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
+	//crypt.decryptHeader(eText, key);
+	crypt.decrypt((int64_t*)eText.c_str(), key, eText.length() / 8);
 
-		/*printf("Key Read: %lld\n", key);
-		for(int i=0;i<eText.length()/8;++i)
-			printf("eTextRead[%d]: 0x%016llX\n", i, *(int64_t*)eText.substr(i*sizeof(int64_t), sizeof(int64_t)).c_str());*/
+	if((eText.length()-crypt.sizeClaimed*sizeof(int64_t)) > 0)
+	    printf("CryptOverrun: %u\n", eText.length()-crypt.sizeClaimed*sizeof(int64_t));
 
-		// decrypt
-		Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
-		crypt.decrypt((int64_t*)eText.c_str(), key, eText.length()/8);
+	if (crypt.error)
+	{
+	    printf("[CRYPT] Error: %d\n", crypt.error);
+	    return;
+	}
 
-		if (crypt.error)
-		{
-			printf("[CRYPT] Error: %d\n", crypt.error);
-			return;
-		}
+	//printf("crypt.sizeClaimed: %lu\n", crypt.sizeClaimed*sizeof(int64_t));
+	if(crypt.sizeClaimed*sizeof(int64_t) != eTotal-(sizeof(int)*2))
+	{
+	    printf("[SOCKS] RCV Misalignment: %lu != %lu\n", crypt.sizeClaimed*sizeof(int64_t), eTotal-(sizeof(int)*2));
+	    return;
+	}
+	else
+	{
+	    printf("[SOCKS] RCV Success: %lu == %lu\n", (crypt.sizeClaimed*sizeof(int64_t))+(sizeof(int)*2), eTotal);
+	}
 
-		// starving
-		if (crypt.sizeCurrent < crypt.sizeClaimed)
-		{
-			balance = -1;
+	//if (crypt.sizeCurrent < crypt.sizeClaimed)
+	//else if (crypt.sizeCurrent == crypt.sizeClaimed)
 
-			cOverflow = eText;
-		}
-		else if (crypt.sizeCurrent == crypt.sizeClaimed)
-		{
-			/*printf("READ-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
-			if(crypt.dText[crypt.sizeClaimed-1] == 0)
-			for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
-			{
-				printf("READ[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
-				if(crypt.dText[rCounter] == 0x7C)
-					printf("-------------------------------\n");
-			}*/
+	// Recreate the ServiceData to run later
+	shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
+	//printf("eTextLen-PRE-SER: %u\n", newSrvcStr.length()/8);
+	shmea::GString cStr = crypt.dText;
+	shmea::Serializable::Deserialize(cData, cStr);
+	cData->setTimesent(crypt.getTimesent());
+	srvcList.push_back(cData); // minus the key
 
-			// set the text from the crypt object & add it to the data
-			shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
-			//printf("eTextLen-PRE-SER: %u\n", eText.length()/8);
-			shmea::GString cStr = crypt.dText;
-			shmea::Serializable::Deserialize(cData, cStr);
-			cData->setTimesent(crypt.getTimesent());
-			srvcList.push_back(cData); // minus the key
-
-			if (eText.length()/8 == crypt.sizeClaimed)
-				balance = 0;
-			else if (eText.length()/8 > crypt.sizeClaimed)
-			{
-				balance = 1;
-
-				unsigned int cOverflowLen = (eText.length()/8) - crypt.sizeClaimed;
-				cOverflow = eText.substr(
-					crypt.sizeClaimed*sizeof(int64_t), cOverflowLen*sizeof(int64_t));
-			}
-		}
-	} while (balance != 0);
-
-	origin->overflow = cOverflow;
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
@@ -488,36 +400,19 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 			printf("-------------------------------\n");
 	}*/
 
-	shmea::GString writeStr = "";
-	for (unsigned int i = 0; i < crypt.sizeClaimed * 2; ++i)
-	{
-		unsigned int writeVal = // This will be nice with GVector
-			htonl(*((unsigned int*)(crypt.eText.substr(i*sizeof(unsigned int), sizeof(unsigned int)).c_str())));
-		writeStr += shmea::GString((const char*)&writeVal, sizeof(unsigned int));
-	}
-
-	/*unsigned int writeLen = write(sockfd, writeStr.c_str(), writeStr.length());
-	if (writeLen != sizeof(int64_t) * crypt.sizeClaimed)
-		printf("[SOCKS] Write error: %u/%lld\n", writeLen, sizeof(int64_t) * crypt.sizeClaimed);*/
-
-	shmea::GString newStr = "";
-	for(unsigned int i = 0; i < 50000; ++i)
-	{
-	    newStr += shmea::GString::intTOstring(i) + ";";
-	}
+	shmea::GString newStr = crypt.eText;
 	unsigned int newBlockSize = newStr.length() + 8; // plus size and padding
 	unsigned int newPadding = newStr.length() % 4; // end 0s for even writes
+	newBlockSize += newPadding;
 	shmea::GString sizeInt = shmea::GString((const char*)&newBlockSize, sizeof(unsigned int));
 	shmea::GString paddingInt = shmea::GString((const char*)&newPadding, sizeof(unsigned int));
 
+	//printf("newBlockSize: %u\n", newBlockSize);
 	unsigned int zeros = 0;
 	newStr += shmea::GString((const char*)&zeros, newPadding);
-	//printf("newStr: %s\n", newStr.c_str());
-	//printf("----\n");
 	newStr = sizeInt + paddingInt + newStr;
 
-	printf("newPadding: %u\n", newPadding);
-	writeStr = "";
+	shmea::GString writeStr = "";
 	for (unsigned int i = 0; i < newStr.length(); i+=sizeof(unsigned int)) // TODO support uneven writes using newPadding
 	{
 		unsigned int writeVal = htonl(*((unsigned int*)(newStr.substr(i, sizeof(unsigned int)).c_str())));
@@ -534,9 +429,9 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	}
 
 	if ((writeLen != writeStr.length()) || (newBlockSize != newStr.length()))
-	    printf("[SOCKS] Write Error: %u/%ld : %u/%u\n", writeLen, writeStr.length(), newBlockSize, newStr.length());
+	    printf("[SOCKS] Write Error: %u/%u : %u/%u\n", writeLen, writeStr.length(), newBlockSize, newStr.length());
 	else
-	    printf("[SOCKS] Write Success: %u/%ld : %u/%u\n", writeLen, writeStr.length(), newBlockSize, newStr.length());
+	    printf("[SOCKS] Write Success: %u/%u : %u/%u\n", writeLen, writeStr.length(), newBlockSize, newStr.length());
 
 	//printf("==============================================================\n");
 
