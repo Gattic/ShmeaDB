@@ -548,3 +548,21 @@ int64_t GString::parseDate(const shmea::GString sd, const shmea::GString sm, con
 	int64_t retTime = std::mktime(&t);
 	return retTime;
 }
+
+shmea::GString GString::format(const char* fmtStr, ...)
+{
+	va_list args;
+	va_start(args, fmtStr);
+	int len = vsnprintf(NULL, 0, fmtStr, args);
+	va_end(args);
+
+	char* newBlock = (char*)malloc(len+1);
+	va_start(args, fmtStr);
+	vsnprintf(newBlock, len+1, fmtStr, args);
+	va_end(args);
+
+	GString retStr(newBlock, len);
+	free(newBlock);
+
+	return retStr;
+}
