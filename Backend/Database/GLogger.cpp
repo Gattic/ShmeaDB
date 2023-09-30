@@ -16,6 +16,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GLogger.h"
 #include "GType.h"
+#include <sys/time.h>
+#include <time.h>
 
 using namespace shmea;
 
@@ -239,6 +241,13 @@ void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 
 void GLogger::info(shmea::GString category, shmea::GString message)
 {
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+
 	infoKeys.addString(category);
 	infoLog.addString(message);
 
@@ -249,11 +258,18 @@ void GLogger::info(shmea::GString category, shmea::GString message)
 	    return;
 
 	if(printLevel <= LOG_INFO)
-	    printf("[i][%s]: %s\n", category.c_str(), message.c_str());
+	    printf(strDateTime + " [i][%s]: %s\n", category.c_str(), message.c_str());
 }
 
 void GLogger::verbose(shmea::GString category, shmea::GString message)
 {
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+
 	verboseKeys.addString(category);
 	verboseLog.addString(message);
 
@@ -265,11 +281,18 @@ void GLogger::verbose(shmea::GString category, shmea::GString message)
 	    return;
 
 	if(printLevel <= LOG_VERBOSE)
-	    printf("[v][%s]: %s\n", category.c_str(), message.c_str());
+	    printf(strDateTime + " [v][%s]: %s\n", category.c_str(), message.c_str());
 }
 
 void GLogger::debug(shmea::GString category, shmea::GString message)
 {
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+
 	debugKeys.addString(category);
 	debugLog.addString(message);
 
@@ -280,11 +303,18 @@ void GLogger::debug(shmea::GString category, shmea::GString message)
 	    return;
 
 	if(printLevel <= LOG_DEBUG)
-	    printf("[d][%s]: %s\n", category.c_str(), message.c_str());
+	    printf(strDateTime + " [d][%s]: %s\n", category.c_str(), message.c_str());
 }
 
 void GLogger::warning(shmea::GString category, shmea::GString message)
 {
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+
 	warningKeys.addString(category);
 	warningLog.addString(message);
 
@@ -295,11 +325,18 @@ void GLogger::warning(shmea::GString category, shmea::GString message)
 	    return;
 
 	if(printLevel <= LOG_WARNING)
-	    printf("[W][%s]: %s\n", category.c_str(), message.c_str());
+	    printf(strDateTime + " [W][%s]: %s\n", category.c_str(), message.c_str());
 }
 
 void GLogger::error(shmea::GString category, shmea::GString message)
 {
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+
 	errorKeys.addString(category);
 	errorLog.addString(message);
 
@@ -310,11 +347,18 @@ void GLogger::error(shmea::GString category, shmea::GString message)
 	    return;
 
 	if(printLevel <= LOG_ERROR)
-	    printf("[E][%s]: %s\n", category.c_str(), message.c_str());
+	    printf(strDateTime + " [E][%s]: %s\n", category.c_str(), message.c_str());
 }
 
 void GLogger::fatal(shmea::GString category, shmea::GString message)
 {
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+
 	fatalKeys.addString(category);
 	fatalLog.addString(message);
 
@@ -325,5 +369,5 @@ void GLogger::fatal(shmea::GString category, shmea::GString message)
 	    return;
 
 	if(printLevel <= LOG_FATAL)
-	    printf("[F][%s]: %s\n", category.c_str(), message.c_str());
+	    printf(strDateTime + " [F][%s]: %s\n", category.c_str(), message.c_str());
 }
