@@ -245,6 +245,9 @@ void GLogger::info(shmea::GString category, shmea::GString message)
 	if(printLevel == LOG_NONE)
 	    return;
 
+	if(surpressCheck(LOG_INFO))
+	    return;
+
 	if(printLevel <= LOG_INFO)
 	    printf("[i][%s]: %s\n", category.c_str(), message.c_str());
 }
@@ -255,6 +258,10 @@ void GLogger::verbose(shmea::GString category, shmea::GString message)
 	verboseLog.addString(message);
 
 	if(printLevel == LOG_NONE)
+	    return;
+
+
+	if(surpressCheck(LOG_VERBOSE))
 	    return;
 
 	if(printLevel <= LOG_VERBOSE)
@@ -269,6 +276,9 @@ void GLogger::debug(shmea::GString category, shmea::GString message)
 	if(printLevel == LOG_NONE)
 	    return;
 
+	if(surpressCheck(LOG_DEBUG))
+	    return;
+
 	if(printLevel <= LOG_DEBUG)
 	    printf("[d][%s]: %s\n", category.c_str(), message.c_str());
 }
@@ -279,6 +289,9 @@ void GLogger::warning(shmea::GString category, shmea::GString message)
 	warningLog.addString(message);
 
 	if(printLevel == LOG_NONE)
+	    return;
+
+	if(surpressCheck(LOG_WARNING))
 	    return;
 
 	if(printLevel <= LOG_WARNING)
@@ -293,6 +306,9 @@ void GLogger::error(shmea::GString category, shmea::GString message)
 	if(printLevel == LOG_NONE)
 	    return;
 
+	if(surpressCheck(LOG_ERROR))
+	    return;
+
 	if(printLevel <= LOG_ERROR)
 	    printf("[E][%s]: %s\n", category.c_str(), message.c_str());
 }
@@ -303,6 +319,9 @@ void GLogger::fatal(shmea::GString category, shmea::GString message)
 	fatalLog.addString(message);
 
 	if(printLevel == LOG_NONE)
+	    return;
+
+	if(surpressCheck(LOG_FATAL))
 	    return;
 
 	if(printLevel <= LOG_FATAL)

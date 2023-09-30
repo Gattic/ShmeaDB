@@ -29,7 +29,7 @@ const shmea::GString Sockets::LOCALHOST = "127.0.0.1";
 
 void Sockets::initSockets()
 {
-	logger.setPrintLevel(shmea::GLogger::LOG_INFO);
+	logger.setPrintLevel(shmea::GLogger::LOG_WARNING);
 	PORT = "45019";
 	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
