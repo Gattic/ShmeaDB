@@ -262,6 +262,10 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		    origin->overflow = "";
 		}
 
+		// If we read nothing, then the other side probabled dced
+		if(bytesRead == 0)
+		    return;
+
 		bool headerIteration = false;
 		if(eTotal == 0)
 		{
