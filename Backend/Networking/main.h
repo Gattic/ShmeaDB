@@ -63,7 +63,7 @@ class GServer
 	friend Sockets;
 	friend Service;
 
-	GNet::Sockets* socks;
+	shmea::GPointer<GNet::Sockets> socks;
 
 	// Key is ip address
 	std::map<shmea::GString, Connection*> clientConnections;

@@ -43,10 +43,9 @@ Sockets::Sockets() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger()
 	initSockets();
 }
 
-Sockets::Sockets(const GServer* serverInstance, const shmea::GString& newPORT) : logger(serverInstance->logger)
+Sockets::Sockets(const GServer* serverInstance) : logger(serverInstance->logger)
 {
 	initSockets();
-	PORT = newPORT;
 }
 
 Sockets::~Sockets()
@@ -63,6 +62,11 @@ Sockets::~Sockets()
 const shmea::GString Sockets::getPort()
 {
 	return PORT;
+}
+
+void Sockets::setPort(const shmea::GString newPort)
+{
+	PORT = newPort;
 }
 
 int Sockets::openClientConnection(const shmea::GString& serverIP)
