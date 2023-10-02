@@ -72,7 +72,7 @@ public:
 		// Set the new Connection key
 		destination->setKey(newKey);
 
-		printf("Handshake_Client: %s\n", destination->getName().c_str());
+		serverInstance->logger->info("SRVC", shmea::GString::format("Handshake_Client: %s\n", destination->getName().c_str()));
 
 		return NULL;
 	}

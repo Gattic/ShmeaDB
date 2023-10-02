@@ -18,6 +18,7 @@
 #define _GNET
 
 #include "../Database/GString.h"
+#include "../Database/GLogger.h"
 #include "socket.h"
 #include <errno.h>
 #include <iostream>
@@ -107,6 +108,8 @@ public:
 
 	GServer();
 	~GServer();
+
+	shmea::GPointer<shmea::GLogger> logger;
 
 	void send(shmea::ServiceData*, bool = true, bool = false);
 

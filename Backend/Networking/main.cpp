@@ -28,8 +28,9 @@
 
 using namespace GNet;
 
-GNet::GServer::GServer()
+GNet::GServer::GServer() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO)))
 {
+	logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	socks = NULL;
 	sockfd = -1;
 	LOCAL_ONLY = false;
@@ -211,7 +212,7 @@ void GNet::GServer::run(shmea::GString PORT, bool _networkingDisabled)
 	LOCAL_ONLY = _networkingDisabled;
 	running = true;
 
-	socks = new Sockets(PORT);
+	socks = new Sockets(this, PORT);
 
 	// Launch the server server
 	pthread_create(commandThread, NULL, commandLauncher, this);
