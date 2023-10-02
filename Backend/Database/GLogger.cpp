@@ -38,6 +38,8 @@ using namespace shmea;
  * logger.debug("encryption", "HELLO2");
  */
 
+const shmea::GString GLogger::LOG_SYMBOLS = "vdiWEF";
+
 GLogger::GLogger()
 {
 	printLevel = LOG_NONE;
@@ -211,6 +213,20 @@ bool GLogger::surpressCheck(int logType) const
 
 void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 {
+	shmea::GString strDateTime = getDateTime();
+
+	infoKeys.addString(category);
+	infoLog.addString(message);
+
+	if(printLevel == LOG_NONE)
+	    return;
+
+	if(surpressCheck(logType))
+	    return;
+
+	if(printLevel <= logType)
+	    printf(strDateTime + " [%c][%s]: %s\n", LOG_SYMBOLS[logType], category.c_str(), message.c_str());
+
 	switch (logType)
 	{
 	    case LOG_VERBOSE:

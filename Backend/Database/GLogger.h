@@ -67,6 +67,14 @@ public:
 	const static int LOG_ERROR = 4;
 	const static int LOG_FATAL = 5;
 
+	const static char LOG_VERBOSE_SYMBOL = 'v';
+	const static char LOG_DEBUG_SYMBOL = 'd';
+	const static char LOG_INFO_SYMBOL = 'i';
+	const static char LOG_WARNING_SYMBOL = 'W';
+	const static char LOG_ERROR_SYMBOL = 'E';
+	const static char LOG_FATAL_SYMBOL = 'F';
+	static const shmea::GString LOG_SYMBOLS;
+
 	GLogger();
 	GLogger(int);
 	GLogger(const GLogger&);
