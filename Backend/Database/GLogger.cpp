@@ -18,6 +18,7 @@
 #include "GType.h"
 #include <sys/time.h>
 #include <time.h>
+#include <sys/stat.h>
 
 using namespace shmea;
 
@@ -222,6 +223,17 @@ shmea::GString GLogger::getDateTime() const
 	return strDateTime;
 }
 
+shmea::GString GLogger::generateLogFName() const
+{
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", localtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+	return strDateTime;
+}
+
 void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 {
 	shmea::GString strDateTime = getDateTime();
@@ -232,39 +244,97 @@ void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 	if(surpressCheck(logType))
 	    return;
 
-	if(printLevel <= logType)
-	    printf(strDateTime + " [%c][%s]: %s\n", LOG_SYMBOLS[logType], category.c_str(), message.c_str());
+	if(printLevel > logType)
+	    return;
 
+	// Print to console
+	printf("[%c]%s [%s]: %s\n", LOG_SYMBOLS[logType], strDateTime.c_str(), category.c_str(), message.c_str());
+
+	// Write to file
+	shmea::GString logDir = "logs/";
+	shmea::GString logFile = generateLogFName() + ".log";
+	shmea::GString lockFile = ".lock-" + logFile;
+
+	// Check if log directory exists
+	struct stat st;
+	if(stat(logDir.c_str(), &st) == -1)
+	{
+	    // Create directory
+	    mkdir(logDir.c_str(), 0700);
+	    printf("+%s\n", logDir.c_str());
+	}
+
+	// Check if lock file exists
+	if(stat((logDir + lockFile).c_str(), &st) == -1)
+	{
+	    // Create lock file
+	    FILE* lockFD = fopen((logDir + lockFile).c_str(), "w");
+	    fclose(lockFD);
+
+	    // Check if log file exists
+	    if(stat((logDir + logFile).c_str(), &st) == -1)
+	    {
+		// Create log file
+		FILE* logFD = fopen((logDir + logFile).c_str(), "w");
+		fprintf(logFD, "[%c]%s [%s]: %s\n", LOG_SYMBOLS[logType], strDateTime.c_str(), category.c_str(), message.c_str());
+		fclose(logFD);
+	    }
+	    else
+	    {
+		// Append to log file
+		FILE* logFD = fopen((logDir + logFile).c_str(), "a");
+		fprintf(logFD, "[%c]%s [%s]: %s\n", LOG_SYMBOLS[logType], strDateTime.c_str(), category.c_str(), message.c_str());
+		fclose(logFD);
+	    }
+
+	    // Remove lock file
+	    remove((logDir + lockFile).c_str());
+	}
+	else
+	{
+	    // Wait for lock file to be removed
+	    while(stat((logDir + lockFile).c_str(), &st) != -1)
+	    {
+		// Wait
+	    }
+
+	    // Append to log file
+	    FILE* logFD = fopen((logDir + logFile).c_str(), "a");
+	    fprintf(logFD, "[%c]%s [%s]: %s\n", LOG_SYMBOLS[logType], strDateTime.c_str(), category.c_str(), message.c_str());
+	    fclose(logFD);
+	}
+
+	// Store in memory (not necassary)
 	switch (logType)
 	{
 	    case LOG_VERBOSE:
-		verboseKeys.addString(category);
-		verboseLog.addString(message);
+		//verboseKeys.addString(category);
+		//verboseLog.addString(message);
 		break;
 
 	    case LOG_DEBUG:
-		debugKeys.addString(category);
-		debugLog.addString(message);
+		//debugKeys.addString(category);
+		//debugLog.addString(message);
 		break;
 
 	    case LOG_INFO:
-		infoKeys.addString(category);
-		infoLog.addString(message);
+		//infoKeys.addString(category);
+		//infoLog.addString(message);
 		break;
 
 	    case LOG_WARNING:
-		warningKeys.addString(category);
-		warningLog.addString(message);
+		//warningKeys.addString(category);
+		//warningLog.addString(message);
 		break;
 
 	    case LOG_ERROR:
-		errorKeys.addString(category);
-		errorLog.addString(message);
+		//errorKeys.addString(category);
+		//errorLog.addString(message);
 		break;
 
 	    case LOG_FATAL:
-		fatalKeys.addString(category);
-		fatalLog.addString(message);
+		//fatalKeys.addString(category);
+		//fatalLog.addString(message);
 		break;
 	}
 }

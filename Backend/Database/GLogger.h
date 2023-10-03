@@ -89,6 +89,7 @@ public:
 	bool surpressCheck(int) const;
 
 	shmea::GString getDateTime() const;
+	shmea::GString generateLogFName() const;
 	void log(int, shmea::GString, shmea::GString);
 	void verbose(shmea::GString, shmea::GString);
 	void debug(shmea::GString, shmea::GString);
