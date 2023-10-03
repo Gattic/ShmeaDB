@@ -88,8 +88,8 @@ public:
 	void unsurpress(int);
 	bool surpressCheck(int) const;
 
-	void log(int, shmea::GString, shmea::GString);
 	shmea::GString getDateTime() const;
+	void log(int, shmea::GString, shmea::GString);
 	void verbose(shmea::GString, shmea::GString);
 	void debug(shmea::GString, shmea::GString);
 	void info(shmea::GString, shmea::GString);
