@@ -29,7 +29,7 @@ const shmea::GString Sockets::LOCALHOST = "127.0.0.1";
 
 void Sockets::initSockets()
 {
-	logger.setPrintLevel(shmea::GLogger::LOG_WARNING);
+	//logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	PORT = "45019";
 	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
@@ -38,15 +38,14 @@ void Sockets::initSockets()
 	pthread_mutex_init(outMutex, NULL);
 }
 
-Sockets::Sockets()
+Sockets::Sockets() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger()))
 {
 	initSockets();
 }
 
-Sockets::Sockets(const shmea::GString& newPORT)
+Sockets::Sockets(const GServer* serverInstance) : logger(serverInstance->logger)
 {
 	initSockets();
-	PORT = newPORT;
 }
 
 Sockets::~Sockets()
@@ -65,6 +64,11 @@ const shmea::GString Sockets::getPort()
 	return PORT;
 }
 
+void Sockets::setPort(const shmea::GString newPort)
+{
+	PORT = newPort;
+}
+
 int Sockets::openClientConnection(const shmea::GString& serverIP)
 {
 	struct addrinfo* result;
@@ -76,7 +80,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP)
 	int status = getaddrinfo(serverIP.c_str(), PORT.c_str(), &hints, &result);
 	if (status < 0)
 	{
-		logger.error("SOCKS", "Get client addr info fail");
+		logger->error("SOCKS", "Get client addr info fail");
 		return -1;
 	}
 
@@ -93,7 +97,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP)
 		sockfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 		if (sockfd < 0)
 		{
-			logger.error("SOCKS", "Could not open client socket");
+			logger->error("SOCKS", "Could not open client socket");
 			return -1; // continue;
 		}
 
@@ -113,7 +117,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP)
 		status = connect(sockfd, result->ai_addr, result->ai_addrlen);
 		if (status < 0)
 		{
-			logger.error("SOCKS", "Could not connect to the server!");
+			logger->error("SOCKS", "Could not connect to the server!");
 			return -1; // continue;
 		}
 
@@ -146,7 +150,7 @@ int Sockets::openServerConnection()
 	int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sockfd < 0)
 	{
-		logger.error("SOCKS", "Could not open server socket");
+		logger->error("SOCKS", "Could not open server socket");
 		return -1;
 	}
 
@@ -166,7 +170,7 @@ int Sockets::openServerConnection()
 	int status = getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
 	if (status < 0)
 	{
-		logger.error("SOCKS", "Get server addr info fail");
+		logger->error("SOCKS", "Get server addr info fail");
 		return -1;
 	}
 
@@ -191,7 +195,7 @@ int Sockets::openServerConnection()
 	status = bind(sockfd, result->ai_addr, result->ai_addrlen);
 	if (status < 0)
 	{
-		logger.error("SOCKS", "Could not bind server!");
+		logger->error("SOCKS", "Could not bind server!");
 		return -1;
 	}
 
@@ -248,14 +252,14 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		//if ((bytesRead == 0) || (bytesRead == -1))
 		if (bytesRead == (unsigned int)-1)
 		{
-			logger.error("SOCKS", "[READER] Error: 3");
+			logger->error("SOCKS", "[READER] Error: 3");
 			return;
 		}
 
 		shmea::GString bufferStr = shmea::GString(buffer, bytesRead);
 		if(cOverflow.length() > 0)
 		{
-		    logger.debug("SOCKS", shmea::GString::format("cOverflow.length(): %u", cOverflow.length()));
+		    logger->debug("SOCKS", shmea::GString::format("cOverflow.length(): %u", cOverflow.length()));
 		    bytesRead += cOverflow.length();
 		    bufferStr = cOverflow + bufferStr;
 		    cOverflow = "";
@@ -275,13 +279,13 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		    unsigned int newSize = ntohl(*(unsigned int*)(&bufferStr[0]));
 		    eTotal = newSize;
 		    eByteCounter += sizeof(unsigned int);
-		    logger.debug("SOCKS", shmea::GString::format("eTotal: %u", eTotal));
+		    logger->debug("SOCKS", shmea::GString::format("eTotal: %u", eTotal));
 
 		    // Padding at the end in bytes
 		    unsigned int newPadding = ntohl(*(unsigned int*)(&bufferStr[4]));
 		    endPadding = newPadding;
 		    eByteCounter += sizeof(unsigned int);
-		    logger.debug("SOCKS", shmea::GString::format("endPadding: %u", endPadding));
+		    logger->debug("SOCKS", shmea::GString::format("endPadding: %u", endPadding));
 		}
 
 		unsigned int headerOffset = 0;
@@ -306,18 +310,18 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 
 		eText += newStr;
 
-		//logger.debug("SOCKS", shmea::GString::format("eByteCounter: %u/%u/%u", eByteCounter, eText.length(), eTotal));
+		//logger->debug("SOCKS", shmea::GString::format("eByteCounter: %u/%u/%u", eByteCounter, eText.length(), eTotal));
 	} while ((eByteCounter < eTotal) || (readOverflowLen > 0));
 
 	// We read a part of the next request
 	unsigned int extraSize = eByteCounter - eTotal;
 	if(extraSize > 0)
 	{
-	    //logger.debug("SOCKS", shmea::GString::format("Extra Size: %u", extraSize));
+	    //logger->debug("SOCKS", shmea::GString::format("Extra Size: %u", extraSize));
 	    origin->overflow = eText.substr(eTotal);
 
 	    eText = eText.substr(0, eByteCounter-extraSize-sizeof(int)*2);
-	    //logger.debug("SOCKS", shmea::GString::format("new-eTextLen: %u", eText.length()));
+	    //logger->debug("SOCKS", shmea::GString::format("new-eTextLen: %u", eText.length()));
 	}
 	else
 	    origin->overflow = "";
@@ -328,23 +332,23 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	crypt.decrypt((int64_t*)eText.c_str(), key, eText.length() / 8);
 
 	if((eText.length()-crypt.sizeClaimed*sizeof(int64_t)) > 0)
-	    logger.verbose("SOCKS", shmea::GString::format("CryptOverrun: %u", eText.length()-crypt.sizeClaimed*sizeof(int64_t)));
+	    logger->warning("SOCKS", shmea::GString::format("CryptOverrun: %u", eText.length()-crypt.sizeClaimed*sizeof(int64_t)));
 
 	if (crypt.error)
 	{
-	    logger.error("CRYPT", shmea::GString::format("Readside Error: %d", crypt.error));
+	    logger->error("CRYPT", shmea::GString::format("Readside Error: %d", crypt.error));
 	    return;
 	}
 
-	//logger.debug("SOCKS", shmea::GString::format("crypt.sizeClaimed: %lu", crypt.sizeClaimed*sizeof(int64_t)));
+	//logger->debug("SOCKS", shmea::GString::format("crypt.sizeClaimed: %lu", crypt.sizeClaimed*sizeof(int64_t)));
 	if(crypt.sizeClaimed*sizeof(int64_t) != eTotal-(sizeof(int)*2))
 	{
-	    logger.error("SOCKS", shmea::GString::format("RCV Misalignment: %lu != %lu", crypt.sizeClaimed*sizeof(int64_t), eTotal-(sizeof(int)*2)));
+	    logger->error("SOCKS", shmea::GString::format("RCV Misalignment: %lu != %lu", crypt.sizeClaimed*sizeof(int64_t), eTotal-(sizeof(int)*2)));
 	    return;
 	}
 	else
 	{
-	    logger.verbose("SOCKS", shmea::GString::format("RCV Success: %lu == %lu", (crypt.sizeClaimed*sizeof(int64_t))+(sizeof(int)*2), eTotal));
+	    logger->verbose("SOCKS", shmea::GString::format("RCV Success: %lu == %lu", (crypt.sizeClaimed*sizeof(int64_t))+(sizeof(int)*2), eTotal));
 	}
 
 	//if (crypt.sizeCurrent < crypt.sizeClaimed)
@@ -374,7 +378,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	shmea::GString rawData = shmea::Serializable::Serialize(cData);
 	if (rawData.length() == 0)
 	{
-		logger.error("SOCKS", "[WRITER] Error: 0");
+		logger->error("SOCKS", "[WRITER] Error: 0");
 		return -1;
 	}
 
@@ -384,7 +388,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 
 	if (crypt.error)
 	{
-		logger.error("CRYPT", shmea::GString::format("Writeside Error: %d", crypt.error));
+		logger->error("CRYPT", shmea::GString::format("Writeside Error: %d", crypt.error));
 		return -1;
 	}
 
@@ -410,7 +414,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	shmea::GString sizeInt = shmea::GString((const char*)&newBlockSize, sizeof(unsigned int));
 	shmea::GString paddingInt = shmea::GString((const char*)&newPadding, sizeof(unsigned int));
 
-	logger.debug("SOCKS", shmea::GString::format("newBlockSize: %u", newBlockSize));
+	logger->debug("SOCKS", shmea::GString::format("newBlockSize: %u", newBlockSize));
 	unsigned int zeros = 0;
 	newStr += shmea::GString((const char*)&zeros, newPadding);
 	newStr = sizeInt + paddingInt + newStr;
@@ -432,9 +436,9 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	}
 
 	if ((writeLen != writeStr.length()) || (newBlockSize != newStr.length()))
-	    logger.error("SOCKS", shmea::GString::format("Write Error: %u/%u : %u/%u", writeLen, writeStr.length(), newBlockSize, newStr.length()));
+	    logger->error("SOCKS", shmea::GString::format("Write Error: %u/%u : %u/%u", writeLen, writeStr.length(), newBlockSize, newStr.length()));
 	else
-	    logger.verbose("SOCKS", shmea::GString::format("Write Success: %u/%u : %u/%u", writeLen, writeStr.length(), newBlockSize, newStr.length()));
+	    logger->verbose("SOCKS", shmea::GString::format("Write Success: %u/%u : %u/%u", writeLen, writeStr.length(), newBlockSize, newStr.length()));
 
 	// write to the sock
 	return writeLen;
@@ -479,7 +483,7 @@ bool Sockets::readLists(Connection* origin)
 			inboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, cData));
 		else
 		{
-			logger.warning("SOCKS", shmea::GString::format("ServiceNum colision: %ld !!!!", serviceNum));
+			logger->warning("SOCKS", shmea::GString::format("ServiceNum colision: %ld !!!!", serviceNum));
 			inboundLists[serviceNum] = cData;
 		}
 
@@ -560,7 +564,7 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, 
 		outboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, cData));
 	else
 	{
-		logger.warning("SOCKS", shmea::GString::format("ServiceNum colision: %ld !!!!", serviceNum));
+		logger->warning("SOCKS", shmea::GString::format("ServiceNum colision: %ld !!!!", serviceNum));
 		outboundLists[serviceNum] = cData;
 	}
 
