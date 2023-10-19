@@ -67,12 +67,12 @@ public:
 
 		// get the new encryption key
 		int64_t newKey = cList.getLong(1);
-		//printf("newKeyA: %ld\n", newKey);
+		//printf("newKeyA: %ld", newKey);
 
 		// Set the new Connection key
 		destination->setKey(newKey);
 
-		printf("Handshake_Client: %s\n", destination->getName().c_str());
+		serverInstance->logger->info("SRVC", shmea::GString::format("Handshake_Client: %s", destination->getName().c_str()));
 
 		return NULL;
 	}
