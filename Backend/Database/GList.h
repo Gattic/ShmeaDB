@@ -19,6 +19,7 @@
 
 #include "GType.h"
 #include "GString.h"
+#include "GVector.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@ class GList
 
 private:
 	//
-	std::vector<GType> items;
+	GVector<GType> items;
 	float xMin;
 	float xMax;
 	float xRange;

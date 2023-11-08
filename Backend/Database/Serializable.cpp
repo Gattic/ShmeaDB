@@ -19,11 +19,13 @@
 #include "GTable.h"
 #include "GType.h"
 #include "GObject.h"
+#include "GVector.h"
 
 using namespace shmea;
 
 const char Serializable::ESC_CHAR = '%';
-const GString Serializable::NEED_ESCAPING = "%,\\|";
+/* const GString Serializable::NEED_ESCAPING = "%,\\|"; */
+const char* Serializable::NEED_ESCAPING = "%,\\|";
 
 /*!
  * @brief escape separators
@@ -38,7 +40,7 @@ GString Serializable::escapeSeparators(const GType& serial)
 	GString newSerial = serial;
 	for (unsigned int i = 0; i < newSerial.size(); ++i)
 	{
-		if (Serializable::NEED_ESCAPING.cfind(newSerial[i]) == GString::npos)
+		if (GType::cfind(newSerial[i], Serializable::NEED_ESCAPING, 4) == GString::npos)
 			continue;
 
 		if(i == 0)
@@ -550,7 +552,8 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	int cIndex = bundleIndex;
 
 	// the header
-	std::vector<GString> header;
+	/* std::vector<GString> header; */
+	shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -627,7 +630,8 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	cIndex = bundleIndex;
 
 	// the header
-	std::vector<GString> header;
+	/* std::vector<GString> header; */
+	shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -693,7 +697,8 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
 
 		// the header
-		std::vector<GString> header;
+		/* std::vector<GString> header; */
+		GVector<GString> header;
 		for (int i = 0; i < columns; ++i)
 			header.push_back(cList.getString(cIndex + i));
 

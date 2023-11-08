@@ -8,6 +8,7 @@ include_directories(${PNG_INCLUDE_DIRS})
 set(DB_src_files
 	png-helper.cpp
 	image.cpp
+	GVector.h
 	GPointer.h
 	GType.cpp
 	GType_helpers.cpp

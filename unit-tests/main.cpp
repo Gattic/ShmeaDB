@@ -13,12 +13,13 @@
 #include "Backend/Database/GTable-test.h"
 #include "Backend/Database/GObjects-test.h"
 #include "Backend/Networking/crypt-test.h"
+#include "Backend/Database/GVector-test.h"
 
 int main(int argc, char* argv[])
 {
 	GTypeUnitTest();
 	GStringUnitTest();
-	GStringUnitTest();
+	GVectorUnitTest();
 	GPointerUnitTest();
 	GListUnitTest();
 	GTableUnitTest();
