@@ -30,7 +30,9 @@ using namespace GNet;
 
 GNet::GServer::GServer()
 {
-	socks = NULL;
+	logger = shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO));
+	logger->setPrintLevel(shmea::GLogger::LOG_INFO);
+	socks = shmea::GPointer<Sockets>(new Sockets(this));
 	sockfd = -1;
 	LOCAL_ONLY = false;
 	running = false;
@@ -70,10 +72,6 @@ GNet::GServer::~GServer()
 
 	LOCAL_ONLY = true;
 	sockfd = -1;
-
-	if (socks)
-		delete socks;
-	socks = NULL;
 
 	if (localConnection)
 		delete localConnection;
@@ -206,13 +204,12 @@ void GNet::GServer::stop()
 	pthread_join(*writerThread, NULL);
 }
 
-void GNet::GServer::run(bool _networkingDisabled)
+void GNet::GServer::run(shmea::GString newPort, bool _networkingDisabled)
 {
 	LOCAL_ONLY = _networkingDisabled;
 	running = true;
 
-	socks = new Sockets("45019");
-
+	socks->setPort(newPort);
 	// Launch the server server
 	pthread_create(commandThread, NULL, commandLauncher, this);
 	pthread_create(writerThread, NULL, ListWLauncher, this);

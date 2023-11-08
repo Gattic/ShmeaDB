@@ -18,6 +18,7 @@
 #define GVECTOR_H_
 
 // TODO: REPLACE ASSERT WITH GRESULT
+#include "GPointer.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -36,7 +37,7 @@ private:
 	/* T* m_data; */
 	size_type m_size;
 	size_type m_capacity;
-	T* m_data;
+	shmea::GPointer<T, array_deleter<T> > m_data;
 public:
 	GVector() : m_size(0), m_capacity(0), m_data(0) {}
 
@@ -61,7 +62,7 @@ public:
 		for (size_type i = 0; i < value.m_size; i++)
 			this->push_back(value[i]);
 	}
-	virtual ~GVector() { delete [] m_data; }
+	virtual ~GVector() { this->clear(); }
 
 	iterator begin() { return m_data; }
 	const_iterator cbegin() const { return m_data; }
@@ -77,13 +78,12 @@ public:
 	{
 		if (new_cap <= m_capacity) return;
 
-		T* newBuffer = new T[new_cap];
+		shmea::GPointer<T, array_deleter<T> > newBuffer(new T[new_cap]);
 
 		for (unsigned int i = 0; i < m_size; i++)
 			newBuffer[i] = m_data[i];
 
 		m_capacity = new_cap;
-		delete [] m_data;
 		m_data = newBuffer;
 	}
 	void clear() { m_size = 0; }
@@ -156,7 +156,7 @@ private:
 		if (m_capacity == 0)
 		{
 			/* m_data = new T[1]; */
-			m_data = new T[1];
+			m_data = shmea::GPointer<T, array_deleter<T> >(new T[1]);
 			m_capacity = 1;
 			return;
 		}

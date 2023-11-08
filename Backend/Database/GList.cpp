@@ -419,6 +419,7 @@ void GList::standardize()
 	xRange = xMax - xMin;
 	if (xRange == 0.0f)
 		return;
+	
 	// iterate through the rows
 	for (unsigned int r = 0; r < size(); ++r)
 	{
@@ -471,6 +472,7 @@ void GList::standardize()
 			cell = (((cell - xMin) / (xRange)) - 0.5f);
 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
 		}
+		items[r] = cCell;
 	}
 }
 

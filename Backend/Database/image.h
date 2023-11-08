@@ -26,6 +26,7 @@ class RUBackgroundComponent;
 namespace shmea {
 
 class GString;
+class GList;
 
 // 32 bit color pixel density
 class RGBA
@@ -158,6 +159,15 @@ public:
 	bool SavePPM(const GString&) const;
 	bool SavePBM(const GString&) const;
 	void LoadBMP(const GString&);
+
+	void LoadPNG(const GString&);
+
+	shmea::GList flatten() const;
+	bool unflatten(const shmea::GList&);
+
+	shmea::GString hash() const;
+	bool operator<(const Image&) const;
+	bool operator>(const Image&) const;
 
 };
 };

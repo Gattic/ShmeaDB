@@ -66,7 +66,7 @@ void GPointerUnitTest()
 	G_assert (__FILE__, __LINE__, "==============list1[3] Failed==============", (*p1ShallowCopy)[3] == "where");
 	G_assert (__FILE__, __LINE__, "==============list1[4] Failed==============", (*p1ShallowCopy)[4] == "why");
 
-	GPointer<int> pint(new int[3]);
+	GPointer<int, array_deleter<int> > pint(new int[3]);
 	pint[0] = 5;
 	pint[1] = 6;
 	pint[2] = 7;

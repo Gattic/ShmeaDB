@@ -47,7 +47,7 @@ public:
 		increment();
 	}
 
-	GPointer(const GPointer<T>& g2)
+	GPointer(const GPointer<T, Deleter>& g2)
 	{
 		data = NULL;
 		refCount = NULL;
@@ -138,7 +138,7 @@ public:
 		return (data!=NULL);
 	}
 
-	GPointer<T>& copy(const GPointer<T>& g2)
+	GPointer<T, Deleter>& copy(const GPointer<T, Deleter>& g2)
 	{
 		if(this != &g2)
 		{
@@ -156,7 +156,7 @@ public:
 		return *this;
 	}
 
-	GPointer<T>& operator=(const GPointer<T>& g2)
+	GPointer<T, Deleter>& operator=(const GPointer<T, Deleter>& g2)
 	{
 		return copy(g2);
 	}
