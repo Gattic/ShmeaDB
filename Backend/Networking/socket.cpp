@@ -328,39 +328,48 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 
 	// Decrypt
 	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
-	//crypt.decryptHeader(eText, key);
-	crypt.decrypt((int64_t*)eText.c_str(), key, eText.length() / 8);
-
-	if((eText.length()-crypt.sizeClaimed*sizeof(int64_t)) > 0)
-	    logger->warning("SOCKS", shmea::GString::format("CryptOverrun: %u", eText.length()-crypt.sizeClaimed*sizeof(int64_t)));
-
-	if (crypt.error)
+	if(origin->isEncrypted())
 	{
-	    logger->error("CRYPT", shmea::GString::format("Readside Error: %d", crypt.error));
-	    return;
-	}
+	    //crypt.decryptHeader(eText, key);
+	    crypt.decrypt((int64_t*)eText.c_str(), key, eText.length() / 8);
 
-	//logger->debug("SOCKS", shmea::GString::format("crypt.sizeClaimed: %lu", crypt.sizeClaimed*sizeof(int64_t)));
-	if(crypt.sizeClaimed*sizeof(int64_t) != eTotal-(sizeof(int)*2))
-	{
-	    logger->error("SOCKS", shmea::GString::format("RCV Misalignment: %lu != %lu", crypt.sizeClaimed*sizeof(int64_t), eTotal-(sizeof(int)*2)));
-	    return;
+	    if((eText.length()-crypt.sizeClaimed*sizeof(int64_t)) > 0)
+	        logger->warning("SOCKS", shmea::GString::format("CryptOverrun: %u", eText.length()-crypt.sizeClaimed*sizeof(int64_t)));
+
+	    if (crypt.error)
+	    {
+	        logger->error("CRYPT", shmea::GString::format("Readside Error: %d", crypt.error));
+	        return;
+	    }
+
+	    //logger->debug("SOCKS", shmea::GString::format("crypt.sizeClaimed: %lu", crypt.sizeClaimed*sizeof(int64_t)));
+	    if(crypt.sizeClaimed*sizeof(int64_t) != eTotal-(sizeof(int)*2))
+	    {
+	        logger->error("SOCKS", shmea::GString::format("RCV Misalignment: %lu != %lu", crypt.sizeClaimed*sizeof(int64_t), eTotal-(sizeof(int)*2)));
+	        return;
+	    }
+	    else
+	    {
+	        logger->verbose("SOCKS", shmea::GString::format("RCV Success: %lu == %lu", (crypt.sizeClaimed*sizeof(int64_t))+(sizeof(int)*2), eTotal));
+	    }
+
+	    //if (crypt.sizeCurrent < crypt.sizeClaimed)
+	    //else if (crypt.sizeCurrent == crypt.sizeClaimed)
+
+	    // Recreate the ServiceData to run later
+	    shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
+	    shmea::GString cStr = crypt.dText;
+	    shmea::Serializable::Deserialize(cData, cStr);
+	    cData->setTimesent(crypt.getTimesent());
+	    srvcList.push_back(cData); // minus the key
 	}
 	else
 	{
-	    logger->verbose("SOCKS", shmea::GString::format("RCV Success: %lu == %lu", (crypt.sizeClaimed*sizeof(int64_t))+(sizeof(int)*2), eTotal));
+	    // Recreate the ServiceData to run later
+	    shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
+	    shmea::Serializable::Deserialize(cData, eText);
+	    srvcList.push_back(cData);
 	}
-
-	//if (crypt.sizeCurrent < crypt.sizeClaimed)
-	//else if (crypt.sizeCurrent == crypt.sizeClaimed)
-
-	// Recreate the ServiceData to run later
-	shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
-	shmea::GString cStr = crypt.dText;
-	shmea::Serializable::Deserialize(cData, cStr);
-	cData->setTimesent(crypt.getTimesent());
-	srvcList.push_back(cData); // minus the key
-
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
@@ -384,30 +393,37 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 
 	// Encrypt
 	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
-	crypt.encrypt(rawData.c_str(), key, rawData.length());
-
-	if (crypt.error)
+	if(cConnection->isEncrypted())
 	{
-		logger->error("CRYPT", shmea::GString::format("Writeside Error: %d", crypt.error));
-		return -1;
+	    crypt.encrypt(rawData.c_str(), key, rawData.length());
+
+	    if (crypt.error)
+	    {
+	    	logger->error("CRYPT", shmea::GString::format("Writeside Error: %d", crypt.error));
+	    	return -1;
+	    }
+
+	    /*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
+	    printf("Key Write: %lld\n", key);
+	    for(int i=0;i<crypt.sizeClaimed;++i)
+	    	printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText.substr(i*sizeof(int64_t), sizeof(int64_t));*/
+
+	    /*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
+	    printf("Key Write: %lld\n", key);
+	    if(crypt.dText[crypt.sizeClaimed-1] == 0)
+	    for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
+	    {
+	    	printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
+	    	if(crypt.dText[rCounter] == 0x7C)
+	    		printf("-------------------------------\n");
+	    }*/
 	}
 
-	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
-	printf("Key Write: %lld\n", key);
-	for(int i=0;i<crypt.sizeClaimed;++i)
-		printf("eTextWrite[%d]: 0x%016llX\n", i, crypt.eText.substr(i*sizeof(int64_t), sizeof(int64_t));*/
-
-	/*printf("WRITE-dText[%d]: %s\n", crypt.sizeClaimed, crypt.dText);
-	printf("Key Write: %lld\n", key);
-	if(crypt.dText[crypt.sizeClaimed-1] == 0)
-	for(unsigned int rCounter=0;rCounter<crypt.sizeClaimed;++rCounter)
-	{
-		printf("WRITE[%u]: 0x%02X:%c\n", rCounter, crypt.dText[rCounter], crypt.dText[rCounter]);
-		if(crypt.dText[rCounter] == 0x7C)
-			printf("-------------------------------\n");
-	}*/
-
-	shmea::GString newStr = crypt.eText;
+	shmea::GString newStr = "";
+	if(cConnection->isEncrypted())
+	    newStr = crypt.eText;
+	else
+	    newStr = rawData;
 	unsigned int newBlockSize = newStr.length() + 8; // plus size and padding
 	unsigned int newPadding = newStr.length() % 4; // end 0s for even writes
 	newBlockSize += newPadding;
