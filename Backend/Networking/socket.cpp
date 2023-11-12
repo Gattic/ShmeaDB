@@ -69,7 +69,7 @@ void Sockets::setPort(const shmea::GString newPort)
 	PORT = newPort;
 }
 
-int Sockets::openClientConnection(const shmea::GString& serverIP)
+int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::GString& serverPort)
 {
 	struct addrinfo* result;
 	struct addrinfo hints;

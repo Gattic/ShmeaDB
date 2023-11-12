@@ -189,9 +189,14 @@ GNet::Service* GNet::GServer::DoService(shmea::GString cCommand, shmea::GString 
 	return NULL;
 }
 
-const bool& GNet::GServer::getRunning()
+const bool& GNet::GServer::getRunning() const
 {
 	return running;
+}
+
+shmea::GString GNet::GServer::getPort() const
+{
+	return socks->getPort();
 }
 
 void GNet::GServer::stop()
@@ -327,12 +332,40 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 	return NULL;
 }
 
-GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP)
+GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString newPort)
 {
 	std::map<shmea::GString, Connection*>::iterator itr = serverConnections.find(newServerIP);
-
 	if (itr != serverConnections.end())
 		return itr->second;
+
+	itr = clientConnections.find(newServerIP);
+	if (itr != clientConnections.end())
+		return itr->second;
+
+	return NULL;
+}
+
+GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName)
+{
+	std::map<shmea::GString, Connection*>::const_iterator itr = serverConnections.begin();
+	for (; itr != serverConnections.end(); ++itr)
+	{
+		Connection* cConnection = (itr->second);
+		if (cConnection->getName() != clientName)
+			continue;
+
+		return cConnection;
+	}
+
+	itr = clientConnections.begin();
+	for (; itr != clientConnections.end(); ++itr)
+	{
+		Connection* cConnection = (itr->second);
+		if (cConnection->getName() != clientName)
+			continue;
+
+		return cConnection;
+	}
 
 	return NULL;
 }
@@ -508,7 +541,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		return;
 	GServer* serverInstance = x->serverInstance;
 
-	int sockfd2 = serverInstance->socks->openClientConnection(x->serverIP);
+	int sockfd2 = serverInstance->socks->openClientConnection(x->serverIP, x->serverPort);
 	if (sockfd2 < 0)
 	{
 		if (x->serverIP == "127.0.0.1")
@@ -539,7 +572,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	socks->writeConnection(destination, sockfd2, cData);
 }
 
-void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& clientName)
+void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& serverPort, const shmea::GString& clientName)
 {
 	// login to the server
 	if (serverConnections.find(serverIP) == serverConnections.end())
@@ -548,6 +581,7 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 		x->serverInstance = this;
 		x->clientName = clientName;
 		x->serverIP = serverIP;
+		x->serverPort = serverPort;
 
 		// Launch the Connection with a connection request
 		pthread_t* launchInstanceThread =
@@ -605,7 +639,7 @@ void GNet::GServer::ListWriter(void*)
 void GNet::GServer::LaunchLocalInstance(const shmea::GString& clientName)
 {
 	shmea::GString serverIP = "127.0.0.1";
-	LaunchInstance(serverIP, clientName);
+	LaunchInstance(serverIP, socks->getPort(), clientName);
 }
 
 void GNet::GServer::LogoutInstance(Connection* cConnection)
