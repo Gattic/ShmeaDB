@@ -34,6 +34,7 @@ GNet::GServer::GServer()
 	logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	socks = shmea::GPointer<Sockets>(new Sockets(this));
 	sockfd = -1;
+	cryptEnabled = true;
 	LOCAL_ONLY = false;
 	running = false;
 	localConnection = NULL;
@@ -72,6 +73,7 @@ GNet::GServer::~GServer()
 
 	LOCAL_ONLY = true;
 	sockfd = -1;
+	cryptEnabled = true;
 
 	if (localConnection)
 		delete localConnection;
@@ -223,6 +225,21 @@ void GNet::GServer::run(shmea::GString newPort, bool _networkingDisabled)
 bool GNet::GServer::isNetworkingDisabled()
 {
 	return LOCAL_ONLY;
+}
+
+void GNet::GServer::enableEncryption()
+{
+	cryptEnabled = true;
+}
+
+void GNet::GServer::disableEncryption()
+{
+	cryptEnabled = false;
+}
+
+bool GNet::GServer::isEncryptedByDefault() const
+{
+	return cryptEnabled;
 }
 
 int GNet::GServer::getSockFD()
@@ -557,6 +574,9 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 
 	// create the new server instance and add it to the data structure
 	Connection* destination = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
+	if(!cryptEnabled)
+		destination->disableEncryption();
+
 	pthread_mutex_lock(serverMutex);
 	serverConnections.insert(std::pair<shmea::GString, Connection*>(x->serverIP, destination));
 	pthread_mutex_unlock(serverMutex);
