@@ -322,6 +322,9 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 
 			// create the new client instance and add it to the data structure
 			Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
+			if(!cryptEnabled)
+				cConnection->disableEncryption();
+
 			pthread_mutex_lock(clientMutex);
 			clientConnections.insert(std::pair<shmea::GString, Connection*>(clientIP, cConnection));
 			pthread_mutex_unlock(clientMutex);
