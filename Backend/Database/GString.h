@@ -26,6 +26,8 @@
 #include <string>
 #include <stdexcept>
 #include "GType.h"
+#include <vector>
+#include <stdarg.h>
 
 namespace shmea {
 
@@ -93,6 +95,7 @@ public:
 	// Strng Helpers
 	void initEmpty();
 	GString substr(unsigned int, unsigned int=npos) const;
+	std::vector<GString> split(const shmea::GString&) const;
 
 	// Member helpers
 	static GType Typify(const char*, unsigned int);
@@ -106,6 +109,7 @@ public:
 	GString toggleCase() const;
 	GString trim() const;
 	GString Stringify() const;
+	static shmea::GString format(const char*, ...);
 
 	// Static helpers
 	static bool isWhitespace(char);

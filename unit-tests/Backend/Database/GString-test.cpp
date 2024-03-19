@@ -8,6 +8,7 @@
 #include "GString-test.h"
 #include "../../unit-test.h"
 #include "../../../Backend/Database/GString.h"
+#include <vector>
 
 // === This is the primary unit testing function:
 // void G_assert(const char* fileName, int lineNo, const char* failureMsg, bool expr)
@@ -54,6 +55,21 @@ void GStringUnitTest()
 	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(0,0).length() == 0);
 	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(3) == "Test123!?!!");
 	G_assert (__FILE__, __LINE__, "==============GString::substr Failed==============", str.substr(3, 4) == "Test");
+
+
+	std::vector<shmea::GString> splitExpected;
+	splitExpected.push_back("this");
+	splitExpected.push_back("is");
+	splitExpected.push_back("a");
+	splitExpected.push_back("sentence");
+
+	std::vector<shmea::GString> splitOutcome = shmea::GString("this is a sentence").split(" ");
+
+	G_assert (__FILE__, __LINE__, "==============GString::split Failed==============", splitExpected.size() == splitOutcome.size());
+	G_assert (__FILE__, __LINE__, "==============GString::split Failed==============", splitExpected[0] == splitOutcome[0]);
+	G_assert (__FILE__, __LINE__, "==============GString::split Failed==============", splitExpected[1] == splitOutcome[1]);
+	G_assert (__FILE__, __LINE__, "==============GString::split Failed==============", splitExpected[2] == splitOutcome[2]);
+	G_assert (__FILE__, __LINE__, "==============GString::split Failed==============", splitExpected[3] == splitOutcome[3]);
 
 	G_assert (__FILE__, __LINE__, "==============GString::isWhitespace Failed==============", shmea::GString::isWhitespace(' '));
 	G_assert (__FILE__, __LINE__, "==============GString::isWhitespace Failed==============", shmea::GString::isWhitespace('\t'));
@@ -116,6 +132,13 @@ void GStringUnitTest()
 	G_assert (__FILE__, __LINE__, "==============GString::trim Failed==============", shmea::GString::trim("Abc  ") == "Abc");
 	G_assert (__FILE__, __LINE__, "==============GString::trim Failed==============", shmea::GString::trim("  Abc") == "Abc");
 	G_assert (__FILE__, __LINE__, "==============GString::trim Failed==============", shmea::GString::trim("  Abc  ") == "Abc");
+
+	shmea::GString alphabet = "abcdefghijklmnopqrstuvwxyz";
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("a", 1) == 0);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("z", 1) == 25);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("def", 1) == 3);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("csddf", 5) == shmea::GString::npos);
+	G_assert (__FILE__, __LINE__, "==============GType::find Failed==============", alphabet.find("zsdfsdf", 7) == shmea::GString::npos);
 
 	/*static GString charTOstring(char);
 	static GString shortTOstring(short);

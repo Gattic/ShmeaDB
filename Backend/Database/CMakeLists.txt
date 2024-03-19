@@ -2,28 +2,34 @@
 include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
+find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIRS})
+
 set(DB_src_files
+	png-helper.cpp
 	image.cpp
+	GPointer.h
 	GType.cpp
 	GType_helpers.cpp
 	GType_operators.cpp
-	GList.cpp
-	GTable.cpp
-	GObject.cpp
 	GString.cpp
 	GString_helpers.cpp
-	GPointer.h
+	GList.cpp
+	GLogger.cpp
+	GTable.cpp
+	GObject.cpp
 	GAnalysis.cpp
 	maxid.cpp
 	SaveTable.cpp
 	SaveFolder.cpp
 	Serializable.cpp
 	ServiceData.cpp
+	standardizable.cpp
 )
 add_library(DB ${DB_src_files})
 
 #Link libraries
-target_link_libraries(DB ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(DB ${CMAKE_THREAD_LIBS_INIT} ${PNG_LIBRARIES})
 
 install(TARGETS DB EXPORT shmeaConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}

@@ -118,6 +118,32 @@ void Crypt::decrypt(const int64_t* src, int64_t key, unsigned int srcLen)
 	sizeCurrent = i;
 }
 
+void Crypt::decryptHeader(const shmea::GString& newText, int64_t key)
+{
+	// info
+	eText = newText;
+
+	int64_t y = *(int64_t*)eText.substr(0, sizeof(int64_t)).c_str(); // switch to little endian
+	int64_t firstLine = y / key;
+	sizeClaimed = (int)(firstLine / LEN_OFFSET);
+	unsigned int linesToRead = (eText.length() > sizeClaimed) ? sizeClaimed : eText.length();
+	if (linesToRead <= 0)
+	{
+		error = 2;
+		return;
+	}
+
+	// I can make this assumption because this time already happened lol
+	cTime = firstLine - (((int64_t)sizeClaimed) * LEN_OFFSET);
+	if (cTime < LEN_OFFSET / 10)
+	{
+		error = 3;
+		return;
+	}
+
+	sizeCurrent = 0;
+}
+
 int64_t Crypt::getTimesent() const
 {
 	return cTime;

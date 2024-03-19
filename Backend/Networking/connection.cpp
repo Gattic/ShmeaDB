@@ -27,6 +27,7 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	sockfd = newSockFD;
 	overflow = "";
 	connectionType = newConnectionType;
+	cryptEnabled = true;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
 }
@@ -38,6 +39,7 @@ Connection::Connection(const Connection& instance2)
 	sockfd = instance2.sockfd;
 	overflow = instance2.overflow;
 	connectionType = instance2.connectionType;
+	cryptEnabled = instance2.cryptEnabled;
 	key = instance2.key; // shouldnt matter what this value is
 	finished = instance2.finished;
 }
@@ -50,6 +52,7 @@ Connection::~Connection()
 	ip = "";
 	sockfd = -1;
 	connectionType = EMPTY_TYPE;
+	cryptEnabled = true;
 	key = 420l;
 	finished = false;
 }
@@ -82,6 +85,12 @@ int64_t Connection::getKey() const
 {
 	return key;
 }
+
+bool Connection::isEncrypted() const
+{
+	return cryptEnabled;
+}
+
 bool Connection::isFinished() const
 {
 	return finished;
@@ -95,6 +104,16 @@ void Connection::setName(shmea::GString newName)
 void Connection::setIP(shmea::GString newIP)
 {
 	ip = newIP;
+}
+
+void Connection::enableEncryption()
+{
+	cryptEnabled = true;
+}
+
+void Connection::disableEncryption()
+{
+	cryptEnabled = false;
 }
 
 void Connection::setKey(int64_t newKey)

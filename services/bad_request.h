@@ -45,7 +45,7 @@ public:
 
 	shmea::ServiceData* execute(const shmea::ServiceData* data)
 	{
-		printf("[SRVC] Bad Request\n");
+		serverInstance->logger->info("SRVC", "Bad Request");
 		return NULL;
 	}
 

@@ -14,62 +14,73 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _LOGOUT_SERVER
-#define _LOGOUT_SERVER
+#include "standardizable.h"
 
-#include "../Backend/Database/GString.h"
-#include "../Backend/Database/ServiceData.h"
-#include "../Backend/Networking/main.h"
-#include "../Backend/Networking/service.h"
+using namespace shmea;
 
-class Logout_Server : public GNet::Service
+GStandardizable::GStandardizable()
 {
-private:
-	GNet::GServer* serverInstance;
+	xMin = FLT_MAX;
+	xMax = FLT_MIN;
+	yMin = FLT_MAX;
+	yMax = FLT_MIN;
+	redoRange = true;
+}
 
-public:
-	Logout_Server()
-	{
-		serverInstance = NULL;
-	}
+GStandardizable::~GStandardizable()
+{
+	clear();
+}
 
-	Logout_Server(GNet::GServer* newInstance)
-	{
-		serverInstance = newInstance;
-	}
+float GStandardizable::getXMin() const
+{
+	return xMin;
+}
 
-	~Logout_Server()
-	{
-		serverInstance = NULL; // Not ours to delete
-	}
+float GStandardizable::getXMax() const
+{
+	return xMax;
+}
 
-	shmea::ServiceData* execute(const shmea::ServiceData* data)
-	{
-		class GNet::Connection* destination = data->getConnection();
+float GStandardizable::getYMin() const
+{
+	return yMin;
+}
 
-		if (!serverInstance)
-			return NULL;
+float GStandardizable::getYMax() const
+{
+	return yMax;
+}
 
-		serverInstance->logger->info("SRVC", shmea::GString::format("[SLOGOUT] %s", destination->getIP().c_str()));
+void GStandardizable::setXMin(float newXMin)
+{
+	if(newXMin < xMin)
+		xMin = newXMin;
+}
 
-		// delete it from the data structure
-		serverInstance->removeServerConnection(destination);
+void GStandardizable::setXMax(float newXMax)
+{
+	if(newXMax > xMax)
+		xMax = newXMax;
+}
 
-		// Clean up the Connection
-		destination->finish();
+void GStandardizable::setYMin(float newYMin)
+{
+	if(newYMin < yMin)
+		yMin = newYMin;
+}
 
-		return NULL;
-	}
+void GStandardizable::setYMax(float newYMax)
+{
+	if(newYMax > yMax)
+		yMax = newYMax;
+}
 
-	GNet::Service* MakeService(GNet::GServer* newInstance) const
-	{
-		return new Logout_Server(newInstance);
-	}
-
-	shmea::GString getName() const
-	{
-		return "Logout_Server";
-	}
-};
-
-#endif
+void GStandardizable::clear()
+{
+	xMin = FLT_MAX;
+	xMax = FLT_MIN;
+	yMin = FLT_MAX;
+	yMax = FLT_MIN;
+	redoRange = true;
+}

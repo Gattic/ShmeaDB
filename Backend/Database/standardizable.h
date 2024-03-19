@@ -14,62 +14,42 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifndef _LOGOUT_SERVER
-#define _LOGOUT_SERVER
+#ifndef _GSTANDARDIZABLE
+#define _GSTANDARDIZABLE
 
-#include "../Backend/Database/GString.h"
-#include "../Backend/Database/ServiceData.h"
-#include "../Backend/Networking/main.h"
-#include "../Backend/Networking/service.h"
+#include <cfloat>
+#include "GList.h"
 
-class Logout_Server : public GNet::Service
+namespace shmea {
+
+class GStandardizable
 {
-private:
-	GNet::GServer* serverInstance;
+protected:
+	float xMin;
+	float xMax;
+	float yMin;
+	float yMax;
 
 public:
-	Logout_Server()
-	{
-		serverInstance = NULL;
-	}
 
-	Logout_Server(GNet::GServer* newInstance)
-	{
-		serverInstance = newInstance;
-	}
+	bool redoRange;
 
-	~Logout_Server()
-	{
-		serverInstance = NULL; // Not ours to delete
-	}
+	GStandardizable();
+	virtual ~GStandardizable();
 
-	shmea::ServiceData* execute(const shmea::ServiceData* data)
-	{
-		class GNet::Connection* destination = data->getConnection();
+	// gets
+	float getXMin() const;
+	float getXMax() const;
+	float getYMin() const;
+	float getYMax() const;
 
-		if (!serverInstance)
-			return NULL;
-
-		serverInstance->logger->info("SRVC", shmea::GString::format("[SLOGOUT] %s", destination->getIP().c_str()));
-
-		// delete it from the data structure
-		serverInstance->removeServerConnection(destination);
-
-		// Clean up the Connection
-		destination->finish();
-
-		return NULL;
-	}
-
-	GNet::Service* MakeService(GNet::GServer* newInstance) const
-	{
-		return new Logout_Server(newInstance);
-	}
-
-	shmea::GString getName() const
-	{
-		return "Logout_Server";
-	}
+	// sets
+	void setXMin(float);
+	void setXMax(float);
+	void setYMin(float);
+	void setYMax(float);
+	virtual void clear();
+};
 };
 
 #endif
