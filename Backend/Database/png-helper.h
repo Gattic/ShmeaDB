@@ -20,7 +20,7 @@
 #include <iostream>
 #include <cstring>
 #include <cmath>
-#include <png.h>
+//#include <png.h>
 
 namespace shmea
 {
