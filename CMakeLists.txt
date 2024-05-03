@@ -42,6 +42,7 @@ add_subdirectory("Backend/Networking")
 set(MAIN_SRC_FILES
 	main.cpp
 	main.h
+	g_export.h
 )
 
 add_library(${PROJECT_NAME} SHARED ${MAIN_SRC_FILES})
