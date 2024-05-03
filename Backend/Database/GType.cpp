@@ -146,9 +146,8 @@ char GType::getChar() const
 		return 0;
 
 	// Char Type (match)
-	if (size() != sizeof(char))
-		return 0;
-
+	//if (size() != sizeof(char))
+		//return 0;
 
 	switch (this->getType())
 	{
@@ -181,8 +180,8 @@ short GType::getShort() const
 		return 0;
 
 	// Short Type (match)
-	if (size() != sizeof(short))
-		return 0;
+	//if (size() != sizeof(short))
+		//return 0;
 
 	switch (this->getType())
 	{
@@ -215,8 +214,8 @@ int GType::getInt() const
 		return 0;
 
 	// int Type (match)
-	if (size() != sizeof(int))
-		return 0;
+	//if (size() != sizeof(int))
+		//return 0;
 
 	switch (this->getType())
 	{
@@ -249,8 +248,8 @@ int64_t GType::getLong() const
 		return 0;
 
 	// Long Type (match)
-	if (size() != sizeof(int64_t))
-		return 0;
+	//if (size() != sizeof(int64_t))
+		//return 0;
 
 	switch (this->getType())
 	{
@@ -283,8 +282,8 @@ float GType::getFloat() const
 		return 0;
 
 	// Float Type (match)
-	if (size() != sizeof(float))
-		return 0.0f;
+	//if (size() != sizeof(float))
+		//return 0.0f;
 
 	switch (this->getType())
 	{
@@ -317,8 +316,8 @@ double GType::getDouble() const
 		return 0;
 
 	// Double Type (match)
-	if (size() != sizeof(double))
-		return 0.0f;
+	//if (size() != sizeof(double))
+		//return 0.0f;
 
 	switch (this->getType())
 	{
@@ -351,8 +350,8 @@ bool GType::getBoolean() const
 		return 0;
 
 	// Boolean Type (match)
-	if (size() != sizeof(bool))
-		return false;
+	//if (size() != sizeof(bool))
+		//return false;
 
 	switch (this->getType())
 	{
