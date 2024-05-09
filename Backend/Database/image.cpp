@@ -63,16 +63,18 @@ bool Image::LoadPPM(const GString& fname)
 	data = new RGBA[height * width];
 
 	// flip y so that (0,0) is bottom left corner
-	for (int y = height - 1; y >= 0; y--)
+	//for (unsigned int y = height - 1; y >= 0; y--)
+	for(unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
-		for (int x = 0; x < width; x++)
+		for (unsigned int x = 0; x < width; ++x)
 		{
 			RGBA c;
 			c.r = fgetc(file);
 			c.g = fgetc(file);
 			c.b = fgetc(file);
 			c.a = 0xFF;
-			SetPixel(x, y, c);
+			//SetPixel(x, y, c);
+			SetPixel(x, height - 1 - y, c);
 		}
 	}
 
@@ -132,14 +134,14 @@ bool Image::LoadPBM(const GString& fname)
 	unsigned char* packedData = new unsigned char[rowsize]; // array of row bits to unpack
 
 	// for each line of the image
-	for (int i = 0; i < height; ++i)
+	for (unsigned int i = 0; i < height; ++i)
 	{
 		// read a row from the file of packed data
 		fread(packedData, sizeof(char), rowsize, file);
 		for (int k = 0; k < rowsize; ++k)
 		{											// for each byte in the row
 			unsigned char packed_d = packedData[k]; // temporary char of packed bits
-			for (int j = 0; j < 8; ++j)
+			for (unsigned int j = 0; j < 8; ++j)
 			{
 
 				// special case last byte, might not be enough bits to fill
@@ -189,11 +191,13 @@ bool Image::SavePPM(const GString& filename) const
 
 	// the data
 	// flip y so that (0,0) is bottom left corner
-	for (int y = height - 1; y >= 0; y--)
+	//for (unsigned int y = height - 1; y >= 0; y--)
+	for(unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
-		for (int x = 0; x < width; x++)
+		for (unsigned int x = 0; x < width; ++x)
 		{
-			RGBA v = GetPixel(x, y);
+			//RGBA v = GetPixel(x, y);
+			RGBA v = GetPixel(x, height - 1 - y);
 			fputc((unsigned char)(v.r), file);
 			fputc((unsigned char)(v.g), file);
 			fputc((unsigned char)(v.b), file);
@@ -236,13 +240,13 @@ bool Image::SavePBM(const GString& filename) const
 	unsigned char* packedData = new unsigned char[rowsize]; // row of packed bytes to write
 
 	// Write the image row by row
-	for (int i = 0; i < height; ++i)
+	for (unsigned int i = 0; i < height; ++i)
 	{
 		// pack a row of pixels
 		for (int k = 0; k < rowsize; ++k)
 		{								// for each byte in line to write,
 			unsigned char packed_d = 0; // initialize a packed byte to 0
-			for (int j = 0; j < 8; ++j)
+			for (unsigned int j = 0; j < 8; ++j)
 			{
 				// special case when not enough bits to fill last byte
 				if ((k * 8 + j) == width)
@@ -296,16 +300,18 @@ void Image::LoadBMP(const GString& filename)
 
 	// flip y so that (0,0) is bottom left corner
 	data = new RGBA[height * width];
-	for (int y = height - 1; y >= 0; --y)
+	//for (unsigned int y = height - 1; y >= 0; --y)
+	for (unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
-		for (int x = 0; x < width; ++x)
+		for (unsigned int x = 0; x < width; ++x)
 		{
 			RGBA c;
 			c.a = fgetc(file);
 			c.g = fgetc(file);
 			c.r = fgetc(file);
 			c.b = fgetc(file);
-			SetPixel(x, y, c);
+			//SetPixel(x, y, c);
+			SetPixel(x, height - 1 - y, c);
 		}
 	}
 
@@ -333,9 +339,9 @@ shmea::GList Image::flatten() const
 {
     shmea::GList retList;
 
-    for (int y = 0; y < height; ++y)
+    for (unsigned int y = 0; y < height; ++y)
     {
-	for (int x = 0; x < width; ++x)
+	for (unsigned int x = 0; x < width; ++x)
 	{
 		RGBA c = GetPixel(x, y);
 		retList.addInt(c.r);
@@ -353,10 +359,10 @@ bool Image::unflatten(const shmea::GList& pixels)
     if (pixels.size() != (unsigned int)width * height * 4)
 	return false;
 
-    int i = 0;
-    for (int y = 0; y < height; ++y)
+    unsigned int i = 0;
+    for (unsigned int y = 0; y < height; ++y)
     {
-	for (int x = 0; x < width; ++x)
+	for (unsigned int x = 0; x < width; ++x)
 	{
 	    RGBA c;
 	    c.r = pixels.getInt(i++);
@@ -374,9 +380,9 @@ shmea::GString Image::hash() const
 {
     shmea::GString ret;
 
-    for (int y = 0; y < height; ++y)
+    for (unsigned int y = 0; y < height; ++y)
     {
-	for (int x = 0; x < width; ++x)
+	for (unsigned int x = 0; x < width; ++x)
 	{
 	    RGBA c = GetPixel(x, y);
 	    ret += shmea::GString::intTOstring(c.r);

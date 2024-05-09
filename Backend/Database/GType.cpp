@@ -145,8 +145,14 @@ char GType::getChar() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
+	// Char Type (match)
+	//if (size() != sizeof(char))
+		//return 0;
+
 	switch (this->getType())
 	{
+		case CHAR_TYPE:
+			return *((char*)block.get());
 		case SHORT_TYPE:
 			return this->getShort();
 		case INT_TYPE:
@@ -161,11 +167,9 @@ char GType::getChar() const
 			return this->getBoolean();
 		case STRING_TYPE:
 			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0;
 	}
-
-	// Char Type (match)
-	if (size() != sizeof(char))
-		return 0;
 
 	return *((char*)block.get());
 }
@@ -175,10 +179,16 @@ short GType::getShort() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
+	// Short Type (match)
+	//if (size() != sizeof(short))
+		//return 0;
+
 	switch (this->getType())
 	{
 		case CHAR_TYPE:
 			return this->getChar();
+		case SHORT_TYPE:
+			return *((short*)block.get());
 		case INT_TYPE:
 			return this->getInt();
 		case LONG_TYPE:
@@ -191,11 +201,9 @@ short GType::getShort() const
 			return this->getBoolean();
 		case STRING_TYPE:
 			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0;
 	}
-
-	// Short Type (match)
-	if (size() != sizeof(short))
-		return 0;
 
 	return *((short*)block.get());
 }
@@ -205,12 +213,18 @@ int GType::getInt() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
+	// int Type (match)
+	//if (size() != sizeof(int))
+		//return 0;
+
 	switch (this->getType())
 	{
 		case CHAR_TYPE:
 			return this->getChar();
 		case SHORT_TYPE:
 			return this->getShort();
+		case INT_TYPE:
+			return *((int*)block.get());
 		case LONG_TYPE:
 			return this->getLong();
 		case FLOAT_TYPE:
@@ -219,21 +233,11 @@ int GType::getInt() const
 			return this->getDouble();
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
-		case STRING_TYPE: {
-			//int value = *block;
-			int value = 0;//TODO: PUT THIS IN LONG, AND SHORT; ADD TEST CASES
-			for(unsigned int i = 0; i < size(); ++i)
-			{
-				value<<=8;
-				value+=block[size()-i-1];
-			}
-			return value;
-		}
+		case STRING_TYPE:
+		    return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0;
 	}
-
-	// int Type (match)
-	if (size() != sizeof(int))
-		return 0;
 
 	return *((int*)block.get());
 }
@@ -243,6 +247,10 @@ int64_t GType::getLong() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
+	// Long Type (match)
+	//if (size() != sizeof(int64_t))
+		//return 0;
+
 	switch (this->getType())
 	{
 		case CHAR_TYPE:
@@ -251,6 +259,8 @@ int64_t GType::getLong() const
 			return this->getShort();
 		case INT_TYPE:
 			return this->getInt();
+		case LONG_TYPE:
+			return *((int64_t*)block.get());
 		case FLOAT_TYPE:
 			return this->getFloat();
 		case DOUBLE_TYPE:
@@ -259,11 +269,9 @@ int64_t GType::getLong() const
 			return this->getBoolean();
 		case STRING_TYPE:
 			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0l;
 	}
-
-	// Long Type (match)
-	if (size() != sizeof(int64_t))
-		return 0;
 
 	return *((int64_t*)block.get());
 }
@@ -273,6 +281,10 @@ float GType::getFloat() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
+	// Float Type (match)
+	//if (size() != sizeof(float))
+		//return 0.0f;
+
 	switch (this->getType())
 	{
 		case CHAR_TYPE:
@@ -283,17 +295,17 @@ float GType::getFloat() const
 			return this->getInt();
 		case LONG_TYPE:
 			return this->getLong();
+		case FLOAT_TYPE:
+			return *((float*)block.get());
 		case DOUBLE_TYPE:
 			return this->getDouble();
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
 			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0.0;
 	}
-
-	// Float Type (match)
-	if (size() != sizeof(float))
-		return 0.0f;
 
 	return *((float*)block.get());
 }
@@ -303,6 +315,10 @@ double GType::getDouble() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
+	// Double Type (match)
+	//if (size() != sizeof(double))
+		//return 0.0f;
+
 	switch (this->getType())
 	{
 		case CHAR_TYPE:
@@ -315,15 +331,15 @@ double GType::getDouble() const
 			return this->getLong();
 		case FLOAT_TYPE:
 			return this->getFloat();
+		case DOUBLE_TYPE:
+			return *((double*)block.get());
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
 			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0.0f;
 	}
-
-	// Double Type (match)
-	if (size() != sizeof(double))
-		return 0.0f;
 
 	return *((double*)block.get());
 }
@@ -332,6 +348,10 @@ bool GType::getBoolean() const
 {
 	if ((!block.get()) || (size() == 0))
 		return 0;
+
+	// Boolean Type (match)
+	//if (size() != sizeof(bool))
+		//return false;
 
 	switch (this->getType())
 	{
@@ -347,13 +367,13 @@ bool GType::getBoolean() const
 			return this->getFloat();
 		case DOUBLE_TYPE:
 			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return *((bool*)block.get());
 		case STRING_TYPE:
 			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return false;
 	}
-
-	// Boolean Type (match)
-	if (size() != sizeof(bool))
-		return false;
 
 	return *((bool*)block.get());
 }
