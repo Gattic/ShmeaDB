@@ -23,6 +23,7 @@
 #include "connection.h"
 #include "service.h"
 #include "socket.h"
+#include "errno.h"
 
 #define MAX_CONNECTIONS 1000
 
@@ -262,15 +263,33 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 	if (!cConnection)
 		return;
 
+	unsigned int foundIndex = -1;
+
 	// delete it from the data structure
-	std::map<shmea::GString, Connection*>::iterator itr =
-		clientConnections.find(cConnection->getIP());
-	if (itr != clientConnections.end())
+	for(unsigned int i = 0; i < clientConnections.size(); ++i) 
 	{
-		pthread_mutex_lock(clientMutex);
-		clientConnections.erase(itr);
-		pthread_mutex_unlock(clientMutex);
+		Connection* tConnection = clientConnections[i];
+		if (cConnection->getIP() == tConnection->getIP() &&
+		    cConnection->sockfd == tConnection->sockfd)
+		{
+		    foundIndex = i;
+
+		    pthread_mutex_lock(clientMutex);
+		    clientConnections[i] = NULL;
+		    pthread_mutex_unlock(clientMutex);
+		    break;
+		}
+
 	}
+
+	if (foundIndex != -1)
+	{
+	    pthread_mutex_lock(clientMutex);
+	    std::vector<int>& clientCIndexes = clientCLookUp[cConnection->getIP()];
+	    clientCIndexes.erase(std::remove(clientCIndexes.begin(), clientCIndexes.end(), foundIndex), clientCIndexes.end());
+	    pthread_mutex_unlock(clientMutex);
+	}
+
 }
 
 const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getServerConnections()
@@ -285,12 +304,27 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 
 	// delete it from the data structure
 	pthread_mutex_lock(serverMutex);
-	serverConnections.erase(serverConnections.find(cConnection->getIP()));
+	int foundIndex = -1;
+	for(unsigned int i = 0; i < serverConnections.size(); ++i)
+	{
+	    if(serverConnections[i]->getIP() == cConnection->getIP() && serverConnections[i]->sockfd == cConnection-sockfd)
+	    {
+		foundIndex = i;
+		serverConnections[i] = NULL;
+		break;
+	    }
+	}
+
+	if (foundIndex != -1)
+	{
+	    std::vector<int>& serverCIndexes = serverCLookUp[cConnection->getIP()];
+	    serverCIndexes.erase(std::remove(serverCIndexes.begin(), serverCIndexes.end(), foundIndex), serverCIndexes.end());
+	}
 	pthread_mutex_unlock(serverMutex);
 }
 
 bool GNet::GServer::isConnection(int _sockfd, const fd_set& fdarr)
-{
+{ 
 	return FD_ISSET(_sockfd, &fdarr);
 }
 
@@ -312,24 +346,38 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 	{
 		// get the ip
 		char fromIP[INET_ADDRSTRLEN];
-		inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
+		errno = 0;
+		const char* res = inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
+    
+		#TODO: Return proper error message
+		if (res == NULL)
+		{
+		    printf("ient_ntop Failed. errno = %d, error message: %s\n", errno, strerror(errno));
+		    return NULL;
+		}
+		else
+		    printf("IP Address: %s\n", fromIP);
+
 		shmea::GString clientIP = fromIP;
 
-		// dont overwrite an instance
-		if (clientConnections.find(clientIP) == clientConnections.end())
+		if(clientCLookUp.find(clientIP) == clientCLookUp.end())
 		{
-			printf("[LOGIN] %s\n", clientIP.c_str());
-
-			// create the new client instance and add it to the data structure
-			Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
-			if(!cryptEnabled)
-				cConnection->disableEncryption();
-
-			pthread_mutex_lock(clientMutex);
-			clientConnections.insert(std::pair<shmea::GString, Connection*>(clientIP, cConnection));
-			pthread_mutex_unlock(clientMutex);
-			return cConnection;
+		    clientCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(clientIP, std::vector<int>()));
 		}
+		
+
+		// create the new client instance and add it to the data structure
+		Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
+		if(!cryptEnabled)
+		    cConnection->disableEncryption();
+
+		pthread_mutex_lock(clientMutex);
+		clientConnections.push_back(cConnection);
+		clientCLookUp[clientIP].push_back(clientConnections.size()-1);
+		pthread_mutex_unlock(clientMutex);
+
+	    	printf("[LOGIN] %s\n", clientIP.c_str());
+		return cConnection;
 	}
 	return NULL;
 }
@@ -354,6 +402,8 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 
 GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString newPort)
 {
+    
+	
 	std::map<shmea::GString, Connection*>::iterator itr = serverConnections.find(newServerIP);
 	if (itr != serverConnections.end())
 		return itr->second;
@@ -436,10 +486,9 @@ void GNet::GServer::commandCatcher(void*)
 		std::vector<Connection*> instanceList;
 
 		// set the max sock from the clientConnections
-		std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections.begin();
-		for (; itr != clientConnections.end(); ++itr)
+		for(unsigned int i = 0; i < clientConnections.size(); ++i) 
 		{
-			Connection* cConnection = (itr->second);
+			Connection* cConnection = clientConnections[i];
 
 			// Valid socket descriptor?
 			if (cConnection->sockfd < 0)
@@ -452,10 +501,9 @@ void GNet::GServer::commandCatcher(void*)
 		}
 
 		// set the max sock from the serverConnections
-		itr = serverConnections.begin();
-		for (; itr != serverConnections.end(); ++itr)
+		for(unsigned int i = 0; i < serverConnections.size(); ++i) 
 		{
-			Connection* cConnection = (itr->second);
+			Connection* cConnection = serverConnections[i];
 
 			// Valid socket descriptor?
 			if (cConnection->sockfd < 0)
@@ -468,6 +516,7 @@ void GNet::GServer::commandCatcher(void*)
 		}
 
 		// Listen for packets, blocking call
+		// select returns the number of sockets that have data
 		int status = select(max_sock + 1, &fdarr, NULL, NULL, &tv);
 		if (status < 0)
 		{
@@ -477,18 +526,31 @@ void GNet::GServer::commandCatcher(void*)
 		}
 		else if (status == 0)
 			continue;
+		else
+		{
+		    std::cout << "New status: " << status << std::endl;
+		}
 
 		Connection* cConnection = NULL;
 		if (isConnection(sockfd, fdarr))
+		{
 			cConnection = setupNewConnection(max_sock);
+			std::cout << "New Connection Setup" << std::endl;
+		}
 		else
+		{
+		    std::cout << "Find Connection Command" << std::endl;
 			cConnection = findExistingConnection(instanceList, fdarr);
+		    std::cout << "Possibly Found Current Connection" << std::endl;
+		}
 
 		if (!cConnection)
 		{
 			// LogoutInstance(cConnection);
 			continue;
 		}
+
+		printf("[SOCKS] %s\n", cConnection->getIP().c_str());
 
 		// Put together new services from the socket
 		if (!socks->readLists(cConnection))
@@ -506,10 +568,9 @@ void GNet::GServer::commandCatcher(void*)
 	running = false;
 
 	// close the client connections
-	std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections.begin();
-	for (; itr != clientConnections.end(); ++itr)
+	for (unsigned int i = 0; i < clientConnections.size(); ++i)
 	{
-		Connection* cConnection = (itr->second);
+		Connection* cConnection = clientConnections[i];
 
 		// Valid socket descriptor?
 		if (cConnection->sockfd < 0)
@@ -524,10 +585,9 @@ void GNet::GServer::commandCatcher(void*)
 	clientConnections.clear();
 
 	// close the server connections
-	itr = serverConnections.begin();
-	for (; itr != serverConnections.end(); ++itr)
+	for(unsigned int i = 0; i < serverConnections.size(); ++i) 
 	{
-		Connection* cConnection = (itr->second);
+		Connection* cConnection = serverConnections[i];
 
 		// Valid socket descriptor?
 		if (cConnection->sockfd < 0)

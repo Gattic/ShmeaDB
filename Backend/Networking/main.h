@@ -65,9 +65,13 @@ class GServer
 
 	shmea::GPointer<GNet::Sockets> socks;
 
-	// Key is ip address
-	std::map<shmea::GString, Connection*> clientConnections;
-	std::map<shmea::GString, Connection*> serverConnections;
+	// IP, [sockfd, sockfd, sockfd, ...]
+	std::map<shmea::GString, std::vector<int> > clientCLookUp;
+	std::vector<Connection*> clientConnections;
+
+	//IP, [sockfd, sockfd, sockfd, ...]
+	std::map<shmea::GString, std::vector<int> > serverCLookUp;
+	std::vector<Connection*> serverConnections;
 
 	int sockfd;
 	bool cryptEnabled;

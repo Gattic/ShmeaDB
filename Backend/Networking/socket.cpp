@@ -247,7 +247,10 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		unsigned int bytesLeft = eTotal-eByteCounter;
 		if(bytesLeft == 0) bytesLeft = 1024;
 		bytesLeft = bytesLeft > 1024 ? 1024-readOverflow : bytesLeft;
+		
+		std::cout << "Received " << bytesLeft << " bytes: " << buffer << std::endl;
 		unsigned int bytesRead = read(sockfd, &buffer[readOverflowLen], bytesLeft);
+		std::cout << "Received " << bytesRead << " bytes: " << buffer << std::endl;
 		bytesRead+=readOverflowLen;
 		//if ((bytesRead == 0) || (bytesRead == -1))
 		if (bytesRead == (unsigned int)-1)
@@ -265,10 +268,17 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		    cOverflow = "";
 		    origin->overflow = "";
 		}
-
+		printf("Hi Friend\n");
 		// If we read nothing, then the other side probabled dced
 		if(bytesRead == 0)
 		    return;
+		printf("Bye Friend\n");
+		for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
+	    	{
+		    printf("READ[%u]: 0x%02X:%c\n", rCounter, bufferStr[rCounter], bufferStr[rCounter]);
+		    if(bufferStr[rCounter] == 0x7C)
+			printf("-------------------------------\n");
+		}
 
 		bool headerIteration = false;
 		if(eTotal == 0)
@@ -370,6 +380,9 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	    shmea::Serializable::Deserialize(cData, eText);
 	    srvcList.push_back(cData);
 	}
+
+
+
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
@@ -419,6 +432,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	    }*/
 	}
 
+
 	shmea::GString newStr = "";
 	if(cConnection->isEncrypted())
 	    newStr = crypt.eText;
@@ -434,6 +448,14 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	unsigned int zeros = 0;
 	newStr += shmea::GString((const char*)&zeros, newPadding);
 	newStr = sizeInt + paddingInt + newStr;
+
+	//Write Debug
+	for(unsigned int rCounter=0;rCounter<newStr.length();++rCounter)
+	{
+	    printf("WRITE[%u]: 0x%02X:%c\n", rCounter, newStr[rCounter], newStr[rCounter]);
+	    if(newStr[rCounter] == 0x7C)
+		printf("-------------------------------\n");
+	}
 
 	shmea::GString writeStr = "";
 	for (unsigned int i = 0; i < newStr.length(); i+=sizeof(unsigned int)) // TODO support uneven writes using newPadding
@@ -473,6 +495,7 @@ void Sockets::closeConnection(const int& sockfd)
  */
 bool Sockets::readLists(Connection* origin)
 {
+	printf("Reading Lists\n");
 	std::vector<shmea::ServiceData*> srvcList;
 	readConnection(origin, origin->sockfd, srvcList);
 
