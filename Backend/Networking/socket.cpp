@@ -248,9 +248,9 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		if(bytesLeft == 0) bytesLeft = 1024;
 		bytesLeft = bytesLeft > 1024 ? 1024-readOverflow : bytesLeft;
 		
-		std::cout << "Received " << bytesLeft << " bytes: " << buffer << std::endl;
+		//std::cout << "Received " << bytesLeft << " bytes: " << buffer << std::endl;
 		unsigned int bytesRead = read(sockfd, &buffer[readOverflowLen], bytesLeft);
-		std::cout << "Received " << bytesRead << " bytes: " << buffer << std::endl;
+		//std::cout << "Received " << bytesRead << " bytes: " << buffer << std::endl;
 		bytesRead+=readOverflowLen;
 		//if ((bytesRead == 0) || (bytesRead == -1))
 		if (bytesRead == (unsigned int)-1)
@@ -268,17 +268,15 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		    cOverflow = "";
 		    origin->overflow = "";
 		}
-		printf("Hi Friend\n");
 		// If we read nothing, then the other side probabled dced
 		if(bytesRead == 0)
 		    return;
-		printf("Bye Friend\n");
-		for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
+/*		for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
 	    	{
 		    printf("READ[%u]: 0x%02X:%c\n", rCounter, bufferStr[rCounter], bufferStr[rCounter]);
 		    if(bufferStr[rCounter] == 0x7C)
 			printf("-------------------------------\n");
-		}
+		}*/
 
 		bool headerIteration = false;
 		if(eTotal == 0)

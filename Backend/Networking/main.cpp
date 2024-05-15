@@ -253,7 +253,7 @@ Connection* GNet::GServer::getLocalConnection()
 	return localConnection;
 }
 
-const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getClientConnections()
+const std::vector<GNet::Connection*>& GNet::GServer::getClientConnections()
 {
 	return clientConnections;
 }
@@ -266,6 +266,8 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 	unsigned int foundIndex = -1;
 
 	// delete it from the data structure
+	
+	pthread_mutex_lock(clientMutex);
 	for(unsigned int i = 0; i < clientConnections.size(); ++i) 
 	{
 		Connection* tConnection = clientConnections[i];
@@ -273,10 +275,7 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 		    cConnection->sockfd == tConnection->sockfd)
 		{
 		    foundIndex = i;
-
-		    pthread_mutex_lock(clientMutex);
 		    clientConnections[i] = NULL;
-		    pthread_mutex_unlock(clientMutex);
 		    break;
 		}
 
@@ -284,15 +283,14 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 
 	if (foundIndex != -1)
 	{
-	    pthread_mutex_lock(clientMutex);
 	    std::vector<int>& clientCIndexes = clientCLookUp[cConnection->getIP()];
-	    clientCIndexes.erase(std::remove(clientCIndexes.begin(), clientCIndexes.end(), foundIndex), clientCIndexes.end());
-	    pthread_mutex_unlock(clientMutex);
+	    clientCIndexes.erase(clientCIndexes.begin() + foundIndex);
 	}
 
+	pthread_mutex_unlock(clientMutex);
 }
 
-const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getServerConnections()
+const std::vector<GNet::Connection*>& GNet::GServer::getServerConnections()
 {
 	return serverConnections;
 }
@@ -307,7 +305,8 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 	int foundIndex = -1;
 	for(unsigned int i = 0; i < serverConnections.size(); ++i)
 	{
-	    if(serverConnections[i]->getIP() == cConnection->getIP() && serverConnections[i]->sockfd == cConnection-sockfd)
+	    if((serverConnections[i]->getIP() == cConnection->getIP()) 
+		&& (serverConnections[i]->sockfd == cConnection->sockfd))
 	    {
 		foundIndex = i;
 		serverConnections[i] = NULL;
@@ -318,7 +317,7 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 	if (foundIndex != -1)
 	{
 	    std::vector<int>& serverCIndexes = serverCLookUp[cConnection->getIP()];
-	    serverCIndexes.erase(std::remove(serverCIndexes.begin(), serverCIndexes.end(), foundIndex), serverCIndexes.end());
+	    serverCIndexes.erase(serverCIndexes.begin() + foundIndex);
 	}
 	pthread_mutex_unlock(serverMutex);
 }
@@ -349,7 +348,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 		errno = 0;
 		const char* res = inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
     
-		#TODO: Return proper error message
+		//TODO: Return proper error message
 		if (res == NULL)
 		{
 		    printf("ient_ntop Failed. errno = %d, error message: %s\n", errno, strerror(errno));
@@ -382,7 +381,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 	return NULL;
 }
 
-GNet::Connection*
+GNet::Connection* 
 GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& instances,
 									  const fd_set& fdarr)
 {
@@ -400,40 +399,54 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 	return NULL;
 }
 
+//TODO: There is no getPort() in the Connection class
 GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString newPort)
 {
     
-	
-	std::map<shmea::GString, Connection*>::iterator itr = serverConnections.find(newServerIP);
-	if (itr != serverConnections.end())
-		return itr->second;
+	std::map<shmea::GString, std::vector<int> >::iterator itr = serverCLookUp.find(newServerIP);
 
-	itr = clientConnections.find(newServerIP);
-	if (itr != clientConnections.end())
-		return itr->second;
+	if (itr != serverCLookUp.end())
+	{
+		std::vector<int>& serverCIndexes = itr->second;
+		for (unsigned int i = 0; i < serverCIndexes.size(); ++i)
+		{
+			Connection* cConnection = serverConnections[serverCIndexes[i]];
+			//if (cConnection->getPort() == newPort)
+			//	return cConnection;
+		}
+	}
+
+	itr = clientCLookUp.find(newServerIP);
+	if (itr != clientCLookUp.end())
+	{
+		std::vector<int>& clientCIndexes = itr->second;
+		for (unsigned int i = 0; i < clientCIndexes.size(); ++i)
+		{
+			Connection* cConnection = clientConnections[clientCIndexes[i]];
+			//if (cConnection->getPort() == newPort)
+			//	return cConnection;
+		}
+	}
 
 	return NULL;
 }
 
 GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName)
 {
-	std::map<shmea::GString, Connection*>::const_iterator itr = serverConnections.begin();
-	for (; itr != serverConnections.end(); ++itr)
+    
+	for(unsigned int i = 0; i < serverConnections.size(); i++)
 	{
-		Connection* cConnection = (itr->second);
+		Connection* cConnection = serverConnections[i];
 		if (cConnection->getName() != clientName)
 			continue;
-
 		return cConnection;
 	}
 
-	itr = clientConnections.begin();
-	for (; itr != clientConnections.end(); ++itr)
+	for(unsigned int i = 0; i < clientConnections.size(); i++)
 	{
-		Connection* cConnection = (itr->second);
+		Connection* cConnection = clientConnections[i];
 		if (cConnection->getName() != clientName)
 			continue;
-
 		return cConnection;
 	}
 
@@ -641,7 +654,10 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		destination->disableEncryption();
 
 	pthread_mutex_lock(serverMutex);
-	serverConnections.insert(std::pair<shmea::GString, Connection*>(x->serverIP, destination));
+	serverConnections.push_back(destination);
+	//Assumption that the x->serverIP does not exist already going into this function
+	serverCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(x->serverIP, std::vector<int>()));
+	serverCLookUp[x->serverIP].push_back(serverConnections.size()-1);
 	pthread_mutex_unlock(serverMutex);
 
 	if (x->serverIP == "127.0.0.1")
@@ -658,7 +674,10 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& serverPort, const shmea::GString& clientName)
 {
 	// login to the server
-	if (serverConnections.find(serverIP) == serverConnections.end())
+	
+//	std::map<shmea::GString, std::vector<int> >::iterator itr = serverCLookUp.find(newServerIP);
+
+	if (serverCLookUp.find(serverIP) == serverCLookUp.end())
 	{
 		LaunchInstanceHelperArgs* x = new LaunchInstanceHelperArgs();
 		x->serverInstance = this;
