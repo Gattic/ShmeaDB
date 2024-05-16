@@ -271,12 +271,12 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		// If we read nothing, then the other side probabled dced
 		if(bytesRead == 0)
 		    return;
-/*		for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
+	for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
 	    	{
 		    printf("READ[%u]: 0x%02X:%c\n", rCounter, bufferStr[rCounter], bufferStr[rCounter]);
 		    if(bufferStr[rCounter] == 0x7C)
 			printf("-------------------------------\n");
-		}*/
+		}
 
 		bool headerIteration = false;
 		if(eTotal == 0)
