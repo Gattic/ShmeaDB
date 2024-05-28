@@ -120,7 +120,7 @@ public:
 
 	unsigned int addService(Service*);
 	Service* DoService(shmea::GString, shmea::GString = "");
-	Connection* getConnection(shmea::GString, shmea::GString = "45019");
+	Connection* getConnection(shmea::GString, shmea::GString = "Mar", shmea::GString = "45019");
 	Connection* getConnectionFromName(shmea::GString);
 	void LaunchInstance(const shmea::GString&, const shmea::GString&, const shmea::GString&);
 	const bool& getRunning() const;

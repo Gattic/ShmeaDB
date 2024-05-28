@@ -418,7 +418,7 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 
 //TODO: To be finished, since each server connection and client connnections can have multiple connections from the same IP
 //and there is no way to differentiate between them with the current implementation
-GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString newPort)
+GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString clientName, shmea::GString newPort)
 {
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.find(newServerIP);
 
@@ -429,8 +429,8 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 		{
 			Connection* cConnection = serverC[serverCIndexs[i]];
 			printf("Server_Name: %s\n", cConnection->getName().c_str());
-		//	if(cConnection->getPort() == newPort)
-		//		return cConnection;
+			if(cConnection->getName() == clientName)
+				return cConnection;
 
 		}
 	}
@@ -442,8 +442,8 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 		for(int i = 0; i < clientCIndexs.size(); i++)
 		{
 			Connection* cConnection = clientC[clientCIndexs[i]];
-		//	if(cConnection->getPort() == newPort)
-		//		return cConnection;
+			if(cConnection->getName() == clientName)
+				return cConnection;
 		}
 	}
 
@@ -693,6 +693,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 
 	// create the new server instance and add it to the data structure
 	Connection* destination = new Connection(sockfd2, Connection::SERVER_TYPE, x->serverIP);
+	destination->setName(x->clientName);   
 	if(!cryptEnabled)
 		destination->disableEncryption();
 
