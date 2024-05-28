@@ -79,6 +79,7 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* 
  */
 void* Service::launchService(void* y)
 {
+	printf("Launching Service\n");
 	// Helper function for pthread_create
 
 	// set the service args
@@ -92,10 +93,10 @@ void* Service::launchService(void* y)
 	x->command = x->sockData->getCommand();
 	if(x->command.length() == 0)
 		return NULL;
-
+	printf("Command: %s\n", x->command.c_str());
 	// Can be 0 len
 	x->serviceKey = x->sockData->getServiceKey();
-
+	printf("Service Key: %s\n", x->serviceKey.c_str());
 	// Connection is dead so ignore it
 	Connection* cConnection = x->cConnection;
 	if (!cConnection)
@@ -104,8 +105,11 @@ void* Service::launchService(void* y)
 	if (!cConnection->isFinished())
 	{
 		Service* cService = serverInstance->DoService(x->command, x->serviceKey);
+		printf("Looking for service");
 		if (cService)
 		{
+		    printf("Service: %s\n", x->command.c_str());
+		    printf("Service was found");
 			// start the service
 			cService->StartService(x);
 

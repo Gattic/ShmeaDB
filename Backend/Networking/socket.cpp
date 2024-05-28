@@ -271,12 +271,12 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		// If we read nothing, then the other side probabled dced
 		if(bytesRead == 0)
 		    return;
-	for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
+		/*for(unsigned int rCounter=0;rCounter<bufferStr.length();++rCounter)
 	    	{
 		    printf("READ[%u]: 0x%02X:%c\n", rCounter, bufferStr[rCounter], bufferStr[rCounter]);
 		    if(bufferStr[rCounter] == 0x7C)
 			printf("-------------------------------\n");
-		}
+		}*/
 
 		bool headerIteration = false;
 		if(eTotal == 0)
@@ -448,12 +448,12 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	newStr = sizeInt + paddingInt + newStr;
 
 	//Write Debug
-	for(unsigned int rCounter=0;rCounter<newStr.length();++rCounter)
+	/*for(unsigned int rCounter=0;rCounter<newStr.length();++rCounter)
 	{
 	    printf("WRITE[%u]: 0x%02X:%c\n", rCounter, newStr[rCounter], newStr[rCounter]);
 	    if(newStr[rCounter] == 0x7C)
 		printf("-------------------------------\n");
-	}
+	}*/
 
 	shmea::GString writeStr = "";
 	for (unsigned int i = 0; i < newStr.length(); i+=sizeof(unsigned int)) // TODO support uneven writes using newPadding
@@ -515,6 +515,7 @@ bool Sockets::readLists(Connection* origin)
 		pthread_mutex_lock(inMutex);
 
 		int64_t serviceNum = cData->getServiceNum();
+		printf("ServiceNum: %ld\n", serviceNum);
 		std::map<int64_t, shmea::ServiceData*>::iterator itr = inboundLists.find(serviceNum);
 		if(itr == inboundLists.end())
 			inboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, cData));
@@ -526,6 +527,7 @@ bool Sockets::readLists(Connection* origin)
 
 		pthread_mutex_unlock(inMutex);
 	}
+	printf("True returned\n");
 	return true;
 }
 

@@ -161,6 +161,7 @@ unsigned int GNet::GServer::addService(GNet::Service* newServiceObj)
 	return service_depot.size();
 }
 
+//Explain the function above: This function is used to add a new service to the server. It takes a pointer to a service object as an argument and returns the number of services in the server after the new service has been added.
 GNet::Service* GNet::GServer::DoService(shmea::GString cCommand, shmea::GString newKey)
 {
 	// Does it exist at all?
@@ -267,7 +268,6 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 
 	// delete it from the data structure
 	
-	pthread_mutex_lock(clientMutex);
 	for(unsigned int i = 0; i < clientConnections.size(); ++i) 
 	{
 		Connection* tConnection = clientConnections[i];
@@ -275,7 +275,9 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 		    cConnection->sockfd == tConnection->sockfd)
 		{
 		    foundIndex = i;
+		    pthread_mutex_lock(clientMutex);
 		    clientConnections[i] = NULL;
+		    pthread_mutex_unlock(clientMutex);
 		    break;
 		}
 
@@ -284,10 +286,12 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 	if (foundIndex != -1)
 	{
 	    std::vector<int>& clientCIndexes = clientCLookUp[cConnection->getIP()];
+	    
+	    pthread_mutex_lock(clientMutex);
 	    clientCIndexes.erase(clientCIndexes.begin() + foundIndex);
+	    pthread_mutex_unlock(clientMutex);
 	}
 
-	pthread_mutex_unlock(clientMutex);
 }
 
 const std::vector<GNet::Connection*>& GNet::GServer::getServerConnections()
@@ -574,6 +578,7 @@ void GNet::GServer::commandCatcher(void*)
 
 		// Run a service if we have any
 		if (socks->anyInboundLists())
+		    printf("Processing List\n");
 			socks->processLists(this, cConnection);
 	}
 

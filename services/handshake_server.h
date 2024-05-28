@@ -46,6 +46,7 @@ public:
 
 	shmea::ServiceData* execute(const shmea::ServiceData* data)
 	{
+	    printf("Entered execute for Handshake_Server\n");
 		// Log the client into the server
 		class GNet::Connection* destination = data->getConnection();
 
