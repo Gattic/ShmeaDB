@@ -66,8 +66,12 @@ class GServer
 	shmea::GPointer<GNet::Sockets> socks;
 
 	// Key is ip address
-	std::map<shmea::GString, Connection*> clientConnections;
-	std::map<shmea::GString, Connection*> serverConnections;
+	//IP, [socfd, sockfd, sockfd, ...]
+	std::map<shmea::GString, std::vector<int> > clientCLookUp;
+	std::vector<Connection*> clientC;
+
+	std::map<shmea::GString, std::vector<int> >serverCLookUp;
+	std::vector<Connection*> serverC;
 
 	int sockfd;
 	bool cryptEnabled;
@@ -96,8 +100,8 @@ class GServer
 	void LogoutInstance(Connection*);
 
 	int getSockFD();
-	const std::map<shmea::GString, Connection*>& getClientConnections();
-	const std::map<shmea::GString, Connection*>& getServerConnections();
+	const std::vector<Connection*>& getClientConnections();
+	const std::vector<Connection*>& getServerConnections();
 	pthread_mutex_t* getClientMutex();
 	pthread_mutex_t* getServerMutex();
 

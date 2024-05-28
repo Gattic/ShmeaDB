@@ -252,8 +252,21 @@ Connection* GNet::GServer::getLocalConnection()
 	return localConnection;
 }
 
-const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getClientConnections()
+const std::vector<GNet::Connection*>& GNet::GServer::getClientConnections()
 {
+
+	std::map<shmea::GString, std::vector<int> >::const_iterator itr = clientCLookUp.begin();
+	std::vector<Connection*> clientConnections;
+	for(; itr != clientCLookUp.end(); ++itr)
+	{
+		std::vector<int> clientCIndexs = itr->second;
+		for(int i = 0; i < clientCIndexs.size(); i++)
+		{
+			Connection* cConnection = clientC[clientCIndexs[i]];
+			clientConnections.push_back(cConnection);
+		}
+	}
+
 	return clientConnections;
 }
 
@@ -262,19 +275,45 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 	if (!cConnection)
 		return;
 
-	// delete it from the data structure
-	std::map<shmea::GString, Connection*>::iterator itr =
-		clientConnections.find(cConnection->getIP());
-	if (itr != clientConnections.end())
+	//Instead of deleting we will remove the index from the dictionary look up, and make the connection null in the vector
+	std::map<shmea::GString, std::vector<int> >::iterator itr = clientCLookUp.find(cConnection->getIP());
+
+	if (itr != clientCLookUp.end())
 	{
+		std::vector<int>& clientCIndexs = itr->second;
+		
 		pthread_mutex_lock(clientMutex);
-		clientConnections.erase(itr);
+		for(std::vector<int>::iterator it = clientCIndexs.begin(); it != clientCIndexs.end(); ++it)
+		{
+			if(clientC[*it] == cConnection)
+			{
+				clientC[*it] = NULL;
+				clientCLookUp[cConnection->getIP()].erase(it);
+				break;
+			}
+		}
+		//Remove key from map if the vector is empty
+		if (clientCIndexs.empty())
+			clientCLookUp.erase(itr);
+
 		pthread_mutex_unlock(clientMutex);
 	}
+
 }
 
-const std::map<shmea::GString, GNet::Connection*>& GNet::GServer::getServerConnections()
+const std::vector<GNet::Connection*>& GNet::GServer::getServerConnections()
 {
+	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.begin();
+	std::vector<Connection*> serverConnections;
+	for(; itr != serverCLookUp.end(); ++itr)
+	{
+		std::vector<int> serverCIndexs = itr->second;
+		for(int i = 0; i < serverCIndexs.size(); i++)
+		{
+			Connection* cConnection = serverC[serverCIndexs[i]];
+			serverConnections.push_back(cConnection);
+		}
+	}
 	return serverConnections;
 }
 
@@ -283,10 +322,30 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 	if (!cConnection)
 		return;
 
-	// delete it from the data structure
-	pthread_mutex_lock(serverMutex);
-	serverConnections.erase(serverConnections.find(cConnection->getIP()));
-	pthread_mutex_unlock(serverMutex);
+	//Instead of deleting we will remove the index from the dictionary look up, and make the connection null in the vector
+	//The key will only be removed if its corresponding vector is empty
+	std::map<shmea::GString, std::vector<int> >::iterator itr = serverCLookUp.find(cConnection->getIP());
+
+	if (itr != serverCLookUp.end())
+	{
+		std::vector<int>& serverCIndexs = itr->second;
+		
+		pthread_mutex_lock(serverMutex);
+		for(std::vector<int>::iterator it = serverCIndexs.begin(); it != serverCIndexs.end(); ++it)
+		{
+			if(serverC[*it] == cConnection)
+			{
+				serverC[*it] = NULL;
+				serverCLookUp[cConnection->getIP()].erase(it);
+				break;
+			}
+		}
+		//Remove key from map if the vector is empty
+		if (serverCIndexs.empty())
+			serverCLookUp.erase(itr);
+
+		pthread_mutex_unlock(serverMutex);
+	}
 }
 
 bool GNet::GServer::isConnection(int _sockfd, const fd_set& fdarr)
@@ -315,21 +374,26 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 		inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
 		shmea::GString clientIP = fromIP;
 
-		// dont overwrite an instance
-		if (clientConnections.find(clientIP) == clientConnections.end())
+		if(clientCLookUp.find(clientIP) == clientCLookUp.end())
 		{
-			printf("[LOGIN] %s\n", clientIP.c_str());
-
-			// create the new client instance and add it to the data structure
-			Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
-			if(!cryptEnabled)
-				cConnection->disableEncryption();
-
 			pthread_mutex_lock(clientMutex);
-			clientConnections.insert(std::pair<shmea::GString, Connection*>(clientIP, cConnection));
+			clientCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(clientIP, std::vector<int>()));
 			pthread_mutex_unlock(clientMutex);
-			return cConnection;
 		}
+
+		
+		printf("[LOGIN] %s\n", clientIP.c_str());
+		// create the new client instance and add it to the data structure
+		Connection* cConnection = new Connection(sockfd2, Connection::CLIENT_TYPE, clientIP);
+		if(!cryptEnabled)
+			cConnection->disableEncryption();
+		pthread_mutex_lock(clientMutex);
+		clientC.push_back(cConnection);
+		clientCLookUp[clientIP].push_back(clientC.size()-1);
+		pthread_mutex_unlock(clientMutex);
+	
+		return cConnection;
+
 	}
 	return NULL;
 }
@@ -352,39 +416,67 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 	return NULL;
 }
 
+//TODO: To be finished, since each server connection and client connnections can have multiple connections from the same IP
+//and there is no way to differentiate between them with the current implementation
 GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString newPort)
 {
-	std::map<shmea::GString, Connection*>::iterator itr = serverConnections.find(newServerIP);
-	if (itr != serverConnections.end())
-		return itr->second;
+	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.find(newServerIP);
 
-	itr = clientConnections.find(newServerIP);
-	if (itr != clientConnections.end())
-		return itr->second;
+	if (itr != serverCLookUp.end())
+	{
+		std::vector<int> serverCIndexs = itr->second;
+		for(int i = 0; i < serverCIndexs.size(); i++)
+		{
+			Connection* cConnection = serverC[serverCIndexs[i]];
+			printf("Server_Name: %s\n", cConnection->getName().c_str());
+		//	if(cConnection->getPort() == newPort)
+		//		return cConnection;
+
+		}
+	}
+
+	itr = clientCLookUp.find(newServerIP);
+	if (itr != clientCLookUp.end())
+	{
+		std::vector<int> clientCIndexs = itr->second;
+		for(int i = 0; i < clientCIndexs.size(); i++)
+		{
+			Connection* cConnection = clientC[clientCIndexs[i]];
+		//	if(cConnection->getPort() == newPort)
+		//		return cConnection;
+		}
+	}
 
 	return NULL;
 }
 
 GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName)
 {
-	std::map<shmea::GString, Connection*>::const_iterator itr = serverConnections.begin();
-	for (; itr != serverConnections.end(); ++itr)
-	{
-		Connection* cConnection = (itr->second);
-		if (cConnection->getName() != clientName)
-			continue;
 
-		return cConnection;
+
+	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.begin();
+	for(; itr != serverCLookUp.end(); ++itr)
+	{
+		std::vector<int> serverCIndexs = itr->second;
+		for(int i = 0; i < serverCIndexs.size(); i++)
+		{
+			Connection* cConnection = serverC[serverCIndexs[i]];
+			if(cConnection->getName() == clientName)
+				return cConnection;
+		}
 	}
 
-	itr = clientConnections.begin();
-	for (; itr != clientConnections.end(); ++itr)
-	{
-		Connection* cConnection = (itr->second);
-		if (cConnection->getName() != clientName)
-			continue;
 
-		return cConnection;
+	itr = clientCLookUp.begin();
+	for(; itr != clientCLookUp.end(); ++itr)
+	{
+		std::vector<int> clientCIndexs = itr->second;
+		for(int i = 0; i < clientCIndexs.size(); i++)
+		{
+			Connection* cConnection = clientC[clientCIndexs[i]];
+			if(cConnection->getName() == clientName)
+				return cConnection;
+		}
 	}
 
 	return NULL;
@@ -435,36 +527,46 @@ void GNet::GServer::commandCatcher(void*)
 		// clientConnections+serverConnections
 		std::vector<Connection*> instanceList;
 
+		std::map<shmea::GString, std::vector<int> >::const_iterator itr = clientCLookUp.begin();
+
 		// set the max sock from the clientConnections
-		std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections.begin();
-		for (; itr != clientConnections.end(); ++itr)
+		for(; itr != clientCLookUp.end(); ++itr)
 		{
-			Connection* cConnection = (itr->second);
+			std::vector<int> clientCIndexs = itr->second;
+			for(int i = 0; i < clientCIndexs.size(); i++)
+			{
+				Connection* cConnection = clientC[clientCIndexs[i]];
 
-			// Valid socket descriptor?
-			if (cConnection->sockfd < 0)
-				continue;
+				// Valid socket descriptor?
+				if (cConnection->sockfd < 0)
+					continue;
 
-			instanceList.push_back(cConnection);
-			FD_SET(cConnection->sockfd, &fdarr);
-			if (cConnection->sockfd > max_sock)
-				max_sock = cConnection->sockfd;
+				instanceList.push_back(cConnection);
+				FD_SET(cConnection->sockfd, &fdarr);
+				if (cConnection->sockfd > max_sock)
+					max_sock = cConnection->sockfd;
+			}
 		}
 
+
 		// set the max sock from the serverConnections
-		itr = serverConnections.begin();
-		for (; itr != serverConnections.end(); ++itr)
+		itr = serverCLookUp.begin();
+		for(; itr != serverCLookUp.end(); ++itr)
 		{
-			Connection* cConnection = (itr->second);
+			std::vector<int> serverCIndexs = itr->second;
+			for(int i = 0; i < serverCIndexs.size(); i++)
+			{
+				Connection* cConnection = serverC[serverCIndexs[i]];
 
-			// Valid socket descriptor?
-			if (cConnection->sockfd < 0)
-				continue;
+				// Valid socket descriptor?
+				if (cConnection->sockfd < 0)
+					continue;
 
-			instanceList.push_back(cConnection);
-			FD_SET(cConnection->sockfd, &fdarr);
-			if (cConnection->sockfd > max_sock)
-				max_sock = cConnection->sockfd;
+				instanceList.push_back(cConnection);
+				FD_SET(cConnection->sockfd, &fdarr);
+				if (cConnection->sockfd > max_sock)
+					max_sock = cConnection->sockfd;
+			}
 		}
 
 		// Listen for packets, blocking call
@@ -506,40 +608,54 @@ void GNet::GServer::commandCatcher(void*)
 	running = false;
 
 	// close the client connections
-	std::map<shmea::GString, Connection*>::const_iterator itr = clientConnections.begin();
-	for (; itr != clientConnections.end(); ++itr)
+	std::map<shmea::GString, std::vector<int> >::iterator itr = clientCLookUp.begin();
+	for(; itr != clientCLookUp.end(); ++itr)
 	{
-		Connection* cConnection = (itr->second);
+		std::vector<int> clientCIndexs = itr->second;
+		for(int i = 0; i < clientCIndexs.size(); i++)
+		{
+			if(clientC[clientCIndexs[i]] == NULL)
+				continue;
+				
+			Connection* cConnection = clientC[clientCIndexs[i]];
 
-		// Valid socket descriptor?
-		if (cConnection->sockfd < 0)
-			continue;
+			// Valid socket descriptor?
+			if (cConnection->sockfd < 0)
+				continue;
 
-		// close the client connection
-		shutdown(cConnection->sockfd, 2);
-		close(cConnection->sockfd);
+			// close the client connection
+			shutdown(cConnection->sockfd, 2);
+			close(cConnection->sockfd);
+		}
 	}
+	//Empty client list and client look up
+	clientCLookUp.clear();
+	clientC.clear();
 
-	// empty the client list
-	clientConnections.clear();
 
-	// close the server connections
-	itr = serverConnections.begin();
-	for (; itr != serverConnections.end(); ++itr)
+	itr = serverCLookUp.begin();
+	for(; itr != serverCLookUp.end(); ++itr)
 	{
-		Connection* cConnection = (itr->second);
+		std::vector<int> serverCIndexs = itr->second;
+		for(int i = 0; i < serverCIndexs.size(); i++)
+		{
+			if(serverC[serverCIndexs[i]] == NULL)
+				continue;
+				
+			Connection* cConnection = serverC[serverCIndexs[i]];
 
-		// Valid socket descriptor?
-		if (cConnection->sockfd < 0)
-			continue;
+			// Valid socket descriptor?
+			if (cConnection->sockfd < 0)
+				continue;
 
-		// close the server connection
-		shutdown(cConnection->sockfd, 2);
-		close(cConnection->sockfd);
+			// close the server connection
+			shutdown(cConnection->sockfd, 2);
+			close(cConnection->sockfd);
+		}
 	}
-
-	// empty the server list
-	serverConnections.clear();
+	//Empty server List and Server Look up
+	serverCLookUp.clear();
+	serverC.clear();
 
 	// close the socket
 	close(sockfd);
@@ -580,8 +696,17 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	if(!cryptEnabled)
 		destination->disableEncryption();
 
+	
+	if(serverCLookUp.find(x->serverIP) == serverCLookUp.end())
+	{
+		pthread_mutex_lock(serverMutex);
+		serverCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(x->serverIP, std::vector<int>()));
+		pthread_mutex_unlock(serverMutex);
+	}
+
 	pthread_mutex_lock(serverMutex);
-	serverConnections.insert(std::pair<shmea::GString, Connection*>(x->serverIP, destination));
+	serverC.push_back(destination);
+	serverCLookUp[x->serverIP].push_back(serverC.size()-1);
 	pthread_mutex_unlock(serverMutex);
 
 	if (x->serverIP == "127.0.0.1")
@@ -597,8 +722,26 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 
 void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::GString& serverPort, const shmea::GString& clientName)
 {
+	//Checks if the serverIP key exists in serverConnections then checks the indexs in the vector serverC
+	bool serverCKeyExists = serverCLookUp.find(serverIP) != serverCLookUp.end();
+	bool serverCIndexExists = false;
+	if(serverCKeyExists)
+	{
+		std::vector<int> serverCIndexs = serverCLookUp[serverIP];
+		for(int i = 0; i < serverCIndexs.size(); i++)
+		{
+			Connection* cConnection = serverC[serverCIndexs[i]];
+			//To be answered: Can a server have multiple connections from the same serverIP with the same clientName from different ports?
+			if(cConnection->getName() == clientName)
+			{
+			    serverCIndexExists = true;
+			    break;
+			}
+		}
+	}
+
 	// login to the server
-	if (serverConnections.find(serverIP) == serverConnections.end())
+	if (!serverCKeyExists || !serverCIndexExists)
 	{
 		LaunchInstanceHelperArgs* x = new LaunchInstanceHelperArgs();
 		x->serverInstance = this;
