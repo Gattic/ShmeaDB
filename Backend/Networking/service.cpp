@@ -111,7 +111,7 @@ void* Service::launchService(void* y)
 
 			// execute the service
 			shmea::ServiceData* retData = cService->execute(x->sockData);
-			if(!retData)
+			if(retData != NULL)
 			{
 				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
 			}
