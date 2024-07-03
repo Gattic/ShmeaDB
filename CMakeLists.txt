@@ -24,6 +24,8 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+add_link_options(-fsanitize=address)
+
 #Project
 project(shmea)
 set(G_VERSION_MAJOR 0)

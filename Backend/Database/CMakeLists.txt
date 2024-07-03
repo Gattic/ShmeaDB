@@ -9,6 +9,7 @@ set(DB_src_files
 	lodepng.cpp
 	png-helper.cpp
 	image.cpp
+	GVector.h
 	GPointer.h
 	GType.cpp
 	GType_helpers.cpp
