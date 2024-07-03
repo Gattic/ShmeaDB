@@ -38,7 +38,7 @@ find_package(shmea REQUIRED)
 
 #Subdirectories
 add_subdirectory("Backend/Database")
- add_subdirectory("Backend/Networking")
+add_subdirectory("Backend/Networking")
 
 #Executable
 set(MAIN_src_files
