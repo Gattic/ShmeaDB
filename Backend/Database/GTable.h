@@ -37,8 +37,10 @@ private:
 	friend Serializable;
 
 	char delimiter;
-	shmea::GVector<GString> header;
-	shmea::GVector<GList> cells;
+	//shmea::GVector<GString> header;
+	//shmea::GVector<GList> cells;
+	std::vector<GString> header;
+	std::vector<GList> cells;
 	/* std::vector<GString> header; */
 	/* std::vector<GList> cells; */
 	float xMin;
@@ -57,7 +59,8 @@ public:
 
 	GTable();
 	GTable(char);
-	GTable(char, const GVector<GString>&);
+	//GTable(char, const GVector<GString>&);
+	GTable(char, const std::vector<GString>&);
 	GTable(const GString&, char, int);
 	GTable(const GTable&);
 	virtual ~GTable();
@@ -66,7 +69,8 @@ public:
 	// gets
 	char getDelimiter() const;
 	/* std::vector<GString> getHeaders() const; */
-	GVector<GString> getHeaders() const;
+	//GVector<GString> getHeaders() const;
+	std::vector<GString> getHeaders() const;
 	GString getHeader(unsigned int) const;
 	GType getCell(unsigned int, unsigned int) const;
 	GList getRow(unsigned int) const;
@@ -97,7 +101,8 @@ public:
 	void append(const GTable&);
 	void append(const GTable*);
 	/* void setHeaders(const std::vector<GString>&); */
-	void setHeaders(const GVector<GString>&);
+	//void setHeaders(const GVector<GString>&);
+	void setHeaders(const std::vector<GString>&);
 	void addHeader(unsigned int, const GString&);
 	void save(const GString&) const;
 	void toggleOutput(unsigned int);

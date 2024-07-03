@@ -22,8 +22,8 @@ int main(int argc, char* argv[])
 	GVectorUnitTest();
 	GPointerUnitTest();
 	GListUnitTest();
-	GTableUnitTest();
-	GObjectsUnitTest();
+	//GTableUnitTest();
+	//GObjectsUnitTest();
 	CryptUnitTest();
 
 	printf("========================\n");

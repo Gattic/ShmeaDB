@@ -1,4 +1,4 @@
-// Copyright 2020 Robert Carneiro, Derek Meer, Matthew Tabak, Eric Lujan
+// Copyright 2024 Robert Carneiro, Derek Meer, Matthew Tabak, Eric Lujan
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 // associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -30,11 +30,10 @@ class GVector
 {
 public:
 	// TODO: Implement custom iterators
-	typedef T* iterator;
-	typedef const T* const_iterator;
+	typedef shmea::GPointer<T> iterator;
+	typedef const shmea::GPointer<T> const_iterator;
 	typedef unsigned int size_type;
 private:
-	/* T* m_data; */
 	size_type m_size;
 	size_type m_capacity;
 	shmea::GPointer<T, array_deleter<T> > m_data;

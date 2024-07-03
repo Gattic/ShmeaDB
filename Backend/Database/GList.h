@@ -35,7 +35,8 @@ class GList
 
 private:
 	//
-	GVector<GType> items;
+	//GVector<GType> items;
+	std::vector<GType> items;
 	float xMin;
 	float xMax;
 	float xRange;

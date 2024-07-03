@@ -31,7 +31,8 @@ GList::GList(const GList& list2)
 
 GList::GList(int size, const GType& value)
 {
-	items = GVector<GType>(size, value);
+	//items = GVector<GType>(size, value);
+	items = std::vector<GType>(size, value);
 }
 
 GList::~GList()
@@ -212,8 +213,8 @@ void GList::insertGType(unsigned int index, const GType& item)
 	if (index == items.size())
 		addGType(item);
 	else
-		//items.insert(items.begin() + index, item);//TODO: FIX after iterators
-		items.insert(index, item);
+		items.insert(items.begin() + index, item);//TODO: FIX after iterators
+		//items.insert(index, item); // GVector
 }
 
 void GList::setGType(unsigned int index, const GType& item)
@@ -229,8 +230,8 @@ void GList::remove(unsigned int index)
 	if (index >= items.size())
 		return;
 
-	//items.erase(items.begin() + index);//TODO: FIX after iterators
-	items.erase(index);
+	items.erase(items.begin() + index);//TODO: FIX after iterators
+	//items.erase(index); // GVector
 }
 
 void GList::clear()

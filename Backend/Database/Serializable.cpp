@@ -553,7 +553,8 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 
 	// the header
 	/* std::vector<GString> header; */
-	shmea::GVector<GString> header;
+	//shmea::GVector<GString> header;
+	std::vector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -630,8 +631,8 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	cIndex = bundleIndex;
 
 	// the header
-	/* std::vector<GString> header; */
-	shmea::GVector<GString> header;
+	std::vector<GString> header;
+	//shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -698,7 +699,8 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 
 		// the header
 		/* std::vector<GString> header; */
-		GVector<GString> header;
+		//GVector<GString> header;
+		std::vector<GString> header;
 		for (int i = 0; i < columns; ++i)
 			header.push_back(cList.getString(cIndex + i));
 
