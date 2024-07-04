@@ -252,7 +252,7 @@ Connection* GNet::GServer::getLocalConnection()
 	return localConnection;
 }
 
-const std::vector<GNet::Connection*>& GNet::GServer::getClientConnections()
+const std::vector<GNet::Connection*> GNet::GServer::getClientConnections()
 {
 
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = clientCLookUp.begin();
@@ -260,7 +260,7 @@ const std::vector<GNet::Connection*>& GNet::GServer::getClientConnections()
 	for(; itr != clientCLookUp.end(); ++itr)
 	{
 		std::vector<int> clientCIndexs = itr->second;
-		for(int i = 0; i < clientCIndexs.size(); i++)
+		for(unsigned int i = 0; i < clientCIndexs.size(); i++)
 		{
 			Connection* cConnection = clientC[clientCIndexs[i]];
 			clientConnections.push_back(cConnection);
@@ -301,14 +301,14 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 
 }
 
-const std::vector<GNet::Connection*>& GNet::GServer::getServerConnections()
+const std::vector<GNet::Connection*> GNet::GServer::getServerConnections()
 {
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.begin();
 	std::vector<Connection*> serverConnections;
 	for(; itr != serverCLookUp.end(); ++itr)
 	{
 		std::vector<int> serverCIndexs = itr->second;
-		for(int i = 0; i < serverCIndexs.size(); i++)
+		for(unsigned int i = 0; i < serverCIndexs.size(); i++)
 		{
 			Connection* cConnection = serverC[serverCIndexs[i]];
 			serverConnections.push_back(cConnection);
@@ -425,7 +425,7 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 	if (itr != serverCLookUp.end())
 	{
 		std::vector<int> serverCIndexs = itr->second;
-		for(int i = 0; i < serverCIndexs.size(); i++)
+		for(unsigned int i = 0; i < serverCIndexs.size(); i++)
 		{
 			Connection* cConnection = serverC[serverCIndexs[i]];
 			printf("Server_Name: %s\n", cConnection->getName().c_str());
@@ -439,7 +439,7 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 	if (itr != clientCLookUp.end())
 	{
 		std::vector<int> clientCIndexs = itr->second;
-		for(int i = 0; i < clientCIndexs.size(); i++)
+		for(unsigned int i = 0; i < clientCIndexs.size(); i++)
 		{
 			Connection* cConnection = clientC[clientCIndexs[i]];
 			if(cConnection->getName() == clientName)
@@ -458,7 +458,7 @@ GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName
 	for(; itr != serverCLookUp.end(); ++itr)
 	{
 		std::vector<int> serverCIndexs = itr->second;
-		for(int i = 0; i < serverCIndexs.size(); i++)
+		for(unsigned int i = 0; i < serverCIndexs.size(); i++)
 		{
 			Connection* cConnection = serverC[serverCIndexs[i]];
 			if(cConnection->getName() == clientName)
@@ -471,7 +471,7 @@ GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName
 	for(; itr != clientCLookUp.end(); ++itr)
 	{
 		std::vector<int> clientCIndexs = itr->second;
-		for(int i = 0; i < clientCIndexs.size(); i++)
+		for(unsigned int i = 0; i < clientCIndexs.size(); i++)
 		{
 			Connection* cConnection = clientC[clientCIndexs[i]];
 			if(cConnection->getName() == clientName)
@@ -533,7 +533,7 @@ void GNet::GServer::commandCatcher(void*)
 		for(; itr != clientCLookUp.end(); ++itr)
 		{
 			std::vector<int> clientCIndexs = itr->second;
-			for(int i = 0; i < clientCIndexs.size(); i++)
+			for(unsigned int i = 0; i < clientCIndexs.size(); i++)
 			{
 				Connection* cConnection = clientC[clientCIndexs[i]];
 
@@ -554,7 +554,7 @@ void GNet::GServer::commandCatcher(void*)
 		for(; itr != serverCLookUp.end(); ++itr)
 		{
 			std::vector<int> serverCIndexs = itr->second;
-			for(int i = 0; i < serverCIndexs.size(); i++)
+			for(unsigned int i = 0; i < serverCIndexs.size(); i++)
 			{
 				Connection* cConnection = serverC[serverCIndexs[i]];
 
@@ -612,7 +612,7 @@ void GNet::GServer::commandCatcher(void*)
 	for(; itr != clientCLookUp.end(); ++itr)
 	{
 		std::vector<int> clientCIndexs = itr->second;
-		for(int i = 0; i < clientCIndexs.size(); i++)
+		for(unsigned int i = 0; i < clientCIndexs.size(); i++)
 		{
 			if(clientC[clientCIndexs[i]] == NULL)
 				continue;
@@ -637,7 +637,7 @@ void GNet::GServer::commandCatcher(void*)
 	for(; itr != serverCLookUp.end(); ++itr)
 	{
 		std::vector<int> serverCIndexs = itr->second;
-		for(int i = 0; i < serverCIndexs.size(); i++)
+		for(unsigned int i = 0; i < serverCIndexs.size(); i++)
 		{
 			if(serverC[serverCIndexs[i]] == NULL)
 				continue;
@@ -729,7 +729,7 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 	if(serverCKeyExists)
 	{
 		std::vector<int> serverCIndexs = serverCLookUp[serverIP];
-		for(int i = 0; i < serverCIndexs.size(); i++)
+		for(unsigned int i = 0; i < serverCIndexs.size(); i++)
 		{
 			Connection* cConnection = serverC[serverCIndexs[i]];
 			//To be answered: Can a server have multiple connections from the same serverIP with the same clientName from different ports?

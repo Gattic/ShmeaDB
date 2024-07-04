@@ -100,8 +100,8 @@ class GServer
 	void LogoutInstance(Connection*);
 
 	int getSockFD();
-	const std::vector<Connection*>& getClientConnections();
-	const std::vector<Connection*>& getServerConnections();
+	const std::vector<Connection*> getClientConnections();
+	const std::vector<Connection*> getServerConnections();
 	pthread_mutex_t* getClientMutex();
 	pthread_mutex_t* getServerMutex();
 
