@@ -109,10 +109,13 @@ void* Service::launchService(void* y)
 			// start the service
 			cService->StartService(x);
 
+			printf("ServiceNum: %d\n", x->sockData->getServiceNum());
 			// execute the service
 			shmea::ServiceData* retData = cService->execute(x->sockData);
 			if(retData != NULL)
 			{
+				//TODO: Add Response Service Number to MetaData
+				retData->setResponseServiceNum(x->sockData->getServiceNum());
 				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
 			}
 

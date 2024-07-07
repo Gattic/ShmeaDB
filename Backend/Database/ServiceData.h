@@ -46,6 +46,7 @@ private:
 	shmea::GString command;
 	shmea::GString serviceKey;
 	int64_t serviceNum;
+	int64_t responseServiceNum;
 	int type;
 	shmea::GList argList;
 
@@ -83,6 +84,7 @@ public:
 	shmea::GString getCommand() const;
 	shmea::GString getServiceKey() const;
 	int64_t getServiceNum() const;
+	int64_t getResponseServiceNum() const;
 	int getType() const;
 	const GList& getArgList() const;
 
@@ -92,6 +94,7 @@ public:
 	void setServiceKey(shmea::GString);
 	void assignServiceNum();
 	void setServiceNum(int64_t);
+	void setResponseServiceNum(int64_t);
 	void setType(int);
 	void setArgList(const GList&);
 

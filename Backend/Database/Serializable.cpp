@@ -382,6 +382,7 @@ GString Serializable::Serialize(const ServiceData* cData)
 	GList metaList;
 	//metaList.addString(cData->getSID());
 	metaList.addLong(cData->getServiceNum());
+	metaList.addLong(cData->getResponseServiceNum());
 	metaList.addInt(cData->getType());
 	metaList.addString(cData->getCommand());
 	metaList.addString(cData->getServiceKey());
@@ -763,7 +764,7 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 		return;
 
 	GList metaList;
-	int repLen = Deserialize(metaList, serial, 5);//we want only 5 GItems
+	int repLen = Deserialize(metaList, serial, 6);//we want only 6 GItems
 	GString repData = serial.substr(serial.length()-repLen);
 	/*for(unsigned int rCounter=0;rCounter<serial.length();++rCounter)
 	{
@@ -780,16 +781,19 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 	int64_t sdServiceNum = metaList.getLong(0);
 	retData->setServiceNum(sdServiceNum);
 
-	int sdType = metaList.getInt(1);
+	int64_t sdRespServiceNum = metaList.getLong(1);
+	retData->setResponseServiceNum(sdRespServiceNum);
+
+	int sdType = metaList.getInt(2);
 	retData->setType(sdType);
 
-	GString sdCommand = metaList.getString(2);
+	GString sdCommand = metaList.getString(3);
 	retData->setCommand(sdCommand);
 
-	GString sdSKey = metaList.getString(3);
+	GString sdSKey = metaList.getString(4);
 	retData->setServiceKey(sdSKey);
 
-	unsigned int argListLen = metaList.getInt(4);
+	unsigned int argListLen = metaList.getInt(5);
 	GList argList;
 	if(argListLen > 0)
 		repLen = Deserialize(argList, repData, argListLen);

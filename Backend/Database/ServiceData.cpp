@@ -28,6 +28,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 	serviceKey = "";
 	type = TYPE_ACK;
 	serviceNum = -1;
+	responseServiceNum = -1;
 }
 ServiceData::ServiceData(const ServiceData& instance2)
 {
@@ -41,6 +42,7 @@ ServiceData::ServiceData(const ServiceData& instance2)
 	repObj = instance2.repObj;
 	type = instance2.type;
 	serviceNum = instance2.serviceNum;
+	responseServiceNum = instance2.responseServiceNum;
 }
 
 ServiceData::~ServiceData()
@@ -52,6 +54,7 @@ ServiceData::~ServiceData()
 	serviceKey = "";
 	type = TYPE_ACK;
 	serviceNum = -1;
+	responseServiceNum = -1;
 }
 
 void ServiceData::set(GString newServiceKey)
@@ -176,6 +179,11 @@ int64_t ServiceData::getServiceNum() const
 	return serviceNum;
 }
 
+int64_t ServiceData::getResponseServiceNum() const
+{
+	return responseServiceNum;
+}
+
 int ServiceData::getType() const
 {
 	return type;
@@ -206,6 +214,7 @@ void ServiceData::setServiceKey(GString newServiceKey)
 	serviceKey = newServiceKey;
 }
 
+
 void ServiceData::assignServiceNum()
 {
 	static int64_t serviceCounter = 0;
@@ -215,6 +224,11 @@ void ServiceData::assignServiceNum()
 void ServiceData::setServiceNum(int64_t newServiceNum)
 {
 	serviceNum = newServiceNum;
+}
+
+void ServiceData::setResponseServiceNum(int64_t newResponseServiceNum)
+{
+	responseServiceNum = newResponseServiceNum;
 }
 
 void ServiceData::setType(int newType)
