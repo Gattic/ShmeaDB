@@ -93,6 +93,7 @@ public:
 	void setCommand(shmea::GString);
 	void setServiceKey(shmea::GString);
 	void assignServiceNum();
+	void assignResponseServiceNum();
 	void setServiceNum(int64_t);
 	void setResponseServiceNum(int64_t);
 	void setType(int);

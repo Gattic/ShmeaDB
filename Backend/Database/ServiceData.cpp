@@ -221,6 +221,11 @@ void ServiceData::assignServiceNum()
 	serviceNum = ++serviceCounter;
 }
 
+void ServiceData::assignResponseServiceNum()
+{
+	responseServiceNum = serviceNum + 1;
+}
+
 void ServiceData::setServiceNum(int64_t newServiceNum)
 {
 	serviceNum = newServiceNum;
