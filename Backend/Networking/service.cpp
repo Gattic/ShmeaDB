@@ -113,6 +113,8 @@ void* Service::launchService(void* y)
 			shmea::ServiceData* retData = cService->execute(x->sockData);
 			if(retData != NULL)
 			{
+				//Response Service Number will be given by the service received by the server
+				retData->setResponseServiceNum(x->sockData->getResponseServiceNum());
 				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
 			}
 

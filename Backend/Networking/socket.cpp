@@ -384,6 +384,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 
 	// Convert to packet format
 	cData->assignServiceNum();
+
 	shmea::GString rawData = shmea::Serializable::Serialize(cData);
 	if (rawData.length() == 0)
 	{
