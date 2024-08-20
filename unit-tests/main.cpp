@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 	GVectorUnitTest();
 	GPointerUnitTest();
 	GListUnitTest();
-	//GTableUnitTest();
+	GTableUnitTest();
 	//GObjectsUnitTest();
 	CryptUnitTest();
 
