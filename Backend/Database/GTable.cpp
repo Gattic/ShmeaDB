@@ -141,6 +141,7 @@ void GTable::importFromFile(const GString& fname)
 
 		if (!feof(fd))
 		{
+			buffer[strlen(buffer)-1] = '\0';
 			ptr = strtok(buffer, (const char*)delim_char.c_str());
 			while (ptr)
 			{
