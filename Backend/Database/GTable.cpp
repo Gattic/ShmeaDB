@@ -345,23 +345,35 @@ void GTable::print() const
 		{
 			// get the data by cell
 			GType cCell = getCell(r, c);
-			if (cCell.getType() == GType::STRING_TYPE)
-				printf("%s", cCell.c_str());
-			else if (cCell.getType() == GType::CHAR_TYPE)
-				printf("%c", cCell.getChar());
-			else if (cCell.getType() == GType::SHORT_TYPE)
-				printf("%d", cCell.getShort());
-			else if (cCell.getType() == GType::INT_TYPE)
-				printf("%d", cCell.getInt());
-			else if (cCell.getType() == GType::LONG_TYPE)
-				printf("%ld", cCell.getLong());
-			else if (cCell.getType() == GType::FLOAT_TYPE)
-				printf("%f", cCell.getFloat());
-			else if (cCell.getType() == GType::DOUBLE_TYPE)
-				printf("%f", cCell.getDouble());
-			else if (cCell.getType() == GType::BOOLEAN_TYPE)
-				printf("%s", cCell.getBoolean() ? "True" : "False");
-
+			switch (cCell.getType())
+			{
+				case GType::STRING_TYPE:
+					printf("%s", cCell.c_str());
+					break;
+				case GType::CHAR_TYPE:
+					printf("%c", cCell.getChar());
+					break;
+				case GType::SHORT_TYPE:
+					printf("%d", cCell.getShort());
+					break;
+				case GType::INT_TYPE:
+					printf("%d", cCell.getInt());
+					break;
+				case GType::LONG_TYPE:
+					printf("%ld", cCell.getLong());
+					break;
+				case GType::FLOAT_TYPE:
+					printf("%f", cCell.getFloat());
+					break;
+				case GType::DOUBLE_TYPE:
+					printf("%f", cCell.getDouble());
+					break;
+				case GType::BOOLEAN_TYPE:
+					printf("%s", cCell.getBoolean() ? "True" : "False");
+					break;
+				default:
+					printf("UNKNOWN DATA TYPE\n");
+			}
 			// comma?
 			if (c < numberOfCols() - 1)
 				printf(",");
