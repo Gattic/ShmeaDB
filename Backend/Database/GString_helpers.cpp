@@ -260,6 +260,23 @@ bool GString::isWhitespace(const char* str, unsigned int len)
 	return gTemp.isWhitespace();
 }
 
+bool GString::isAlphaNum(char x)
+{
+	return ((x >= 0x30) && (x <= 0x39)) || ((x >= 0x41) && (x <= 0x5A)) || ((x >= 0x61) && (x <= 0x7A));
+}
+
+GString GString::makeAlphaNum() const
+{
+	GString y = "";
+	for (unsigned int i = 0; i < size(); ++i)
+	{
+		char letter = block[i];
+		if (isAlphaNum(letter))
+			y += letter;
+	}
+	return y;
+}
+
 bool GString::isInteger(const char* str)
 {
 	GString gTemp(str, strlen(str));

@@ -45,6 +45,51 @@ void GList::copy(const GList& list2)
 	items = list2.items;
 }
 
+void GList::loadWords(const GString& fname)
+{
+	if (fname.length() == 0)
+		return;
+
+	FILE* fd = fopen(fname.c_str(), "ro");
+	printf("[WORDS] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
+
+	if (!fd)
+		return;
+
+	// Allocate a buffer
+	int MAX_LINE_SIZE = 1024;
+	char buffer[MAX_LINE_SIZE];
+	char *ptr = NULL;
+
+	shmea::GList newRow;
+	bzero(buffer, MAX_LINE_SIZE);
+	while( !feof( fd ) )
+	{
+		fgets(&buffer[0], MAX_LINE_SIZE, fd);
+		GString delim_char(' '); //delimiter
+
+		if (!feof(fd))
+		{
+			buffer[strlen(buffer)-1] = '\0';
+			ptr = strtok(buffer, (const char*)delim_char.c_str());
+			while (ptr)
+			{
+				GString word(ptr);
+				newRow.addString(word.makeAlphaNum().toLower());
+
+				// Get the next token
+				ptr = strtok( NULL, (const char *)delim_char.c_str() );
+			}
+		}
+	}
+
+	printf( "[CSV] %d cells of data\n", newRow.size());
+	copy(newRow);
+
+	// EOF
+	fclose(fd);
+}
+
 void GList::addChar(char newBlock)
 {
 	addPrimitive(GType::CHAR_TYPE, &newBlock);
