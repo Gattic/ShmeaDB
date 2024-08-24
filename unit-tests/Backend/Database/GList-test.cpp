@@ -254,4 +254,56 @@ void GListUnitTest()
 	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][2] Failed==============", deserializedObj.getMembers()[0][2] == "chirp");
 	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][3] Failed==============", deserializedObj.getMembers()[0][3] == "slurp");
 	G_assert (__FILE__, __LINE__, "=============GObject2-Deserialize-=deserializedObj.getMembers()[0][4] Failed==============", deserializedObj.getMembers()[0][4] == "burp");
+
+
+	// Word loading
+	shmea::GList wordList;
+	wordList.loadWords("datasets/wordlist.txt");
+	wordList.print();
+	G_assert(__FILE__, __LINE__, "Wordlist size", wordList.size() == 16);
+	G_assert(__FILE__, __LINE__, "Wordlist[0]", wordList[0] == "hello");
+	G_assert(__FILE__, __LINE__, "Wordlist[1]", wordList[1] == "world");
+	G_assert(__FILE__, __LINE__, "Wordlist[2]", wordList[2] == "this");
+	G_assert(__FILE__, __LINE__, "Wordlist[3]", wordList[3] == "is");
+	G_assert(__FILE__, __LINE__, "Wordlist[4]", wordList[4] == "an");
+	G_assert(__FILE__, __LINE__, "Wordlist[5]", wordList[5] == "example");
+	G_assert(__FILE__, __LINE__, "Wordlist[6]", wordList[6] == "of");
+	G_assert(__FILE__, __LINE__, "Wordlist[7]", wordList[7] == "a");
+	G_assert(__FILE__, __LINE__, "Wordlist[8]", wordList[8] == "list");
+	G_assert(__FILE__, __LINE__, "Wordlist[9]", wordList[9] == "of");
+	G_assert(__FILE__, __LINE__, "Wordlist[10]", wordList[10] == "words");
+	G_assert(__FILE__, __LINE__, "Wordlist[11]", wordList[11] == "loaded");
+	G_assert(__FILE__, __LINE__, "Wordlist[12]", wordList[12] == "in");
+	G_assert(__FILE__, __LINE__, "Wordlist[13]", wordList[13] == "by");
+	G_assert(__FILE__, __LINE__, "Wordlist[13]", wordList[14] == "a");
+	G_assert(__FILE__, __LINE__, "Wordlist[14]", wordList[15] == "glist");
+
+
+	shmea::GList wordList2;
+	wordList2.loadWords("datasets/wordlist2.txt");
+	wordList2.print();
+	G_assert(__FILE__, __LINE__, "Wordlist2 size", wordList2.size() == 23);
+	G_assert(__FILE__, __LINE__, "WordList2[0]", wordList2[0] == "hello");
+	G_assert(__FILE__, __LINE__, "WordList2[1]", wordList2[1] == "world");
+	G_assert(__FILE__, __LINE__, "WordList2[2]", wordList2[2] == "this");
+	G_assert(__FILE__, __LINE__, "WordList2[3]", wordList2[3] == "is");
+	G_assert(__FILE__, __LINE__, "WordList2[4]", wordList2[4] == "an");
+	G_assert(__FILE__, __LINE__, "WordList2[5]", wordList2[5] == "example");
+	G_assert(__FILE__, __LINE__, "WordList2[6]", wordList2[6] == "of");
+	G_assert(__FILE__, __LINE__, "WordList2[7]", wordList2[7] == "a");
+	G_assert(__FILE__, __LINE__, "WordList2[8]", wordList2[8] == "list");
+	G_assert(__FILE__, __LINE__, "WordList2[9]", wordList2[9] == "of");
+	G_assert(__FILE__, __LINE__, "WordList2[10]", wordList2[10] == "words");
+	G_assert(__FILE__, __LINE__, "WordList2[11]", wordList2[11] == "loaded");
+	G_assert(__FILE__, __LINE__, "WordList2[12]", wordList2[12] == "in");
+	G_assert(__FILE__, __LINE__, "WordList2[13]", wordList2[13] == "by");
+	G_assert(__FILE__, __LINE__, "WordList2[13]", wordList2[14] == "a");
+	G_assert(__FILE__, __LINE__, "WordList2[14]", wordList2[15] == "glist");
+	G_assert(__FILE__, __LINE__, "WordList2[15]", wordList2[16] == "this");
+	G_assert(__FILE__, __LINE__, "WordList2[16]", wordList2[17] == "is");
+	G_assert(__FILE__, __LINE__, "WordList2[17]", wordList2[18] == "a");
+	G_assert(__FILE__, __LINE__, "WordList2[18]", wordList2[19] == "second");
+	G_assert(__FILE__, __LINE__, "WordList2[19]", wordList2[20] == "row");
+	G_assert(__FILE__, __LINE__, "WordList2[19]", wordList2[21] == "of");
+	G_assert(__FILE__, __LINE__, "WordList2[19]", wordList2[22] == "text");
 }

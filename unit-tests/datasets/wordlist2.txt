@@ -1,0 +1,2 @@
+Hello world, this is an example of a list of words loaded in by a GList.
+This is a second row of text.
