@@ -119,59 +119,57 @@ void GTable::importFromFile(const GString& fname)
 	if (fname.length() == 0)
 		return;
 
-	FILE* fd = fopen(fname.c_str(), "ro");
+	FILE* fd = fopen(fname.c_str(), "r");
 	printf("[CSV] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
 
 	if (!fd)
 		return;
 
-
 	// Allocate a buffer
 	int rowCounter = 0, colCounter = 0;
-	int MAX_LINE_SIZE = 1024;
+	const int MAX_LINE_SIZE = 1024;
 	char buffer[MAX_LINE_SIZE];
-	char *ptr = NULL;
-
-	bzero(buffer, MAX_LINE_SIZE);
-	while( !feof( fd ) )
+	char* ptr = NULL;
+	
+	while (fgets(buffer, MAX_LINE_SIZE, fd))
 	{
 		shmea::GList newRow;
-		fgets(&buffer[0], MAX_LINE_SIZE, fd);
-		GString delim_char( delimiter );
-
-		if (!feof(fd))
+		GString delim_char(delimiter);
+		
+		// Remove newline character at the end if it exists
+		size_t len = strlen(buffer);
+		if (len > 0 && buffer[len - 1] == '\n')
+			buffer[len - 1] = '\0';
+		
+		ptr = strtok(buffer, delim_char.c_str());
+		while (ptr)
 		{
-			buffer[strlen(buffer)-1] = '\0';
-			ptr = strtok(buffer, (const char*)delim_char.c_str());
-			while (ptr)
+			GString word(ptr);
+			if (rowCounter == 0)
 			{
-				GString word(ptr);
-				if ( rowCounter == 0 )
-				{
-					header.push_back( word );
-					colCounter++;
-				}
-				else
-				{
-					GType newCell = GString::Typify(word.c_str(), word.length());
-					newRow.addGType(newCell);
-				}
-				ptr = strtok( NULL, (const char *)delim_char.c_str() );
+				header.push_back(word);
+				colCounter++;
 			}
-
-			if ( rowCounter != 0 )
+			else
 			{
-				addRow(newRow);
+				GType newCell = GString::Typify(word.c_str(), word.length());
+				newRow.addGType(newCell);
 			}
-			rowCounter++;
+			ptr = strtok(NULL, delim_char.c_str());
 		}
+		
+		if (rowCounter != 0)
+		{
+			addRow(newRow);
+		}
+		rowCounter++;
 	}
-
-	printf( "[CSV] %d columns with %d rows of data\n", colCounter, --rowCounter);
-
-	// EOF
+	
+	printf("[CSV] %d columns with %d rows of data\n", colCounter, rowCounter - 1);
+	
 	fclose(fd);
 }
+
 
 /*!
  * @brief GTable String import
