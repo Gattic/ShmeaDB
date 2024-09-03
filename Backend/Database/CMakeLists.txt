@@ -27,6 +27,8 @@ set(DB_src_files
 	Serializable.cpp
 	ServiceData.cpp
 	standardizable.cpp
+	PNGPlotter.cpp
+	Candle.cpp
 )
 add_library(DB ${DB_src_files})
 

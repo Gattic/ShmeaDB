@@ -44,6 +44,59 @@ freely, subject to the following restrictions:
 
 using namespace shmea;
 
+void PNGHelper::createTestPNG(const char* filename)
+{
+	const unsigned width = 1200;
+	const unsigned height = 800;
+	Image image;
+	image.Allocate(width, height);
+
+	applyRainbowFilter(image, 32); // Alpha value of 128 for transparency
+	
+	SavePNG(image, filename);
+}
+
+void PNGHelper::createPNGFromData(const GTable& data, const char* outputPath)
+{
+
+	GList bt_ts = data.getCol(static_cast<unsigned>(0));
+	GList raw_open = data.getCol(static_cast<unsigned>(2));
+	GList raw_close = data.getCol(static_cast<unsigned>(3));
+	GList raw_high = data.getCol(static_cast<unsigned>(4));
+	GList raw_low = data.getCol(static_cast<unsigned>(5));
+
+	//bt_ts
+	//sizes
+	printf("bt_ts size = %d\n", bt_ts.size());
+	printf("raw_open size = %d\n", raw_open.size());
+	printf("raw_close size = %d\n", raw_close.size());
+	printf("raw_high size = %d\n", raw_high.size());
+	printf("raw_low size = %d\n", raw_low.size());
+
+	/*const unsigned width = 1200;
+	const unsigned height = 800;
+
+	Image image = new Image();
+	image.Allocate(width, height);
+
+	double min_time = bt_ts[0].getLong();
+	double max_time = bt_ts[bt_ts.size() - 1].getLong();
+
+	double min_price = *std::min_element(raw_low.begin(), raw_low.end());
+	double max_price = *std::max_element(raw_high.begin(), raw_high.end());*/
+
+
+
+	for(unsigned int  i = 0; i < bt_ts.size(); ++i)
+	{
+//		printf("bt_ts[%d] = %ld\n", i, bt_ts[i].getLong());
+	}
+
+
+	printf("Create PNG from data\n");
+
+}
+
 void PNGHelper::applyRainbowFilter(Image& image, unsigned int alpha)
 {
     //Plot the pixels of the PNG file
@@ -127,6 +180,23 @@ void PNGHelper::pngTest(const char* inputPath, const char* outputPath)
 
     //CALL LODEPNG WRITE FUNC
 
+}
+
+void PNGHelper::SavePNG(const Image& image, const char* outputPath)
+{
+    std::vector<unsigned char> buffer;
+    unsigned int error = lodepng::encode(buffer, image.getPixels(), image.getWidth(), image.getHeight());
+
+    if(error)
+    {
+	std::cout << "[LODEPNG] Encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+	return;
+    }
+
+    std::string fullPath = "datasets/images/";
+    fullPath += outputPath;
+
+    lodepng::save_file(buffer, fullPath.c_str());
 }
 
 void PNGHelper::LoadPNG(Image& image, const char* inputPath)

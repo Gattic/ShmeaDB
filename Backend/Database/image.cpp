@@ -21,6 +21,26 @@
 
 using namespace shmea;
 
+std::vector<unsigned char> Image::getPixels() const 
+{
+	std::vector<unsigned char> pixels; //Store RGBA Data
+	pixels.reserve(getPixelCount() * 4);
+
+	for (unsigned int y = 0; y < height; ++y)
+	{
+		for (unsigned int x = 0; x < width; ++x)
+		{
+			RGBA c = GetPixel(x, y); //pixel at x, y
+			pixels.push_back(c.r); //Red
+			pixels.push_back(c.g); //Green
+			pixels.push_back(c.b); //Blue
+			pixels.push_back(c.a); //Alpha
+		}
+	}
+
+	return pixels; // Returns the vector of raw pixel data
+}
+
 bool Image::LoadPPM(const GString& fname)
 {
 	// valid file name?
@@ -318,6 +338,22 @@ void Image::LoadBMP(const GString& filename)
 	fclose(file);
 
 	printf("[IMG] Loaded BMP: %s(%d,%d)\n", filename.c_str(), width, height);
+}
+
+void Image::SavePNG(const GString& filename) const
+{
+	int len = filename.length();
+	if (!(len > 4 && filename.substr(len - 4) == GString(".png")))
+	{
+		printf("ERROR: This is not a PNG filename: %s\n", filename.c_str());
+		return;
+	}
+
+	// Save the image
+	PNGHelper::SavePNG(*this, filename.c_str());
+
+	printf("[IMG] Saved PNG: %s(%d,%d)\n", filename.c_str(), width, height);
+
 }
 
 void Image::LoadPNG(const GString& filename)
