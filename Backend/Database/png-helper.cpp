@@ -193,10 +193,12 @@ void PNGHelper::SavePNG(const Image& image, const char* outputPath)
 	return;
     }
 
-    std::string fullPath = "datasets/images/";
-    fullPath += outputPath;
-
-    lodepng::save_file(buffer, fullPath.c_str());
+    std::string fullPath = outputPath;
+    error = lodepng::save_file(buffer, fullPath.c_str());
+    if(error)
+    {
+	std::cout << "[LODEPNG] Save error " << error << ": " << lodepng_error_text(error) << std::endl;
+    }
 }
 
 void PNGHelper::LoadPNG(Image& image, const char* inputPath)

@@ -14,6 +14,7 @@
 #include "Backend/Database/GObjects-test.h"
 #include "Backend/Networking/crypt-test.h"
 #include "Backend/Database/GVector-test.h"
+#include "Backend/Database/image-test.h"
 
 int main(int argc, char* argv[])
 {
@@ -25,6 +26,7 @@ int main(int argc, char* argv[])
 	GTableUnitTest();
 	//GObjectsUnitTest();
 	CryptUnitTest();
+	ImageUnitTest();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
