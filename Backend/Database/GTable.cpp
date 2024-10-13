@@ -125,51 +125,76 @@ void GTable::importFromFile(const GString& fname)
 	if (!fd)
 		return;
 
+	// get the file size
+	fseek(fd, 0, SEEK_END);
+	int64_t fSize = ftell(fd);
+	fseek(fd, 0, SEEK_SET);
+
 	// Allocate a buffer
-	int rowCounter = 0, colCounter = 0;
-	const int MAX_LINE_SIZE = 1024;
+	int rowCounter = 0;
+	int MAX_LINE_SIZE = 256;
+	int linesRead = 0; // Are the lines read, not how many lines read
 	char buffer[MAX_LINE_SIZE];
-	char* ptr = NULL;
-	
-	while (fgets(buffer, MAX_LINE_SIZE, fd))
+
+	do
 	{
 		shmea::GList newRow;
-		GString delim_char(delimiter);
-		
-		// Remove newline character at the end if it exists
-		size_t len = strlen(buffer);
-		if (len > 0 && buffer[len - 1] == '\n')
-			buffer[len - 1] = '\0';
-		
-		ptr = strtok(buffer, delim_char.c_str());
-		while (ptr)
+		bzero(buffer, MAX_LINE_SIZE);
+
+		// get the current line
+		char readBuffer[MAX_LINE_SIZE];
+		if (fgets(readBuffer, sizeof(readBuffer), fd) != 0)
+			linesRead = sscanf(readBuffer, "%[^\n]s", buffer);
+		else
+			linesRead = 0;
+
+		// EOF or error
+		if (linesRead <= 0)
+			break;
+
+		// Read each column
+		int colCounter = 0;
+		bool lastCol = false;
+		GString line(buffer);
+		int breakPoint = line.cfind(delimiter);
+		while (breakPoint != -1)
 		{
-			GString word(ptr);
+			// get the cell
+			GString word = line.substr(0, breakPoint);
+			if (!lastCol)
+				line = line.substr(breakPoint + 1);
+
+			// add the col to the row
 			if (rowCounter == 0)
-			{
 				header.push_back(word);
-				colCounter++;
-			}
 			else
 			{
 				GType newCell = GString::Typify(word.c_str(), word.length());
 				newRow.addGType(newCell);
 			}
-			ptr = strtok(NULL, delim_char.c_str());
+
+			// for the next column
+			breakPoint = line.cfind(delimiter);
+			++colCounter;
+
+			// last column?
+			if ((breakPoint == -1) && (line.length() > 0) && (!lastCol))
+			{
+				breakPoint = line.length();
+				lastCol = true;
+			}
 		}
-		
-		if (rowCounter != 0)
-		{
+
+		// add the row to the object
+		if (rowCounter > 0)
 			addRow(newRow);
-		}
-		rowCounter++;
-	}
-	
-	printf("[CSV] %d columns with %d rows of data\n", colCounter, rowCounter - 1);
-	
+		++rowCounter;
+
+	} while ((linesRead > 0) && (ftell(fd) < fSize));
+
+	// EOF
 	fclose(fd);
 }
-
 
 /*!
  * @brief GTable String import
