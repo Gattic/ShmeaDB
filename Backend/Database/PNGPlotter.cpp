@@ -88,13 +88,14 @@ void PNGPlotter::generateUniqueColors(int x)
     }
 }   
 
-void PNGPlotter::addDataPoint(double newPrice, int portIndex)
+void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw)
 {
     if(lines == 0)
     {
 	printf("PNG Plotter not initialized with the correct amount of lines to draw");
 	return;
     }
+
     if(lines - 1 == -1 || lines - 1 < portIndex)
     {
 	printf("PNG Plotter does not have the index for this line assigned");
@@ -102,7 +103,7 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex)
     }
     int y = height - static_cast<int>((newPrice - min_price) / (max_price - min_price) * (height - 2 * margin_y)) - margin_y;
 
-    if(!first_line_point[portIndex])
+    if(!first_line_point[portIndex] && draw)
 	drawLine(last_line_drawn - 1, last_price_pos[portIndex], last_line_drawn, y, portIndex);
 
 
@@ -115,6 +116,7 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex)
 
     //set the first_point for the specific line to false after the first data point is plotted
     first_line_point[portIndex] = false;
+    //drawCandleStick(image, x, y_open, y_close, y_high, y_low, raw_close >= raw_open ? color_bullish : color_bearish);
 
 }
 

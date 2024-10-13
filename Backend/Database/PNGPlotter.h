@@ -50,7 +50,7 @@ class PNGPlotter
 	public:
 
 		PNGPlotter(unsigned, unsigned, int, double, double, int = 0);
-		void addDataPoint(double, int = 0);
+		void addDataPoint(double, int = 0, bool = true);
 		void drawNewCandle(long, float, float, float, float);
 		void SavePNG(const std::string&, const std::string&);
 	
