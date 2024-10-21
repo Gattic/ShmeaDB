@@ -21,6 +21,36 @@
 
 using namespace shmea;
 
+RGBA Image::averageColor(int startX, int startY, int blockWidth, int blockHeight)
+{
+    int totalR = 0, totalG = 0, totalB = 0, totalA = 0;
+    int count = 0;
+
+    for (int y = 0; y < blockHeight; ++y) {
+        for (int x = 0; x < blockWidth; ++x) {
+            // Retrieve the pixel color from the high-resolution image
+            RGBA pixel = GetPixel(startX + x, startY + y);
+
+            // Sum the color values
+            totalR += pixel.r;
+            totalG += pixel.g;
+            totalB += pixel.b;
+            totalA += pixel.a;
+            count++;
+        }
+    }
+
+    // Calculate the average values and return the resulting color
+    return RGBA(
+        static_cast<unsigned char>(totalR / count),
+        static_cast<unsigned char>(totalG / count),
+        static_cast<unsigned char>(totalB / count),
+        static_cast<unsigned char>(totalA / count)
+    );
+
+
+}
+
 std::vector<unsigned char> Image::getPixels() const 
 {
 	std::vector<unsigned char> pixels; //Store RGBA Data

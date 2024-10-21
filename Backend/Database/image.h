@@ -134,6 +134,8 @@ public:
 
 	std::vector<unsigned char> getPixels() const;
 
+	RGBA averageColor(int, int, int, int);
+
 	RGBA GetPixel(unsigned int x, unsigned int y) const
 	{
 		if (!(x < width))
