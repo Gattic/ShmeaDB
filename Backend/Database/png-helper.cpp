@@ -182,6 +182,34 @@ void PNGHelper::pngTest(const char* inputPath, const char* outputPath)
 
 }
 
+//Function to create directories recursively
+bool create_directories(const std::string& path)
+{
+    size_t pos = 0;
+    std::string current_path;
+
+    //Check for the first directory in the path
+    while((pos = path.find('/', pos)) != std::string::npos)
+    {
+	current_path = path.substr(0, pos++);
+	printf("paths: %s\n", current_path.c_str());
+	//Skip if the directory already exists
+	if (current_path.empty())
+	    continue;
+	//Create directory
+	if (mkdir(current_path.c_str(), 0777) && errno != EEXIST)
+	{
+	    std::cerr << "[ERROR] Could not create directory: " << current_path << std::endl;
+	    return false; //Return false if directory fails to be created
+	}
+
+    }
+
+    return true; 
+
+}
+
+//TODO: Find better way to deal with char* and std::string
 void PNGHelper::SavePNG(const Image& image, const char* outputPath)
 {
     std::vector<unsigned char> buffer;
@@ -193,8 +221,21 @@ void PNGHelper::SavePNG(const Image& image, const char* outputPath)
 	return;
     }
 
-    std::string fullPath = outputPath;
-    error = lodepng::save_file(buffer, fullPath.c_str());
+    std::string temp(outputPath);
+    
+    //Extract the dir path from the full file path
+    std::string directory = temp.substr(0, temp.find_last_of('/')+1);
+
+    printf("dir: %s\n", directory.c_str());
+
+    //Create the directory if it doesn't exist
+    if(!create_directories(directory.c_str()))
+    {
+	std::cout << "[ERROR] Failed to create directories for path: " << directory << std::endl;
+	return;
+    }
+
+    error = lodepng::save_file(buffer, outputPath);
     if(error)
     {
 	std::cout << "[LODEPNG] Save error " << error << ": " << lodepng_error_text(error) << std::endl;
