@@ -8,17 +8,15 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 	: image(), width(width), height(height), 
 	min_price(low_price),
 	max_price(max_price),
-	old_min_price(min_price),
-	old_max_price(max_price),
 	last_candle_pos(0),
 	last_timestamp(0),
 	total_candles_drawn(0),
 	max_candles(max_candles),
 	margin_x(20),
-	margin_y(20),
-	candle_width(width / max_candles),
+	margin_y(200),
+	candle_width(static_cast<int>(max_candles != 0 ? width / max_candles : 1)),
 	lines(lines),
-	first_line_point(lines, true),
+	first_line_point(lines, false),
 	last_price_pos(lines, 0),
 	last_line_drawn(0),
 	line_colors(),
@@ -72,64 +70,6 @@ void PNGPlotter::initialize_colors(std::vector<RGBA>& lines_colors, std::vector<
 	
 
 }
-/* 
-
-Comment these out because it might be useful in the future, but for now it's easier to hardcode colors
-
-
-//Helper function to convert from hue to RGB
-float hueToRGB(float p, float q, float t)
-{
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1.0f / 6) return p + (q - p) * 6 * t;
-    if (t < 1.0f / 2) return q;
-    if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
-
-    return p;
-}
-PNGPlotter::RGB PNGPlotter::HSLToRGB(float h, float s, float l)
-{
-    float r, g, b;
-
-    if (s == 0)
-    {
-	r = g = b = 1; //Achromatic gray
-    }
-    else
-    {
-	float q = l < 0.5f ? l * (1 + s) : l + s - l * s;
-	float p = 2 * l - q;
-	r = hueToRGB(p, q, h + 1.0f / 3);
-	g = hueToRGB(p, q, h);
-	b = hueToRGB(p, q, h - 1.0f / 3);
-    }
-
-    //Convert to RGB [0, 255]
-    PNGPlotter::RGB rgb;
-    rgb.r = static_cast<int>(r * 255);
-    rgb.g = static_cast<int>(g * 255);
-    rgb.b = static_cast<int>(b * 255);
-
-    return rgb;
-}
-
-void PNGPlotter::generateUniqueColors(int x)
-{
-    float saturation = 0.7f; //Fixed saturation
-    float lightness = 0.5f;
-
-    for(int i = 0; i < x; ++i)
-    {
-	//Spread hue values evenly across the color wheel
-	float hue = static_cast<float>(i) / x;
-
-	//convert HSL to RGB
-	PNGPlotter::RGB rgb = HSLToRGB(hue, saturation, lightness);
-	line_colors.push_back(RGBA(rgb.r, rgb.g, rgb.b, 255));
-	
-    }
-} */  
 
 void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw)
 {
@@ -144,186 +84,70 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw)
 	printf("PNG Plotter does not have the index for this line assigned");
 	return;
     }
-    float y = height - ((newPrice - min_price) / (max_price - min_price) * (height - 2 * margin_y)) - margin_y;
+    int y = height - static_cast<int>((newPrice - min_price) / (max_price - min_price) * (height - 2 * margin_y)) - margin_y;	
 
-    if(!first_line_point[portIndex] && draw)
-	drawLine(last_line_drawn - 1, last_price_pos[portIndex], last_line_drawn, y, portIndex);
+    if(draw)
+    {
+	if(!first_line_point[portIndex] && y != 0)
+    		first_line_point[portIndex] = true;
+	else
+		drawLine(last_line_drawn, last_price_pos[portIndex], last_line_drawn + candle_width, y, portIndex);
 
 
-    //update the previous-y coordinate
-    last_price_pos[portIndex] = y;
+    	//update the previous-y coordinate
+    	last_price_pos[portIndex] = y;
+    }
+
+
 
     //Only update X once all the lines have been drawn
     if(portIndex == lines - 1)
 	last_line_drawn += candle_width;
 
-    //set the first_point for the specific line to false after the first data point is plotted
-    first_line_point[portIndex] = false;
+    
     //drawCandleStick(image, x, y_open, y_close, y_high, y_low, raw_close >= raw_open ? color_bullish : color_bearish);
 
 }
 
-inline int roundFloat(float val)
+void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, int portIndex)
 {
-    return static_cast<int>(val + (val >= 0 ? 0.5f : -0.5f));
-}
-
-
-float ipart(float x) {
-    return std::floor(x);
-}
-
-float fpart(float x) {
-    return x - std::floor(x);
-}
-
-float rfpart(float x) {
-    return 1.0f - fpart(x);
-}
-
-// Plot function to blend colors based on brightness
-void PNGPlotter::plot(float x, float y, float brightness, int portIndex) {
-    RGBA color = line_colors[portIndex];
-    RGBA pixelColor = image.GetPixel(static_cast<int>(x), static_cast<int>(y));
-
-    unsigned char blendedR = static_cast<unsigned char>(color.r * brightness + pixelColor.r * (1 - brightness));
-    unsigned char blendedG = static_cast<unsigned char>(color.g * brightness + pixelColor.g * (1 - brightness));
-    unsigned char blendedB = static_cast<unsigned char>(color.b * brightness + pixelColor.b * (1 - brightness));
-
-    image.SetPixel(static_cast<int>(x), static_cast<int>(y), RGBA(blendedR, blendedG, blendedB, 255));
-}
-
-// Xiaolin Wu's Line Algorithm with Thickness (C++98 version)
-void PNGPlotter::drawLine(float x1, float y1, float x2, float y2, int portIndex) {
-    // Local variable for line thickness
-    int thickness = candle_width;  // Adjust the thickness value here
-
-    bool steep = std::abs(y2 - y1) > std::abs(x2 - x1);
-    
-    if (steep) {
-        // Swap x and y if the line is steep
-        std::swap(x1, y1);
-        std::swap(x2, y2);
-    }
-
-    if (x1 > x2) {
-        // Ensure we always draw from left to right
-        std::swap(x1, x2);
-        std::swap(y1, y2);
-    }
-
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-    float gradient = (dx == 0) ? 1 : dy / dx;
-
-    // Handle the first endpoint
-    float xEnd = roundFloat(x1);
-
-    float yEnd = y1 + gradient * (xEnd - x1);
-    float xGap = rfpart(x1 + 0.5f);
-    float xPixel1 = xEnd;
-    float yPixel1 = ipart(yEnd);
-
-    // Adjust for line thickness: draw additional lines above and below
-    for (int t = -thickness / 2; t <= thickness / 2; ++t) {
-        if (steep) {
-            plot(yPixel1 + t, xPixel1, rfpart(yEnd) * xGap, portIndex);
-            plot(yPixel1 + 1 + t, xPixel1, fpart(yEnd) * xGap, portIndex);
-        } else {
-            plot(xPixel1, yPixel1 + t, rfpart(yEnd) * xGap, portIndex);
-            plot(xPixel1, yPixel1 + 1 + t, fpart(yEnd) * xGap, portIndex);
-        }
-    }
-
-    float intery = yEnd + gradient;
-
-    // Handle the second endpoint
-    xEnd = roundFloat(x2);
-    yEnd = y2 + gradient * (xEnd - x2);
-    xGap = fpart(x2 + 0.5f);
-    float xPixel2 = xEnd;
-    float yPixel2 = ipart(yEnd);
-
-    // Adjust for line thickness: draw additional lines above and below
-    for (int t = -thickness / 2; t <= thickness / 2; ++t) {
-        if (steep) {
-            plot(yPixel2 + t, xPixel2, rfpart(yEnd) * xGap, portIndex);
-            plot(yPixel2 + 1 + t, xPixel2, fpart(yEnd) * xGap, portIndex);
-        } else {
-            plot(xPixel2, yPixel2 + t, rfpart(yEnd) * xGap, portIndex);
-            plot(xPixel2, yPixel2 + 1 + t, fpart(yEnd) * xGap, portIndex);
-        }
-    }
-
-    // Main loop for drawing the line
-    if (steep) {
-        for (int x = static_cast<int>(xPixel1 + 1); x < static_cast<int>(xPixel2); ++x) {
-            for (int t = -thickness / 2; t <= thickness / 2; ++t) {
-                plot(ipart(intery) + t, x, rfpart(intery), portIndex);
-                plot(ipart(intery) + 1 + t, x, fpart(intery), portIndex);
-            }
-            intery += gradient;
-        }
-    } else {
-        for (int x = static_cast<int>(xPixel1 + 1); x < static_cast<int>(xPixel2); ++x) {
-            for (int t = -thickness / 2; t <= thickness / 2; ++t) {
-                plot(x, ipart(intery) + t, rfpart(intery), portIndex);
-                plot(x, ipart(intery) + 1 + t, fpart(intery), portIndex);
-            }
-            intery += gradient;
-        }
-    }
-}
-
-
-
-/*
-void PNGPlotter::drawLine(float x1, float y1, float x2, float y2, int portIndex)
-{
-
-    //Digital Differential Analyzer: DDA
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-
-    //Calculate number of steps
-    float steps = std::max(std::abs(dx), std::abs(dy));
-
-    //Calculate the increment per step
-    float xIncrement = dx / steps;
-    float yIncrement = dy / steps;
-
-    float currentX = x1;
-    float currentY = y1;
-
-    for(int i = 0; i <= steps; ++i)
-    {
-	//Draw pixel
-	image.SetPixel(roundFloat(currentX), roundFloat(currentY), line_colors[portIndex]);
-
-	//move pos
-	currentX += xIncrement;
-	currentY += yIncrement;
-    }
-
-
-
 
     //Bresenham's Line algorithm (or close to it)
-    float dx = std::abs(x2 - x1);
-    float dy = std::abs(y2 - y1);
-    float sx = x1 < x2 ? 1 : -1;
-    float sy = y1 < y2 ? 1 : -1;
-    float err = dx - dy;
+    int dx = std::abs(x2 - x1);
+    int dy = std::abs(y2 - y1);
+    int sx = x1 < x2 ? 1 : -1;
+    int sy = y1 < y2 ? 1 : -1;
+    int err = dx - dy;
+
+    int half_width = candle_width / 10;
+    if (half_width == 0)
+    {
+	half_width = 1;
+    }
 
     while (true)
     {
-	//Set pixel at (x1, y1)
-	image.SetPixel(x1, y1, line_colors[portIndex]); //Fix draw to get from vector
+        // Draw thickness perpendicular to the line direction
+        if (dx > dy)  // Predominantly horizontal line
+        {
+            for (int i = -half_width; i <= half_width; ++i)
+            {
+                image.SetPixel(x1, y1 + i, line_colors[portIndex]);  // Offset vertically
+            }
+        }
+        else  // Predominantly vertical or diagonal line
+        {
+            for (int i = -half_width; i <= half_width; ++i)
+            {
+                image.SetPixel(x1 + i, y1, line_colors[portIndex]);  // Offset horizontally
+            }
+        }
+
 	//Check if the end has been reached
 	if (x1 == x2 && y1 == y2)
 	    break;
 	
-	float e2 = err * 2;
+	int e2 = err * 2;
 	if(e2 > -dy)
 	{
 	    err -= dy;
@@ -336,32 +160,61 @@ void PNGPlotter::drawLine(float x1, float y1, float x2, float y2, int portIndex)
 	}
 	
     }
-}*/
+}
 
-void PNGPlotter::drawNewCandle(long timestamp, float raw_open, float raw_close, float raw_high, float raw_low)
-{
-    
-    float x = last_candle_pos + candle_width;
+void PNGPlotter::drawNewCandle(long timestamp, float raw_open, float raw_close, float raw_high, float raw_low) {
+    // Adjust prices by subtracting min_price for normalization
+    float adjusted_open = raw_open - min_price;
+    float adjusted_close = raw_close - min_price;
+    float adjusted_high = raw_high - min_price;
+    float adjusted_low = raw_low - min_price;
+    float adjusted_max = max_price - min_price;
 
-    float y_open = height - ((raw_open - min_price) / (max_price - min_price) * (height - 2 * margin_y))- margin_y;
-    
-    float y_close = height - ((raw_close - min_price) / (max_price - min_price) * (height - 2 * margin_y)) - margin_y;
+    // Calculate y-coordinates with adjusted prices
+    int y_open = height - static_cast<int>(adjusted_open / adjusted_max * (height - 2 * margin_y)) - margin_y;
+    int y_close = height - static_cast<int>(adjusted_close / adjusted_max * (height - 2 * margin_y)) - margin_y;
+    int y_high = height - static_cast<int>(adjusted_high / adjusted_max * (height - 2 * margin_y)) - margin_y;
+    int y_low = height - static_cast<int>(adjusted_low / adjusted_max * (height - 2 * margin_y)) - margin_y;
 
-    float y_high = height - ((raw_high - min_price) / (max_price - min_price) * (height - 2 * margin_y)) - margin_y;
-
-    float y_low = height - ((raw_low - min_price) / (max_price - min_price) * (height - 2 * margin_y)) - margin_y;
-
-    //Determine the color based on whether the candlestick is bullish or bearish
+    // Determine the color based on whether the candlestick is bullish or bearish
     RGBA& color = (raw_close >= raw_open) ? color_bullish : color_bearish;
 
-    //Draw the candlestick at the calculated x position
-    drawCandleStick(image, x, y_open, y_close, y_high, y_low, color);
-    
-    //Update the last drawn x position
-    last_candle_pos = x;
+    // Draw the candlestick at the calculated x position
+    drawCandleStick(image, last_candle_pos + candle_width, y_open, y_close, y_high, y_low, color);
+
+    // Update the last drawn x position
+    last_candle_pos += candle_width;
+}
+
+void PNGPlotter::drawCandleStick(Image& img, int x, int y_open, int y_close, int y_high, int y_low, RGBA& color) {
+    const int body_width = static_cast<int>(candle_width);  // Ensure width is an integer
+    const int half_body_width = body_width / 2;
+
+    // Draw wick (line between high and low)
+    int wick_top = std::min(y_low, y_high);
+    int wick_bottom = std::max(y_low, y_high);
+    for (int y = wick_top; y <= wick_bottom; ++y) {
+        if (x >= 0 && x < img.getWidth() && y >= 0 && y < img.getHeight()) {
+	    img.SetPixel(x-1, y, color);
+            img.SetPixel(x, y, color);
+	    img.SetPixel(x+1, y, color);
+        }
+    }
+
+    // Draw Body (rectangle between open and close)
+    int body_top = std::min(y_open, y_close);
+    int body_bottom = std::max(y_open, y_close);
+    for (int y = body_top; y <= body_bottom; ++y) {
+        for (int dx = -half_body_width; dx <= half_body_width; ++dx) {
+            if (x + dx >= 0 && x + dx < img.getWidth() && y >= 0 && y < img.getHeight()) {
+                img.SetPixel(x + dx, y, color);
+            }
+        }
+    }
 }
 
 
+/*
 void PNGPlotter::drawCandleStick(Image& img, float x, float y_open, float y_close, float y_high, float y_low, RGBA& color)
 {
 	//Define the width of the candlestick body and the wick
@@ -386,7 +239,7 @@ void PNGPlotter::drawCandleStick(Image& img, float x, float y_open, float y_clos
 		}
 	}
 }
-
+*/
 Image PNGPlotter::downsampleToTargetSize() {
     Image downsampledImage;
     downsampledImage.Allocate(TARGET_WIDTH, TARGET_HEIGHT);

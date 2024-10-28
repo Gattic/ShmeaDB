@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <cmath>
 
 namespace shmea{
 
@@ -25,18 +26,17 @@ class PNGPlotter
 		unsigned width;
 		unsigned height;
 		float min_price, max_price;
-		float old_min_price, old_max_price;
-		float last_candle_pos;
+		int last_candle_pos;
 		long last_timestamp;
 		int total_candles_drawn;
 		const int max_candles;
-		const float margin_x;
-		const float margin_y;
-		float candle_width;
+		const int margin_x;
+		const int margin_y;
+		int candle_width;
 		int lines;
 		std::vector<bool> first_line_point;
-		std::vector<float> last_price_pos;
-		float last_line_drawn;
+		std::vector<int> last_price_pos;
+		int last_line_drawn;
 		std::vector<RGBA> line_colors;
 		std::vector<std::string> line_color_names;
 		RGBA color_bullish;
@@ -48,9 +48,8 @@ class PNGPlotter
 		void initialize_colors(std::vector<RGBA>&, std::vector<std::string>&);
 		Image downsampleToTargetSize();
 			
-		void drawLine(float, float, float, float, int);
-		void plot(float, float, float, int);
-		void drawCandleStick(Image&, float, float, float, float, float, RGBA&);
+		void drawLine(int, int, int, int, int);
+		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
 	public:
 
 		
