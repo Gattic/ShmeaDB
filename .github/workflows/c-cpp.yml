@@ -1,0 +1,21 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "pants" ]
+  pull_request:
+    branches: [ "pants" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: configure
+      run: ./.configure.sh
+    - name: make
+      run: make
+    - name: make install
+      run: make install
