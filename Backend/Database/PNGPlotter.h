@@ -6,6 +6,7 @@
 #include <string>
 #include <limits>
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <iostream>
 #include <cmath>
@@ -15,29 +16,26 @@ namespace shmea{
 class PNGPlotter
 {
 
-	struct RGB
-	{
-	    int r;
-	    int g;
-	    int b;
-	};
 	private:
 		Image image;
-		unsigned width;
-		unsigned height;
+		unsigned int width;
+		unsigned int height;
 		float min_price, max_price;
-		int last_candle_pos;
+		const int margin_top;
+		const int margin_right;
+		const int margin_bottom;
+		const int margin_left;
 		long last_timestamp;
 		int total_candles_drawn;
 		const int max_candles;
-		const int margin_x;
-		const int margin_y;
 		int candle_width;
+		int last_candle_pos;
 		int lines;
 		std::vector<bool> first_line_point;
 		std::vector<int> last_price_pos;
 		int last_line_drawn;
 		std::vector<RGBA> line_colors;
+		std::map<std::string, RGBA> indicatorColors;
 		std::vector<std::string> line_color_names;
 		RGBA color_bullish;
 		RGBA color_bearish;
@@ -47,8 +45,10 @@ class PNGPlotter
 //		void generateUniqueColors(int);
 		void initialize_colors(std::vector<RGBA>&, std::vector<std::string>&);
 		Image downsampleToTargetSize();
+
+		void drawGrid(int = 7, int = 16);
 			
-		void drawLine(int, int, int, int, int);
+		void drawLine(int, int, int, int, RGBA&);
 		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
 	public:
 
@@ -60,8 +60,9 @@ class PNGPlotter
 		static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
 		static const int SUPERSAMPLE_HEIGHT = TARGET_HEIGHT * SUPERSAMPLE_SCALE;
 		
-		PNGPlotter(unsigned, unsigned, int, double, double, int = 0);
-		void addDataPoint(double, int = 0, bool = true);
+		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0);
+		void addDataPointWithIndicator(double, int = 0, std::string = "", std::string = "");
+		void addDataPoint(double, int = 0, bool = true, RGBA* = NULL);
 		void drawNewCandle(long, float, float, float, float);
 		void SavePNG(const std::string&, const std::string&);
 	

@@ -192,7 +192,6 @@ bool create_directories(const std::string& path)
     while((pos = path.find('/', pos)) != std::string::npos)
     {
 	current_path = path.substr(0, pos++);
-	printf("paths: %s\n", current_path.c_str());
 	//Skip if the directory already exists
 	if (current_path.empty())
 	    continue;
@@ -225,8 +224,6 @@ void PNGHelper::SavePNG(const Image& image, const char* outputPath)
     
     //Extract the dir path from the full file path
     std::string directory = temp.substr(0, temp.find_last_of('/')+1);
-
-    printf("dir: %s\n", directory.c_str());
 
     //Create the directory if it doesn't exist
     if(!create_directories(directory.c_str()))

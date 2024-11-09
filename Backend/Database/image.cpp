@@ -21,6 +21,65 @@
 
 using namespace shmea;
 
+void Image::drawVerticalGradient(int x, int y, RGBA color1, RGBA color2, int cornerRadius)
+{
+    int cHeight = static_cast<int>(height);
+    int cWidth = static_cast<int>(width);
+
+    int startY = y;
+    int endY = y + cHeight;
+
+    // Calculate color deltas with type casting to float for precision
+    float deltaR = (static_cast<float>(color2.r) - static_cast<float>(color1.r)) / cHeight;
+    float deltaG = (static_cast<float>(color2.g) - static_cast<float>(color1.g)) / cHeight;
+    float deltaB = (static_cast<float>(color2.b) - static_cast<float>(color1.b)) / cHeight;
+    float deltaA = (static_cast<float>(color2.a) - static_cast<float>(color1.a)) / cHeight;
+
+    int rectXW = x + cWidth - 1;
+    int rectYH = y + cHeight - 1;
+
+    // Draw the vertical gradient with adjustable rounded corners
+    for (int currentY = startY; currentY < endY; ++currentY) {
+        // Calculate current color and cast to unsigned char
+        unsigned char r = static_cast<unsigned char>(color1.r + deltaR * (currentY - startY));
+        unsigned char g = static_cast<unsigned char>(color1.g + deltaG * (currentY - startY));
+        unsigned char b = static_cast<unsigned char>(color1.b + deltaB * (currentY - startY));
+        unsigned char a = static_cast<unsigned char>(color1.a + deltaA * (currentY - startY));
+
+        // Iterate over the width of the rectangle
+        for (int currentX = x; currentX <= rectXW; ++currentX) {
+            // Check if the pixel is within the rounded corner area
+            bool drawPixel = true;
+            int dx = 0, dy = 0;
+
+            if (currentX < x + cornerRadius) {
+                dx = currentX - (x + cornerRadius);
+                if (currentY < y + cornerRadius)
+                    dy = currentY - (y + cornerRadius);
+                else if (currentY >= rectYH - cornerRadius)
+                    dy = currentY - (rectYH - cornerRadius);
+            } else if (currentX >= rectXW - cornerRadius) {
+                dx = currentX - (rectXW - cornerRadius);
+                if (currentY < y + cornerRadius)
+                    dy = currentY - (y + cornerRadius);
+                else if (currentY >= rectYH - cornerRadius)
+                    dy = currentY - (rectYH - cornerRadius);
+            } else if (currentY < y + cornerRadius || currentY >= rectYH - cornerRadius) {
+                if (currentX < x || currentX >= rectXW)
+                    drawPixel = false;
+            }
+
+            // Draw the pixel if it's not excluded by the corner radius
+            if (drawPixel) {
+                int radiusSquared = cornerRadius * cornerRadius;
+                if ((dx * dx + dy * dy) <= radiusSquared) {
+                    SetPixel(currentX, currentY, RGBA(r, g, b, a));
+                }
+            }
+        }
+    }
+}
+
 RGBA Image::averageColor(int startX, int startY, int blockWidth, int blockHeight)
 {
     int totalR = 0, totalG = 0, totalB = 0, totalA = 0;
