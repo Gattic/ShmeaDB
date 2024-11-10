@@ -130,7 +130,6 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
         	return;
     	}
 
-
 	if (indicatorColors.find(indicator) == indicatorColors.end()) 
 	{
         	printf("Error: The specified indicator '%s' is not recognized.\n", indicator.c_str());

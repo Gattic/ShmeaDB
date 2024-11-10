@@ -49,6 +49,7 @@ class PNGPlotter
 
 		void drawGrid(int = 7, int = 16);
 		void drawFourQuadrants();	
+
 		void drawLine(int, int, int, int, RGBA&);
 		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
 	public:
