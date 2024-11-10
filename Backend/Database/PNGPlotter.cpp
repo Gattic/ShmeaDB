@@ -4,7 +4,7 @@
 
 using namespace shmea;
 
-PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left)
+PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left, bool fourQuadrants)
 	: image(), width(width), height(height), 
 	min_price(low_price),
 	max_price(max_price),
@@ -12,6 +12,7 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 	margin_right(margin_right),
 	margin_bottom(margin_bottom),
 	margin_left(margin_left),
+	fourQuadrants(fourQuadrants),
 	last_timestamp(0),
 	total_candles_drawn(0),
 	max_candles(max_candles),
@@ -30,9 +31,29 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 	RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
 	RGBA Black(0x00, 0x00, 0x00, 0x7F);
 	image.drawVerticalGradient(0, 0, DarkGray, Black, 0);
+
+	if(fourQuadrants)
+	{
+		drawFourQuadrants();
+	}
 	
 	initialize_colors(line_colors, line_color_names);
 //	drawGrid();
+}
+
+void PNGPlotter::drawFourQuadrants()
+{
+    RGBA lineColor(0xC8, 0xC8, 0xC8, 0xC8); // Light gray for the quadrant lines
+
+    // Calculate positions for the middle lines
+    int midX = (width - margin_left - margin_right) / 2 + margin_left;
+    int midY = (height - margin_top - margin_bottom) / 2 + margin_top;
+
+    // Draw the vertical middle line
+    drawLine(midX, margin_top, midX, height - margin_bottom, lineColor);
+
+    // Draw the horizontal middle line
+    drawLine(margin_left, midY, width - margin_right, midY, lineColor);
 }
 
 void PNGPlotter::drawGrid(int numHorizontalLines, int numVerticalLines) {

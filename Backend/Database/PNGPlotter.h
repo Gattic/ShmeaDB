@@ -25,6 +25,7 @@ class PNGPlotter
 		const int margin_right;
 		const int margin_bottom;
 		const int margin_left;
+		const bool fourQuadrants;
 		long last_timestamp;
 		int total_candles_drawn;
 		const int max_candles;
@@ -47,7 +48,7 @@ class PNGPlotter
 		Image downsampleToTargetSize();
 
 		void drawGrid(int = 7, int = 16);
-			
+		void drawFourQuadrants();	
 		void drawLine(int, int, int, int, RGBA&);
 		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
 	public:
@@ -60,7 +61,7 @@ class PNGPlotter
 		static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
 		static const int SUPERSAMPLE_HEIGHT = TARGET_HEIGHT * SUPERSAMPLE_SCALE;
 		
-		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0);
+		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0, bool = false);
 		void addDataPointWithIndicator(double, int = 0, std::string = "", std::string = "");
 		void addDataPoint(double, int = 0, bool = true, RGBA* = NULL);
 		void drawNewCandle(long, float, float, float, float);
