@@ -41,6 +41,16 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 //	drawGrid();
 }
 
+int PNGPlotter::getWidth()
+{
+	return width;
+}
+
+int PNGPlotter::getHeight()
+{
+	return height;
+}
+
 void PNGPlotter::drawFourQuadrants()
 {
     RGBA lineColor(0xC8, 0xC8, 0xC8, 0xC8); // Light gray for the quadrant lines
@@ -148,7 +158,7 @@ inline int clamp(int value, int min, int max)
     return value;
 }
 
-void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor)
+void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor, int lineWidth)
 {
     if(lines == 0)
     { 
@@ -183,7 +193,7 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
 		int startX = last_line_drawn + margin_left;
 		int endX = last_line_drawn + candle_width + margin_left;
 
-		drawLine(startX, last_price_pos[portIndex], endX, y, *lineColor);
+		drawLine(startX, last_price_pos[portIndex], endX, y, *lineColor, lineWidth);
 	}
 
     	//update the previous-y coordinate
@@ -198,8 +208,43 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
     
 }
 
+void PNGPlotter::addDataPointPCA(int x, int y, int thickness, RGBA& pointColor)
+{
+	drawPoint(x, y, thickness, pointColor);
+}
 
-void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor)
+void PNGPlotter::addArrow(int x1, int y1, int x2, int y2, RGBA& arrowColor, int arrowSize)
+{
+	drawArrow(x1, y1, x2, y2, arrowColor, arrowSize);
+}
+
+void PNGPlotter::drawPoint(int x, int y, int thickness, RGBA& pointColor)
+{
+ // Check if the main point is within the plotting area bounds
+    if (x >= margin_left && x < (width - margin_right) &&
+        y >= margin_top && y < (height - margin_bottom)) {
+        
+        // Draw the main point
+        image.SetPixel(x, y, pointColor);
+
+    	// Draw additional pixels for thickness with bounds checking to make it round
+	for (int dx = -thickness; dx <= thickness; ++dx) {
+	    for (int dy = -thickness; dy <= thickness; ++dy) {
+		// Check if the pixel falls within the circle defined by the thickness
+		if (dx * dx + dy * dy <= thickness * thickness) {
+		    int newX = x + dx;
+		    int newY = y + dy;
+		    if (newX >= margin_left && newX < (width - margin_right) &&
+			newY >= margin_top && newY < (height - margin_bottom)) {
+			image.SetPixel(newX, newY, pointColor);
+		    }
+		}
+	    }
+	}
+    }
+}
+
+void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor, int lineWidth)
 {
 
     x1 = clamp(x1, margin_left, width - margin_right);
@@ -227,10 +272,11 @@ void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor)
 	x2 = y2;
 	y2 = temp;
 
-	dx = std::abs(x2 - x1);
-	dy = std::abs(y2 - y1);
-
+	temp = dx;
+	dx = dy;
+	dy = temp;    	
     }
+
 
     int sx = x1 < x2 ? 1 : -1;
     int sy = y1 < y2 ? 1 : -1;
@@ -238,44 +284,21 @@ void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor)
     double gradient = static_cast<double>(dy) / static_cast<double>(dx);
     double err = 0.0;
 
-    int lineWidth = 20;
-
     while (true)
     {
 
-	if (steep)
-	{
-		image.SetPixel(y1, x1, lineColor);
-	}
-	else
-	{
-		image.SetPixel(x1, y1, lineColor);
-	}
+        // Draw a filled circle or rectangle for each point to ensure consistent thickness
+        for (int i = -lineWidth / 2; i <= lineWidth / 2; ++i) {
+            for (int j = -lineWidth / 2; j <= lineWidth / 2; ++j) {
+                int newX = steep ? y1 + i : x1 + i;
+                int newY = steep ? x1 + j : y1 + j;
 
-	for(int i = 0; i <= lineWidth; ++i)
-	{
-     		if (steep) {
-                	if (y1 + i < static_cast<int>(height) - margin_bottom) 
-			{
-	                    image.SetPixel(y1 + i, x1, lineColor);  // Anti-aliased pixel above
-        	        }
-                	if (y1 - i >= margin_top) 
-			{
-	                    image.SetPixel(y1 - i, x1, lineColor);  // Anti-aliased pixel below
-        	        }
-	        } 
-		else 
-		{
-        	        if (x1 + i < static_cast<int>(width) - margin_right) 
-			{
-                	    image.SetPixel(x1 + i, y1, lineColor);  // Anti-aliased pixel right
-	                }
-        	        if (x1 - i >= margin_left) 
-			{
-	                    image.SetPixel(x1 - i, y1, lineColor);  // Anti-aliased pixel left
-        	        }
-            	}
-	}   
+                if (newX >= margin_left && newX < (width - margin_right) &&
+                    newY >= margin_top && newY < (height - margin_bottom)) {
+                    image.SetPixel(newX, newY, lineColor);
+                }
+            }
+        }
 	//Check if the end has been reached
 	if (x1 == x2 && y1 == y2)
 	    break;
@@ -376,6 +399,26 @@ void PNGPlotter::drawCandleStick(Image& img, float x, float y_open, float y_clos
 	}
 }
 */
+void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, RGBA& arrowColor, int arrowSize = 10)
+{
+
+    // Draw the main line
+    drawLine(x1, y1, x2, y2, arrowColor);
+
+    // Calculate the angle of the arrow
+    double angle = std::atan2(static_cast<double>(y2 - y1), static_cast<double>(x2 - x1));
+
+    // Calculate the points for the arrowhead
+    int arrowX1 = static_cast<int>(x2 - arrowSize * std::cos(angle + M_PI / 6)); // M_PI / 6 = 30 degrees
+    int arrowY1 = static_cast<int>(y2 - arrowSize * std::sin(angle + M_PI / 6));
+    int arrowX2 = static_cast<int>(x2 - arrowSize * std::cos(angle - M_PI / 6));
+    int arrowY2 = static_cast<int>(y2 - arrowSize * std::sin(angle - M_PI / 6));
+
+    // Draw the arrowhead lines
+    drawLine(x2, y2, arrowX1, arrowY1, arrowColor);
+    drawLine(x2, y2, arrowX2, arrowY2, arrowColor);
+}
+
 Image PNGPlotter::downsampleToTargetSize() {
     Image downsampledImage;
     downsampledImage.Allocate(TARGET_WIDTH, TARGET_HEIGHT);
