@@ -3,8 +3,8 @@
 #include "png-helper.h"
 
 using namespace shmea;
-
-PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left, bool fourQuadrants)
+//Just as a reminder, graphSize is the amount of data points that are appearing across the graph. This can be candles, data points, bars, etc
+PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left, bool fourQuadrants)
 	: image(), width(width), height(height), 
 	min_price(low_price),
 	max_price(max_price),
@@ -15,8 +15,8 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 	fourQuadrants(fourQuadrants),
 	last_timestamp(0),
 	total_candles_drawn(0),
-	max_candles(max_candles),
-	candle_width(static_cast<int>(max_candles != 0 ? (width - margin_left - margin_right) / max_candles : 1)),
+	graphSize(graphSize),
+	candle_width(static_cast<int>(graphSize != 0 ? (width - margin_left - margin_right) / graphSize : 1)),
 	last_candle_pos(static_cast<int>(candle_width / 2)),
 	lines(lines),
 	first_line_point(lines, false),
@@ -208,14 +208,111 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
     
 }
 
-void PNGPlotter::addDataPointPCA(int x, int y, int thickness, RGBA& pointColor)
+void PNGPlotter::addDataPointsPCA(std::vector<std::vector<double> >& data, RGBA& pointColor)
 {
-	drawPoint(x, y, thickness, pointColor);
+    // Calculate the effective plotting area considering the margins
+    int effectiveWidth = width - margin_left - margin_right;
+    int effectiveHeight = height - margin_top - margin_bottom;
+
+    double spacing = static_cast<double>(effectiveWidth) / graphSize;
+    int pointThickness = static_cast<int>(spacing / 3);
+
+    if(pointThickness < 1)
+    {
+      pointThickness = 1;
+    }
+
+    // Calculate the scaling factors for the x and y dimensions
+    double xScale = static_cast<double>(effectiveWidth) / graphSize;
+    double yScale = static_cast<double>(effectiveHeight) / (max_price - min_price);
+
+    //Calculate the center (origin)
+    int centerX = effectiveWidth / 2 + margin_left;
+    int centerY = effectiveHeight / 2 + margin_top; 
+
+    for(size_t i = 0; i < data.size(); ++i)
+    {
+	int xPNG = static_cast<int>((data[i][0] * xScale) + centerX + (pointThickness * 0.5));
+	int yPNG = static_cast<int>(centerY - (data[i][1] * yScale));
+
+	//Draw point
+	drawPoint(xPNG, yPNG, pointThickness, pointColor);
+    }
 }
 
-void PNGPlotter::addArrow(int x1, int y1, int x2, int y2, RGBA& arrowColor, int arrowSize)
+void PNGPlotter::addArrow(std::vector<std::vector<double> >& sorted_eig_vecs, RGBA& arrowColor, int arrowSize)
 {
-	drawArrow(x1, y1, x2, y2, arrowColor, arrowSize);
+
+    // Calculate the effective plotting area considering the margins
+    int effectiveWidth = width - margin_left - margin_right;
+    int effectiveHeight = height - margin_top - margin_bottom;
+
+    // Calculate the scaling factors for the x and y dimensions
+    double xScale = static_cast<double>(effectiveWidth) / graphSize;
+    double yScale = static_cast<double>(effectiveHeight) / (max_price - min_price);
+
+    //Calculate the center (origin)
+    int centerX = effectiveWidth / 2 + margin_left;
+    int centerY = effectiveHeight / 2 + margin_top; 
+
+    double scaleFactor = 0.5;
+
+    for(size_t i = 0; i < sorted_eig_vecs.size(); ++i)
+    {
+	double arrowX1 = centerX;
+	double arrowY1 = centerY;
+
+	//Normalize the eigenvectors to fit the screen dimensions
+	double normX = sorted_eig_vecs[i][0] * centerX;
+	double normY = sorted_eig_vecs[i][1] * centerY;
+
+	//Scale the normalized values by a facotr for visibility
+	double scaleFactor =  0.5;
+	double arrowX2 = arrowX1 + normX * scaleFactor;
+	double arrowY2 = arrowY1 + normY * scaleFactor;
+
+	drawArrow(arrowX1, arrowY1, arrowX2, arrowY2, arrowColor, arrowSize);
+		
+    }
+}
+
+void PNGPlotter::addHistogram(std::vector<int>& bins, RGBA& barColor)
+{
+    int max_count = *std::max_element(bins.begin(), bins.end());
+
+    int bar_spacing = 25;
+    double bin_width = (max_price - min_price) / graphSize;
+
+    int plot_width = width - margin_left - margin_right;
+    int plot_height = height - margin_top - margin_bottom;
+
+    int total_spacing = (graphSize - 1) * bar_spacing;
+    int bar_total_width = plot_width - total_spacing;
+
+    int bar_width = bar_total_width / graphSize;
+
+    for(int i = 0; i < graphSize; ++i)
+    {
+	int bar_height = static_cast<int>((static_cast<double>(bins[i]) / max_count) * plot_height);
+	int x_start = margin_left + i * (bar_width + bar_spacing);
+	int y_start = height - margin_bottom - bar_height;
+
+	drawHistogram(x_start, y_start, bar_width, barColor);
+    } 
+
+}
+
+void PNGPlotter::drawHistogram(int x_start, int y_start, int bar_width, RGBA& barColor)
+{
+    for(int x = x_start; x < x_start + bar_width; ++x)
+    {
+	for(int y = y_start; y < height - margin_bottom; ++y)
+	{
+	    image.SetPixel(x, y, barColor);
+	}
+    }
+
+
 }
 
 void PNGPlotter::drawPoint(int x, int y, int thickness, RGBA& pointColor)

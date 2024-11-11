@@ -28,7 +28,7 @@ class PNGPlotter
 		const bool fourQuadrants;
 		long last_timestamp;
 		int total_candles_drawn;
-		const int max_candles;
+		const int graphSize;
 		int candle_width;
 		int last_candle_pos;
 		int lines;
@@ -54,6 +54,7 @@ class PNGPlotter
 		void drawLine(int, int, int, int, RGBA&, int = 6);
 		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
 		void drawArrow(int, int, int, int, RGBA&, int);
+		void drawHistogram(int, int, int, RGBA&);
 	public:
 
 		
@@ -67,8 +68,9 @@ class PNGPlotter
 		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0, bool = false);
 		void addDataPointWithIndicator(double, int = 0, std::string = "", std::string = "");
 		void addDataPoint(double, int = 0, bool = true, RGBA* = NULL, int = 6);
-		void addDataPointPCA(int, int, int, RGBA&);
-		void addArrow(int, int, int, int, RGBA&, int = 10);
+		void addDataPointsPCA(std::vector<std::vector<double> >&, RGBA&);
+		void addArrow(std::vector<std::vector<double> >&, RGBA&, int = 10);
+		void addHistogram(std::vector<int>&, RGBA&);
 		void drawNewCandle(long, float, float, float, float);
 		void SavePNG(const std::string&, const std::string&);
 
