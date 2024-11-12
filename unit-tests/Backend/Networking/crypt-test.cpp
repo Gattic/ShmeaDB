@@ -24,7 +24,7 @@ void CryptUnitTest()
 	mcArgs.addString("MONTE-CARLO");
 
 	GNet::Connection* cConnection = NULL;
-	shmea::ServiceData* mcData = new shmea::ServiceData(cConnection, "GUI_Callback");
+	shmea::GPointer<shmea::ServiceData> mcData(new shmea::ServiceData(cConnection, "GUI_Callback"));
 	mcData->set(decimalData);
 	mcData->assignServiceNum(); // We usually call this in writeConnection
 	mcData->setArgList(mcArgs);
@@ -45,7 +45,7 @@ void CryptUnitTest()
 	G_assert (__FILE__, __LINE__, "==============Crypt-decrpyt Failed==============", crypt.sizeCurrent == crypt.sizeClaimed);
 
 	// Deserialize
-	shmea::ServiceData* deserializedCD = new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere"));
+	shmea::GPointer<shmea::ServiceData> deserializedCD(new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere")));
 	shmea::Serializable::Deserialize(deserializedCD, cryptUndo.dText);
 	shmea::GTable deserializedTable = deserializedCD->getTable();
 	//deserializedTable.print();

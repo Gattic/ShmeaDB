@@ -50,7 +50,7 @@ public:
 		if (!serverInstance)
 			return NULL;
 
-		printf("[SLOGOUT] %s\n", destination->getIP().c_str());
+		serverInstance->logger->info("SRVC", shmea::GString::format("[SLOGOUT] %s", destination->getIP().c_str()));
 
 		// delete it from the data structure
 		serverInstance->removeServerConnection(destination);

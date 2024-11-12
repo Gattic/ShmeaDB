@@ -16,8 +16,119 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "image.h"
 #include "GString.h"
+#include "GList.h"
+#include "png-helper.h"
 
 using namespace shmea;
+
+void Image::drawVerticalGradient(int x, int y, RGBA color1, RGBA color2, int cornerRadius)
+{
+    int cHeight = static_cast<int>(height);
+    int cWidth = static_cast<int>(width);
+
+    int startY = y;
+    int endY = y + cHeight;
+
+    // Calculate color deltas with type casting to float for precision
+    float deltaR = (static_cast<float>(color2.r) - static_cast<float>(color1.r)) / cHeight;
+    float deltaG = (static_cast<float>(color2.g) - static_cast<float>(color1.g)) / cHeight;
+    float deltaB = (static_cast<float>(color2.b) - static_cast<float>(color1.b)) / cHeight;
+    float deltaA = (static_cast<float>(color2.a) - static_cast<float>(color1.a)) / cHeight;
+
+    int rectXW = x + cWidth - 1;
+    int rectYH = y + cHeight - 1;
+
+    // Draw the vertical gradient with adjustable rounded corners
+    for (int currentY = startY; currentY < endY; ++currentY) {
+        // Calculate current color and cast to unsigned char
+        unsigned char r = static_cast<unsigned char>(color1.r + deltaR * (currentY - startY));
+        unsigned char g = static_cast<unsigned char>(color1.g + deltaG * (currentY - startY));
+        unsigned char b = static_cast<unsigned char>(color1.b + deltaB * (currentY - startY));
+        unsigned char a = static_cast<unsigned char>(color1.a + deltaA * (currentY - startY));
+
+        // Iterate over the width of the rectangle
+        for (int currentX = x; currentX <= rectXW; ++currentX) {
+            // Check if the pixel is within the rounded corner area
+            bool drawPixel = true;
+            int dx = 0, dy = 0;
+
+            if (currentX < x + cornerRadius) {
+                dx = currentX - (x + cornerRadius);
+                if (currentY < y + cornerRadius)
+                    dy = currentY - (y + cornerRadius);
+                else if (currentY >= rectYH - cornerRadius)
+                    dy = currentY - (rectYH - cornerRadius);
+            } else if (currentX >= rectXW - cornerRadius) {
+                dx = currentX - (rectXW - cornerRadius);
+                if (currentY < y + cornerRadius)
+                    dy = currentY - (y + cornerRadius);
+                else if (currentY >= rectYH - cornerRadius)
+                    dy = currentY - (rectYH - cornerRadius);
+            } else if (currentY < y + cornerRadius || currentY >= rectYH - cornerRadius) {
+                if (currentX < x || currentX >= rectXW)
+                    drawPixel = false;
+            }
+
+            // Draw the pixel if it's not excluded by the corner radius
+            if (drawPixel) {
+                int radiusSquared = cornerRadius * cornerRadius;
+                if ((dx * dx + dy * dy) <= radiusSquared) {
+                    SetPixel(currentX, currentY, RGBA(r, g, b, a));
+                }
+            }
+        }
+    }
+}
+
+RGBA Image::averageColor(int startX, int startY, int blockWidth, int blockHeight)
+{
+    int totalR = 0, totalG = 0, totalB = 0, totalA = 0;
+    int count = 0;
+
+    for (int y = 0; y < blockHeight; ++y) {
+        for (int x = 0; x < blockWidth; ++x) {
+            // Retrieve the pixel color from the high-resolution image
+            RGBA pixel = GetPixel(startX + x, startY + y);
+
+            // Sum the color values
+            totalR += pixel.r;
+            totalG += pixel.g;
+            totalB += pixel.b;
+            totalA += pixel.a;
+            count++;
+        }
+    }
+
+    // Calculate the average values and return the resulting color
+    return RGBA(
+        static_cast<unsigned char>(totalR / count),
+        static_cast<unsigned char>(totalG / count),
+        static_cast<unsigned char>(totalB / count),
+        static_cast<unsigned char>(totalA / count)
+    );
+
+
+}
+
+std::vector<unsigned char> Image::getPixels() const 
+{
+	std::vector<unsigned char> pixels; //Store RGBA Data
+	pixels.reserve(getPixelCount() * 4);
+
+	for (unsigned int y = 0; y < height; ++y)
+	{
+		for (unsigned int x = 0; x < width; ++x)
+		{
+			RGBA c = GetPixel(x, y); //pixel at x, y
+			pixels.push_back(c.r); //Red
+			pixels.push_back(c.g); //Green
+			pixels.push_back(c.b); //Blue
+			pixels.push_back(c.a); //Alpha
+		}
+	}
+
+	return pixels; // Returns the vector of raw pixel data
+}
 
 bool Image::LoadPPM(const GString& fname)
 {
@@ -61,16 +172,18 @@ bool Image::LoadPPM(const GString& fname)
 	data = new RGBA[height * width];
 
 	// flip y so that (0,0) is bottom left corner
-	for (int y = height - 1; y >= 0; y--)
+	//for (unsigned int y = height - 1; y >= 0; y--)
+	for(unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
-		for (int x = 0; x < width; x++)
+		for (unsigned int x = 0; x < width; ++x)
 		{
 			RGBA c;
 			c.r = fgetc(file);
 			c.g = fgetc(file);
 			c.b = fgetc(file);
 			c.a = 0xFF;
-			SetPixel(x, y, c);
+			//SetPixel(x, y, c);
+			SetPixel(x, height - 1 - y, c);
 		}
 	}
 
@@ -130,14 +243,14 @@ bool Image::LoadPBM(const GString& fname)
 	unsigned char* packedData = new unsigned char[rowsize]; // array of row bits to unpack
 
 	// for each line of the image
-	for (int i = 0; i < height; ++i)
+	for (unsigned int i = 0; i < height; ++i)
 	{
 		// read a row from the file of packed data
 		fread(packedData, sizeof(char), rowsize, file);
 		for (int k = 0; k < rowsize; ++k)
 		{											// for each byte in the row
 			unsigned char packed_d = packedData[k]; // temporary char of packed bits
-			for (int j = 0; j < 8; ++j)
+			for (unsigned int j = 0; j < 8; ++j)
 			{
 
 				// special case last byte, might not be enough bits to fill
@@ -187,11 +300,13 @@ bool Image::SavePPM(const GString& filename) const
 
 	// the data
 	// flip y so that (0,0) is bottom left corner
-	for (int y = height - 1; y >= 0; y--)
+	//for (unsigned int y = height - 1; y >= 0; y--)
+	for(unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
-		for (int x = 0; x < width; x++)
+		for (unsigned int x = 0; x < width; ++x)
 		{
-			RGBA v = GetPixel(x, y);
+			//RGBA v = GetPixel(x, y);
+			RGBA v = GetPixel(x, height - 1 - y);
 			fputc((unsigned char)(v.r), file);
 			fputc((unsigned char)(v.g), file);
 			fputc((unsigned char)(v.b), file);
@@ -234,13 +349,13 @@ bool Image::SavePBM(const GString& filename) const
 	unsigned char* packedData = new unsigned char[rowsize]; // row of packed bytes to write
 
 	// Write the image row by row
-	for (int i = 0; i < height; ++i)
+	for (unsigned int i = 0; i < height; ++i)
 	{
 		// pack a row of pixels
 		for (int k = 0; k < rowsize; ++k)
 		{								// for each byte in line to write,
 			unsigned char packed_d = 0; // initialize a packed byte to 0
-			for (int j = 0; j < 8; ++j)
+			for (unsigned int j = 0; j < 8; ++j)
 			{
 				// special case when not enough bits to fill last byte
 				if ((k * 8 + j) == width)
@@ -267,36 +382,18 @@ bool Image::SavePBM(const GString& filename) const
 
 void Image::LoadBMP(const GString& filename)
 {
-	/*unsigned int rmask = 0;
-	unsigned int gmask = 0;
-	unsigned int bmask = 0;
-	unsigned int amask = 0;
-
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-	rmask = 0xFF000000;
-	gmask = 0x00FF0000;
-	bmask = 0x0000FF00;
-	amask = 0x000000FF;
-#else
-	rmask = 0x000000FF;
-	gmask = 0x0000FF00;
-	bmask = 0x00FF0000;
-	amask = 0xFF000000;
-#endif
-
 	int len = filename.length();
 	if (!(len > 4 && filename.substr(len - 4) == GString(".bmp")))
 	{
 		printf("ERROR: This is not a BMP filename: %s\n", filename.c_str());
-		return false;
+		return;
 	}
 
 	FILE* file = fopen(filename.c_str(), "rb");
 	if (file == NULL)
 	{
 		printf("Unable to open %s for reading\n", filename.c_str());
-		;
-		return false;
+		return;
 	}
 
 	// misc header information
@@ -306,24 +403,129 @@ void Image::LoadBMP(const GString& filename)
 	// extract image height and width from header
 	int fileSize = *(int*)&info[2];
 	int dataOffset = *(int*)&info[10];
-	int width = *(int*)&info[18];
-	int height = *(int*)&info[22];
+	width = *(int*)&info[18];
+	height = *(int*)&info[22];
 	int depth = *(int*)&info[28];
 
 	// flip y so that (0,0) is bottom left corner
-	for (int y = height - 1; y >= 0; y--)
+	data = new RGBA[height * width];
+	//for (unsigned int y = height - 1; y >= 0; --y)
+	for (unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
-		for (int x = 0; x < width; x++)
+		for (unsigned int x = 0; x < width; ++x)
 		{
 			RGBA c;
-			c.r = fgetc(file);
+			c.a = fgetc(file);
 			c.g = fgetc(file);
+			c.r = fgetc(file);
 			c.b = fgetc(file);
-			c.a = 0xFF;
-			SetPixel(x, y, c);
+			//SetPixel(x, y, c);
+			SetPixel(x, height - 1 - y, c);
 		}
 	}
 
 	fclose(file);
-	return true;*/
+
+	printf("[IMG] Loaded BMP: %s(%d,%d)\n", filename.c_str(), width, height);
+}
+
+void Image::SavePNG(const GString& filename) const
+{
+	int len = filename.length();
+	if (!(len > 4 && filename.substr(len - 4) == GString(".png")))
+	{
+		printf("ERROR: This is not a PNG filename: %s\n", filename.c_str());
+		return;
+	}
+
+	// Save the image
+	PNGHelper::SavePNG(*this, filename.c_str());
+
+	printf("[IMG] Saved PNG: %s(%d,%d)\n", filename.c_str(), width, height);
+
+}
+
+void Image::LoadPNG(const GString& filename)
+{
+	int len = filename.length();
+	if (!(len > 4 && filename.substr(len - 4) == GString(".png")))
+	{
+		printf("ERROR: This is not a PNG filename: %s\n", filename.c_str());
+		return;
+	}
+
+	// Load the image
+	PNGHelper::LoadPNG(*this, filename.c_str());
+
+	printf("[IMG] Loaded PNG: %s(%d,%d)\n", filename.c_str(), width, height);
+}
+
+shmea::GList Image::flatten() const
+{
+    shmea::GList retList;
+
+    for (unsigned int y = 0; y < height; ++y)
+    {
+	for (unsigned int x = 0; x < width; ++x)
+	{
+		RGBA c = GetPixel(x, y);
+		retList.addInt(c.r);
+		retList.addInt(c.g);
+		retList.addInt(c.b);
+		retList.addInt(c.a);
+	}
+    }
+
+    return retList;
+}
+
+bool Image::unflatten(const shmea::GList& pixels)
+{
+    if (pixels.size() != (unsigned int)width * height * 4)
+	return false;
+
+    unsigned int i = 0;
+    for (unsigned int y = 0; y < height; ++y)
+    {
+	for (unsigned int x = 0; x < width; ++x)
+	{
+	    RGBA c;
+	    c.r = pixels.getInt(i++);
+	    c.g = pixels.getInt(i++);
+	    c.b = pixels.getInt(i++);
+	    c.a = pixels.getInt(i++);
+	    SetPixel(x, y, c);
+	}
+    }
+
+    return true;
+}
+
+shmea::GString Image::hash() const
+{
+    shmea::GString ret;
+
+    for (unsigned int y = 0; y < height; ++y)
+    {
+	for (unsigned int x = 0; x < width; ++x)
+	{
+	    RGBA c = GetPixel(x, y);
+	    ret += shmea::GString::intTOstring(c.r);
+	    ret += shmea::GString::intTOstring(c.g);
+	    ret += shmea::GString::intTOstring(c.b);
+	    ret += shmea::GString::intTOstring(c.a);
+	}
+    }
+
+    return ret;
+}
+
+bool Image::operator<(const Image& sd2) const
+{
+	return hash() < sd2.hash();
+}
+
+bool Image::operator>(const Image& sd2) const
+{
+	return hash() > sd2.hash();
 }

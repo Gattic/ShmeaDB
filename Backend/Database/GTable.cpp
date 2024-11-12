@@ -19,6 +19,7 @@
 #include "GList.h"
 #include "GType.h"
 #include "GString.h"
+#include "GVector.h"
 
 using namespace shmea;
 
@@ -49,6 +50,7 @@ GTable::GTable(char newDelimiter)
  * @param newDelimiter the specified table delimiter
  * @param newHeaders the desired table headers
  */
+//GTable::GTable(char newDelimiter, const GVector<GString>& newHeaders)
 GTable::GTable(char newDelimiter, const std::vector<GString>& newHeaders)
 {
 	clear();
@@ -275,6 +277,7 @@ char GTable::getDelimiter() const
  * @details retrieve the GTable's headers
  * @return the header vector
  */
+//GVector<GString> GTable::getHeaders() const
 std::vector<GString> GTable::getHeaders() const
 {
 	return header;
@@ -365,23 +368,35 @@ void GTable::print() const
 		{
 			// get the data by cell
 			GType cCell = getCell(r, c);
-			if (cCell.getType() == GType::STRING_TYPE)
-				printf("%s", cCell.c_str());
-			else if (cCell.getType() == GType::CHAR_TYPE)
-				printf("%c", cCell.getChar());
-			else if (cCell.getType() == GType::SHORT_TYPE)
-				printf("%d", cCell.getShort());
-			else if (cCell.getType() == GType::INT_TYPE)
-				printf("%d", cCell.getInt());
-			else if (cCell.getType() == GType::LONG_TYPE)
-				printf("%ld", cCell.getLong());
-			else if (cCell.getType() == GType::FLOAT_TYPE)
-				printf("%f", cCell.getFloat());
-			else if (cCell.getType() == GType::DOUBLE_TYPE)
-				printf("%f", cCell.getDouble());
-			else if (cCell.getType() == GType::BOOLEAN_TYPE)
-				printf("%s", cCell.getBoolean() ? "True" : "False");
-
+			switch (cCell.getType())
+			{
+				case GType::STRING_TYPE:
+					printf("%s", cCell.c_str());
+					break;
+				case GType::CHAR_TYPE:
+					printf("%c", cCell.getChar());
+					break;
+				case GType::SHORT_TYPE:
+					printf("%d", cCell.getShort());
+					break;
+				case GType::INT_TYPE:
+					printf("%d", cCell.getInt());
+					break;
+				case GType::LONG_TYPE:
+					printf("%ld", cCell.getLong());
+					break;
+				case GType::FLOAT_TYPE:
+					printf("%f", cCell.getFloat());
+					break;
+				case GType::DOUBLE_TYPE:
+					printf("%f", cCell.getDouble());
+					break;
+				case GType::BOOLEAN_TYPE:
+					printf("%s", cCell.getBoolean() ? "True" : "False");
+					break;
+				default:
+					printf("UNKNOWN DATA TYPE\n");
+			}
 			// comma?
 			if (c < numberOfCols() - 1)
 				printf(",");
@@ -444,6 +459,7 @@ void GTable::removeRow(unsigned int index)
 		return;
 
 	cells.erase(cells.begin() + index);
+	//cells.erase(index); // GVector
 }
 
 /*!
@@ -526,6 +542,7 @@ void GTable::removeCol(unsigned int index)
 	// remove header
 	if (index < header.size())
 		header.erase(header.begin() + index);
+		//header.erase(index); // GVector
 
 	// Remove the output column
 	for (unsigned int i = 0; i < outputColumns.size(); ++i)
@@ -759,11 +776,11 @@ const shmea::GList& GTable::operator[](unsigned int rowIndex) const
 shmea::GList GTable::operator[](const char* headerSearchText) const
 {
 	if(!headerSearchText)
-	{ 
+	{
 		shmea::GList retCol;
 		return retCol;
-	} 
-		
+	}
+
 	GString newHeaderStr(headerSearchText);
 	return getCol(newHeaderStr);
 }
@@ -820,6 +837,7 @@ float GTable::getRange() const
  * @details set the headers of the GTable to new values
  * @param newHeader the new set of headers for the GTable
  */
+//void GTable::setHeaders(const GVector<GString>& newHeader)
 void GTable::setHeaders(const std::vector<GString>& newHeader)
 {
 	header = newHeader;
@@ -837,7 +855,8 @@ void GTable::addHeader(unsigned int index, const GString& newHeader)
 	if (index >= header.size())
 		header.push_back(newHeader);
 	else
-		header.insert(header.begin() + index, newHeader);
+		header.insert(header.begin()+index, newHeader);
+		// header.insert(index, newHeader); // GVector
 }
 
 /*!
@@ -853,7 +872,6 @@ void GTable::save(const GString& fname) const
 	FILE* fd = fopen(fname.c_str(), "w");
 	if (fd != NULL)
 	{
-		//
 		for (unsigned int i = 0; i < header.size(); ++i)
 		{
 			GString word = header[i];
@@ -869,45 +887,51 @@ void GTable::save(const GString& fname) const
 			for (unsigned int c = 0; c < numberOfCols(); ++c)
 			{
 				GType cCell = getCell(r, c);
-				if (cCell.getType() == GType::STRING_TYPE)
+				switch (cCell.getType())
 				{
+				case GType::STRING_TYPE: {
+
 					GString word = getCell(r, c);
 					fprintf(fd, "%s", word.c_str());
+					break;
 				}
-				else if (cCell.getType() == GType::CHAR_TYPE)
-				{
+				case GType::CHAR_TYPE: {
 					char word = getCell(r, c).getChar();
 					fprintf(fd, "%c", word);
+					break;
 				}
-				else if (cCell.getType() == GType::SHORT_TYPE)
-				{
+				case GType::SHORT_TYPE: {
 					short word = getCell(r, c).getShort();
 					fprintf(fd, "%d", (int)word);
+					break;
 				}
-				else if (cCell.getType() == GType::INT_TYPE)
-				{
+				case GType::INT_TYPE: {
 					int word = getCell(r, c).getInt();
 					fprintf(fd, "%d", word);
+					break;
 				}
-				else if (cCell.getType() == GType::LONG_TYPE)
-				{
+				case GType::LONG_TYPE: {
 					int64_t word = getCell(r, c).getLong();
 					fprintf(fd, "%ld", word);
+					break;
 				}
-				else if (cCell.getType() == GType::FLOAT_TYPE)
-				{
+				case GType::FLOAT_TYPE: {
 					float word = getCell(r, c).getFloat();
 					fprintf(fd, "%f", word);
+					break;
 				}
-				else if (cCell.getType() == GType::DOUBLE_TYPE)
-				{
+				case GType::DOUBLE_TYPE: {
 					double word = getCell(r, c).getDouble();
 					fprintf(fd, "%f", word);
+					break;
 				}
-				else if (cCell.getType() == GType::BOOLEAN_TYPE)
-				{
+				case GType::BOOLEAN_TYPE: {
 					bool word = getCell(r, c).getBoolean();
 					fprintf(fd, "%d", word ? 1 : 0);
+					break;
+				}
+				default:
+					printf("UNKNOWN data type\n");
 				}
 
 				if (c < numberOfCols() - 1)
@@ -1032,24 +1056,35 @@ void GTable::standardize()
 		{
 			GType cCell = getCell(r, c);
 			float cell = 0.0f;
-			if (cCell.getType() == GType::STRING_TYPE)
+			switch (cCell.getType())
 			{
+			case GType::STRING_TYPE:
 				// OHE: total unique words
-			}
-			else if (cCell.getType() == GType::CHAR_TYPE)
+				break;
+			case GType::CHAR_TYPE:
 				cell = cCell.getChar();
-			else if (cCell.getType() == GType::SHORT_TYPE)
+				break;
+			case GType::SHORT_TYPE:
 				cell = cCell.getShort();
-			else if (cCell.getType() == GType::INT_TYPE)
+				break;
+			case GType::INT_TYPE:
 				cell = cCell.getInt();
-			else if (cCell.getType() == GType::LONG_TYPE)
+				break;
+			case GType::LONG_TYPE:
 				cell = cCell.getLong();
-			else if (cCell.getType() == GType::FLOAT_TYPE)
+				break;
+			case GType::FLOAT_TYPE:
 				cell = cCell.getFloat();
-			else if (cCell.getType() == GType::DOUBLE_TYPE)
+				break;
+			case GType::DOUBLE_TYPE:
 				cell = cCell.getDouble();
-			else if (cCell.getType() == GType::BOOLEAN_TYPE)
+				break;
+			case GType::BOOLEAN_TYPE:
 				cell = cCell.getBoolean() ? 1.0f : 0.0f;
+				break;
+			default:
+				printf("UNKNOWN DATA TYPE\n");
+			}
 
 			if ((r == 0) && (c == 0))
 			{
@@ -1078,51 +1113,56 @@ void GTable::standardize()
 			// Adjust the children
 			GType cCell = getCell(r, c);
 			float cell = 0.0f;
-			if (cCell.getType() == GType::STRING_TYPE)
+			switch (cCell.getType())
 			{
+			case GType::STRING_TYPE: {
 				// OHE: total unique words
+				break;
 			}
-			else if (cCell.getType() == GType::CHAR_TYPE)
-			{
+			case GType::CHAR_TYPE: {
 				cell = cCell.getChar();
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
 			}
-			else if (cCell.getType() == GType::SHORT_TYPE)
-			{
+			case GType::SHORT_TYPE: {
 				cell = cCell.getShort();
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
 			}
-			else if (cCell.getType() == GType::INT_TYPE)
-			{
+			case GType::INT_TYPE: {
 				cell = cCell.getInt();
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
 			}
-			else if (cCell.getType() == GType::LONG_TYPE)
-			{
+			case GType::LONG_TYPE: {
 				cell = cCell.getLong();
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
 			}
-			else if (cCell.getType() == GType::FLOAT_TYPE)
-			{
+			case GType::FLOAT_TYPE: {
 				cell = cCell.getFloat();
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
 			}
-			else if (cCell.getType() == GType::DOUBLE_TYPE)
-			{
+			case GType::DOUBLE_TYPE: {
 				cell = cCell.getDouble();
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
 			}
-			else if (cCell.getType() == GType::BOOLEAN_TYPE)
-			{
+			case GType::BOOLEAN_TYPE: {
 				cell = cCell.getBoolean() ? 1.0f : 0.0f; // 1 or 0 if sigmoid
 				cell = (((cell - xMin) / (xRange)) - 0.5f);
 				cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+				break;
+			}
+			default:
+				printf("UNKNOWN DATA TYPE\n");
 			}
 		}
 	}

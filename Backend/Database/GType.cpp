@@ -15,6 +15,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GType.h"
+#include "GDeleter.h"
 
 using namespace shmea;
 
@@ -35,64 +36,57 @@ GType::GType(const GType& g2)
 GType::GType(const bool& newBlock)
 {
 	unsigned int newBlockSize = sizeof(bool);
-	int newType = BOOLEAN_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(BOOLEAN_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const char& newBlock)
 {
 	unsigned int newBlockSize = sizeof(char);
-	int newType = CHAR_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(CHAR_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const short& newBlock)
 {
 	unsigned int newBlockSize = sizeof(short);
-	int newType = SHORT_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(SHORT_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const int& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int);
-	int newType = INT_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(INT_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const int64_t& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int64_t);
-	int newType = LONG_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(LONG_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const float& newBlock)
 {
 	unsigned int newBlockSize = sizeof(float);
-	int newType = FLOAT_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(FLOAT_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const double& newBlock)
 {
 	unsigned int newBlockSize = sizeof(double);
-	int newType = DOUBLE_TYPE;
 	blockSize = 0;
 
-	set(newType, &newBlock, newBlockSize);
+	set(DOUBLE_TYPE, &newBlock, newBlockSize);
 }
 
 GType::GType(const char* newBlock)
@@ -117,7 +111,7 @@ GType::GType(const char* newBlock, unsigned int len)
 		set(STRING_TYPE, newBlock, newBlockSize);
 }
 
-GType::GType(int newType, const void* newBlock, int64_t newBlockSize)
+GType::GType(Type newType, const void* newBlock, int64_t newBlockSize)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
@@ -133,7 +127,7 @@ GType::~GType()
 	type = NULL_TYPE;
 }
 
-int GType::getType() const
+GType::Type GType::getType() const
 {
 	return type;
 }
@@ -151,44 +145,31 @@ char GType::getChar() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::SHORT_TYPE)
-	{
-		char value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		char value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		char value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		char value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		char value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (char)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		char value = *block;
-		return value;
-	}
-
 	// Char Type (match)
-	if (size() != sizeof(char))
-		return 0;
+	//if (size() != sizeof(char))
+		//return 0;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return *((char*)block.get());
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0;
+	}
 
 	return *((char*)block.get());
 }
@@ -198,44 +179,31 @@ short GType::getShort() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
-	{
-		short value = getChar();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		short value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		short value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		short value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		short value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (short)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		short value = *block;
-		return value;
-	}
-
 	// Short Type (match)
-	if (size() != sizeof(short))
-		return 0;
+	//if (size() != sizeof(short))
+		//return 0;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return *((short*)block.get());
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0;
+	}
 
 	return *((short*)block.get());
 }
@@ -245,50 +213,31 @@ int GType::getInt() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
-	{
-		int value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		int value = getShort();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		int value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		int value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		int value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (int)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		//int value = *block;
-		int value = 0;//TODO: PUT THIS IN LONG, AND SHORT; ADD TEST CASES
-		for(unsigned int i = 0; i < size(); ++i)
-		{
-			value<<=8;
-			value+=block[size()-i-1];
-		}
-		return value;
-	}
-
 	// int Type (match)
-	if (size() != sizeof(int))
-		return 0;
+	//if (size() != sizeof(int))
+		//return 0;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return *((int*)block.get());
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+		    return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0;
+	}
 
 	return *((int*)block.get());
 }
@@ -298,44 +247,31 @@ int64_t GType::getLong() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
-	{
-		int64_t value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		int64_t value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		int64_t value = getInt();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		int64_t value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		int64_t value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (int64_t)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		int64_t value = *block;
-		return value;
-	}
-
 	// Long Type (match)
-	if (size() != sizeof(int64_t))
-		return 0;
+	//if (size() != sizeof(int64_t))
+		//return 0;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return *((int64_t*)block.get());
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0l;
+	}
 
 	return *((int64_t*)block.get());
 }
@@ -345,44 +281,31 @@ float GType::getFloat() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
-	{
-		float value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		float value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		float value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		float value = getLong();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		float value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (float)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		float value = *block;
-		return value;
-	}
-
 	// Float Type (match)
-	if (size() != sizeof(float))
-		return 0.0f;
+	//if (size() != sizeof(float))
+		//return 0.0f;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return *((float*)block.get());
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0.0;
+	}
 
 	return *((float*)block.get());
 }
@@ -392,44 +315,31 @@ double GType::getDouble() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
-	{
-		double value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		double value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		double value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		double value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		double value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::BOOLEAN_TYPE)
-	{
-		return (double)getBoolean();
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		double value = *block;
-		return value;
-	}
-
 	// Double Type (match)
-	if (size() != sizeof(double))
-		return 0.0f;
+	//if (size() != sizeof(double))
+		//return 0.0f;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return *((double*)block.get());
+		case BOOLEAN_TYPE:
+			return this->getBoolean();
+		case STRING_TYPE:
+			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return 0.0f;
+	}
 
 	return *((double*)block.get());
 }
@@ -439,45 +349,31 @@ bool GType::getBoolean() const
 	if ((!block.get()) || (size() == 0))
 		return 0;
 
-	if (getType() == GType::CHAR_TYPE)
-	{
-		bool value = getChar();
-		return value;
-	}
-	else if (getType() == GType::SHORT_TYPE)
-	{
-		bool value = getShort();
-		return value;
-	}
-	else if (getType() == GType::INT_TYPE)
-	{
-		bool value = getInt();
-		return value;
-	}
-	else if (getType() == GType::LONG_TYPE)
-	{
-		bool value = getLong();
-		return value;
-	}
-	else if (getType() == GType::FLOAT_TYPE)
-	{
-		bool value = getFloat();
-		return value;
-	}
-	else if (getType() == GType::DOUBLE_TYPE)
-	{
-		bool value = getDouble();
-		return value;
-	}
-	else if (getType() == GType::STRING_TYPE)
-	{
-		bool value = *block;
-		return value;
-	}
-
 	// Boolean Type (match)
-	if (size() != sizeof(bool))
-		return false;
+	//if (size() != sizeof(bool))
+		//return false;
+
+	switch (this->getType())
+	{
+		case CHAR_TYPE:
+			return this->getChar();
+		case SHORT_TYPE:
+			return this->getShort();
+		case INT_TYPE:
+			return this->getInt();
+		case LONG_TYPE:
+			return this->getLong();
+		case FLOAT_TYPE:
+			return this->getFloat();
+		case DOUBLE_TYPE:
+			return this->getDouble();
+		case BOOLEAN_TYPE:
+			return *((bool*)block.get());
+		case STRING_TYPE:
+			return *this->block;
+		case NULL_TYPE: case FUNCTION_TYPE:
+			return false;
+	}
 
 	return *((bool*)block.get());
 }
@@ -487,7 +383,7 @@ unsigned int GType::size() const
 	return blockSize;
 }
 
-void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
+void GType::set(Type newType, const void* newBlock, int64_t newBlockSize)
 {
 	if(blockSize == newBlockSize)
 	{
@@ -499,7 +395,7 @@ void GType::set(int newType, const void* newBlock, int64_t newBlockSize)
 		type = newType;
 		blockSize = newBlockSize;
 		char* newMem = new char[blockSize + 1];
-		block = GPointer<char>(newMem); // plus one to escape the string, we ignore this character everywhere else
+		block.copy(GPointer<char, array_deleter<char> >(newMem)); // plus one to escape the string, we ignore this character everywhere else
 		memcpy(block.get(), newBlock, blockSize);
 		block[blockSize] = '\0';
 	}

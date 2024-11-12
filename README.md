@@ -1,4 +1,4 @@
-# shmea v0.57 Beta
+# shmea v0.58
 
 ## Website
 http://shmea-db.com/
