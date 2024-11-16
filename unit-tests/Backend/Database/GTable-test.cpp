@@ -55,5 +55,15 @@ void GTableUnitTest()
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumCols() Comparison Failed==============",  readTable.numberOfCols() == testTable.numberOfCols() );
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumRows() Comparison Failed==============", readTable.numberOfRows() == testTable.numberOfRows() );
 
+
+	// Test  case to handle Invalid Header Access
+
+	shmea::GString invalidHeader("NoHeader");
+	shmea::GList invalidHeaderResult = sampleDataTable[invalidHeader];
+
+	// Verify that accessing a non-existent header returns an empty list or handles it gracefully
+	G_assert(__FILE__, __LINE__, "==============GTable::Invalid Header Access Failed==============", invalidHeaderResult.size() == 0);
+
+
 	return;
 }

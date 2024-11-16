@@ -157,4 +157,11 @@ void GStringUnitTest()
 	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::floatTOstring(0.5) == "0.500000");
 	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::floatTOstring(0.05) == "0.050000");
 	G_assert (__FILE__, __LINE__, "==============GString::floatTOstring Failed==============", shmea::GString::floatTOstring(-0.0943159163) == "-0.094316"); // It rounds
+
+	// Test case to test upper and lower
+	shmea::GString alphabet_up = "abcdefghijklmnopqrstuvwxyz";
+	shmea::GString alphabet_low= "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	G_assert(__FILE__,__LINE__, "==============GString::stringTOupper Failed==============",shmea::GString::toUpper(alphabet_up) == "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	G_assert(__FILE__,__LINE__, "==============GString::stringTOlower Failed==============",shmea::GString::toLower(alphabet_low) == "abcdefghijklmnopqrstuvwxyz");
+
 }
