@@ -55,5 +55,21 @@ void GTableUnitTest()
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumCols() Comparison Failed==============",  readTable.numberOfCols() == testTable.numberOfCols() );
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumRows() Comparison Failed==============", readTable.numberOfRows() == testTable.numberOfRows() );
 
+	
+
+    // retrieve and validate individual cells (each cell in the table holds the expected string data)
+	
+	shmea::GString data1( "First,Last,Age\nMickey,Mouse,100\nDonald,Duck,99\n" );
+	shmea::GTable sampleDataTable1( data1, ',', shmea::GTable::TYPE_STRING );
+
+	G_assert(__FILE__, __LINE__, "First name failed", sampleDataTable1[0][0] == "Mickey");
+	G_assert(__FILE__, __LINE__, "Last name failed", sampleDataTable1[0][1] == "Mouse");
+	G_assert(__FILE__, __LINE__, "Age failed", sampleDataTable1[0][2] == "100");
+
+	G_assert(__FILE__, __LINE__, "First name failed", sampleDataTable1[1][0] == "Donald");
+	G_assert(__FILE__, __LINE__, "Last name failed", sampleDataTable1[1][1] == "Duck");
+	G_assert(__FILE__, __LINE__, "Age failed", sampleDataTable1[1][2] == "99");
+
+
 	return;
 }
