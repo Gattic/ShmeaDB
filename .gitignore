@@ -11,3 +11,4 @@ alpaca.key
 .gdb_history
 *.vim
 unit-tests/out-png-test.png
+unit-tests/hello/out-png-test.png
