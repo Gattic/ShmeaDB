@@ -25,14 +25,14 @@ void ImageUnitTest()
 	printf("------\n");
 	printf("PNG Unit Tests\n");
 	printf("------\n");
-	PNGHelper::createTestPNG("out-png-test.png");
+	PNGHelper::createTestPNG("hello/out-png-test.png");
 
 	// Check if file exists
-	std::ifstream file("out-png-test.png");
+	std::ifstream file("hello/out-png-test.png");
 	G_assert(__FILE__, __LINE__, "image.save failed", file.good());
 	
 	Image image;
-	PNGHelper::LoadPNG(image, "out-png-test.png");
+	PNGHelper::LoadPNG(image, "hello/out-png-test.png");
 
 	const unsigned width = 1200; // taken from png-helper.h createTestPNG fnc
 	const unsigned height = 800; // taken from png-helper.h createTestPNG fnc

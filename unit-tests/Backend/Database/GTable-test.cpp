@@ -55,7 +55,6 @@ void GTableUnitTest()
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumCols() Comparison Failed==============",  readTable.numberOfCols() == testTable.numberOfCols() );
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumRows() Comparison Failed==============", readTable.numberOfRows() == testTable.numberOfRows() );
 
-
 	// Test  case to handle Invalid Header Access
 
 	shmea::GString invalidHeader("NoHeader");

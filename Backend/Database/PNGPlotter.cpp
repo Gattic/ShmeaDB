@@ -3,8 +3,8 @@
 #include "png-helper.h"
 
 using namespace shmea;
-
-PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left)
+//Just as a reminder, graphSize is the amount of data points that are appearing across the graph. This can be candles, data points, bars, etc
+PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left, bool fourQuadrants)
 	: image(), width(width), height(height), 
 	min_price(low_price),
 	max_price(max_price),
@@ -12,10 +12,11 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 	margin_right(margin_right),
 	margin_bottom(margin_bottom),
 	margin_left(margin_left),
+	fourQuadrants(fourQuadrants),
 	last_timestamp(0),
 	total_candles_drawn(0),
-	max_candles(max_candles),
-	candle_width(static_cast<int>(max_candles != 0 ? (width - margin_left - margin_right) / max_candles : 1)),
+	graphSize(graphSize),
+	candle_width(static_cast<int>(graphSize != 0 ? (width - margin_left - margin_right) / graphSize : 1)),
 	last_candle_pos(static_cast<int>(candle_width / 2)),
 	lines(lines),
 	first_line_point(lines, false),
@@ -30,9 +31,39 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int max_candles, double 
 	RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
 	RGBA Black(0x00, 0x00, 0x00, 0x7F);
 	image.drawVerticalGradient(0, 0, DarkGray, Black, 0);
+
+	if(fourQuadrants)
+	{
+		drawFourQuadrants();
+	}
 	
 	initialize_colors(line_colors, line_color_names);
 //	drawGrid();
+}
+
+int PNGPlotter::getWidth()
+{
+	return width;
+}
+
+int PNGPlotter::getHeight()
+{
+	return height;
+}
+
+void PNGPlotter::drawFourQuadrants()
+{
+    RGBA lineColor(0xC8, 0xC8, 0xC8, 0xC8); // Light gray for the quadrant lines
+
+    // Calculate positions for the middle lines
+    int midX = (width - margin_left - margin_right) / 2 + margin_left;
+    int midY = (height - margin_top - margin_bottom) / 2 + margin_top;
+
+    // Draw the vertical middle line
+    drawLine(midX, margin_top, midX, height - margin_bottom, lineColor);
+
+    // Draw the horizontal middle line
+    drawLine(margin_left, midY, width - margin_right, midY, lineColor);
 }
 
 void PNGPlotter::drawGrid(int numHorizontalLines, int numVerticalLines) {
@@ -109,7 +140,6 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
         	return;
     	}
 
-
 	if (indicatorColors.find(indicator) == indicatorColors.end()) 
 	{
         	printf("Error: The specified indicator '%s' is not recognized.\n", indicator.c_str());
@@ -128,7 +158,7 @@ inline int clamp(int value, int min, int max)
     return value;
 }
 
-void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor)
+void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor, int lineWidth)
 {
     if(lines == 0)
     { 
@@ -163,7 +193,7 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
 		int startX = last_line_drawn + margin_left;
 		int endX = last_line_drawn + candle_width + margin_left;
 
-		drawLine(startX, last_price_pos[portIndex], endX, y, *lineColor);
+		drawLine(startX, last_price_pos[portIndex], endX, y, *lineColor, lineWidth);
 	}
 
     	//update the previous-y coordinate
@@ -178,8 +208,140 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
     
 }
 
+void PNGPlotter::addDataPointsPCA(std::vector<std::vector<double> >& data, RGBA& pointColor)
+{
+    // Calculate the effective plotting area considering the margins
+    int effectiveWidth = width - margin_left - margin_right;
+    int effectiveHeight = height - margin_top - margin_bottom;
 
-void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor)
+    double spacing = static_cast<double>(effectiveWidth) / graphSize;
+    int pointThickness = static_cast<int>(spacing / 3);
+
+    if(pointThickness < 1)
+    {
+      pointThickness = 1;
+    }
+
+    // Calculate the scaling factors for the x and y dimensions
+    double xScale = static_cast<double>(effectiveWidth) / graphSize;
+    double yScale = static_cast<double>(effectiveHeight) / (max_price - min_price);
+
+    //Calculate the center (origin)
+    int centerX = effectiveWidth / 2 + margin_left;
+    int centerY = effectiveHeight / 2 + margin_top; 
+
+    for(size_t i = 0; i < data.size(); ++i)
+    {
+	int xPNG = static_cast<int>((data[i][0] * xScale) + centerX + (pointThickness * 0.5));
+	int yPNG = static_cast<int>(centerY - (data[i][1] * yScale));
+
+	//Draw point
+	drawPoint(xPNG, yPNG, pointThickness, pointColor);
+    }
+}
+
+void PNGPlotter::addArrow(std::vector<std::vector<double> >& sorted_eig_vecs, RGBA& arrowColor, int arrowSize)
+{
+
+    // Calculate the effective plotting area considering the margins
+    int effectiveWidth = width - margin_left - margin_right;
+    int effectiveHeight = height - margin_top - margin_bottom;
+
+    // Calculate the scaling factors for the x and y dimensions
+    double xScale = static_cast<double>(effectiveWidth) / graphSize;
+    double yScale = static_cast<double>(effectiveHeight) / (max_price - min_price);
+
+    //Calculate the center (origin)
+    int centerX = effectiveWidth / 2 + margin_left;
+    int centerY = effectiveHeight / 2 + margin_top; 
+
+    double scaleFactor = 0.5;
+
+    for(size_t i = 0; i < sorted_eig_vecs.size(); ++i)
+    {
+	double arrowX1 = centerX;
+	double arrowY1 = centerY;
+
+	//Normalize the eigenvectors to fit the screen dimensions
+	double normX = sorted_eig_vecs[i][0] * centerX;
+	double normY = sorted_eig_vecs[i][1] * centerY;
+
+	//Scale the normalized values by a facotr for visibility
+	double scaleFactor =  0.5;
+	double arrowX2 = arrowX1 + normX * scaleFactor;
+	double arrowY2 = arrowY1 + normY * scaleFactor;
+
+	drawArrow(arrowX1, arrowY1, arrowX2, arrowY2, arrowColor, arrowSize);
+		
+    }
+}
+
+void PNGPlotter::addHistogram(std::vector<int>& bins, RGBA& barColor)
+{
+    int max_count = *std::max_element(bins.begin(), bins.end());
+
+    int bar_spacing = 25;
+    double bin_width = (max_price - min_price) / graphSize;
+
+    int plot_width = width - margin_left - margin_right;
+    int plot_height = height - margin_top - margin_bottom;
+
+    int total_spacing = (graphSize - 1) * bar_spacing;
+    int bar_total_width = plot_width - total_spacing;
+
+    int bar_width = bar_total_width / graphSize;
+
+    for(int i = 0; i < graphSize; ++i)
+    {
+	int bar_height = static_cast<int>((static_cast<double>(bins[i]) / max_count) * plot_height);
+	int x_start = margin_left + i * (bar_width + bar_spacing);
+	int y_start = height - margin_bottom - bar_height;
+
+	drawHistogram(x_start, y_start, bar_width, barColor);
+    } 
+
+}
+
+void PNGPlotter::drawHistogram(int x_start, int y_start, int bar_width, RGBA& barColor)
+{
+    for(int x = x_start; x < x_start + bar_width; ++x)
+    {
+	for(int y = y_start; y < height - margin_bottom; ++y)
+	{
+	    image.SetPixel(x, y, barColor);
+	}
+    }
+
+
+}
+
+void PNGPlotter::drawPoint(int x, int y, int thickness, RGBA& pointColor)
+{
+ // Check if the main point is within the plotting area bounds
+    if (x >= margin_left && x < (width - margin_right) &&
+        y >= margin_top && y < (height - margin_bottom)) {
+        
+        // Draw the main point
+        image.SetPixel(x, y, pointColor);
+
+    	// Draw additional pixels for thickness with bounds checking to make it round
+	for (int dx = -thickness; dx <= thickness; ++dx) {
+	    for (int dy = -thickness; dy <= thickness; ++dy) {
+		// Check if the pixel falls within the circle defined by the thickness
+		if (dx * dx + dy * dy <= thickness * thickness) {
+		    int newX = x + dx;
+		    int newY = y + dy;
+		    if (newX >= margin_left && newX < (width - margin_right) &&
+			newY >= margin_top && newY < (height - margin_bottom)) {
+			image.SetPixel(newX, newY, pointColor);
+		    }
+		}
+	    }
+	}
+    }
+}
+
+void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor, int lineWidth)
 {
 
     x1 = clamp(x1, margin_left, width - margin_right);
@@ -207,10 +369,11 @@ void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor)
 	x2 = y2;
 	y2 = temp;
 
-	dx = std::abs(x2 - x1);
-	dy = std::abs(y2 - y1);
-
+	temp = dx;
+	dx = dy;
+	dy = temp;    	
     }
+
 
     int sx = x1 < x2 ? 1 : -1;
     int sy = y1 < y2 ? 1 : -1;
@@ -218,44 +381,21 @@ void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor)
     double gradient = static_cast<double>(dy) / static_cast<double>(dx);
     double err = 0.0;
 
-    int lineWidth = 20;
-
     while (true)
     {
 
-	if (steep)
-	{
-		image.SetPixel(y1, x1, lineColor);
-	}
-	else
-	{
-		image.SetPixel(x1, y1, lineColor);
-	}
+        // Draw a filled circle or rectangle for each point to ensure consistent thickness
+        for (int i = -lineWidth / 2; i <= lineWidth / 2; ++i) {
+            for (int j = -lineWidth / 2; j <= lineWidth / 2; ++j) {
+                int newX = steep ? y1 + i : x1 + i;
+                int newY = steep ? x1 + j : y1 + j;
 
-	for(int i = 0; i <= lineWidth; ++i)
-	{
-     		if (steep) {
-                	if (y1 + i < static_cast<int>(height) - margin_bottom) 
-			{
-	                    image.SetPixel(y1 + i, x1, lineColor);  // Anti-aliased pixel above
-        	        }
-                	if (y1 - i >= margin_top) 
-			{
-	                    image.SetPixel(y1 - i, x1, lineColor);  // Anti-aliased pixel below
-        	        }
-	        } 
-		else 
-		{
-        	        if (x1 + i < static_cast<int>(width) - margin_right) 
-			{
-                	    image.SetPixel(x1 + i, y1, lineColor);  // Anti-aliased pixel right
-	                }
-        	        if (x1 - i >= margin_left) 
-			{
-	                    image.SetPixel(x1 - i, y1, lineColor);  // Anti-aliased pixel left
-        	        }
-            	}
-	}   
+                if (newX >= margin_left && newX < (width - margin_right) &&
+                    newY >= margin_top && newY < (height - margin_bottom)) {
+                    image.SetPixel(newX, newY, lineColor);
+                }
+            }
+        }
 	//Check if the end has been reached
 	if (x1 == x2 && y1 == y2)
 	    break;
@@ -356,6 +496,26 @@ void PNGPlotter::drawCandleStick(Image& img, float x, float y_open, float y_clos
 	}
 }
 */
+void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, RGBA& arrowColor, int arrowSize = 10)
+{
+
+    // Draw the main line
+    drawLine(x1, y1, x2, y2, arrowColor);
+
+    // Calculate the angle of the arrow
+    double angle = std::atan2(static_cast<double>(y2 - y1), static_cast<double>(x2 - x1));
+
+    // Calculate the points for the arrowhead
+    int arrowX1 = static_cast<int>(x2 - arrowSize * std::cos(angle + M_PI / 6)); // M_PI / 6 = 30 degrees
+    int arrowY1 = static_cast<int>(y2 - arrowSize * std::sin(angle + M_PI / 6));
+    int arrowX2 = static_cast<int>(x2 - arrowSize * std::cos(angle - M_PI / 6));
+    int arrowY2 = static_cast<int>(y2 - arrowSize * std::sin(angle - M_PI / 6));
+
+    // Draw the arrowhead lines
+    drawLine(x2, y2, arrowX1, arrowY1, arrowColor);
+    drawLine(x2, y2, arrowX2, arrowY2, arrowColor);
+}
+
 Image PNGPlotter::downsampleToTargetSize() {
     Image downsampledImage;
     downsampledImage.Allocate(TARGET_WIDTH, TARGET_HEIGHT);

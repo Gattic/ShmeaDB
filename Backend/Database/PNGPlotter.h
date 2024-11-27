@@ -25,9 +25,10 @@ class PNGPlotter
 		const int margin_right;
 		const int margin_bottom;
 		const int margin_left;
+		const bool fourQuadrants;
 		long last_timestamp;
 		int total_candles_drawn;
-		const int max_candles;
+		const int graphSize;
 		int candle_width;
 		int last_candle_pos;
 		int lines;
@@ -47,9 +48,13 @@ class PNGPlotter
 		Image downsampleToTargetSize();
 
 		void drawGrid(int = 7, int = 16);
-			
-		void drawLine(int, int, int, int, RGBA&);
+		void drawFourQuadrants();	
+
+		void drawPoint(int, int, int, RGBA&);
+		void drawLine(int, int, int, int, RGBA&, int = 6);
 		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
+		void drawArrow(int, int, int, int, RGBA&, int);
+		void drawHistogram(int, int, int, RGBA&);
 	public:
 
 		
@@ -60,11 +65,17 @@ class PNGPlotter
 		static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
 		static const int SUPERSAMPLE_HEIGHT = TARGET_HEIGHT * SUPERSAMPLE_SCALE;
 		
-		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0);
+		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0, bool = false);
 		void addDataPointWithIndicator(double, int = 0, std::string = "", std::string = "");
-		void addDataPoint(double, int = 0, bool = true, RGBA* = NULL);
+		void addDataPoint(double, int = 0, bool = true, RGBA* = NULL, int = 6);
+		void addDataPointsPCA(std::vector<std::vector<double> >&, RGBA&);
+		void addArrow(std::vector<std::vector<double> >&, RGBA&, int = 10);
+		void addHistogram(std::vector<int>&, RGBA&);
 		void drawNewCandle(long, float, float, float, float);
 		void SavePNG(const std::string&, const std::string&);
+
+		int getWidth();
+		int getHeight();
 	
 };
 };
