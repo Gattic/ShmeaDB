@@ -38,7 +38,8 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
 	}
 	
 	initialize_colors(line_colors, line_color_names);
-//	drawGrid();
+	initialize_font();
+
 }
 
 int PNGPlotter::getWidth()
@@ -66,30 +67,202 @@ void PNGPlotter::drawFourQuadrants()
     drawLine(margin_left, midY, width - margin_right, midY, lineColor);
 }
 
-void PNGPlotter::drawGrid(int numHorizontalLines, int numVerticalLines) {
+inline int clamp(int value, int min, int max)
+{
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+inline std::vector<float> get_axis_ticks(float max_price, float min_price, int max_ticks = 8) {
+    std::vector<float> ticks;
+
+    // Calculate the range
+    float range = max_price - min_price;
+
+    // Handle edge cases
+    if (range <= 0 || max_ticks <= 1) {
+        ticks.push_back(min_price);
+        ticks.push_back(max_price);
+        return ticks;
+    }
+
+    // Calculate a "nice" step size
+    float rough_step = range / (max_ticks - 1);
+    float step_magnitude = std::pow(10, std::floor(std::log10(rough_step)));
+    float nice_step;
+
+    if (rough_step / step_magnitude < 2) {
+        nice_step = step_magnitude;
+    } else if (rough_step / step_magnitude < 5) {
+        nice_step = 2 * step_magnitude;
+    } else {
+        nice_step = 5 * step_magnitude;
+    }
+
+    // Adjust the start and end to be within the given range
+    float start = std::ceil(min_price / nice_step) * nice_step;
+    float end = std::floor(max_price / nice_step) * nice_step;
+
+    // Generate the ticks
+    for (float tick = start; tick <= end; tick += nice_step) {
+        if (tick <= max_price && tick >= min_price) {
+            ticks.push_back(tick);
+        }
+    }
+
+    return ticks;
+}
+
+void PNGPlotter::drawYGrid() {
     RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
 
+    std::vector<float> horizontalLines = get_axis_ticks(max_price, min_price);
+    float adjusted_max = max_price - min_price;
     // Draw horizontal grid lines and y-axis labels
-    for (int i = 0; i <= numHorizontalLines; ++i) {
-        int y = i * (height - margin_top - margin_bottom) / numHorizontalLines;
+    for (int i = 0; i < horizontalLines.size(); ++i) {
+	float adjusted_tick = horizontalLines[i] - min_price;
+	int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
+	y = clamp(y, margin_top, height - margin_bottom);
+
         drawLine(margin_left, y, width - margin_right, y, gridColor);
 
-/*        // Draw y-axis labels if provided
-        if (!yLabels.empty() && i < yLabels.size()) {
-            drawText(margin_x - 30, y, yLabels[i]); // Adjust x-position for label placement
-        }*/
+	std::ostringstream oss;
+	oss << horizontalLines[i];
+	std::string numberY = oss.str();	
+	if(i != 0)
+	{
+	    GraphLabel(width - margin_right, y, numberY, 300, 100, 300 / 4);
+	}
+
     }
+
+}
+
+inline std::string dateToString(int64_t timestamp, const char* format= "%m-%d-%Y")
+{
+    // Ensure the timestamp fits within the range of time_t
+    std::time_t time = static_cast<std::time_t>(timestamp);
+
+    // Create a buffer for the formatted date string
+    char buffer[64];
+    std::memset(buffer, 0, sizeof(buffer));
+
+    // Format the timestamp into a human-readable string
+    if (std::strftime(buffer, sizeof(buffer), format, std::localtime(&time))) 
+    {
+        return std::string(buffer);
+    } 
+    else 
+    {
+        return "Invalid Date";
+    }
+}
+
+inline std::vector<std::string> get_date_labels(int64_t start, int64_t end, int total_candles, int max_ticks = 8) {
+    std::vector<std::string> labels;
+
+    // Handle edge cases
+    if (total_candles <= 0 || max_ticks <= 1 || start >= end) 
+    {
+        labels.push_back(dateToString(start, "%m-%d-%Y"));
+        labels.push_back(dateToString(end, "%m-%d-%Y"));
+        return labels;
+    }
+
+    // Calculate the number of candles per tick
+    int candles_per_tick = total_candles / (max_ticks - 1);
+    if (candles_per_tick < 1) candles_per_tick = 1;
+
+    // Calculate the time interval per candle
+    int64_t time_per_candle = (end - start) / total_candles;
+
+    std::string last_month_label = ""; //Track last month label
+    std::string last_year_label = ""; //Track last year label
+    // Generate labels
+    for (int tick = 0; tick < max_ticks; ++tick) 
+    {
+        int candle_index = tick * candles_per_tick;
+        if (candle_index >= total_candles) break;
+
+        // Calculate the timestamp for this tick
+        int64_t timestamp = start + candle_index * time_per_candle;
+
+        // Add the appropriate label
+        if ((end - start) < 86400) 
+        { // Less than a day
+            labels.push_back(dateToString(timestamp, "%H:%M"));
+        }
+        else if ((end - start) < 30 * 86400) 
+        { // Less than a month
+            labels.push_back(dateToString(timestamp, "%m-%d"));
+        } 
+        else if ((end - start) < 365 * 86400) 
+        { // Less than a year
+	    std::string current_month = dateToString(timestamp, "%b");
+	    if(current_month == last_month_label)
+	    {
+	    	labels.push_back(dateToString(timestamp, "%d")); //Use day if month repeats
+            }
+	    else
+	    {
+		labels.push_back(current_month);
+		last_month_label = current_month;
+	    }
+        }
+        else 
+        { // Multiple years
+	    std::string current_year = dateToString(timestamp, "%Y");
+	    if(current_year == last_year_label)
+            {
+            	labels.push_back(dateToString(timestamp, "%b"));
+            }
+	    else
+	    {
+		labels.push_back(current_year);
+		last_year_label = current_year;
+	    } 
+        }
+    }
+
+    return labels;
+}
+
+void PNGPlotter::drawXGrid(int64_t start, int64_t end)
+{
+
+    RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
+
+    std::vector<std::string> verticalLines = get_date_labels(start, end, graphSize);
+    
+    // Calculate step size for x-axis grid
+    int step = (width - margin_left - margin_right) / (verticalLines.size() - 1);
 
     // Draw vertical grid lines and x-axis labels
-    for (int i = 0; i <= numVerticalLines; ++i) {
-        int x = i * (width - margin_left - margin_right) / numVerticalLines;
+    for (int i = 0; i < verticalLines.size(); ++i) 
+    {
+        int x = margin_left + i * step;
         drawLine(x, 0, x, height - margin_top - margin_bottom, gridColor);
 
-/*        // Draw x-axis labels if provided
-        if (!xLabels.empty() && i < xLabels.size()) {
-            drawText(x, height - margin_y + 15, xLabels[i]); // Adjust y-position for label placement
-        }*/
+	GraphLabel(x, height - margin_top - margin_bottom, verticalLines[i], 300, -(300/4), 300/2);
     }
+}
+
+
+void PNGPlotter::initialize_font(const std::string fontPath)
+{
+
+    //Initialize FreeType
+    if(FT_Init_FreeType(&ft))
+    {
+	throw std::runtime_error("Could not initialize FreeType Library.");
+    }
+
+    //Load the font
+    if(FT_New_Face(ft, fontPath.c_str(), 0, &face))
+    {
+	throw std::runtime_error("Failed to load font: " + fontPath);
+    }
+
 }
 
 void PNGPlotter::initialize_colors(std::vector<RGBA>& lines_colors, std::vector<std::string>& lines_colors_name)
@@ -130,6 +303,11 @@ void PNGPlotter::initialize_colors(std::vector<RGBA>& lines_colors, std::vector<
     indicatorColors["BBHigh"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
     indicatorColors["EMA"] = RGBA(0xFF, 0xFF, 0x00, 0xFF); // Yellow
     indicatorColors["SMA"] = RGBA(0x80, 0x00, 0x80, 0xFF); // Purple
+
+    indicatorPoint["BBLow"] = 0;
+    indicatorPoint["BBHigh"] = 0;
+    indicatorPoint["EMA"] = 0;
+    indicatorPoint["SMA"] = 0; 
 } 
 
 void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::string indicator, std::string value)
@@ -147,16 +325,24 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
 	}
 
 	addDataPoint(newPrice, portIndex, true, &indicatorColors[indicator]); 
+	indicatorPoint[indicator] += 1;
+
+	if(indicatorPoint[indicator] == graphSize)
+	{
+    	    float adjusted_max = max_price - min_price;
+	    float adjusted_tick = newPrice - min_price;
+	    int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
+	    y = clamp(y, margin_top, height - margin_bottom);
+
+	    std::ostringstream oss;
+	    oss << newPrice;
+	    std::string numberY = oss.str();	
+	    GraphLabel(width - margin_right, y, numberY, 300, 100, 300 / 4, true, indicatorColors[indicator]);
+	}
 
 
 } 
 
-inline int clamp(int value, int min, int max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor, int lineWidth)
 {
@@ -540,6 +726,153 @@ Image PNGPlotter::downsampleToTargetSize() {
     return downsampledImage;
 }
 
+void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::string& text, unsigned int fontSize, unsigned int xOffset, unsigned int yOffset, bool hasBox, RGBA labelColor) {
+    if (FT_Set_Pixel_Sizes(face, 0, fontSize)) 
+    {
+        printf("Error: Could not set pixel sizes\n");
+        return;
+    }
+    penX += xOffset;
+    penY += yOffset;
+
+    unsigned int extraSpacing = fontSize / 3;
+
+    // Calculate the bounding box for the text
+    unsigned int boxWidth = 0;
+    unsigned int boxHeight = fontSize; // Use font size for height as a baseline
+
+    // Measure the total width of the text
+    for (char c : text) {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+            printf("Warning: Could not load character %c\n", c);
+            continue;
+        }
+
+        FT_GlyphSlot glyph = face->glyph;
+        boxWidth += (glyph->advance.x >> 6) + extraSpacing;
+        if (glyph->bitmap.rows > boxHeight) {
+            boxHeight = glyph->bitmap.rows; // Adjust height if necessary
+        }
+    }
+
+    // Add padding to the box
+    unsigned int padding = fontSize / 4;
+    boxWidth += padding;
+
+    // Draw the box if necessary
+    if (hasBox) {
+        unsigned int boxX = penX - padding; // Adjust box start position
+        unsigned int boxY = penY - boxHeight + padding; // Adjust for baseline alignment
+        for (unsigned int y = 0; y < boxHeight; ++y) {
+            for (unsigned int x = 0; x < boxWidth; ++x) {
+                unsigned imgX = boxX + x;
+                unsigned imgY = boxY + y;
+
+                if (imgX < width && imgY < height) {
+                    image.SetPixel(imgX, imgY, labelColor); // Draw the background box
+                }
+            }
+        }
+    }
+
+    for (char c : text) 
+    {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) 
+	{
+            printf("Warning: Could not load character %c\n", c);
+            continue;
+        }
+
+        FT_GlyphSlot glyph = face->glyph;
+
+        unsigned glyphWidth = glyph->bitmap.width;
+        unsigned glyphHeight = glyph->bitmap.rows;
+
+        unsigned int x0 = penX + glyph->bitmap_left;
+        unsigned int y0 = penY - glyph->bitmap_top;
+
+        // Draw the glyph bitmap as solid black
+        for (unsigned int y = 0; y < glyphHeight; ++y) 
+	{
+            for (unsigned int x = 0; x < glyphWidth; ++x) 
+	    {
+                unsigned imgX = x0 + x;
+                unsigned imgY = y0 + y;
+
+                if (imgX < width && imgY < height) 
+		{
+                    unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
+                    if (value > 0) 
+		    { // Only draw if the glyph pixel is not empty
+                        image.SetPixel(imgX, imgY, RGBA(255,255,255,255)); // Solid black
+                    }
+                }
+            }
+        }
+
+        // Advance cursor position
+        penX += (glyph->advance.x >> 6) + extraSpacing;
+    }
+}
+
+void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
+{
+    //set font size
+    FT_Set_Pixel_Sizes(face, 0, fontSize);
+
+    //Baseline position for text
+    unsigned int penX = 200;
+    unsigned int penY = 300;
+
+    unsigned int extraSpacing = fontSize / 3;
+
+    //Iterate over each character in the text
+    for(char c : text)
+    {
+	//Load character glyph
+	if(FT_Load_Char(face, c, FT_LOAD_RENDER))
+	{
+	    printf("Warning: Could not load character %c\n", c);
+	    continue;
+	}
+
+	FT_GlyphSlot glyph = face->glyph;
+	
+	//Get Glyph Dimensions
+	unsigned glyphWidth = glyph->bitmap.width;
+	unsigned glyphHeight = glyph->bitmap.rows;
+
+	//Calculate top-left position of the glyph
+	unsigned int x0 = penX + glyph->bitmap_left;
+	unsigned int y0 = penY - glyph->bitmap_top;
+
+	//Draw the glyph bitmap to the image
+	for(unsigned int y = 0; y < glyphHeight; ++y)
+	{
+	    for(unsigned int x = 0; x < glyphWidth; ++x)
+	    {
+		unsigned imgX = x0 + x;
+		unsigned imgY = y0 + y;
+
+		if(imgX < width && imgY < height)
+		{
+		    //Compute the buffer index
+		    unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
+
+                    if (value > 0) 
+		    { // Only draw if the glyph pixel is not empty
+                        image.SetPixel(imgX, imgY, RGBA(255, 255, 255, 255)); // Solid black
+                    }
+		}
+	    }
+	}
+
+	//Advance Cursor Position
+	penX += (glyph->advance.x >> 6) + extraSpacing;
+
+    }
+}
+
 void PNGPlotter::SavePNG(const std::string& filename, const std::string& folder)
 {
 
@@ -550,4 +883,7 @@ void PNGPlotter::SavePNG(const std::string& filename, const std::string& folder)
 	full_path.append(filename);
 //	image.SavePNG(full_path.c_str());
 	downsampleImage.SavePNG(full_path.c_str());
+
+	FT_Done_Face(face);
+        FT_Done_FreeType(ft);
 }

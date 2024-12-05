@@ -3,6 +3,8 @@
 #define PNGPLOTTER_H
 
 #include "image.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include <string>
 #include <limits>
 #include <vector>
@@ -37,17 +39,23 @@ class PNGPlotter
 		int last_line_drawn;
 		std::vector<RGBA> line_colors;
 		std::map<std::string, RGBA> indicatorColors;
+		std::map<std::string, int> indicatorPoint;
 		std::vector<std::string> line_color_names;
 		RGBA color_bullish;
 		RGBA color_bearish;
+
+		//font
+		FT_Library ft;
+		FT_Face face;
+		std::vector<float> horizontalLabels;
 
 
 //		RGB HSLToRGB(float, float, float);
 //		void generateUniqueColors(int);
 		void initialize_colors(std::vector<RGBA>&, std::vector<std::string>&);
+		void initialize_font(const std::string = "fonts/font.ttf");
 		Image downsampleToTargetSize();
 
-		void drawGrid(int = 7, int = 16);
 		void drawFourQuadrants();	
 
 		void drawPoint(int, int, int, RGBA&);
@@ -59,7 +67,7 @@ class PNGPlotter
 
 		
 
-		static const int TARGET_WIDTH = 1800;
+		static const int TARGET_WIDTH = 1600;
 		static const int TARGET_HEIGHT = 1200;
 		static const int SUPERSAMPLE_SCALE = 4;
 		static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
@@ -77,6 +85,11 @@ class PNGPlotter
 		int getWidth();
 		int getHeight();
 	
+		void drawYGrid();
+		void drawXGrid(int64_t, int64_t);
+
+		void HeaderPNG(const std::string&, unsigned int);
+		void GraphLabel(unsigned int, unsigned int, const std::string&, unsigned int, unsigned int=0, unsigned int=0, bool = false, RGBA = RGBA(255, 255, 255, 255));
 };
 };
 #endif
