@@ -790,6 +790,8 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
 
         unsigned int x0 = penX + glyph->bitmap_left;
         unsigned int y0 = penY - glyph->bitmap_top;
+    
+	float heightScale = 0.9;
 
         // Draw the glyph bitmap as solid black
         for (unsigned int y = 0; y < glyphHeight; ++y) 
@@ -797,7 +799,7 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
             for (unsigned int x = 0; x < glyphWidth; ++x) 
 	    {
                 unsigned imgX = x0 + x;
-                unsigned imgY = y0 + y;
+                unsigned imgY = y0 + static_cast<unsigned int>(y * heightScale);
 
                 if (imgX < width && imgY < height) 
 		{
@@ -846,13 +848,14 @@ void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
 	unsigned int x0 = penX + glyph->bitmap_left;
 	unsigned int y0 = penY - glyph->bitmap_top;
 
+	float heightScale = 0.9;
 	//Draw the glyph bitmap to the image
 	for(unsigned int y = 0; y < glyphHeight; ++y)
 	{
 	    for(unsigned int x = 0; x < glyphWidth; ++x)
 	    {
 		unsigned imgX = x0 + x;
-		unsigned imgY = y0 + y;
+                unsigned imgY = y0 + static_cast<unsigned int>(y * heightScale);
 
 		if(imgX < width && imgY < height)
 		{
