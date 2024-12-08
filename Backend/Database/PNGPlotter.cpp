@@ -131,7 +131,7 @@ void PNGPlotter::drawYGrid() {
 	std::string numberY = oss.str();	
 	if(i != 0)
 	{
-	    GraphLabel(width - margin_right, y, numberY, 300, 100, 300 / 4);
+	    GraphLabel(width - margin_right, y, numberY, 600, 100, 100);
 	}
 
     }
@@ -243,7 +243,7 @@ void PNGPlotter::drawXGrid(int64_t start, int64_t end)
         int x = margin_left + i * step;
         drawLine(x, 0, x, height - margin_top - margin_bottom, gridColor);
 
-	GraphLabel(x, height - margin_top - margin_bottom, verticalLines[i], 300, -(300/4), 300/2);
+	GraphLabel(x, height - margin_top - margin_bottom, verticalLines[i], 600, -(600/4), 600/8);
     }
 }
 
@@ -337,7 +337,7 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
 	    std::ostringstream oss;
 	    oss << newPrice;
 	    std::string numberY = oss.str();	
-	    GraphLabel(width - margin_right, y, numberY, 300, 100, 300 / 4, true, indicatorColors[indicator]);
+	    GraphLabel(width - margin_right, y, numberY, 600, 100, 100, true, indicatorColors[indicator]);
 	}
 
 
@@ -733,40 +733,53 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
         return;
     }
     penX += xOffset;
-    penY += yOffset;
-
+    penY -= yOffset;
+   
+    // Compute baseline using font metrics
+    int ascender = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
+    int descender = face->size->metrics.descender / 64; // Convert to pixels
+    float heightScale = 0.3;
+    // Compute a common baseline using font metrics
+    int baseline = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
     unsigned int extraSpacing = fontSize / 3;
 
     // Calculate the bounding box for the text
     unsigned int boxWidth = 0;
-    unsigned int boxHeight = fontSize; // Use font size for height as a baseline
+    unsigned int boxHeight = static_cast<unsigned int>((ascender - descender) * heightScale); // Total scaled height of the text block
 
     // Measure the total width of the text
-    for (char c : text) {
-        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+    for (char c : text)
+    {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+        {
             printf("Warning: Could not load character %c\n", c);
             continue;
         }
 
         FT_GlyphSlot glyph = face->glyph;
+
+        // Add glyph width and extra spacing
         boxWidth += (glyph->advance.x >> 6) + extraSpacing;
-        if (glyph->bitmap.rows > boxHeight) {
-            boxHeight = glyph->bitmap.rows; // Adjust height if necessary
+
+        // Adjust boxHeight if a taller glyph is found (scaled height)
+        unsigned int glyphHeight = static_cast<unsigned int>(glyph->bitmap.rows * heightScale);
+        if (glyphHeight > boxHeight)
+        {
+            boxHeight = glyphHeight;
         }
     }
 
     // Add padding to the box
-    unsigned int padding = fontSize / 4;
-    boxWidth += padding;
+    unsigned int padding = fontSize / 6;
 
     // Draw the box if necessary
     if (hasBox) {
-        unsigned int boxX = penX - padding; // Adjust box start position
-        unsigned int boxY = penY - boxHeight + padding; // Adjust for baseline alignment
+        unsigned int boxX = penX; // Adjust box start position
+        unsigned int boxY = penY - boxHeight; // Adjust for baseline alignment
         for (unsigned int y = 0; y < boxHeight; ++y) {
             for (unsigned int x = 0; x < boxWidth; ++x) {
                 unsigned imgX = boxX + x;
-                unsigned imgY = boxY + y;
+                unsigned imgY = boxY + y + (yOffset * 2);
 
                 if (imgX < width && imgY < height) {
                     image.SetPixel(imgX, imgY, labelColor); // Draw the background box
@@ -774,6 +787,7 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
             }
         }
     }
+
 
     for (char c : text) 
     {
@@ -789,9 +803,71 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
         unsigned glyphHeight = glyph->bitmap.rows;
 
         unsigned int x0 = penX + glyph->bitmap_left;
-        unsigned int y0 = penY - glyph->bitmap_top;
+        unsigned int y0 = penY + static_cast<unsigned int>(baseline * heightScale) - static_cast<unsigned int>(glyph->bitmap_top * heightScale);
     
-	float heightScale = 0.9;
+
+        // Draw the glyph bitmap as solid black
+        for (unsigned int y = 0; y < glyphHeight; ++y) 
+	{
+            for (unsigned int x = 0; x < glyphWidth; ++x) 
+	    {
+                unsigned imgX = x0 + x;
+                unsigned imgY = y0 + static_cast<unsigned int>(y * heightScale);
+
+                if (imgX < width && imgY < height) 
+		{
+                    unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
+                    if (value > 0) 
+		    { // Only draw if the glyph pixel is not empty
+			if(hasBox)
+			{
+			    image.SetPixel(imgX, imgY, RGBA(0, 0, 0, 255)); //Solid Black
+			}
+			else
+			{
+                            image.SetPixel(imgX, imgY, RGBA(255,255,255,255)); // Solid White
+			}
+                    }
+                }
+            }
+        }
+
+        // Advance cursor position
+        penX += (glyph->advance.x >> 6) + extraSpacing;
+    }
+}
+
+void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
+{
+    //set font size
+    FT_Set_Pixel_Sizes(face, 0, fontSize);
+
+    //Baseline position for text
+    unsigned int penX = 500;
+    unsigned int penY = 100;
+
+    unsigned int extraSpacing = fontSize / 4;
+
+    float heightScale = 0.3;
+    // Compute a common baseline using font metrics
+    int baseline = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
+
+    for (char c : text) 
+    {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) 
+	{
+            printf("Warning: Could not load character %c\n", c);
+            continue;
+        }
+
+        FT_GlyphSlot glyph = face->glyph;
+
+        unsigned glyphWidth = glyph->bitmap.width;
+        unsigned glyphHeight = glyph->bitmap.rows;
+
+        unsigned int x0 = penX + glyph->bitmap_left;
+        unsigned int y0 = penY + static_cast<unsigned int>(baseline * heightScale) - static_cast<unsigned int>(glyph->bitmap_top * heightScale);
+    
 
         // Draw the glyph bitmap as solid black
         for (unsigned int y = 0; y < glyphHeight; ++y) 
@@ -814,65 +890,6 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
 
         // Advance cursor position
         penX += (glyph->advance.x >> 6) + extraSpacing;
-    }
-}
-
-void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
-{
-    //set font size
-    FT_Set_Pixel_Sizes(face, 0, fontSize);
-
-    //Baseline position for text
-    unsigned int penX = 200;
-    unsigned int penY = 300;
-
-    unsigned int extraSpacing = fontSize / 3;
-
-    //Iterate over each character in the text
-    for(char c : text)
-    {
-	//Load character glyph
-	if(FT_Load_Char(face, c, FT_LOAD_RENDER))
-	{
-	    printf("Warning: Could not load character %c\n", c);
-	    continue;
-	}
-
-	FT_GlyphSlot glyph = face->glyph;
-	
-	//Get Glyph Dimensions
-	unsigned glyphWidth = glyph->bitmap.width;
-	unsigned glyphHeight = glyph->bitmap.rows;
-
-	//Calculate top-left position of the glyph
-	unsigned int x0 = penX + glyph->bitmap_left;
-	unsigned int y0 = penY - glyph->bitmap_top;
-
-	float heightScale = 0.9;
-	//Draw the glyph bitmap to the image
-	for(unsigned int y = 0; y < glyphHeight; ++y)
-	{
-	    for(unsigned int x = 0; x < glyphWidth; ++x)
-	    {
-		unsigned imgX = x0 + x;
-                unsigned imgY = y0 + static_cast<unsigned int>(y * heightScale);
-
-		if(imgX < width && imgY < height)
-		{
-		    //Compute the buffer index
-		    unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
-
-                    if (value > 0) 
-		    { // Only draw if the glyph pixel is not empty
-                        image.SetPixel(imgX, imgY, RGBA(255, 255, 255, 255)); // Solid black
-                    }
-		}
-	    }
-	}
-
-	//Advance Cursor Position
-	penX += (glyph->advance.x >> 6) + extraSpacing;
-
     }
 }
 

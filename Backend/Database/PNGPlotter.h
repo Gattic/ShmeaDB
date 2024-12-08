@@ -67,7 +67,7 @@ class PNGPlotter
 
 		
 
-		static const int TARGET_WIDTH = 1600;
+		static const int TARGET_WIDTH = 2400;
 		static const int TARGET_HEIGHT = 1200;
 		static const int SUPERSAMPLE_SCALE = 4;
 		static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
