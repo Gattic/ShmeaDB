@@ -301,14 +301,14 @@ void PNGPlotter::initialize_colors(std::vector<RGBA>& lines_colors, std::vector<
     // Remember to add colour entries of indicator when adding new indicators
     indicatorColors["BBLow"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
     indicatorColors["BBHigh"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
-    indicatorTextColor["BBHigh"] = RGBA(0x79, 0x79, 0xEE, 0xFF);
-    indicatorTextColor["BBLow"] = RGBA(0x79, 0x79, 0xEE, 0xFF);
+    indicatorTextColor["BBHigh"] = RGBA(0x00, 0x00, 0x50, 0xFF);
+    indicatorTextColor["BBLow"] = RGBA(0x00, 0x00, 0x50, 0xFF);
 
     indicatorColors["EMA"] = RGBA(0xFF, 0xBF, 0x00, 0xFF); // Yellow
-    indicatorTextColor["EMA"] = RGBA(0xFF, 0xDA, 0x6B, 0xFF);
+    indicatorTextColor["EMA"] = RGBA(0x72, 0x56, 0x00, 0xFF);
 
     indicatorColors["SMA"] = RGBA(0xFF, 0x5C, 0x00, 0xFF); // Orange
-    indicatorTextColor["SMA"] = RGBA(0xFF, 0xA0, 0x6B, 0xFF);
+    indicatorTextColor["SMA"] = RGBA(0x72, 0x29, 0x00, 0xFF);
     indicatorPoint["BBLow"] = 0;
     indicatorPoint["BBHigh"] = 0;
     indicatorPoint["EMA"] = 0;
@@ -342,7 +342,7 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
 	    std::ostringstream oss;
 	    oss << newPrice;
 	    std::string numberY = oss.str();	
-	    GraphLabel(width - margin_right, y, numberY, 480, 100, 100, true, indicatorColors[indicator], indicatorTextColor[indicator]);
+	    GraphLabel(width - margin_right, y, numberY, 480, 100, 100, true, indicatorColors[indicator], RGBA(0xFF, 0xFF, 0xFF, 0xFF));
 	}
 
 
