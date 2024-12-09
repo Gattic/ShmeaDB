@@ -301,13 +301,18 @@ void PNGPlotter::initialize_colors(std::vector<RGBA>& lines_colors, std::vector<
     // Remember to add colour entries of indicator when adding new indicators
     indicatorColors["BBLow"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
     indicatorColors["BBHigh"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
-    indicatorColors["EMA"] = RGBA(0xFF, 0xFF, 0x00, 0xFF); // Yellow
-    indicatorColors["SMA"] = RGBA(0x80, 0x00, 0x80, 0xFF); // Purple
+    indicatorTextColor["BBHigh"] = RGBA(0x79, 0x79, 0xEE, 0xFF);
+    indicatorTextColor["BBLow"] = RGBA(0x79, 0x79, 0xEE, 0xFF);
 
+    indicatorColors["EMA"] = RGBA(0xFF, 0xBF, 0x00, 0xFF); // Yellow
+    indicatorTextColor["EMA"] = RGBA(0xFF, 0xDA, 0x6B, 0xFF);
+
+    indicatorColors["SMA"] = RGBA(0xFF, 0x5C, 0x00, 0xFF); // Orange
+    indicatorTextColor["SMA"] = RGBA(0xFF, 0xA0, 0x6B, 0xFF);
     indicatorPoint["BBLow"] = 0;
     indicatorPoint["BBHigh"] = 0;
     indicatorPoint["EMA"] = 0;
-    indicatorPoint["SMA"] = 0; 
+    indicatorPoint["SMA"] = 0;
 } 
 
 void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::string indicator, std::string value)
@@ -337,7 +342,7 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
 	    std::ostringstream oss;
 	    oss << newPrice;
 	    std::string numberY = oss.str();	
-	    GraphLabel(width - margin_right, y, numberY, 600, 100, 100, true, indicatorColors[indicator]);
+	    GraphLabel(width - margin_right, y, numberY, 480, 100, 100, true, indicatorColors[indicator], indicatorTextColor[indicator]);
 	}
 
 
@@ -726,7 +731,7 @@ Image PNGPlotter::downsampleToTargetSize() {
     return downsampledImage;
 }
 
-void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::string& text, unsigned int fontSize, unsigned int xOffset, unsigned int yOffset, bool hasBox, RGBA labelColor) {
+void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::string& text, unsigned int fontSize, unsigned int xOffset, unsigned int yOffset, bool hasBox, RGBA labelColor, RGBA labelColorText) {
     if (FT_Set_Pixel_Sizes(face, 0, fontSize)) 
     {
         printf("Error: Could not set pixel sizes\n");
@@ -779,7 +784,7 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
         for (unsigned int y = 0; y < boxHeight; ++y) {
             for (unsigned int x = 0; x < boxWidth; ++x) {
                 unsigned imgX = boxX + x;
-                unsigned imgY = boxY + y + (yOffset * 2);
+                unsigned imgY = boxY + y + (boxHeight);
 
                 if (imgX < width && imgY < height) {
                     image.SetPixel(imgX, imgY, labelColor); // Draw the background box
@@ -819,14 +824,7 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
                     unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
                     if (value > 0) 
 		    { // Only draw if the glyph pixel is not empty
-			if(hasBox)
-			{
-			    image.SetPixel(imgX, imgY, RGBA(0, 0, 0, 255)); //Solid Black
-			}
-			else
-			{
-                            image.SetPixel(imgX, imgY, RGBA(255,255,255,255)); // Solid White
-			}
+			image.SetPixel(imgX, imgY, labelColorText); 
                     }
                 }
             }

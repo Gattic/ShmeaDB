@@ -39,6 +39,7 @@ class PNGPlotter
 		int last_line_drawn;
 		std::vector<RGBA> line_colors;
 		std::map<std::string, RGBA> indicatorColors;
+		std::map<std::string, RGBA> indicatorTextColor;
 		std::map<std::string, int> indicatorPoint;
 		std::vector<std::string> line_color_names;
 		RGBA color_bullish;
@@ -89,7 +90,7 @@ class PNGPlotter
 		void drawXGrid(int64_t, int64_t);
 
 		void HeaderPNG(const std::string&, unsigned int);
-		void GraphLabel(unsigned int, unsigned int, const std::string&, unsigned int, unsigned int=0, unsigned int=0, bool = false, RGBA = RGBA(255, 255, 255, 255));
+		void GraphLabel(unsigned int, unsigned int, const std::string&, unsigned int, unsigned int=0, unsigned int=0, bool = false, RGBA = RGBA(0xFF, 0xFF, 0xFF, 0xFF), RGBA = RGBA(0xFF, 0xFF, 0xFF, 0xFF) );
 };
 };
 #endif
