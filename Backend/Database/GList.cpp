@@ -468,452 +468,134 @@ bool GList::empty() const
  * @details standardize the values in a GList; that is, map the values from their existing range to
  * the range of -1.0 to 1.0
  */
-// void GList::standardize()
-// {
-// 	// Standardize the initialization of the weights
-// 	if (size() <= 0)
-// 		return;
-
-// 	// Set the min and max of the weights
-// 	xMin = 0.0f;
-// 	xMax = 0.0f;
-
-// 	// iterate through the rows
-// 	for (unsigned int r = 0; r < size(); ++r)
-// 	{
-// 		GType cCell = getGType(r);
-// 		float cell = 0.0f;
-// 		if (cCell.getType() == GType::STRING_TYPE)
-// 		{
-// 			// OHE: total unique words
-// 		}
-// 		else if (cCell.getType() == GType::CHAR_TYPE)
-// 			cell = cCell.getChar();
-// 		else if (cCell.getType() == GType::SHORT_TYPE)
-// 			cell = cCell.getShort();
-// 		else if (cCell.getType() == GType::INT_TYPE)
-// 			cell = cCell.getInt();
-// 		else if (cCell.getType() == GType::LONG_TYPE)
-// 			cell = cCell.getLong();
-// 		else if (cCell.getType() == GType::FLOAT_TYPE)
-// 			cell = cCell.getFloat();
-// 		else if (cCell.getType() == GType::DOUBLE_TYPE)
-// 			cell = cCell.getDouble();
-// 		else if (cCell.getType() == GType::BOOLEAN_TYPE)
-// 			cell = cCell.getBoolean() ? 1.0f : 0.0f;
-
-// 		if (r == 0)
-// 		{
-// 			xMin = cell;
-// 			xMax = cell;
-// 		}
-
-// 		// Check the mins and maxes
-// 		if (cell < xMin)
-// 			xMin = cell;
-// 		if (cell > xMax)
-// 			xMax = cell;
-// 	}
-
-// 	// standardize the weights
-// 	xRange = xMax - xMin;
-// 	if (xRange == 0.0f)
-// 		return;
-	
-// 	// iterate through the rows
-// 	for (unsigned int r = 0; r < size(); ++r)
-// 	{
-// 		// Adjust the children
-// 		GType cCell = getGType(r);
-// 		float cell = 0.0f;
-// 		if (cCell.getType() == GType::STRING_TYPE)
-// 		{
-// 			// OHE: total unique words
-// 		}
-// 		else if (cCell.getType() == GType::CHAR_TYPE)
-// 		{
-// 			cell = cCell.getChar();
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		else if (cCell.getType() == GType::SHORT_TYPE)
-// 		{
-// 			cell = cCell.getShort();
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		else if (cCell.getType() == GType::INT_TYPE)
-// 		{
-// 			cell = cCell.getInt();
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		else if (cCell.getType() == GType::LONG_TYPE)
-// 		{
-// 			cell = cCell.getLong();
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		else if (cCell.getType() == GType::FLOAT_TYPE)
-// 		{
-// 			cell = cCell.getFloat();
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		else if (cCell.getType() == GType::DOUBLE_TYPE)
-// 		{
-// 			cell = cCell.getDouble();
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		else if (cCell.getType() == GType::BOOLEAN_TYPE)
-// 		{
-// 			cell = cCell.getBoolean() ? 1.0f : 0.0f; // 1 or 0 if sigmoid
-// 			cell = (((cell - xMin) / (xRange)) - 0.5f);
-// 			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-// 		}
-// 		items[r] = cCell;
-// 	}
-// }
-
-// void GList::standardize()
-// {
-//     if (size() <= 0)
-//         return;
-
-//     // Initialize min and max
-//     xMin = 0.0f;
-//     xMax = 0.0f;
-
-//     // Single pass to compute min, max, and standardize
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r];
-//         float cell = 0.0f;
-
-//         // Convert value to float
-//         if (cCell.getType() == GType::CHAR_TYPE)
-//             cell = cCell.getChar();
-//         else if (cCell.getType() == GType::SHORT_TYPE)
-//             cell = cCell.getShort();
-//         else if (cCell.getType() == GType::INT_TYPE)
-//             cell = cCell.getInt();
-//         else if (cCell.getType() == GType::LONG_TYPE)
-//             cell = cCell.getLong();
-//         else if (cCell.getType() == GType::FLOAT_TYPE)
-//             cell = cCell.getFloat();
-//         else if (cCell.getType() == GType::DOUBLE_TYPE)
-//             cell = static_cast<float>(cCell.getDouble());
-//         else if (cCell.getType() == GType::BOOLEAN_TYPE)
-//             cell = cCell.getBoolean() ? 1.0f : 0.0f;
-
-//         // Update min and max
-//         if (cell < xMin) xMin = cell;
-//         if (cell > xMax) xMax = cell;
-
-//         // Standardize in the same loop if the range is valid
-//         // To avoid division by zero, delay applying standardization
-//         items[r] = GType(cell); // Temporarily store cell as is
-//     }
-
-//     // Check for valid range
-//     xRange = xMax - xMin;
-//     if (xRange == 0.0f)
-//         return;
-
-//     // Standardize all items (final pass)
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r];
-//         float cell = cCell.getFloat(); // Value is temporarily stored as float above
-//         cell = (((cell - xMin) / xRange) - 0.5f);
-//         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//     }
-// }
-
-// void GList::standardize()
-// {
-//     if (size() <= 0)
-//         return;
-
-//     // Initialize min and max
-// 	xMin = 0.0f;
-// 	xMax = 0.0f;
-
-//     // Combine min/max computation and standardization
-//     float scaleFactor = 0.0f; // Placeholder for standardization factor
-
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r];
-//         float cell = 0.0f;
-
-//         // Convert to float and find min/max
-//         switch (cCell.getType())
-//         {
-//         case GType::CHAR_TYPE: cell = cCell.getChar(); break;
-//         case GType::SHORT_TYPE: cell = cCell.getShort(); break;
-//         case GType::INT_TYPE: cell = cCell.getInt(); break;
-//         case GType::LONG_TYPE: cell = cCell.getLong(); break;
-//         case GType::FLOAT_TYPE: cell = cCell.getFloat(); break;
-//         case GType::DOUBLE_TYPE: cell = static_cast<float>(cCell.getDouble()); break;
-//         case GType::BOOLEAN_TYPE: cell = cCell.getBoolean() ? 1.0f : 0.0f; break;
-//         default: continue; // Skip invalid types
-//         }
-
-//         // Update min and max
-//         if (cell < xMin) xMin = cell;
-//         if (cell > xMax) xMax = cell;
-
-//         // Temporarily store as float for final standardization
-//         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//     }
-
-//     // Calculate range and standardization factor
-//     xRange = xMax - xMin;
-//     if (xRange == 0.0f)
-//         return;
-
-//     scaleFactor = 1.0f / xRange;
-
-//     // Apply standardization
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r];
-//         float cell = cCell.getFloat(); // Retrieve stored float
-//         cell = ((cell - xMin) * scaleFactor) - 0.5f; // Standardize
-//         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//     }
-// }
-
-
-// void GList::standardize()
-// {
-//     if (size() <= 0)
-//         return;
-
-//     // Initialize min and max
-//     xMin = 0.0f;
-//     xMax = 0.0f;
-// 	// printf("size %f",size());
-//     // First loop: calculate min and max
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r]; // Explicitly access item
-//         float cell = 0.0f;
-
-//         // Convert to float
-//         switch (cCell.getType())
-//         {
-//         case GType::CHAR_TYPE:
-//             cell = cCell.getChar();
-//             break;
-//         case GType::SHORT_TYPE:
-//             cell = cCell.getShort();
-//             break;
-//         case GType::INT_TYPE:
-//             cell = cCell.getInt();
-//             break;
-//         case GType::LONG_TYPE:
-//             cell = cCell.getLong();
-//             break;
-//         case GType::FLOAT_TYPE:
-//             cell = cCell.getFloat();
-//             break;
-//         case GType::DOUBLE_TYPE:
-//             cell = static_cast<float>(cCell.getDouble());
-//             break;
-//         case GType::BOOLEAN_TYPE:
-//             cell = cCell.getBoolean() ? 1.0f : 0.0f;
-//             break;
-//         default:
-//             continue; // Skip invalid types
-//         }
-
-//         // Update min and max
-//         if (r == 0)
-//         {
-//             xMin = cell;
-//             xMax = cell;
-//         }
-//         else
-//         {
-//             if (cell < xMin)
-//                 xMin = cell;
-//             if (cell > xMax)
-//                 xMax = cell;
-//         }
-
-//         // Temporarily store as float for later processing
-//         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//     }
-
-//     // Calculate range
-//     xRange = xMax - xMin;
-//     if (xRange == 0.0f)
-//         return;
-
-//     // Second loop: standardize
-//     float scaleFactor = 1.0f / xRange;
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r]; // Explicitly access item
-//         float cell = cCell.getFloat(); // Retrieve stored float
-//         cell = ((cell - xMin) * scaleFactor) - 0.5f; // Standardize
-//         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//     }
-// }
-
-// void GList::standardize()
-// {
-//     if (size() <= 0)
-//         return;
-
-//     // Set default min and max for black-and-white images
-//     xMin = 0.0f;
-//     xMax = 1.0f;
-//     xRange = xMax - xMin;
-
-//     // Precompute the scale factor
-//     float scaleFactor = 1.0f / xRange;
-
-//     // Single loop: Standardize the values
-//     for (unsigned int r = 0; r < size(); ++r)
-//     {
-//         GType& cCell = items[r];
-//         float cell = 0.0f;
-
-//         // Convert to floats
-//         switch (cCell.getType())
-//         {
-//         case GType::CHAR_TYPE: cell = cCell.getChar(); break;
-//         case GType::SHORT_TYPE: cell = cCell.getShort(); break;
-//         case GType::INT_TYPE: cell = cCell.getInt(); break;
-//         case GType::LONG_TYPE: cell = cCell.getLong(); break;
-//         case GType::FLOAT_TYPE: cell = cCell.getFloat(); break;
-//         case GType::DOUBLE_TYPE: cell = static_cast<float>(cCell.getDouble()); break;
-//         case GType::BOOLEAN_TYPE: cell = cCell.getBoolean() ? 1.0f : 0.0f; break;
-//         default: continue; // Skip invalid types
-//         }
-
-//         // Standardize the value
-//         cell = (cell * scaleFactor) - 0.5f;
-
-//         // Update the GType value
-//         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//     }
-// }
-
-// void GList::standardize()
-// {
-//     if (size() <= 0)
-//         return;
-
-//     // Assume grayscale images with values in [0, 255]
-//     xMin = 0.0f;
-//     xMax = 1.0f;
-//     xRange = xMax - xMin;
-
-//     // Precompute the scale factor
-//     const float scaleFactor = 1.0f / xRange;
-
-//     // Multithreading: Number of threads
-//     const unsigned int numThreads = std::thread::hardware_concurrency();
-// 	// printf("Number of Threads %d",numThreads);
-//     const unsigned int chunkSize = size() / numThreads;
-
-//     // Lambda function for parallel processing
-//     auto processChunk = [&](unsigned int start, unsigned int end) {
-//         for (unsigned int r = start; r < end; ++r)
-//         {
-//             // Access the raw data directly
-//             GType& cCell = items[r];
-//             float cell = 0.0f;
-
-//             // Convert to float (assume grayscale image type for optimization)
-//             cell = static_cast<float>(cCell.getInt()); // Assuming pixel values are stored as `int`
-
-//             // Standardize
-//             cell = (cell * scaleFactor) - 0.5f;
-
-//             // Update the GType value
-//             cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-//         }
-//     };
-
-//     // Launch threads
-//     std::vector<std::thread> threads;
-//     for (unsigned int i = 0; i < numThreads; ++i)
-//     {
-//         unsigned int start = i * chunkSize;
-//         unsigned int end = (i == numThreads - 1) ? size() : start + chunkSize;
-//         threads.emplace_back(processChunk, start, end);
-//     }
-
-//     // Wait for all threads to complete
-//     for (auto& thread : threads)
-//         thread.join();
-// }
-
-
-void GList::standardize()
+void GList::standardize(unsigned int inputType)
 {
-    if (size() <= 0)
+    // 1) If there's no data, nothing to do
+    if (size() == 0)
         return;
 
-    // Known min and max for image data
-    const float xMin = 0.0f;
-    const float xMax = 255.0f;
-    const float xRange = xMax - xMin;
+    // 2) Determine xMin, xMax
+    if (inputType == 1)
+    {
+        // Image data: known range [0..255]
+        xMin = 0.0f;
+        xMax = 255.0f;
+    }
+    else
+    {
+        // Other data: find min & max via first pass
+        xMin = 0.0f;
+        xMax = 0.0f;
 
-    // Avoid computation if the range is zero (not applicable here, but a safety check)
+        bool firstNumericValue = true;
+        for (unsigned int r = 0; r < size(); ++r)
+        {
+            // Use a reference to avoid copying GType
+            GType& cCell = items[r];
+            float cell   = 0.0f;
+
+            // Convert to float using switch-case
+            switch (cCell.getType())
+            {
+                case GType::STRING_TYPE:
+                    // Possibly skip or handle differently
+                    break;
+                case GType::CHAR_TYPE:
+                    cell = cCell.getChar();
+                    break;
+                case GType::SHORT_TYPE:
+                    cell = cCell.getShort();
+                    break;
+                case GType::INT_TYPE:
+                    cell = cCell.getInt();
+                    break;
+                case GType::LONG_TYPE:
+                    cell = static_cast<float>(cCell.getLong());
+                    break;
+                case GType::FLOAT_TYPE:
+                    cell = cCell.getFloat();
+                    break;
+                case GType::DOUBLE_TYPE:
+                    cell = static_cast<float>(cCell.getDouble());
+                    break;
+                case GType::BOOLEAN_TYPE:
+                    cell = cCell.getBoolean() ? 1.0f : 0.0f;
+                    break;
+                default:
+                    // Unknown or other types
+                    break;
+            }
+
+            // Update xMin, xMax
+            if (firstNumericValue)
+            {
+                xMin = cell;
+                xMax = cell;
+                firstNumericValue = false;
+            }
+            else
+            {
+                if (cell < xMin) xMin = cell;
+                if (cell > xMax) xMax = cell;
+            }
+        }
+    }
+
+    // 3) Compute xRange
+    xRange = xMax - xMin;
     if (xRange == 0.0f)
-        return;
+        return; // All values are the same => no transformation needed
 
-    // Precomputed scale factor for normalization
-    const float scaleFactor = 1.0f / xRange;
-
-    // Standardize each element
+    // 4) Second pass: normalize + shift in-place
     for (unsigned int r = 0; r < size(); ++r)
     {
+        // Reference to GType in items
         GType& cCell = items[r];
-        float cell = 0.0f;
+        float cell   = 0.0f;
 
-        // Convert to float if it's a valid numeric type
         switch (cCell.getType())
         {
-        case GType::CHAR_TYPE:
-            cell = static_cast<float>(cCell.getChar());
-            break;
-        case GType::SHORT_TYPE:
-            cell = static_cast<float>(cCell.getShort());
-            break;
-        case GType::INT_TYPE:
-            cell = static_cast<float>(cCell.getInt());
-            break;
-        case GType::LONG_TYPE:
-            cell = static_cast<float>(cCell.getLong());
-            break;
-        case GType::FLOAT_TYPE:
-            cell = cCell.getFloat();
-            break;
-        case GType::DOUBLE_TYPE:
-            cell = static_cast<float>(cCell.getDouble());
-            break;
-        case GType::BOOLEAN_TYPE:
-            cell = cCell.getBoolean() ? 1.0f : 0.0f;
-            break;
-        default:
-            continue; // Skip invalid types
+            case GType::STRING_TYPE:
+                // Skip or handle strings differently
+                continue;
+            case GType::CHAR_TYPE:
+                cell = cCell.getChar();
+                break;
+            case GType::SHORT_TYPE:
+                cell = cCell.getShort();
+                break;
+            case GType::INT_TYPE:
+                cell = cCell.getInt();
+                break;
+            case GType::LONG_TYPE:
+                cell = static_cast<float>(cCell.getLong());
+                break;
+            case GType::FLOAT_TYPE:
+                cell = cCell.getFloat();
+                break;
+            case GType::DOUBLE_TYPE:
+                cell = static_cast<float>(cCell.getDouble());
+                break;
+            case GType::BOOLEAN_TYPE:
+                cell = cCell.getBoolean() ? 1.0f : 0.0f;
+                break;
+            default:
+                continue;
         }
 
-        // Standardize using known min, max, and scaleFactor
-        cell = ((cell - xMin) * scaleFactor) - 0.5f;
+        // Scale from [xMin..xMax] to [0..1], then shift => [-0.5..+0.5]
+        cell = ((cell - xMin) / xRange) - 0.5f;
 
-        // Store the standardized value back as FLOAT_TYPE
+        // Store the updated float in-place
+        // (Better if you have cCell.setFloat(cell) or an inline method)
         cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+
+        // No need to do items[r] = cCell; 
+        // cCell is already a reference to items[r].
     }
 }
+
+
 
 void GList::print() const
 {

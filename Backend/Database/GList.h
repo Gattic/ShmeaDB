@@ -95,7 +95,7 @@ public:
 	int getType(unsigned int) const;
 	unsigned int size() const;
 	bool empty() const;
-	void standardize();
+	void standardize(unsigned int);
 	float unstandardize(float) const;
 	void print() const;
 
