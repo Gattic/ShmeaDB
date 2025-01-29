@@ -460,20 +460,117 @@ void Image::LoadPNG(const GString& filename)
 	printf("[IMG] Loaded PNG: %s(%d,%d)\n", filename.c_str(), width, height);
 }
 
+// shmea::GList Image::flatten() const
+// {
+//     shmea::GList retList;
+
+//     for (unsigned int y = 0; y < height; ++y)
+//     {
+// 	for (unsigned int x = 0; x < width; ++x)
+// 	{
+// 		RGBA c = GetPixel(x, y);
+// 		retList.addInt(c.r);
+// 		retList.addInt(c.g);
+// 		retList.addInt(c.b);
+// 		retList.addInt(c.a);
+// 	}
+//     }
+// }
+
+// shmea::GList Image::flatten() const
+// {
+//     shmea::GList retList;
+
+//     for (unsigned int y = 0; y < height; ++y)
+//     {
+// 	for (unsigned int x = 0; x < width; ++x)
+// 	{
+// 		RGBA c = GetPixel(x, y);
+// 		retList.addInt(c.r);
+// 		retList.addInt(c.g);
+// 		retList.addInt(c.b);
+// 		retList.addInt(c.a);
+// 	}
+//     }
+
+//     return retList;
+// }
+//         for (unsigned int x = 0; x < width; ++x)
+//         {
+//             const RGBA& c = GetPixel(x, y);
+//             redChannel[y * height + x] = c.r; // Flatten to a temporary vector
+//         }
+//     }
+
+//     retList.addBatch(redChannel); // Add all red channel values in one go
+//     return retList;
+// }
+
+// shmea::GList Image::flatten() const
+// {
+//     shmea::GList retList;
+
+//     // Total number of RGBA values to add (4 channels per pixel)
+//     std::vector<int> allChannels(height * width * 4); // Preallocate a vector for all channels
+
+//     // Flatten the image into the vector
+//     for (unsigned int y = 0; y < height; ++y)
+//     {
+//         for (unsigned int x = 0; x < width; ++x)
+//         {
+//             const RGBA& c = GetPixel(x, y);
+//             unsigned int index = (y * width + x) * 4; // Base index for this pixel
+
+//             allChannels[index] = c.r;       // Red
+//             allChannels[index + 1] = c.g;  // Green
+//             allChannels[index + 2] = c.b;  // Blue
+//             allChannels[index + 3] = c.a;  // Alpha
+//         }
+//     }
+
+//     // Add all channels to retList in a single batch
+//     retList.addBatch(allChannels);
+
+//     return retList;
+// }
+
+
+// shmea::GList Image::flatten() const
+// {
+//     shmea::GList retList;
+
+//     for (unsigned int y = 0; y < height; ++y)
+//     {
+//         for (unsigned int x = 0; x < width; ++x)
+//         {
+//             RGBA c = GetPixel(x, y);
+//             int rgba[4] = {c.r, c.g, c.b, c.a};
+//             retList.addIntArray(rgba, 4);
+//         }
+//     }
+
+//     return retList;
+// }
+
 shmea::GList Image::flatten() const
 {
     shmea::GList retList;
 
     for (unsigned int y = 0; y < height; ++y)
     {
-	for (unsigned int x = 0; x < width; ++x)
-	{
-		RGBA c = GetPixel(x, y);
-		retList.addInt(c.r);
-		retList.addInt(c.g);
-		retList.addInt(c.b);
-		retList.addInt(c.a);
-	}
+        for (unsigned int x = 0; x < width; ++x)
+        {
+            RGBA c = GetPixel(x, y);
+
+            // Pack RGBA into a single 32-bit integer (0xRRGGBBAA)
+            unsigned int packedRGBA = (static_cast<unsigned int>(c.r) << 24) |
+                                       (static_cast<unsigned int>(c.g) << 16) |
+                                       (static_cast<unsigned int>(c.b) << 8)  |
+                                       static_cast<unsigned int>(c.a);
+
+            // Add the packed integer to the list
+            retList.addInt(static_cast<int>(packedRGBA));
+        }
     }
 
     return retList;
