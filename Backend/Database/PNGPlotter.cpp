@@ -24,8 +24,12 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
 	last_line_drawn(0),
 	line_colors(),
 	line_color_names(),
-	color_bullish(0, 255, 0, 255), 
-	color_bearish(255, 0, 0, 255)
+	color_bullish(0x00, 0xFF, 0x00, 0xFF), 
+	color_bearish(0xFF, 0x00, 0x00, 0xFF),
+	headerPenXStarting(500),
+	headerPenYStarting(75),
+	headerXSpacing(25),
+	headerYSpacing(150)
 {
 	image.Allocate(width, height);
 	RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
@@ -39,6 +43,19 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
 	
 	initialize_colors(line_colors, line_color_names);
 	initialize_font();
+
+	//TODO: initialize the AGG_SIZE conversion from value to string... might want to put that somewhere more accessible
+	AGG_SIZE[1] = "1m";
+    	AGG_SIZE[2] = "2m";
+    	AGG_SIZE[3] = "3m";
+    	AGG_SIZE[5] = "5m";
+    	AGG_SIZE[15] = "15m";
+    	AGG_SIZE[30] = "30m";
+    	AGG_SIZE[60] = "1h";
+    	AGG_SIZE[240] = "4h";
+    	AGG_SIZE[390] = "1D";
+    	AGG_SIZE[1950] = "1W";
+    	AGG_SIZE[5850] = "3W";
 
 }
 
@@ -835,14 +852,38 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
     }
 }
 
-void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
+/*
+ * Header PNG parameters:
+ *  text: text to be displayed
+ *  fontSize: size of the text
+ *  headerPos: which row on the header it will be on (i.e. 0 will be the highest)
+ *  rePositionY: If the fontSize is different you can choose to reposition the text, this value will be divided by that rows y-axis
+ */ 
+//TODO: headerPenY is still not perfect, when changing to smaller or bigger fonts the spacing gets messed up, I currenlty just edit the headerYSpacing, but I want to find the best Y value programmatically
+void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize, unsigned int headerPos, unsigned int rePositionY, RGBA headerTextColor)
 {
+
+    unsigned int headerPenX = 0;
+    unsigned int headerPenY = (headerPenYStarting * (headerPos + 1)) + (headerYSpacing * (headerPos));
+
+    if(rePositionY != 0)
+    {
+	headerPenY += (headerPenY / rePositionY);
+    }
+
+
+    std::vector<unsigned int> initializeHeaderPosition;
+
+    if(headerPos + 1 > headerSpacings.size())
+    {
+	std::vector<unsigned int> newVector;
+	newVector.push_back(headerPenXStarting);
+	headerSpacings.push_back(newVector);
+    }
+
+    headerPenX = headerSpacings[headerPos][headerSpacings[headerPos].size() - 1];
     //set font size
     FT_Set_Pixel_Sizes(face, 0, fontSize);
-
-    //Baseline position for text
-    unsigned int penX = 500;
-    unsigned int penY = 100;
 
     unsigned int extraSpacing = fontSize / 4;
 
@@ -863,8 +904,8 @@ void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
         unsigned glyphWidth = glyph->bitmap.width;
         unsigned glyphHeight = glyph->bitmap.rows;
 
-        unsigned int x0 = penX + glyph->bitmap_left;
-        unsigned int y0 = penY + static_cast<unsigned int>(baseline * heightScale) - static_cast<unsigned int>(glyph->bitmap_top * heightScale);
+        unsigned int x0 = headerPenX + glyph->bitmap_left;
+        unsigned int y0 = headerPenY + static_cast<unsigned int>(baseline * heightScale) - static_cast<unsigned int>(glyph->bitmap_top * heightScale);
     
 
         // Draw the glyph bitmap as solid black
@@ -880,15 +921,25 @@ void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize)
                     unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
                     if (value > 0) 
 		    { // Only draw if the glyph pixel is not empty
-                        image.SetPixel(imgX, imgY, RGBA(255,255,255,255)); // Solid black
+                        image.SetPixel(imgX, imgY, headerTextColor); // Solid black
                     }
                 }
             }
         }
 
         // Advance cursor position
-        penX += (glyph->advance.x >> 6) + extraSpacing;
+        headerPenX += (glyph->advance.x >> 6) + extraSpacing;
     }
+    headerSpacings[headerPos].push_back(headerPenX + headerXSpacing);
+}
+
+std::string PNGPlotter::aggString(int aggSize)
+{
+	if(AGG_SIZE.find(aggSize) != AGG_SIZE.end())
+	{
+		return AGG_SIZE[aggSize];
+	}
+	return "";
 }
 
 void PNGPlotter::SavePNG(const std::string& filename, const std::string& folder)
