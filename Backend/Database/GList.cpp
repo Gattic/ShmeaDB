@@ -16,9 +16,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GList.h"
 #include "GType.h"
-// #include <limits>
-// #include <thread>
-// #include <omp.h>
 
 using namespace shmea;
 
@@ -168,37 +165,6 @@ void GList::addPrimitive(GType::Type newType, const void* newBlock)
 	insertPrimitive(items.size(), newType, newBlock);
 }
 
-void GList::addBatch(const std::vector<int>& values)
-{
-    for (int value : values)
-    {
-        addInt(value);
-    }
-}
-
-// void GList::insertPrimitive(unsigned int index, GType::Type newType, const void* newBlock)
-// {
-// 	int64_t newBlockSize = 0;
-// 	if (newType == GType::CHAR_TYPE)
-// 		newBlockSize = sizeof(char);
-// 	else if (newType == GType::SHORT_TYPE)
-// 		newBlockSize = sizeof(short);
-// 	else if (newType == GType::INT_TYPE)
-// 		newBlockSize = sizeof(int);
-// 	else if (newType == GType::LONG_TYPE)
-// 		newBlockSize = sizeof(int64_t);
-// 	else if (newType == GType::FLOAT_TYPE)
-// 		newBlockSize = sizeof(float);
-// 	else if (newType == GType::DOUBLE_TYPE)
-// 		newBlockSize = sizeof(double);
-// 	else if (newType == GType::BOOLEAN_TYPE)
-// 		newBlockSize = sizeof(bool);
-
-// 	// Add the object if its valid
-// 	if (newBlockSize > 0)
-// 		insertObject(index, newType, newBlock, newBlockSize);
-// }
-
 void GList::insertPrimitive(unsigned int index, GType::Type newType, const void* newBlock)
 {
     int64_t newBlockSize;
@@ -254,23 +220,6 @@ void GList::addObject(GType::Type newType, const void* newBlock, int64_t newBloc
 {
 	insertObject(items.size(), newType, newBlock, newBlockSize);
 }
-
-// Taking too much time
-// All add & insert functions go to this one
-// void GList::insertObject(unsigned int index, GType::Type newType, const void* newBlock,
-// 						 int64_t newBlockSize)
-// {
-// 	// fix the index if need be
-// 	if (index > items.size())
-// 		index = items.size();
-
-// 	// Add the bundle item
-// 	GType newItem(newType, newBlock, newBlockSize);
-// 	if (index == items.size())
-// 		addGType(newItem);
-// 	else // insert
-// 		insertGType(index, newItem);
-// }
 
 void GList::insertObject(unsigned int index, GType::Type newType, const void* newBlock, int64_t newBlockSize)
 {
@@ -645,14 +594,3 @@ void GList::operator=(const GList& list2)
 {
 	copy(list2);
 }
-
-// void GList::addIntArray(const int* values, unsigned int count)
-// {
-//     if (!values || count == 0) // Check for null pointer or zero count
-//         return;
-
-//     for (unsigned int i = 0; i < count; ++i)
-//     {
-//         addPrimitive(GType::INT_TYPE, &values[i]);
-//     }
-// }

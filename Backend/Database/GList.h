@@ -53,7 +53,6 @@ public:
 	virtual ~GList();
 
 	// sets
-	void addBatch(const std::vector<int>& values);
 	void copy(const GList&);
 	void loadWords(const GString&);
 	void addChar(char);
@@ -79,7 +78,6 @@ public:
 	void setGType(unsigned int, const GType&);
 	void remove(unsigned int);
 	void clear();
-	void addIntArray(const int* values, unsigned int count);
 
 	// gets
 	GString getString(unsigned int) const;
