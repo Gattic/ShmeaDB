@@ -167,25 +167,25 @@ void GList::addPrimitive(GType::Type newType, const void* newBlock)
 
 void GList::insertPrimitive(unsigned int index, GType::Type newType, const void* newBlock)
 {
-	int64_t newBlockSize = 0;
-	if (newType == GType::CHAR_TYPE)
-		newBlockSize = sizeof(char);
-	else if (newType == GType::SHORT_TYPE)
-		newBlockSize = sizeof(short);
-	else if (newType == GType::INT_TYPE)
-		newBlockSize = sizeof(int);
-	else if (newType == GType::LONG_TYPE)
-		newBlockSize = sizeof(int64_t);
-	else if (newType == GType::FLOAT_TYPE)
-		newBlockSize = sizeof(float);
-	else if (newType == GType::DOUBLE_TYPE)
-		newBlockSize = sizeof(double);
-	else if (newType == GType::BOOLEAN_TYPE)
-		newBlockSize = sizeof(bool);
+    int64_t newBlockSize;
 
-	// Add the object if its valid
-	if (newBlockSize > 0)
-		insertObject(index, newType, newBlock, newBlockSize);
+    // Use a switch statement for better performance
+    switch (newType)
+    {
+        case GType::CHAR_TYPE:   newBlockSize = sizeof(char);    break;
+        case GType::SHORT_TYPE:  newBlockSize = sizeof(short);   break;
+        case GType::INT_TYPE:    newBlockSize = sizeof(int);     break;
+        case GType::LONG_TYPE:   newBlockSize = sizeof(int64_t); break;
+        case GType::FLOAT_TYPE:  newBlockSize = sizeof(float);   break;
+        case GType::DOUBLE_TYPE: newBlockSize = sizeof(double);  break;
+        case GType::BOOLEAN_TYPE: newBlockSize = sizeof(bool);   break;
+        default:
+            // Invalid type; do nothing
+            return;
+    }
+
+    // Call insertObject if type is valid
+    insertObject(index, newType, newBlock, newBlockSize);
 }
 
 void GList::addString(const GString& newBlock)
@@ -221,21 +221,24 @@ void GList::addObject(GType::Type newType, const void* newBlock, int64_t newBloc
 	insertObject(items.size(), newType, newBlock, newBlockSize);
 }
 
-// All add & insert functions go to this one
-void GList::insertObject(unsigned int index, GType::Type newType, const void* newBlock,
-						 int64_t newBlockSize)
+void GList::insertObject(unsigned int index, GType::Type newType, const void* newBlock, int64_t newBlockSize)
 {
-	// fix the index if need be
-	if (index > items.size())
-		index = items.size();
+    // Fix the index if it exceeds the vector size
+    index = (index > items.size()) ? items.size() : index;
 
-	// Add the bundle item
-	GType newItem(newType, newBlock, newBlockSize);
-	if (index == items.size())
-		addGType(newItem);
-	else // insert
-		insertGType(index, newItem);
+    // Construct the new item in place
+    // if (index == items.size())
+    // {
+    //     // Append to the end
+    //     items.emplace_back(newType, newBlock, newBlockSize);
+    // }
+    // else
+    // {
+    //     // Insert at the specified index
+    items.insert(items.begin() + index, GType(newType, newBlock, newBlockSize));
+    // }
 }
+
 
 /*!
  * @brief add GType
@@ -414,113 +417,134 @@ bool GList::empty() const
  * @details standardize the values in a GList; that is, map the values from their existing range to
  * the range of -1.0 to 1.0
  */
-void GList::standardize()
+void GList::standardize(unsigned int inputType)
 {
-	// Standardize the initialization of the weights
-	if (size() <= 0)
-		return;
+    // 1) If there's no data, nothing to do
+    if (size() == 0)
+        return;
 
-	// Set the min and max of the weights
-	xMin = 0.0f;
-	xMax = 0.0f;
+    // 2) Determine xMin, xMax
+    if (inputType == 1)
+    {
+        // Image data: known range [0..255]
+        xMin = 0.0f;
+        xMax = 255.0f;
+    }
+    else
+    {
+        // Other data: find min & max via first pass
+        xMin = 0.0f;
+        xMax = 0.0f;
 
-	// iterate through the rows
-	for (unsigned int r = 0; r < size(); ++r)
-	{
-		GType cCell = getGType(r);
-		float cell = 0.0f;
-		if (cCell.getType() == GType::STRING_TYPE)
-		{
-			// OHE: total unique words
-		}
-		else if (cCell.getType() == GType::CHAR_TYPE)
-			cell = cCell.getChar();
-		else if (cCell.getType() == GType::SHORT_TYPE)
-			cell = cCell.getShort();
-		else if (cCell.getType() == GType::INT_TYPE)
-			cell = cCell.getInt();
-		else if (cCell.getType() == GType::LONG_TYPE)
-			cell = cCell.getLong();
-		else if (cCell.getType() == GType::FLOAT_TYPE)
-			cell = cCell.getFloat();
-		else if (cCell.getType() == GType::DOUBLE_TYPE)
-			cell = cCell.getDouble();
-		else if (cCell.getType() == GType::BOOLEAN_TYPE)
-			cell = cCell.getBoolean() ? 1.0f : 0.0f;
+        bool firstNumericValue = true;
+        for (unsigned int r = 0; r < size(); ++r)
+        {
+            // Use a reference to avoid copying GType
+            GType& cCell = items[r];
+            float cell   = 0.0f;
 
-		if (r == 0)
-		{
-			xMin = cell;
-			xMax = cell;
-		}
+            // Convert to float using switch-case
+            switch (cCell.getType())
+            {
+                case GType::STRING_TYPE:
+                    // Possibly skip or handle differently
+                    break;
+                case GType::CHAR_TYPE:
+                    cell = cCell.getChar();
+                    break;
+                case GType::SHORT_TYPE:
+                    cell = cCell.getShort();
+                    break;
+                case GType::INT_TYPE:
+                    cell = cCell.getInt();
+                    break;
+                case GType::LONG_TYPE:
+                    cell = static_cast<float>(cCell.getLong());
+                    break;
+                case GType::FLOAT_TYPE:
+                    cell = cCell.getFloat();
+                    break;
+                case GType::DOUBLE_TYPE:
+                    cell = static_cast<float>(cCell.getDouble());
+                    break;
+                case GType::BOOLEAN_TYPE:
+                    cell = cCell.getBoolean() ? 1.0f : 0.0f;
+                    break;
+                default:
+                    // Unknown or other types
+                    break;
+            }
 
-		// Check the mins and maxes
-		if (cell < xMin)
-			xMin = cell;
-		if (cell > xMax)
-			xMax = cell;
-	}
+            // Update xMin, xMax
+            if (firstNumericValue)
+            {
+                xMin = cell;
+                xMax = cell;
+                firstNumericValue = false;
+            }
+            else
+            {
+                if (cell < xMin) xMin = cell;
+                if (cell > xMax) xMax = cell;
+            }
+        }
+    }
 
-	// standardize the weights
-	xRange = xMax - xMin;
-	if (xRange == 0.0f)
-		return;
-	
-	// iterate through the rows
-	for (unsigned int r = 0; r < size(); ++r)
-	{
-		// Adjust the children
-		GType cCell = getGType(r);
-		float cell = 0.0f;
-		if (cCell.getType() == GType::STRING_TYPE)
-		{
-			// OHE: total unique words
-		}
-		else if (cCell.getType() == GType::CHAR_TYPE)
-		{
-			cell = cCell.getChar();
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		else if (cCell.getType() == GType::SHORT_TYPE)
-		{
-			cell = cCell.getShort();
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		else if (cCell.getType() == GType::INT_TYPE)
-		{
-			cell = cCell.getInt();
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		else if (cCell.getType() == GType::LONG_TYPE)
-		{
-			cell = cCell.getLong();
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		else if (cCell.getType() == GType::FLOAT_TYPE)
-		{
-			cell = cCell.getFloat();
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		else if (cCell.getType() == GType::DOUBLE_TYPE)
-		{
-			cell = cCell.getDouble();
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		else if (cCell.getType() == GType::BOOLEAN_TYPE)
-		{
-			cell = cCell.getBoolean() ? 1.0f : 0.0f; // 1 or 0 if sigmoid
-			cell = (((cell - xMin) / (xRange)) - 0.5f);
-			cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
-		}
-		items[r] = cCell;
-	}
+    // 3) Compute xRange
+    xRange = xMax - xMin;
+    if (xRange == 0.0f)
+        return; // All values are the same => no transformation needed
+
+    // 4) Second pass: normalize + shift in-place
+    for (unsigned int r = 0; r < size(); ++r)
+    {
+        // Reference to GType in items
+        GType& cCell = items[r];
+        float cell   = 0.0f;
+
+        switch (cCell.getType())
+        {
+            case GType::STRING_TYPE:
+                // Skip or handle strings differently
+                continue;
+            case GType::CHAR_TYPE:
+                cell = cCell.getChar();
+                break;
+            case GType::SHORT_TYPE:
+                cell = cCell.getShort();
+                break;
+            case GType::INT_TYPE:
+                cell = cCell.getInt();
+                break;
+            case GType::LONG_TYPE:
+                cell = static_cast<float>(cCell.getLong());
+                break;
+            case GType::FLOAT_TYPE:
+                cell = cCell.getFloat();
+                break;
+            case GType::DOUBLE_TYPE:
+                cell = static_cast<float>(cCell.getDouble());
+                break;
+            case GType::BOOLEAN_TYPE:
+                cell = cCell.getBoolean() ? 1.0f : 0.0f;
+                break;
+            default:
+                continue;
+        }
+
+        // Scale from [xMin..xMax] to [0..1], then shift => [-0.5..+0.5]
+        cell = ((cell - xMin) / xRange) - 0.5f;
+
+        // Store the updated float in-place
+        // (Better if you have cCell.setFloat(cell) or an inline method)
+        cCell.set(GType::FLOAT_TYPE, &cell, sizeof(float));
+
+        // No need to do items[r] = cCell; 
+        // cCell is already a reference to items[r].
+    }
 }
+
+
 
 void GList::print() const
 {

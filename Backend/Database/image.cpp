@@ -460,20 +460,26 @@ void Image::LoadPNG(const GString& filename)
 	printf("[IMG] Loaded PNG: %s(%d,%d)\n", filename.c_str(), width, height);
 }
 
+
 shmea::GList Image::flatten() const
 {
     shmea::GList retList;
 
     for (unsigned int y = 0; y < height; ++y)
     {
-	for (unsigned int x = 0; x < width; ++x)
-	{
-		RGBA c = GetPixel(x, y);
-		retList.addInt(c.r);
-		retList.addInt(c.g);
-		retList.addInt(c.b);
-		retList.addInt(c.a);
-	}
+        for (unsigned int x = 0; x < width; ++x)
+        {
+            RGBA c = GetPixel(x, y);
+
+            // Pack RGBA into a single 32-bit integer (0xRRGGBBAA)
+            unsigned int packedRGBA = (static_cast<unsigned int>(c.r) << 24) |
+                                       (static_cast<unsigned int>(c.g) << 16) |
+                                       (static_cast<unsigned int>(c.b) << 8)  |
+                                       static_cast<unsigned int>(c.a);
+
+            // Add the packed integer to the list
+            retList.addInt(static_cast<int>(packedRGBA));
+        }
     }
 
     return retList;
