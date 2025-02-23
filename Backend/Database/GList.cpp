@@ -417,76 +417,66 @@ bool GList::empty() const
  * @details standardize the values in a GList; that is, map the values from their existing range to
  * the range of -1.0 to 1.0
  */
-void GList::standardize(unsigned int inputType)
+void GList::standardize()
 {
     // 1) If there's no data, nothing to do
     if (size() == 0)
         return;
 
-    // 2) Determine xMin, xMax
-    if (inputType == 1)
-    {
-        // Image data: known range [0..255]
-        xMin = 0.0f;
-        xMax = 255.0f;
-    }
-    else
-    {
-        // Other data: find min & max via first pass
-        xMin = 0.0f;
-        xMax = 0.0f;
+    // Find min & max via first pass
+    xMin = 0.0f;
+    xMax = 0.0f;
 
-        bool firstNumericValue = true;
-        for (unsigned int r = 0; r < size(); ++r)
+    bool firstNumericValue = true;
+    for (unsigned int r = 0; r < size(); ++r)
+    {
+        // Use a reference to avoid copying GType
+        GType& cCell = items[r];
+        float cell   = 0.0f;
+
+        // Convert to float using switch-case
+        switch (cCell.getType())
         {
-            // Use a reference to avoid copying GType
-            GType& cCell = items[r];
-            float cell   = 0.0f;
+            case GType::STRING_TYPE:
+                // Possibly skip or handle differently
+                break;
+            case GType::CHAR_TYPE:
+                cell = cCell.getChar();
+                break;
+            case GType::SHORT_TYPE:
+                cell = cCell.getShort();
+                break;
+            case GType::INT_TYPE:
+                cell = cCell.getInt();
+                break;
+            case GType::LONG_TYPE:
+                cell = static_cast<float>(cCell.getLong());
+                break;
+            case GType::FLOAT_TYPE:
+                cell = cCell.getFloat();
+                break;
+            case GType::DOUBLE_TYPE:
+                cell = static_cast<float>(cCell.getDouble());
+                break;
+            case GType::BOOLEAN_TYPE:
+                cell = cCell.getBoolean() ? 1.0f : 0.0f;
+                break;
+            default:
+                // Unknown or other types
+                break;
+        }
 
-            // Convert to float using switch-case
-            switch (cCell.getType())
-            {
-                case GType::STRING_TYPE:
-                    // Possibly skip or handle differently
-                    break;
-                case GType::CHAR_TYPE:
-                    cell = cCell.getChar();
-                    break;
-                case GType::SHORT_TYPE:
-                    cell = cCell.getShort();
-                    break;
-                case GType::INT_TYPE:
-                    cell = cCell.getInt();
-                    break;
-                case GType::LONG_TYPE:
-                    cell = static_cast<float>(cCell.getLong());
-                    break;
-                case GType::FLOAT_TYPE:
-                    cell = cCell.getFloat();
-                    break;
-                case GType::DOUBLE_TYPE:
-                    cell = static_cast<float>(cCell.getDouble());
-                    break;
-                case GType::BOOLEAN_TYPE:
-                    cell = cCell.getBoolean() ? 1.0f : 0.0f;
-                    break;
-                default:
-                    // Unknown or other types
-                    break;
-            }
-
-            // Update xMin, xMax
-            if (firstNumericValue)
-            {
-                xMin = cell;
-                xMax = cell;
-                firstNumericValue = false;
-            }
-            else
-            {
-                if (cell < xMin) xMin = cell;
-                if (cell > xMax) xMax = cell;
-            }
+        // Update xMin, xMax
+        if (firstNumericValue)
+        {
+            xMin = cell;
+            xMax = cell;
+            firstNumericValue = false;
+        }
+        else
+        {
+            if (cell < xMin) xMin = cell;
+            if (cell > xMax) xMax = cell;
         }
     }
 

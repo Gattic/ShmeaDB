@@ -142,83 +142,85 @@ bool GType::operator==(const GType& cCell2) const
 	bool boolValue2 = false;
 
 	// get the first value
-	if (getType() == GType::CHAR_TYPE)
+	GType::Type cType = getType();
+	if (cType == GType::CHAR_TYPE)
 	{
 		intFlag1 = true;
 		intValue1 = getChar();
 	}
-	else if (getType() == GType::SHORT_TYPE)
+	else if (cType == GType::SHORT_TYPE)
 	{
 		intFlag1 = true;
 		intValue1 = getShort();
 	}
-	else if (getType() == GType::INT_TYPE)
+	else if (cType == GType::INT_TYPE)
 	{
 		intFlag1 = true;
 		intValue1 = getInt();
 	}
-	else if (getType() == GType::LONG_TYPE)
+	else if (cType == GType::LONG_TYPE)
 	{
 		intFlag1 = true;
 		intValue1 = getLong();
 	}
-	else if (getType() == GType::FLOAT_TYPE)
+	else if (cType == GType::FLOAT_TYPE)
 	{
 		floatFlag1 = true;
 		floatValue1 = getFloat();
 	}
-	else if (getType() == GType::DOUBLE_TYPE)
+	else if (cType == GType::DOUBLE_TYPE)
 	{
 		doubleFlag1 = true;
 		doubleValue1 = getDouble();
 	}
-	else if (getType() == GType::BOOLEAN_TYPE)
+	else if (cType == GType::BOOLEAN_TYPE)
 	{
 		boolFlag1 = true;
 		boolValue1 = getBoolean();
 	}
-	else if (getType() == GType::STRING_TYPE)
+	else if (cType == GType::STRING_TYPE)
 	{
 		stringFlag1 = true;
 	}
 
 	// get the second value
-	if (cCell2.getType() == GType::CHAR_TYPE)
+	GType::Type cType2 = cCell2.getType();
+	if (cType2 == GType::CHAR_TYPE)
 	{
 		intFlag2 = true;
 		intValue2 = cCell2.getChar();
 	}
-	else if (cCell2.getType() == GType::SHORT_TYPE)
+	else if (cType2 == GType::SHORT_TYPE)
 	{
 		intFlag2 = true;
 		intValue2 = cCell2.getShort();
 	}
-	else if (cCell2.getType() == GType::INT_TYPE)
+	else if (cType2 == GType::INT_TYPE)
 	{
 		intFlag2 = true;
 		intValue2 = cCell2.getInt();
 	}
-	else if (cCell2.getType() == GType::LONG_TYPE)
+	else if (cType2 == GType::LONG_TYPE)
 	{
 		intFlag2 = true;
 		intValue2 = cCell2.getLong();
 	}
-	else if (cCell2.getType() == GType::FLOAT_TYPE)
+	else if (cType2 == GType::FLOAT_TYPE)
 	{
 		floatFlag2 = true;
 		floatValue2 = cCell2.getFloat();
 	}
-	else if (cCell2.getType() == GType::DOUBLE_TYPE)
+	else if (cType2 == GType::DOUBLE_TYPE)
 	{
 		doubleFlag2 = true;
 		doubleValue2 = cCell2.getDouble();
 	}
-	else if (cCell2.getType() == GType::BOOLEAN_TYPE)
+	else if (cType2 == GType::BOOLEAN_TYPE)
 	{
 		boolFlag2 = true;
 		boolValue2 = cCell2.getBoolean();
 	}
-	else if (cCell2.getType() == GType::STRING_TYPE)
+	else if (cType2 == GType::STRING_TYPE)
 	{
 		stringFlag2 = true;
 	}

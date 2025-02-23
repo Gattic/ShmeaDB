@@ -471,40 +471,54 @@ shmea::GList Image::flatten() const
         {
             RGBA c = GetPixel(x, y);
 
-            // Pack RGBA into a single 32-bit integer (0xRRGGBBAA)
-            unsigned int packedRGBA = (static_cast<unsigned int>(c.r) << 24) |
-                                       (static_cast<unsigned int>(c.g) << 16) |
-                                       (static_cast<unsigned int>(c.b) << 8)  |
-                                       static_cast<unsigned int>(c.a);
-
-            // Add the packed integer to the list
-            retList.addInt(static_cast<int>(packedRGBA));
+            // Pack RGBA into a single float
+            float hue = RGBtoHue(c);
+            retList.addFloat(hue);
         }
     }
 
     return retList;
 }
 
-bool Image::unflatten(const shmea::GList& pixels)
+float Image::RGBtoHue(const RGBA& color) const
 {
-    if (pixels.size() != (unsigned int)width * height * 4)
-	return false;
+	int r = color.r;
+	int g = color.g;
+	int b = color.b;
 
-    unsigned int i = 0;
-    for (unsigned int y = 0; y < height; ++y)
-    {
-	for (unsigned int x = 0; x < width; ++x)
-	{
-	    RGBA c;
-	    c.r = pixels.getInt(i++);
-	    c.g = pixels.getInt(i++);
-	    c.b = pixels.getInt(i++);
-	    c.a = pixels.getInt(i++);
-	    SetPixel(x, y, c);
-	}
-    }
+	float hue = 0.0f;
+	if (r == g && g == b)
+		return hue;
 
-    return true;
+	int max = r;
+	if (g > max)
+		max = g;
+	if (b > max)
+		max = b;
+
+	int min = r;
+	if (g < min)
+		min = g;
+	if (b < min)
+		min = b;
+
+	float delta = max - min;
+
+	if (delta == 0.0f)
+		return hue;
+
+	if (max == r)
+		hue = ((float)(g - b)) / delta;
+	else if (max == g)
+		hue = 2.0f + ((float)(b - r)) / delta;
+	else
+		hue = 4.0f + ((float)(r - g)) / delta;
+
+	hue /= 6.0f;
+	if (hue < 0.0f)
+		hue += 1.0f;
+
+	return hue;
 }
 
 shmea::GString Image::hash() const
