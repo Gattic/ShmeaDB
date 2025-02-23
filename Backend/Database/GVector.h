@@ -43,7 +43,7 @@ public:
 	GVector(size_type capacity) :
 		m_size(0),
 		m_capacity(capacity),
-		m_data(new T[capacity]) {}
+		m_data(capacity > 0 ? new T[capacity] : NULL) {}
 
 	GVector(size_type capacity, const T& value) :
 		m_size(0),
@@ -61,7 +61,10 @@ public:
 		for (size_type i = 0; i < value.m_size; i++)
 			this->push_back(value[i]);
 	}
-	virtual ~GVector() { this->clear(); }
+	virtual ~GVector() 
+	{ 
+		clear();
+	}
 
 	iterator begin() { return m_data; }
 	const_iterator cbegin() const { return m_data; }
@@ -71,7 +74,7 @@ public:
 	size_type max_size() const { return 0 - 1; }
 	size_type size() const { return m_size; }
 	size_type capacity() const { return m_capacity; }
-	bool empty() const { return m_size == 0; }
+	bool empty() const { return (m_size == 0 || !m_data); }
 
 	void reserve(size_type new_cap)
 	{
@@ -85,14 +88,33 @@ public:
 		m_capacity = new_cap;
 		m_data = newBuffer;
 	}
-	void clear() { m_size = 0; }
+	void clear() 
+	{ 
+		if (m_data)
+		{
+			m_size = 0;
+			// Let the GPointer handle deletion when it goes out of scope
+			m_data.reset();
+			m_capacity = 0;
+		}
+	}
 	void push_back(T newValue)
 	{
-		if (m_size == m_capacity) this->expand();
-		m_data[this->size()] = newValue;
-		m_size++;
+		if (m_size >= m_capacity) 
+			this->expand();
+		
+		if (!m_data)
+			return;
+
+		m_data[m_size] = newValue;
+		++m_size;
 	}
-	T pop_back() { return m_data[--m_size]; }
+	T pop_back() 
+	{ 
+		if (!m_data || m_size == 0)
+			return T();
+		return m_data[--m_size]; 
+	}
 	void erase(size_type idx)
 	{
 		if (empty())
@@ -111,10 +133,11 @@ public:
 		}
 		else
 		{
-			// NOTE: the allocator should be responsible for this
-			(void)memmove(&m_data[idx],
-					&m_data[idx+1],
-					sizeof(T) * (m_size - idx - 1));// because we remove 1
+			 // Manual element-wise copy instead of memmove
+			for (size_type i = idx; i < m_size - 1; ++i)
+			{
+				m_data[i] = m_data[i+1];
+			}
 			m_size--;
 		}
 	}
@@ -128,10 +151,14 @@ public:
 		}
 		else
 		{
-			// NOTE: the allocator should be responsible for this
-			(void)memmove(&m_data[idx + 1],
-					&m_data[idx],
-					sizeof(T) * (m_size - idx));
+			if (m_size >= m_capacity)
+				this->expand();
+
+			// Manual element-wise copy instead of memmove
+			for (size_type i = m_size; i > idx; --i)
+			{
+				m_data[i] = m_data[i-1];
+			}
 			m_data[idx] = value;
 			m_size++;
 		}
@@ -149,17 +176,48 @@ public:
 	}
 	T& operator[](size_type idx) { return at(idx); }
 	const T& operator[](size_type idx) const { return at(idx); }
+
+	GVector& operator=(const GVector& other)
+	{
+		if (this != &other)
+		{
+			// Create new array and copy data before clearing old one
+			T* newArray = new T[other.m_capacity];
+			for (size_type i = 0; i < other.m_size; ++i)
+			{
+				new (&newArray[i]) T(other.m_data[i]);
+			}
+			
+			// Only after new data is ready, clear old data
+			clear();
+			m_size = other.m_size;
+			m_capacity = other.m_capacity;
+			m_data = shmea::GPointer<T, array_deleter<T> >(newArray);
+		}
+		return *this;
+	}
+
 private:
 	void expand()
 	{
-		if (m_capacity == 0)
+		size_type newCap = (m_capacity == 0) ? 1 : m_capacity * 2;
+		T* newArray = new T[newCap];
+		
+		// Copy existing elements before modifying m_data
+		if (m_data && m_size > 0)
 		{
-			/* m_data = new T[1]; */
-			m_data = shmea::GPointer<T, array_deleter<T> >(new T[1]);
-			m_capacity = 1;
-			return;
+			for (size_type i = 0; i < m_size; ++i)
+			{
+				// Use copy constructor
+				new (&newArray[i]) T(m_data[i]);
+			}
 		}
-		reserve(m_capacity * 2);
+
+		// Create new pointer and only then release old one
+		shmea::GPointer<T, array_deleter<T> > newBuffer(newArray);
+		m_data.reset();  // Reset after new data is ready
+		m_data = newBuffer;
+		m_capacity = newCap;
 	}
 };
 }

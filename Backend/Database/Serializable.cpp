@@ -553,9 +553,7 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	int cIndex = bundleIndex;
 
 	// the header
-	/* std::vector<GString> header; */
-	//shmea::GVector<GString> header;
-	std::vector<GString> header;
+	shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -563,7 +561,7 @@ void Serializable::Deserialize(GTable& retTable, const GString& serial)
 	cIndex += columns;
 
 	// the output columns
-	std::vector<int> outputColumns;
+	shmea::GVector<int> outputColumns;
 	for (int i = 0; i < columns; ++i)
 	{
 		int isOutputCol = cList.getString(cIndex + i) == GString("True");
@@ -632,8 +630,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	cIndex = bundleIndex;
 
 	// the header
-	std::vector<GString> header;
-	//shmea::GVector<GString> header;
+	shmea::GVector<GString> header;
 	for (int i = 0; i < columns; ++i)
 		header.push_back(cList.getString(cIndex + i));
 
@@ -641,7 +638,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 	cIndex += columns;
 
 	// the output columns
-	std::vector<int> outputColumns;
+	shmea::GVector<int> outputColumns;
 	for (int i = 0; i < columns; ++i)
 	{
 		int isOutputCol = cList.getString(cIndex + i) == GString("True");
@@ -699,9 +696,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		float min = cList.getFloat(cIndex + 3), max = cList.getFloat(cIndex + 4), range = cList.getFloat(cIndex + 5);
 
 		// the header
-		/* std::vector<GString> header; */
-		//GVector<GString> header;
-		std::vector<GString> header;
+		GVector<GString> header;
 		for (int i = 0; i < columns; ++i)
 			header.push_back(cList.getString(cIndex + i));
 
@@ -709,7 +704,7 @@ void Serializable::Deserialize(GObject& retObj, const GString& serial)
 		cIndex += columns;
 
 		// the output columns
-		std::vector<int> outputColumns;
+		shmea::GVector<int> outputColumns;
 		for (int i = 0; i < columns; ++i)
 		{
 			int isOutputCol = cList.getString(cIndex + i) == GString("True");

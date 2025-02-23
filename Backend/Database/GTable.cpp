@@ -50,8 +50,7 @@ GTable::GTable(char newDelimiter)
  * @param newDelimiter the specified table delimiter
  * @param newHeaders the desired table headers
  */
-//GTable::GTable(char newDelimiter, const GVector<GString>& newHeaders)
-GTable::GTable(char newDelimiter, const std::vector<GString>& newHeaders)
+GTable::GTable(char newDelimiter, const GVector<GString>& newHeaders)
 {
 	clear();
 	delimiter = newDelimiter;
@@ -277,8 +276,7 @@ char GTable::getDelimiter() const
  * @details retrieve the GTable's headers
  * @return the header vector
  */
-//GVector<GString> GTable::getHeaders() const
-std::vector<GString> GTable::getHeaders() const
+GVector<GString> GTable::getHeaders() const
 {
 	return header;
 }
@@ -458,8 +456,7 @@ void GTable::removeRow(unsigned int index)
 	if (index >= cells.size())
 		return;
 
-	cells.erase(cells.begin() + index);
-	//cells.erase(index); // GVector
+	cells.erase(index); // GVector
 }
 
 /*!
@@ -541,15 +538,14 @@ void GTable::removeCol(unsigned int index)
 
 	// remove header
 	if (index < header.size())
-		header.erase(header.begin() + index);
-		//header.erase(index); // GVector
+		header.erase(index); // GVector
 
 	// Remove the output column
 	for (unsigned int i = 0; i < outputColumns.size(); ++i)
 	{
 		if (index == outputColumns[i])
 		{
-			outputColumns.erase(outputColumns.begin() + i);
+			outputColumns.erase(i);
 			break;
 		}
 	}
@@ -837,8 +833,7 @@ float GTable::getRange() const
  * @details set the headers of the GTable to new values
  * @param newHeader the new set of headers for the GTable
  */
-//void GTable::setHeaders(const GVector<GString>& newHeader)
-void GTable::setHeaders(const std::vector<GString>& newHeader)
+void GTable::setHeaders(const GVector<GString>& newHeader)
 {
 	header = newHeader;
 }
@@ -855,8 +850,7 @@ void GTable::addHeader(unsigned int index, const GString& newHeader)
 	if (index >= header.size())
 		header.push_back(newHeader);
 	else
-		header.insert(header.begin()+index, newHeader);
-		// header.insert(index, newHeader); // GVector
+		header.insert(index, newHeader); // GVector
 }
 
 /*!
@@ -951,9 +945,9 @@ void GTable::save(const GString& fname) const
  * @param k the number of rows per sub-grouping
  * @return the stratified subpgroups (a vector of GTables)
  */
-std::vector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
+shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
 {
-	std::vector<GTable*> outputSet;
+	shmea::GVector<GTable*> outputSet;
 	// Initialize the outputSet
 	// int blockSizeK=inputSet.numberOfRows()/k;
 	for (unsigned int fold = 0; fold < k; ++fold)
@@ -991,9 +985,9 @@ std::vector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
  * @param k the number of rows per sub-grouping
  * @return the stratified subpgroups (a vector of GTables)
  */
-std::vector<GTable*> GTable::stratify(const std::vector<GTable*> inputSet, unsigned int k)
+shmea::GVector<GTable*> GTable::stratify(const shmea::GVector<GTable*> inputSet, unsigned int k)
 {
-	std::vector<GTable*> outputSet;
+	shmea::GVector<GTable*> outputSet;
 	// nothing here
 	if (inputSet.size() <= 0)
 		return outputSet;
@@ -1195,13 +1189,13 @@ void GTable::toggleOutput(unsigned int column)
 	{
 		if (column == outputColumns[i])
 		{
-			outputColumns.erase(outputColumns.begin() + i);
+			outputColumns.erase(i);
 			toggled = true;
 			break;
 		}
 		else if (outputColumns[i] > column)
 		{
-			outputColumns.insert(outputColumns.begin() + i, column);
+			outputColumns.insert(i, column);
 			toggled = true;
 			break;
 		}

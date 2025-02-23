@@ -37,21 +37,16 @@ protected:
 
 public:
 
-	explicit GPointer(T* newData = NULL)
-	{
-		data = newData;
-		refCount = new unsigned int();
-		*refCount = 0;
-		refMutex = NULL;//(pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-		//pthread_mutex_init(refMutex, NULL);
-		increment();
-	}
+	explicit GPointer(T* newData = NULL) : 
+		data(newData),
+		refCount(newData ? new unsigned int(1) : NULL),
+		refMutex(NULL) {}
 
-	GPointer(const GPointer<T, Deleter>& g2)
+	GPointer(const GPointer<T, Deleter>& g2) :
+		data(NULL),
+		refCount(NULL),
+		refMutex(NULL)
 	{
-		data = NULL;
-		refCount = NULL;
-		refMutex = NULL;
 		copy(g2);
 	}
 
@@ -62,25 +57,34 @@ public:
 
 	void reset()
 	{
-		// Return if its a fresh instance
-		if(!refCount)
-			return;
-
-		if(decrement() == 0)
+		if (!refCount)
 		{
-			if(data)
-				Deleter(data);
-			data=NULL;
-			if(refCount)
-				delete refCount;
-			refCount=NULL;
-
-			/*if (refMutex)
+			return;
+		}
+		
+		unsigned int count = decrement();
+		if (count == 0)
+		{
+			// Store local copies before nulling members
+			T* dataToDelete = data;
+			unsigned int* countToDelete = refCount;
+			
+			// Null members first
+			data = NULL;
+			refCount = NULL;
+			refMutex = NULL;
+			
+			// Delete after members are nulled
+			if (dataToDelete)
 			{
-				pthread_mutex_destroy(refMutex);
-				free(refMutex);
-			}*/
-			refMutex=NULL;
+				Deleter(dataToDelete);
+			}
+			delete countToDelete;
+		} else {
+			// Just null our references
+			data = NULL;
+			refCount = NULL;
+			refMutex = NULL;
 		}
 	}
 
@@ -91,26 +95,20 @@ public:
 
 	unsigned int increment()
 	{
-		if(data)
+		if (refCount)
 		{
-			//pthread_mutex_lock(refMutex);
-			++(*refCount); //inc
-			//pthread_mutex_unlock(refMutex);
+			++(*refCount);
 		}
-
-		return *refCount;
+		return refCount ? *refCount : 0;
 	}
 
 	unsigned int decrement()
 	{
-		if(data)
+		if (refCount)
 		{
-			//pthread_mutex_lock(refMutex);
-			--(*refCount); //dec
-			//pthread_mutex_unlock(refMutex);
+			--(*refCount);
 		}
-
-		return *refCount;
+		return refCount ? *refCount : 0;
 	}
 
 	T& operator*()
@@ -142,15 +140,13 @@ public:
 	{
 		if(this != &g2)
 		{
-			// All done?
 			reset();
-
-			//pthread_mutex_lock(refMutex);
+			
 			data = g2.data;
 			refCount = g2.refCount;
 			refMutex = g2.refMutex;
+			
 			increment();
-			//pthread_mutex_unlock(refMutex);
 		}
 
 		return *this;

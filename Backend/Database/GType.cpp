@@ -385,18 +385,22 @@ unsigned int GType::size() const
 
 void GType::set(Type newType, const void* newBlock, int64_t newBlockSize)
 {
-	if(blockSize == newBlockSize)
-	{
-		type = newType;
-		memcpy(block.get(), newBlock, blockSize); // this is a copy so safe to assume it has the \0 from the block else below
-	}
-	else
-	{
-		type = newType;
-		blockSize = newBlockSize;
-		char* newMem = new char[blockSize + 1];
-		block.copy(GPointer<char, array_deleter<char> >(newMem)); // plus one to escape the string, we ignore this character everywhere else
-		memcpy(block.get(), newBlock, blockSize);
-		block[blockSize] = '\0';
-	}
+    // Create new buffer before clearing old one
+    char* newData = NULL;
+    if (newBlock && newBlockSize > 0)
+    {
+        newData = new char[newBlockSize + 1];  // +1 for null terminator
+        memcpy(newData, newBlock, newBlockSize);
+        newData[newBlockSize] = '\0';
+    }
+
+    // Only reset old data after new data is ready
+    block.reset();
+    type = newType;
+    blockSize = newBlockSize;
+
+    if (newData)
+    {
+        block = shmea::GPointer<char, array_deleter<char> >(newData);
+    }
 }

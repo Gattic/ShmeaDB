@@ -25,7 +25,6 @@ set(DB_src_files
 	GLogger.cpp
 	GTable.cpp
 	GObject.cpp
-	GAnalysis.cpp
 	maxid.cpp
 	SaveTable.cpp
 	SaveFolder.cpp
