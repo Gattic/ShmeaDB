@@ -23,7 +23,7 @@ set(GNet_src_files
 add_library(GNet ${GNet_src_files})
 
 #Link libraries
-target_link_libraries(GNet ${OPENSSL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(GNet ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS GNet EXPORT shmeaConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}

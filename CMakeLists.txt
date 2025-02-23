@@ -53,7 +53,11 @@ set(MAIN_SRC_FILES
 	g_export.h
 )
 
-add_library(${PROJECT_NAME} SHARED ${MAIN_SRC_FILES})
+if(EMSCRIPTEN)
+    add_library(${PROJECT_NAME} STATIC ${MAIN_SRC_FILES})
+else()
+    add_library(${PROJECT_NAME} SHARED ${MAIN_SRC_FILES})
+endif()
 
 #Link libraries
 target_link_libraries(${PROJECT_NAME}
