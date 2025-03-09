@@ -17,6 +17,7 @@
 #include "image.h"
 #include "GString.h"
 #include "GList.h"
+#include "GVector.h"
 #include "png-helper.h"
 
 using namespace shmea;
@@ -461,9 +462,9 @@ void Image::LoadPNG(const GString& filename)
 }
 
 
-shmea::GList Image::flatten() const
+shmea::GVector<float> Image::flatten() const
 {
-    shmea::GList retList;
+    shmea::GVector<float> retList;
 
     for (unsigned int y = 0; y < height; ++y)
     {
@@ -472,53 +473,58 @@ shmea::GList Image::flatten() const
             RGBA c = GetPixel(x, y);
 
             // Pack RGBA into a single float
-            float hue = RGBtoHue(c);
-            retList.addFloat(hue);
+            float hue = rgbaToHueIntensity(c);
+            retList.push_back(hue);
         }
     }
 
     return retList;
 }
 
-float Image::RGBtoHue(const RGBA& color) const
+float shmea::Image::rgbaToHueIntensity(const RGBA& c) const
 {
-	int r = color.r;
-	int g = color.g;
-	int b = color.b;
+    float r = c.r / 255.0f;
+    float g = c.g / 255.0f;
+    float b = c.b / 255.0f;
+    float a = c.a / 255.0f;
 
-	float hue = 0.0f;
-	if (r == g && g == b)
-		return hue;
+    float maxVal = std::max(r, std::max(g, b));
+    float minVal = std::min(r, std::min(g, b));
+    float delta = maxVal - minVal;
 
-	int max = r;
-	if (g > max)
-		max = g;
-	if (b > max)
-		max = b;
+    float hue = 0.0f;
+    float saturation = (maxVal == 0.0f) ? 0.0f : delta / maxVal;
+    float intensity = (r + g + b) / 3.0f; // Average brightness
 
-	int min = r;
-	if (g < min)
-		min = g;
-	if (b < min)
-		min = b;
+    // Grayscale case: If saturation is zero, return intensity weighted by alpha
+    if (delta == 0.0f)
+    {
+        return intensity * a;
+    }
 
-	float delta = max - min;
+    // Compute hue normally for colored pixels
+    if (maxVal == r)
+    {
+        hue = 60.0f * (fmod(((g - b) / delta), 6.0f));
+    }
+    else if (maxVal == g)
+    {
+        hue = 60.0f * (((b - r) / delta) + 2.0f);
+    }
+    else // maxVal == b
+    {
+        hue = 60.0f * (((r - g) / delta) + 4.0f);
+    }
 
-	if (delta == 0.0f)
-		return hue;
+    if (hue < 0.0f)
+    {
+        hue += 360.0f;
+    }
 
-	if (max == r)
-		hue = ((float)(g - b)) / delta;
-	else if (max == g)
-		hue = 2.0f + ((float)(b - r)) / delta;
-	else
-		hue = 4.0f + ((float)(r - g)) / delta;
+    float hueNorm = hue / 360.0f; // Normalize hue to [0,1]
 
-	hue /= 6.0f;
-	if (hue < 0.0f)
-		hue += 1.0f;
-
-	return hue;
+    // Blend hue and intensity based on saturation, then multiply by alpha
+    return ((saturation * hueNorm) + ((1.0f - saturation) * intensity)) * a;
 }
 
 shmea::GString Image::hash() const

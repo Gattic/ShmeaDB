@@ -220,5 +220,93 @@ private:
 		m_capacity = newCap;
 	}
 };
+
+typedef GVector<GVector<float> > GMatrix;
+
+// FLOAT HELPERS
+
+inline static GVector<float> vectorStandardize(const GVector<float>& vec)
+{
+    GVector<float> newVec(vec.size(), 0.0f);
+
+    // 1) If there's no data, nothing to do
+    if (vec.size() == 0)
+        return newVec;
+
+    // Find min & max via first pass
+    float xMin = 0.0f;
+    float xMax = 0.0f;
+
+    bool firstNumericValue = true;
+    for (unsigned int r = 0; r < vec.size(); ++r)
+    {
+        const float& cell = vec[r];
+
+        // Update xMin, xMax
+        if (firstNumericValue)
+        {
+            xMin = cell;
+            xMax = cell;
+            firstNumericValue = false;
+        }
+        else
+        {
+            if (cell < xMin) xMin = cell;
+            if (cell > xMax) xMax = cell;
+        }
+    }
+
+    // 3) Compute xRange
+    float xRange = xMax - xMin;
+    if (xRange == 0.0f)
+        return vec; // All values are the same => no transformation needed
+
+    // 4) Second pass: normalize + shift in-place
+    for (unsigned int r = 0; r < vec.size(); ++r)
+    {
+        float cell = vec[r];
+
+        // Scale from [xMin..xMax] to [0..1], then shift => [-0.5..+0.5]
+        cell = ((cell - xMin) / xRange) - 0.5f;
+
+        newVec[r] = cell;
+    }
+
+    return newVec;
 }
+
+// GVector print function
+inline static void printVector(const GVector<float>& vec)
+{
+	for (unsigned int i = 0; i < vec.size(); i++)
+	{
+		if(i == vec.size() - 1)
+		    printf("%f", vec[i]);
+		else
+		    printf("%f, ", vec[i]);
+	}
+
+	printf("\n");
+
+}
+
+// GMatrix print function
+inline static void printMatrix(const GMatrix& matrix)
+{
+	for (unsigned int i = 0; i < matrix.size(); i++)
+	{
+		for (unsigned int j = 0; j < matrix[i].size(); j++)
+		{
+			if(j == matrix[i].size() - 1)
+			    printf("%f", matrix[i][j]);
+			else
+			    printf("%f, ", matrix[i][j]);
+		}
+		printf("\n");
+	}
+
+}
+
+};
+
 #endif // !GVECTOR_H_
