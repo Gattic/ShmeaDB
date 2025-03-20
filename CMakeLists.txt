@@ -21,6 +21,10 @@ else()
 	set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
 endif()
 
+if(EMSCRIPTEN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=4 -s PROXY_TO_PTHREAD -s INITIAL_MEMORY=64MB -s EXIT_RUNTIME=1")
+endif()
+
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
