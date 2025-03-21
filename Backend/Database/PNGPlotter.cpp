@@ -416,71 +416,188 @@ void PNGPlotter::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
     
 }
 
-void PNGPlotter::addDataPointsPCA(std::vector<std::vector<double> >& data, RGBA& pointColor)
+void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data, const RGBA& pointColor)
 {
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
 
-    double spacing = static_cast<double>(effectiveWidth) / graphSize;
-    int pointThickness = static_cast<int>(spacing / 3);
-
-    if(pointThickness < 1)
-    {
-      pointThickness = 1;
+    // If no data or empty data, return
+    if (data.empty() || data[0].empty()) {
+        return;
     }
 
-    // Calculate the scaling factors for the x and y dimensions
-    double xScale = static_cast<double>(effectiveWidth) / graphSize;
-    double yScale = static_cast<double>(effectiveHeight) / (max_price - min_price);
-
-    //Calculate the center (origin)
-    int centerX = effectiveWidth / 2 + margin_left;
-    int centerY = effectiveHeight / 2 + margin_top; 
-
-    for(size_t i = 0; i < data.size(); ++i)
+    // Add a white background
+    for (int x = margin_left; x < width - margin_right; ++x)
     {
-	int xPNG = static_cast<int>((data[i][0] * xScale) + centerX + (pointThickness * 0.5));
-	int yPNG = static_cast<int>(centerY - (data[i][1] * yScale));
-
-	//Draw point
-	drawPoint(xPNG, yPNG, pointThickness, pointColor);
+        for (int y = margin_top; y < height - margin_bottom; ++y) {
+            image.SetPixel(x, y, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+        }
     }
+
+    // Determine number of features (columns) in the dataset
+    size_t numFeatures = data[0].size();
+    
+    // Create color variations for each feature
+    std::vector<RGBA> featureColors;
+    
+    // Generate colors for each feature
+    for (size_t i = 0; i < numFeatures; i++) {
+        // Create a distinct color for each feature
+        unsigned char r = (pointColor.r + i * 40) % 256;
+        unsigned char g = (pointColor.g + i * 60) % 256;
+        unsigned char b = (pointColor.b + i * 80) % 256;
+        
+        featureColors.push_back(RGBA(r, g, b, pointColor.a));
+    }
+
+    // Find min and max values for each feature for proper scaling
+    std::vector<double> minValues(numFeatures, std::numeric_limits<double>::max());
+    std::vector<double> maxValues(numFeatures, -std::numeric_limits<double>::max());
+
+    for (size_t i = 0; i < data.size(); ++i) {
+        for (size_t j = 0; j < numFeatures && j < data[i].size(); ++j) {
+            minValues[j] = std::min(minValues[j], data[i][j]);
+            maxValues[j] = std::max(maxValues[j], data[i][j]);
+        }
+    }
+
+    // Calculate the center (origin) of the plot
+    int centerX = margin_left + effectiveWidth / 2;
+    int centerY = margin_top + effectiveHeight / 2;
+
+    // Calculate point thickness based on data density
+    int pointThickness = std::max(6, std::min(16, static_cast<int>(8.0 * (effectiveWidth / 800.0))));
+
+    // Calculate plot area padding (percentage of effective dimensions)
+    double paddingRatio = 0.1; // 10% padding
+    int paddingX = static_cast<int>(effectiveWidth * paddingRatio);
+    int paddingY = static_cast<int>(effectiveHeight * paddingRatio);
+
+    // Usable plotting area after padding
+    int usableWidth = effectiveWidth - 2 * paddingX;
+    int usableHeight = effectiveHeight - 2 * paddingY;
+
+    // Determine if we should calculate scales separately for each dimension
+    // or use a common scale to maintain aspect ratio
+    bool maintainAspectRatio = true;
+    
+    // For each pair of features, create a plot
+    for (size_t i = 0; i < numFeatures; ++i) {
+        for (size_t j = i + 1; j < numFeatures; ++j) {
+            // Calculate scales for this feature pair
+            double rangeX = maxValues[i] - minValues[i];
+            double rangeY = maxValues[j] - minValues[j];
+
+            // Avoid division by zero
+            if (rangeX < 1e-10) rangeX = 1.0;
+            if (rangeY < 1e-10) rangeY = 1.0;
+
+            double scaleX, scaleY;
+            if (maintainAspectRatio) {
+                // Use the same scale for both axes to maintain aspect ratio
+                double scaleByX = usableWidth / rangeX;
+                double scaleByY = usableHeight / rangeY;
+                double commonScale = std::min(scaleByX, scaleByY);
+                
+                scaleX = commonScale;
+                scaleY = commonScale;
+            } else {
+                // Scale independently for each axis
+                scaleX = usableWidth / rangeX;
+                scaleY = usableHeight / rangeY;
+            }
+
+            // Draw each data point for this feature pair
+            for (size_t k = 0; k < data.size(); ++k) {
+                if (data[k].size() <= std::max(i, j)) continue; // Skip if not enough dimensions
+                
+                // Map data coordinates to screen coordinates
+                double valueX = data[k][i];
+                double valueY = data[k][j];
+                
+                // Scale relative to center
+                int screenX = centerX + static_cast<int>((valueX - (minValues[i] + maxValues[i]) / 2) * scaleX);
+                int screenY = centerY - static_cast<int>((valueY - (minValues[j] + maxValues[j]) / 2) * scaleY);
+                
+                // Ensure the point is within the plotting area
+                screenX = clamp(screenX, margin_left + paddingX, width - margin_right - paddingX);
+                screenY = clamp(screenY, margin_top + paddingY, height - margin_bottom - paddingY);
+                
+                // Use a color that combines the colors of both features
+                RGBA combinedColor(
+                    (featureColors[i].r + featureColors[j].r) / 2,
+                    (featureColors[i].g + featureColors[j].g) / 2,
+                    (featureColors[i].b + featureColors[j].b) / 2,
+                    pointColor.a
+                );
+                
+                // Draw the point with proper bounds checking
+                drawPoint(screenX, screenY, pointThickness, combinedColor);
+            }
+        }
+    }
+
+    // Draw axes at the center of the plot
+    RGBA axisColor(100, 100, 100, 200);
+    // X-axis
+    drawLine(margin_left, centerY, width - margin_right, centerY, axisColor);
+    // Y-axis
+    drawLine(centerX, margin_top, centerX, height - margin_bottom, axisColor);
 }
 
-void PNGPlotter::addArrow(std::vector<std::vector<double> >& sorted_eig_vecs, RGBA& arrowColor, int arrowSize)
+void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, const RGBA& arrowColor, int arrowSize)
 {
-
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
 
-    // Calculate the scaling factors for the x and y dimensions
-    double xScale = static_cast<double>(effectiveWidth) / graphSize;
-    double yScale = static_cast<double>(effectiveHeight) / (max_price - min_price);
+    // Calculate the center (origin) of the plot
+    int centerX = margin_left + effectiveWidth / 2;
+    int centerY = margin_top + effectiveHeight / 2;
 
-    //Calculate the center (origin)
-    int centerX = effectiveWidth / 2 + margin_left;
-    int centerY = effectiveHeight / 2 + margin_top; 
+    // Determine the scale factor based on the plot size
+    // Using a more moderate scale to ensure arrows stay on the plot
+    double scaleFactor = std::min(effectiveWidth, effectiveHeight) * 0.4;
 
-    double scaleFactor = 0.5;
-
-    for(size_t i = 0; i < sorted_eig_vecs.size(); ++i)
-    {
-	double arrowX1 = centerX;
-	double arrowY1 = centerY;
-
-	//Normalize the eigenvectors to fit the screen dimensions
-	double normX = sorted_eig_vecs[i][0] * centerX;
-	double normY = sorted_eig_vecs[i][1] * centerY;
-
-	//Scale the normalized values by a facotr for visibility
-	double scaleFactor =  0.5;
-	double arrowX2 = arrowX1 + normX * scaleFactor;
-	double arrowY2 = arrowY1 + normY * scaleFactor;
-
-	drawArrow(arrowX1, arrowY1, arrowX2, arrowY2, arrowColor, arrowSize);
-		
+    // For each eigenvector
+    for (size_t i = 0; i < sorted_eig_vecs.size(); ++i) {
+        // Skip if this eigenvector doesn't have at least 2 dimensions
+        if (sorted_eig_vecs[i].size() < 2) continue;
+        
+        // Starting point of the arrow is the center of the plot
+        int arrowX1 = centerX;
+        int arrowY1 = centerY;
+        
+        // Get the direction from the eigenvector
+        double vecX = sorted_eig_vecs[i][0];
+        double vecY = sorted_eig_vecs[i][1];
+        
+        // Calculate the magnitude of the eigenvector for normalization
+        double magnitude = std::sqrt(vecX * vecX + vecY * vecY);
+        if (magnitude < 1e-10) continue; // Skip if magnitude is too small
+        
+        // Normalize the vector
+        vecX /= magnitude;
+        vecY /= magnitude;
+        
+        // Scale the vector to a visible size and flip Y for screen coordinates
+        double arrowX2 = arrowX1 + vecX * scaleFactor;
+        double arrowY2 = arrowY1 - vecY * scaleFactor; // Note the minus sign for Y coordinate
+        
+        // Ensure arrow endpoint stays within plotting area
+        arrowX2 = clamp(arrowX2, margin_left + 10, width - margin_right - 10);
+        arrowY2 = clamp(arrowY2, margin_top + 10, height - margin_bottom - 10);
+        
+        // Create a different color for each arrow by varying brightness
+        RGBA thisArrowColor = arrowColor;
+        float brightnessMultiplier = 0.5f + (static_cast<float>(i) / sorted_eig_vecs.size()) * 0.5f;
+        thisArrowColor.r = static_cast<unsigned char>(std::min(255.0f, thisArrowColor.r * brightnessMultiplier));
+        thisArrowColor.g = static_cast<unsigned char>(std::min(255.0f, thisArrowColor.g * brightnessMultiplier));
+        thisArrowColor.b = static_cast<unsigned char>(std::min(255.0f, thisArrowColor.b * brightnessMultiplier));
+        
+        // Draw the arrow
+        drawArrow(arrowX1, arrowY1, arrowX2, arrowY2, thisArrowColor, arrowSize);
     }
 }
 
@@ -523,7 +640,7 @@ void PNGPlotter::drawHistogram(int x_start, int y_start, int bar_width, RGBA& ba
 
 }
 
-void PNGPlotter::drawPoint(int x, int y, int thickness, RGBA& pointColor)
+void PNGPlotter::drawPoint(int x, int y, int thickness, const RGBA& pointColor)
 {
  // Check if the main point is within the plotting area bounds
     if (x >= margin_left && x < (width - margin_right) &&
@@ -549,7 +666,7 @@ void PNGPlotter::drawPoint(int x, int y, int thickness, RGBA& pointColor)
     }
 }
 
-void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor, int lineWidth)
+void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, int lineWidth)
 {
 
     x1 = clamp(x1, margin_left, width - margin_right);
@@ -594,7 +711,7 @@ void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, RGBA& lineColor, int l
 
         // Draw a filled circle or rectangle for each point to ensure consistent thickness
         for (int i = -lineWidth / 2; i <= lineWidth / 2; ++i) {
-            for (int j = -lineWidth / 2; j <= lineWidth / 2; ++j) {
+            for (int j = -lineWidth / 2; i <= lineWidth / 2; ++i) {
                 int newX = steep ? y1 + i : x1 + i;
                 int newY = steep ? x1 + j : y1 + j;
 
@@ -704,11 +821,17 @@ void PNGPlotter::drawCandleStick(Image& img, float x, float y_open, float y_clos
 	}
 }
 */
-void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, RGBA& arrowColor, int arrowSize = 10)
+void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowColor, int arrowSize = 10)
 {
 
     // Draw the main line
     drawLine(x1, y1, x2, y2, arrowColor);
+
+    // Add line thickness
+    drawLine(x1 - 1, y1, x2 - 1, y2, arrowColor);
+    drawLine(x1 + 1, y1, x2 + 1, y2, arrowColor);
+    drawLine(x1, y1 - 1, x2, y2 - 1, arrowColor);
+    drawLine(x1, y1 + 1, x2, y2 + 1, arrowColor);
 
     // Calculate the angle of the arrow
     double angle = std::atan2(static_cast<double>(y2 - y1), static_cast<double>(x2 - x1));
@@ -721,7 +844,21 @@ void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, RGBA& arrowColor, int
 
     // Draw the arrowhead lines
     drawLine(x2, y2, arrowX1, arrowY1, arrowColor);
+
+    // Add line thickness
+    drawLine(x2 - 1, y2, arrowX1 - 1, arrowY1, arrowColor);
+    drawLine(x2 + 1, y2, arrowX1 + 1, arrowY1, arrowColor);
+    drawLine(x2, y2 - 1, arrowX1, arrowY1 - 1, arrowColor);
+    drawLine(x2, y2 + 1, arrowX1, arrowY1 + 1, arrowColor);
+
+    // Draw the arrowhead lines
     drawLine(x2, y2, arrowX2, arrowY2, arrowColor);
+
+    // Add line thickness
+    drawLine(x2 - 1, y2, arrowX2 - 1, arrowY2, arrowColor);
+    drawLine(x2 + 1, y2, arrowX2 + 1, arrowY2, arrowColor);
+    drawLine(x2, y2 - 1, arrowX2, arrowY2 - 1, arrowColor);
+    drawLine(x2, y2 + 1, arrowX2, arrowY2 + 1, arrowColor);
 }
 
 Image PNGPlotter::downsampleToTargetSize() {
