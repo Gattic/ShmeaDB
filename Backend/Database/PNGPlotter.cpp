@@ -59,7 +59,7 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
     	AGG_SIZE[8190] = "1MO";
 	AGG_SIZE[1440] = "1D";
 	AGG_SIZE[10080] = "1W";
-	AGG_SIZE[43200] = "1MO"
+	AGG_SIZE[43200] = "1MO";
 
 }
 
