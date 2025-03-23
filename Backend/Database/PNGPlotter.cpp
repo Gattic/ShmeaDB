@@ -546,8 +546,10 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
     drawLine(centerX, margin_top, centerX, height - margin_bottom, axisColor);
 }
 
-void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, const RGBA& arrowColor, int arrowSize)
+void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, const std::vector<double>& variance_explained, const RGBA& arrowColor)
 {
+    int arrowSize = 100;
+
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
@@ -582,6 +584,8 @@ void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_ve
         vecY /= magnitude;
         
         // Scale the vector to a visible size and flip Y for screen coordinates
+        //double arrowX2 = arrowX1 + vecX * scaleFactor * variance_explained[i];
+        //double arrowY2 = arrowY1 - vecY * scaleFactor * variance_explained[i]; // Note the minus sign for Y coordinate
         double arrowX2 = arrowX1 + vecX * scaleFactor;
         double arrowY2 = arrowY1 - vecY * scaleFactor; // Note the minus sign for Y coordinate
         
