@@ -350,7 +350,7 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
         	return;
 	}
 
-	addDataPoint(newPrice, portIndex, true, &indicatorColors[indicator]); 
+	addDataPoint(newPrice, portIndex, true, &indicatorColors[indicator], 25); 
 	indicatorPoint[indicator] += 1;
 
 	if(indicatorPoint[indicator] == graphSize)
