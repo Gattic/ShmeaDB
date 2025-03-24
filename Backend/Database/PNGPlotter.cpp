@@ -428,10 +428,11 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
     }
 
     // Add a white background
+    RGBA white(0xFF, 0xFF, 0xFF, 0xFF);
     for (int x = margin_left; x < width - margin_right; ++x)
     {
-        for (int y = margin_top; y < height - margin_bottom; ++y) {
-            image.SetPixel(x, y, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    for (int y = margin_top; y < height - margin_bottom; ++y) {
+        image.SetPixel(x, y, white);
         }
     }
 
@@ -482,6 +483,57 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
     // or use a common scale to maintain aspect ratio
     bool maintainAspectRatio = true;
     
+    // Draw grid lines
+    RGBA majorGridColor(0xD0, 0xD0, 0xD0, 0xFF);  // Light gray for major grid lines
+    RGBA minorGridColor(0xE0, 0xE0, 0xE0, 0xAA);  // Very light gray for minor grid lines
+    
+    // Number of grid divisions
+    int majorGridDivisions = 4;   // Number of major grid divisions (quadrants)
+    int minorGridDivisions = 16;  // Number of minor grid divisions
+    
+    // Draw minor grid lines first (so they appear behind major lines)
+    for (int i = 0; i <= minorGridDivisions; i++) {
+        float percentage = static_cast<float>(i) / minorGridDivisions;
+        int x = margin_left + static_cast<int>(percentage * effectiveWidth);
+        int y = margin_top + static_cast<int>(percentage * effectiveHeight);
+        
+        // Draw vertical minor grid line
+        if (i % (minorGridDivisions / majorGridDivisions) != 0) { // Skip where major lines will be
+            drawLine(x, margin_top, x, height - margin_bottom, minorGridColor);
+        }
+        
+        // Draw horizontal minor grid line
+        if (i % (minorGridDivisions / majorGridDivisions) != 0) { // Skip where major lines will be
+            drawLine(margin_left, y, width - margin_right, y, minorGridColor);
+        }
+    }
+    
+    // Draw major grid lines
+    for (int i = 0; i <= majorGridDivisions; i++) {
+        float percentage = static_cast<float>(i) / majorGridDivisions;
+        int x = margin_left + static_cast<int>(percentage * effectiveWidth);
+        int y = margin_top + static_cast<int>(percentage * effectiveHeight);
+        
+        // Draw vertical major grid line
+        drawLine(x, margin_top, x, height - margin_bottom, majorGridColor);
+        
+        // Draw horizontal major grid line
+        drawLine(margin_left, y, width - margin_right, y, majorGridColor);
+    }
+    
+    // Draw axes at the center of the plot with thicker lines
+    RGBA axisColor(0x50, 0x50, 0x50, 0xFF);  // Darker gray for axes
+    
+    // X-axis (thicker line)
+    for (int offset = -1; offset <= 1; offset++) {
+        drawLine(margin_left, centerY + offset, width - margin_right, centerY + offset, axisColor);
+    }
+    
+    // Y-axis (thicker line)
+    for (int offset = -1; offset <= 1; offset++) {
+        drawLine(centerX + offset, margin_top, centerX + offset, height - margin_bottom, axisColor);
+    }
+
     // For each pair of features, create a plot
     for (size_t i = 0; i < numFeatures; ++i) {
         for (size_t j = i + 1; j < numFeatures; ++j) {
@@ -537,13 +589,6 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
             }
         }
     }
-
-    // Draw axes at the center of the plot
-    RGBA axisColor(100, 100, 100, 200);
-    // X-axis
-    drawLine(margin_left, centerY, width - margin_right, centerY, axisColor);
-    // Y-axis
-    drawLine(centerX, margin_top, centerX, height - margin_bottom, axisColor);
 }
 
 void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, const std::vector<double>& variance_explained, const RGBA& arrowColor)
