@@ -4,6 +4,7 @@
 
 using namespace shmea;
 //Just as a reminder, graphSize is the amount of data points that are appearing across the graph. This can be candles, data points, bars, etc
+// that is represented by graphSize
 PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double max_price, double low_price, int lines, int margin_top, int margin_right, int margin_bottom, int margin_left, bool fourQuadrants)
 	: image(), width(width), height(height), 
 	min_price(low_price),
@@ -55,7 +56,10 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
     	AGG_SIZE[240] = "4h";
     	AGG_SIZE[390] = "1D";
     	AGG_SIZE[1950] = "1W";
-    	AGG_SIZE[5850] = "3W";
+    	AGG_SIZE[8190] = "1MO";
+	AGG_SIZE[1440] = "1D";
+	AGG_SIZE[10080] = "1W";
+	AGG_SIZE[43200] = "1MO";
 
 }
 
@@ -346,7 +350,7 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
         	return;
 	}
 
-	addDataPoint(newPrice, portIndex, true, &indicatorColors[indicator]); 
+	addDataPoint(newPrice, portIndex, true, &indicatorColors[indicator], 25); 
 	indicatorPoint[indicator] += 1;
 
 	if(indicatorPoint[indicator] == graphSize)
