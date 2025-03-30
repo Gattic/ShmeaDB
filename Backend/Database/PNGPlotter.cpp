@@ -595,6 +595,390 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
     }
 }
 
+void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::vector<std::vector<double> >& data, const std::vector<int>& labels, const std::vector<std::vector<float> >& centroids)
+{
+    // Calculate the effective plotting area considering the margins
+    int effectiveWidth = width - margin_left - margin_right;
+    int effectiveHeight = height - margin_top - margin_bottom;
+
+    // If no data or empty data, return
+    if (data.empty() || data[0].empty()) {
+        return;
+    }
+
+    // Add a gradient background
+    RGBA gradientTop(0x20, 0x20, 0x40, 0xFF);  // Dark blue-gray at top
+    RGBA gradientBottom(0x10, 0x10, 0x20, 0xFF);  // Darker at bottom
+    for (int y = margin_top; y < height - margin_bottom; ++y) {
+        float ratio = static_cast<float>(y - margin_top) / effectiveHeight;
+        RGBA gradientColor(
+            static_cast<unsigned char>(gradientTop.r * (1 - ratio) + gradientBottom.r * ratio),
+            static_cast<unsigned char>(gradientTop.g * (1 - ratio) + gradientBottom.g * ratio),
+            static_cast<unsigned char>(gradientTop.b * (1 - ratio) + gradientBottom.b * ratio),
+            0xFF
+        );
+        
+        for (int x = margin_left; x < width - margin_right; ++x) {
+            image.SetPixel(x, y, gradientColor);
+        }
+    }
+
+    // Determine number of features (columns) in the dataset
+    size_t numFeatures = data[0].size();
+    
+    // Find the number of unique clusters - make sure we're accurately counting clusters
+    int maxCluster = -1;
+    if (!labels.empty()) {
+        for (size_t i = 0; i < labels.size(); i++) {
+            if (labels[i] > maxCluster) {
+                maxCluster = labels[i];
+            }
+        }
+    }
+    
+    // Generate colors for each cluster - using brighter, more vibrant colors for better contrast
+    std::vector<RGBA> clusterColors;
+    
+    // Pre-defined high-contrast colors for better visibility - C++98 compatible initialization
+    std::vector<RGBA> distinctColors;
+    distinctColors.push_back(RGBA(255, 100, 100, 255));  // Light Red
+    distinctColors.push_back(RGBA(100, 100, 255, 255));  // Light Blue
+    distinctColors.push_back(RGBA(100, 255, 100, 255));  // Light Green
+    distinctColors.push_back(RGBA(255, 255, 100, 255));  // Light Yellow
+    distinctColors.push_back(RGBA(255, 100, 255, 255));  // Light Magenta
+    distinctColors.push_back(RGBA(100, 255, 255, 255));  // Light Cyan
+    distinctColors.push_back(RGBA(255, 180, 100, 255));  // Light Orange
+    distinctColors.push_back(RGBA(180, 100, 255, 255));  // Light Purple
+    distinctColors.push_back(RGBA(100, 180, 100, 255));  // Medium Green
+    distinctColors.push_back(RGBA(180, 180, 255, 255));  // Medium Blue
+    
+    // Use pre-defined colors for the first few clusters, then generate additional colors if needed
+    for (int i = 0; i <= maxCluster; i++) {
+        if (i < static_cast<int>(distinctColors.size())) {
+            clusterColors.push_back(distinctColors[i]);
+        } else {
+            // Generate additional colors with high contrast for clusters beyond our predefined list
+            unsigned char r = (73 * (i + 1)) % 256;
+            unsigned char g = (121 * (i + 1)) % 256;
+            unsigned char b = (167 * (i + 1)) % 256;
+            clusterColors.push_back(RGBA(r, g, b, 255));
+        }
+    }
+    
+    // Print out debugging info
+    std::cout << "Number of data points: " << data.size() << std::endl;
+    std::cout << "Number of labels: " << labels.size() << std::endl;
+    std::cout << "Maximum cluster ID: " << maxCluster << std::endl;
+    std::cout << "Number of cluster colors: " << clusterColors.size() << std::endl;
+    std::cout << "Number of centroids: " << centroids.size() << std::endl;
+
+    // Find min and max values for each feature for proper scaling
+    std::vector<double> minValues(numFeatures, std::numeric_limits<double>::max());
+    std::vector<double> maxValues(numFeatures, -std::numeric_limits<double>::max());
+
+    for (size_t i = 0; i < data.size(); ++i) {
+        for (size_t j = 0; j < numFeatures && j < data[i].size(); ++j) {
+            minValues[j] = std::min(minValues[j], data[i][j]);
+            maxValues[j] = std::max(maxValues[j], data[i][j]);
+        }
+    }
+
+    // Calculate the center (origin) of the plot
+    int centerX = margin_left + effectiveWidth / 2;
+    int centerY = margin_top + effectiveHeight / 2;
+
+    // Calculate point thickness based on data density
+    int pointThickness = std::max(6, std::min(16, static_cast<int>(8.0 * (effectiveWidth / 800.0))));
+
+    // Calculate plot area padding (percentage of effective dimensions)
+    double paddingRatio = 0.1; // 10% padding
+    int paddingX = static_cast<int>(effectiveWidth * paddingRatio);
+    int paddingY = static_cast<int>(effectiveHeight * paddingRatio);
+
+    // Usable plotting area after padding
+    int usableWidth = effectiveWidth - 2 * paddingX;
+    int usableHeight = effectiveHeight - 2 * paddingY;
+
+    // Determine if we should calculate scales separately for each dimension
+    // or use a common scale to maintain aspect ratio
+    bool maintainAspectRatio = true;
+    
+    // Draw border around the plot area
+    RGBA borderColor(0xFF, 0xFF, 0xFF, 0xFF);  // White border
+    
+    // Top border
+    for (int x = margin_left - 2; x <= width - margin_right + 2; x++) {
+        for (int t = 0; t < 2; t++) {
+            int y = margin_top - 2 + t;
+            if (y >= 0 && y < height && x >= 0 && x < width) {
+                image.SetPixel(x, y, borderColor);
+            }
+        }
+    }
+    
+    // Bottom border
+    for (int x = margin_left - 2; x <= width - margin_right + 2; x++) {
+        for (int t = 0; t < 2; t++) {
+            int y = height - margin_bottom + t;
+            if (y >= 0 && y < height && x >= 0 && x < width) {
+                image.SetPixel(x, y, borderColor);
+            }
+        }
+    }
+    
+    // Left border
+    for (int y = margin_top - 2; y <= height - margin_bottom + 2; y++) {
+        for (int t = 0; t < 2; t++) {
+            int x = margin_left - 2 + t;
+            if (y >= 0 && y < height && x >= 0 && x < width) {
+                image.SetPixel(x, y, borderColor);
+            }
+        }
+    }
+    
+    // Right border
+    for (int y = margin_top - 2; y <= height - margin_bottom + 2; y++) {
+        for (int t = 0; t < 2; t++) {
+            int x = width - margin_right + t;
+            if (y >= 0 && y < height && x >= 0 && x < width) {
+                image.SetPixel(x, y, borderColor);
+            }
+        }
+    }
+    
+    // Draw grid lines and axes with improved styling
+    
+    // Draw minor grid lines first (so they appear behind major lines)
+    RGBA majorGridColor(0xD0, 0xD0, 0xD0, 0xAA);  // Light gray for major grid lines, semi-transparent
+    RGBA minorGridColor(0xA0, 0xA0, 0xA0, 0x55);  // Very light gray for minor grid lines, more transparent
+    
+    // Number of grid divisions
+    int majorGridDivisions = 4;   // Number of major grid divisions (quadrants)
+    int minorGridDivisions = 16;  // Number of minor grid divisions
+    
+    for (int i = 0; i <= minorGridDivisions; i++) {
+        float percentage = static_cast<float>(i) / minorGridDivisions;
+        int x = margin_left + static_cast<int>(percentage * effectiveWidth);
+        int y = margin_top + static_cast<int>(percentage * effectiveHeight);
+        
+        // Draw vertical minor grid line
+        if (i % (minorGridDivisions / majorGridDivisions) != 0) { // Skip where major lines will be
+            drawLine(x, margin_top, x, height - margin_bottom, minorGridColor);
+        }
+        
+        // Draw horizontal minor grid line
+        if (i % (minorGridDivisions / majorGridDivisions) != 0) { // Skip where major lines will be
+            drawLine(margin_left, y, width - margin_right, y, minorGridColor);
+        }
+    }
+    
+    // Draw major grid lines
+    for (int i = 0; i <= majorGridDivisions; i++) {
+        float percentage = static_cast<float>(i) / majorGridDivisions;
+        int x = margin_left + static_cast<int>(percentage * effectiveWidth);
+        int y = margin_top + static_cast<int>(percentage * effectiveHeight);
+        
+        // Draw vertical major grid line
+        drawLine(x, margin_top, x, height - margin_bottom, majorGridColor);
+        
+        // Draw horizontal major grid line
+        drawLine(margin_left, y, width - margin_right, y, majorGridColor);
+    }
+    
+    // Draw axes at the center of the plot with thicker lines
+    RGBA axisColor(0xF0, 0xF0, 0xF0, 0xFF);  // Brighter gray for axes
+    
+    // X-axis (thicker line)
+    for (int offset = -2; offset <= 2; offset++) {
+        drawLine(margin_left, centerY + offset, width - margin_right, centerY + offset, axisColor);
+    }
+    
+    // Y-axis (thicker line)
+    for (int offset = -2; offset <= 2; offset++) {
+        drawLine(centerX + offset, margin_top, centerX + offset, height - margin_bottom, axisColor);
+    }
+    
+    // Add title for the K-Means plot
+    GraphLabel(margin_left + effectiveWidth / 2 + 150, margin_top - 25, graphName + " Dataset",
+               300, 0, 0, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+
+    // For each pair of features, create a plot
+    for (size_t i = 0; i < numFeatures; ++i) {
+        for (size_t j = i + 1; j < numFeatures; ++j) {
+            // Calculate scales for this feature pair
+            double rangeX = maxValues[i] - minValues[i];
+            double rangeY = maxValues[j] - minValues[j];
+
+            // Avoid division by zero
+            if (rangeX < 1e-10) rangeX = 1.0;
+            if (rangeY < 1e-10) rangeY = 1.0;
+
+            double scaleX, scaleY;
+            if (maintainAspectRatio) {
+                // Use the same scale for both axes to maintain aspect ratio
+                double scaleByX = usableWidth / rangeX;
+                double scaleByY = usableHeight / rangeY;
+                double commonScale = std::min(scaleByX, scaleByY);
+                
+                scaleX = commonScale;
+                scaleY = commonScale;
+            } else {
+                // Scale independently for each axis
+                scaleX = usableWidth / rangeX;
+                scaleY = usableHeight / rangeY;
+            }
+            
+            // Structure to store mapped screen coordinates for each cluster
+            std::vector<std::vector<std::pair<int, int> > > clusterPoints(maxCluster + 1);
+            
+            // Draw each data point for this feature pair and collect cluster points
+            for (size_t k = 0; k < data.size(); ++k) {
+                if (data[k].size() <= std::max(i, j)) continue; // Skip if not enough dimensions
+                
+                // Map data coordinates to screen coordinates
+                double valueX = data[k][i];
+                double valueY = data[k][j];
+                
+                // Scale relative to center
+                int screenX = centerX + static_cast<int>((valueX - (minValues[i] + maxValues[i]) / 2) * scaleX);
+                int screenY = centerY - static_cast<int>((valueY - (minValues[j] + maxValues[j]) / 2) * scaleY);
+                
+                // Ensure the point is within the plotting area
+                screenX = clamp(screenX, margin_left + paddingX, width - margin_right - paddingX);
+                screenY = clamp(screenY, margin_top + paddingY, height - margin_bottom - paddingY);
+                
+                // Store the point in its cluster collection
+                if (k < labels.size() && labels[k] >= 0 && labels[k] <= maxCluster) {
+                    clusterPoints[labels[k]].push_back(std::make_pair(screenX, screenY));
+                }
+                
+                // Select color based on the cluster label
+                RGBA pointColorToUse;
+                if (k < labels.size() && labels[k] >= 0 && labels[k] < clusterColors.size()) {
+                    pointColorToUse = clusterColors[labels[k]];
+                } else {
+                    // Default color if label is invalid - make this visibly different
+                    pointColorToUse = RGBA(128, 128, 128, 255); // Gray for invalid labels
+                }
+                
+                // Draw the point with proper bounds checking
+                drawPoint(screenX, screenY, pointThickness, pointColorToUse);
+            }
+            
+            // Draw circles around each cluster with improved styling
+            for (int clusterID = 0; clusterID <= maxCluster; ++clusterID) {
+                if (clusterPoints[clusterID].empty()) continue;
+                
+                // Get the color for this cluster
+                RGBA clusterColor = clusterID < clusterColors.size() ? 
+                                    clusterColors[clusterID] : 
+                                    RGBA(128, 128, 128, 255);
+                
+                // Make the outline semi-transparent
+                RGBA outlineColor = clusterColor;
+                outlineColor.a = 150; // Semi-transparent
+                
+                // Find the centroid of this cluster in screen coordinates
+                int sumX = 0, sumY = 0;
+                for (size_t p = 0; p < clusterPoints[clusterID].size(); ++p) {
+                    sumX += clusterPoints[clusterID][p].first;
+                    sumY += clusterPoints[clusterID][p].second;
+                }
+                int centroidX = sumX / clusterPoints[clusterID].size();
+                int centroidY = sumY / clusterPoints[clusterID].size();
+                
+                // Find the maximum distance from centroid to any point in the cluster
+                int maxDist = 0;
+                for (size_t p = 0; p < clusterPoints[clusterID].size(); ++p) {
+                    int dx = clusterPoints[clusterID][p].first - centroidX;
+                    int dy = clusterPoints[clusterID][p].second - centroidY;
+                    int dist = static_cast<int>(std::sqrt(static_cast<double>(dx*dx + dy*dy)));
+                    maxDist = std::max(maxDist, dist);
+                }
+                
+                // Add some padding to the radius
+                int radius = maxDist + pointThickness * 2;
+                
+                // Draw a circle to encompass all points in the cluster
+                drawClusterCircle(centroidX, centroidY, radius, outlineColor);
+                
+                // Draw cluster label
+                std::ostringstream clusterLabel;
+                clusterLabel << "Cluster " << clusterID;
+                GraphLabel(centroidX + radius + 10, centroidY, clusterLabel.str(), 
+                           175, 0, 0, true, clusterColor, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+                
+                // Draw actual centroids with a special marker (if available)
+                if (centroids.size() > clusterID && centroids[clusterID].size() > j) {
+                    // Map the actual centroid coordinates to screen coordinates
+                    double centValueX = centroids[clusterID][i];
+                    double centValueY = centroids[clusterID][j];
+                    
+                    int centScreenX = centerX + static_cast<int>((centValueX - (minValues[i] + maxValues[i]) / 2) * scaleX);
+                    int centScreenY = centerY - static_cast<int>((centValueY - (minValues[j] + maxValues[j]) / 2) * scaleY);
+                    
+                    // Ensure the centroid is within the plotting area
+                    centScreenX = clamp(centScreenX, margin_left + paddingX, width - margin_right - paddingX);
+                    centScreenY = clamp(centScreenY, margin_top + paddingY, height - margin_bottom - paddingY);
+                    
+                    // Draw a special marker for the actual centroid
+                    RGBA centroidMarkerColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF); // White
+                    
+                    // Draw a white cross inside a colored circle
+                    drawPoint(centScreenX, centScreenY, pointThickness * 1.5, clusterColor);
+                    
+                    // Cross lines
+                    for (int lineOffset = -pointThickness; lineOffset <= pointThickness; lineOffset++) {
+                        if (centScreenX + lineOffset >= margin_left && 
+                            centScreenX + lineOffset < width - margin_right &&
+                            centScreenY >= margin_top && 
+                            centScreenY < height - margin_bottom) {
+                            image.SetPixel(centScreenX + lineOffset, centScreenY, centroidMarkerColor);
+                        }
+                        
+                        if (centScreenX >= margin_left && 
+                            centScreenX < width - margin_right &&
+                            centScreenY + lineOffset >= margin_top && 
+                            centScreenY + lineOffset < height - margin_bottom) {
+                            image.SetPixel(centScreenX, centScreenY + lineOffset, centroidMarkerColor);
+                        }
+                    }
+                }
+            }
+            
+            // Add a legend at the bottom of the plot
+            int legendStartX = margin_left + 50;
+            int legendStartY = height - margin_bottom + 50; // Moved down slightly to accommodate larger text
+            int legendItemWidth = 120;
+            
+            for (int clusterID = 0; clusterID <= maxCluster; ++clusterID) {
+                RGBA clusterColor = clusterID < clusterColors.size() ? 
+                                   clusterColors[clusterID] : 
+                                   RGBA(128, 128, 128, 255);
+                
+                int itemX = legendStartX + clusterID * legendItemWidth;
+                
+                // Draw color square - even smaller
+                for (int dx = -5; dx <= 5; dx++) {
+                    for (int dy = -5; dy <= 5; dy++) {
+                        int x = itemX + dx;
+                        int y = legendStartY + dy;
+                        if (x >= 0 && x < width && y >= 0 && y < height) {
+                            image.SetPixel(x, y, clusterColor);
+                        }
+                    }
+                }
+                
+                // Draw label
+                std::ostringstream labelText;
+                labelText << "Cluster " << clusterID;
+                GraphLabel(itemX + 15, legendStartY, labelText.str(), 
+                          160, 0, 0, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+            }
+        }
+    }
+}
+
 void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, const std::vector<double>& variance_explained, const RGBA& arrowColor)
 {
     int arrowSize = 100;
@@ -884,7 +1268,7 @@ void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowColo
     drawLine(x1 - 1, y1, x2 - 1, y2, arrowColor);
     drawLine(x1 + 1, y1, x2 + 1, y2, arrowColor);
     drawLine(x1, y1 - 1, x2, y2 - 1, arrowColor);
-    drawLine(x1, y1 + 1, x2, y2 + 1, arrowColor);
+    drawLine(x1, y1 + 1, x2 + 1, y2 + 1, arrowColor);
 
     // Calculate the angle of the arrow
     double angle = std::atan2(static_cast<double>(y2 - y1), static_cast<double>(x2 - x1));
@@ -902,7 +1286,7 @@ void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowColo
     drawLine(x2 - 1, y2, arrowX1 - 1, arrowY1, arrowColor);
     drawLine(x2 + 1, y2, arrowX1 + 1, arrowY1, arrowColor);
     drawLine(x2, y2 - 1, arrowX1, arrowY1 - 1, arrowColor);
-    drawLine(x2, y2 + 1, arrowX1, arrowY1 + 1, arrowColor);
+    drawLine(x2, y2 + 1, arrowX1 + 1, arrowY1 + 1, arrowColor);
 
     // Draw the arrowhead lines
     drawLine(x2, y2, arrowX2, arrowY2, arrowColor);
@@ -911,7 +1295,7 @@ void PNGPlotter::drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowColo
     drawLine(x2 - 1, y2, arrowX2 - 1, arrowY2, arrowColor);
     drawLine(x2 + 1, y2, arrowX2 + 1, arrowY2, arrowColor);
     drawLine(x2, y2 - 1, arrowX2, arrowY2 - 1, arrowColor);
-    drawLine(x2, y2 + 1, arrowX2, arrowY2 + 1, arrowColor);
+    drawLine(x2, y2 + 1, arrowX2 + 1, arrowY2 + 1, arrowColor);
 }
 
 Image PNGPlotter::downsampleToTargetSize() {
@@ -950,16 +1334,20 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
     // Compute baseline using font metrics
     int ascender = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
     int descender = face->size->metrics.descender / 64; // Convert to pixels
-    float heightScale = 0.3;
+    
+    float heightScale = 0.5;
+    
     // Compute a common baseline using font metrics
-    int baseline = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
-    unsigned int extraSpacing = fontSize / 3;
+    int baseline = face->size->metrics.ascender / 64; 
+    
+    // Adjusted spacing for better readability
+    unsigned int extraSpacing = fontSize / 6; // Adjusted from /8 to /6
 
     // Calculate the bounding box for the text
     unsigned int boxWidth = 0;
     unsigned int boxHeight = static_cast<unsigned int>((ascender - descender) * heightScale); // Total scaled height of the text block
 
-    // Measure the total width of the text
+    // Measure the total width of the text with reduced spacing
     for (char c : text)
     {
         if (FT_Load_Char(face, c, FT_LOAD_RENDER))
@@ -970,10 +1358,10 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
 
         FT_GlyphSlot glyph = face->glyph;
 
-        // Add glyph width and extra spacing
+        // Add glyph width and reduced extra spacing
         boxWidth += (glyph->advance.x >> 6) + extraSpacing;
 
-        // Adjust boxHeight if a taller glyph is found (scaled height)
+        // Adjust boxHeight if a taller glyph is found (with reduced scaled height)
         unsigned int glyphHeight = static_cast<unsigned int>(glyph->bitmap.rows * heightScale);
         if (glyphHeight > boxHeight)
         {
@@ -982,7 +1370,7 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
     }
 
     // Add padding to the box
-    unsigned int padding = fontSize / 6;
+    unsigned int padding = fontSize / 10; // Reduced padding
 
     // Draw the box if necessary
     if (hasBox) {
@@ -1000,11 +1388,10 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
         }
     }
 
-
     for (char c : text) 
     {
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) 
-	{
+        {
             printf("Warning: Could not load character %c\n", c);
             continue;
         }
@@ -1017,39 +1404,33 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
         unsigned int x0 = penX + glyph->bitmap_left;
         unsigned int y0 = penY + static_cast<unsigned int>(baseline * heightScale) - static_cast<unsigned int>(glyph->bitmap_top * heightScale);
     
-
-        // Draw the glyph bitmap as solid black
+        // Draw the glyph bitmap with improved aspect ratio
         for (unsigned int y = 0; y < glyphHeight; ++y) 
-	{
+        {
             for (unsigned int x = 0; x < glyphWidth; ++x) 
-	    {
+            {
+                // Calculate adjusted position with improved aspect ratio
                 unsigned imgX = x0 + x;
+                
+                // Use heightScale to vertically compress the text for better aspect ratio
                 unsigned imgY = y0 + static_cast<unsigned int>(y * heightScale);
 
                 if (imgX < width && imgY < height) 
-		{
+                {
                     unsigned char value = glyph->bitmap.buffer[y * glyphWidth + x];
                     if (value > 0) 
-		    { // Only draw if the glyph pixel is not empty
-			image.SetPixel(imgX, imgY, labelColorText); 
+                    { // Only draw if the glyph pixel is not empty
+                        image.SetPixel(imgX, imgY, labelColorText); 
                     }
                 }
             }
         }
 
-        // Advance cursor position
+        // Advance cursor position with reduced spacing
         penX += (glyph->advance.x >> 6) + extraSpacing;
     }
 }
 
-/*
- * Header PNG parameters:
- *  text: text to be displayed
- *  fontSize: size of the text
- *  headerPos: which row on the header it will be on (i.e. 0 will be the highest)
- *  rePositionY: If the fontSize is different you can choose to reposition the text, this value will be divided by that rows y-axis
- */ 
-//TODO: headerPenY is still not perfect, when changing to smaller or bigger fonts the spacing gets messed up, I currenlty just edit the headerYSpacing, but I want to find the best Y value programmatically
 void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize, unsigned int headerPos, unsigned int rePositionY, RGBA headerTextColor)
 {
 
@@ -1145,4 +1526,108 @@ void PNGPlotter::SavePNG(const std::string& filename, const std::string& folder)
 
 	FT_Done_Face(face);
         FT_Done_FreeType(ft);
+}
+
+void PNGPlotter::drawClusterCircle(int x, int y, int radius, const RGBA& color) {
+    // Draw a circle using the Midpoint Circle Algorithm
+    int x0 = 0;
+    int y0 = radius;
+    int d = 3 - 2 * radius;
+    
+    // Draw the initial points
+    drawCirclePoints(x, y, x0, y0, color);
+    
+    // Iterate to draw the complete circle
+    while (x0 <= y0) {
+        x0++;
+        if (d > 0) {
+            y0--;
+            d = d + 4 * (x0 - y0) + 10;
+        } else {
+            d = d + 4 * x0 + 6;
+        }
+        drawCirclePoints(x, y, x0, y0, color);
+    }
+    
+    // Draw additional circles with slightly different radii for thickness
+    for (int thickness = 1; thickness <= 3; thickness++) {
+        // Draw inner circle
+        if (radius - thickness > 0) {
+            int innerX0 = 0;
+            int innerY0 = radius - thickness;
+            int innerD = 3 - 2 * (radius - thickness);
+            
+            drawCirclePoints(x, y, innerX0, innerY0, color);
+            
+            while (innerX0 <= innerY0) {
+                innerX0++;
+                if (innerD > 0) {
+                    innerY0--;
+                    innerD = innerD + 4 * (innerX0 - innerY0) + 10;
+                } else {
+                    innerD = innerD + 4 * innerX0 + 6;
+                }
+                drawCirclePoints(x, y, innerX0, innerY0, color);
+            }
+        }
+        
+        // Draw outer circle
+        int outerX0 = 0;
+        int outerY0 = radius + thickness;
+        int outerD = 3 - 2 * (radius + thickness);
+        
+        drawCirclePoints(x, y, outerX0, outerY0, color);
+        
+        while (outerX0 <= outerY0) {
+            outerX0++;
+            if (outerD > 0) {
+                outerY0--;
+                outerD = outerD + 4 * (outerX0 - outerY0) + 10;
+            } else {
+                outerD = outerD + 4 * outerX0 + 6;
+            }
+            drawCirclePoints(x, y, outerX0, outerY0, color);
+        }
+    }
+}
+
+void PNGPlotter::drawCirclePoints(int x, int y, int x0, int y0, const RGBA& color) {
+    // Draw points with additional pixels for thickness
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            // Check if points are within the plotting area bounds
+            if (x + x0 + dx >= margin_left && x + x0 + dx < width - margin_right &&
+                y + y0 + dy >= margin_top && y + y0 + dy < height - margin_bottom) {
+                image.SetPixel(x + x0 + dx, y + y0 + dy, color);
+            }
+            if (x - x0 + dx >= margin_left && x - x0 + dx < width - margin_right &&
+                y + y0 + dy >= margin_top && y + y0 + dy < height - margin_bottom) {
+                image.SetPixel(x - x0 + dx, y + y0 + dy, color);
+            }
+            if (x + x0 + dx >= margin_left && x + x0 + dx < width - margin_right &&
+                y - y0 + dy >= margin_top && y - y0 + dy < height - margin_bottom) {
+                image.SetPixel(x + x0 + dx, y - y0 + dy, color);
+            }
+            if (x - x0 + dx >= margin_left && x - x0 + dx < width - margin_right &&
+                y - y0 + dy >= margin_top && y - y0 + dy < height - margin_bottom) {
+                image.SetPixel(x - x0 + dx, y - y0 + dy, color);
+            }
+            if (x + y0 + dx >= margin_left && x + y0 + dx < width - margin_right &&
+                y + x0 + dy >= margin_top && y + x0 + dy < height - margin_bottom) {
+                image.SetPixel(x + y0 + dx, y + x0 + dy, color);
+            }
+            if (x - y0 + dx >= margin_left && x - y0 + dx < width - margin_right &&
+                y + x0 + dy >= margin_top && y + x0 + dy < height - margin_bottom) {
+                image.SetPixel(x - y0 + dx, y + x0 + dy, color);
+            }
+            if (x + y0 + dx >= margin_left && x + y0 + dx < width - margin_right &&
+                y - x0 + dy >= margin_top && y - x0 + dy < height - margin_bottom) {
+                image.SetPixel(x + y0 + dx, y - x0 + dy, color);
+            }
+            if (x - y0 + dx >= margin_left && x - y0 + dx < width - margin_right &&
+                y - x0 + dy >= margin_top && y - x0 + dy < height - margin_bottom) {
+                image.SetPixel(x - y0 + dx, y - x0 + dy, color);
+            }
+        }
+    }
 }
