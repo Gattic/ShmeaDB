@@ -9,6 +9,7 @@
 #include "Drawers/HistogramDrawer.h"
 #include "Drawers/LabelsDrawer.h"
 #include "Drawers/DataDrawer.h"
+#include "Drawers/LegendDrawer.h"
 
 #include <string>
 #include <limits>
@@ -44,6 +45,7 @@ private:
     HistogramDrawer* histogramDrawer;
     LabelsDrawer* labelsDrawer;
     DataDrawer* dataDrawer;
+    LegendDrawer* legendDrawer;
     
     // Standard colors
     RGBA color_bullish;
@@ -87,6 +89,8 @@ public:
     // Grid and labels
     void drawYGrid();
     void drawXGrid(int64_t start, int64_t end);
+    // New method to draw grid with labels together
+    void drawGridWithLabels(int64_t start, int64_t end);
     void HeaderPNG(const std::string& text, unsigned int fontSize, 
                    unsigned int headerPos = 0, unsigned int rePositionY = 0, 
                    RGBA headerTextColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
@@ -96,6 +100,18 @@ public:
                     bool hasBox = false, 
                     RGBA labelColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF), 
                     RGBA textColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    
+    // New methods for titles and labels
+    void setTitle(const std::string& title, unsigned int fontSize = 800, 
+                 RGBA titleColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    void setXAxisLabel(const std::string& label, unsigned int fontSize = 600, 
+                      RGBA labelColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    void setYAxisLabel(const std::string& label, unsigned int fontSize = 600, 
+                      RGBA labelColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    
+    // Legend methods
+    void addLegendEntry(const std::string& label, const RGBA& color);
+    void drawLegend();
     
     // File operations
     void SavePNG(const std::string& filename, const std::string& folder);

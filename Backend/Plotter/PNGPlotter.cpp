@@ -9,15 +9,15 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
     : image(), width(width), height(height), 
       min_price(low_price),
       max_price(max_price),
-      margin_top(margin_top),
-      margin_right(margin_right),
-      margin_bottom(margin_bottom),
-      margin_left(margin_left),
+      margin_top(margin_top > 0 ? margin_top : height * 0.1),  // Default top margin of 10% if not specified
+      margin_right(margin_right > 0 ? margin_right : width * 0.1),  // Default right margin of 10% if not specified
+      margin_bottom(margin_bottom > 0 ? margin_bottom : height * 0.15),  // Default bottom margin of 15% if not specified
+      margin_left(margin_left > 0 ? margin_left : width * 0.15),  // Default left margin of 15% if not specified
       fourQuadrants(fourQuadrants),
       last_timestamp(0),
       total_candles_drawn(0),
       graphSize(graphSize),
-      candle_width(static_cast<int>(graphSize != 0 ? (width - margin_left - margin_right) / graphSize : 1)),
+      candle_width(static_cast<int>(graphSize != 0 ? (width - this->margin_left - this->margin_right) / graphSize : 1)),
       last_candle_pos(static_cast<int>(candle_width / 2)),
       lines(lines),
       color_bullish(0x00, 0xFF, 0x00, 0xFF), 
@@ -27,25 +27,77 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
       arrowDrawer(NULL),
       histogramDrawer(NULL),
       labelsDrawer(NULL),
-      dataDrawer(NULL)
+      dataDrawer(NULL),
+      legendDrawer(NULL)
 {
     image.Allocate(width, height);
     RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
-    RGBA Black(0x00, 0x00, 0x00, 0x7F);
-    image.drawVerticalGradient(0, 0, DarkGray, Black, 0);
+    RGBA Black(0x00, 0x00, 0x00, 0xFF); // Full opacity for the background
+    
+    // Fill the entire image with background color
+    for (unsigned int y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x) {
+            float ratio = static_cast<float>(y) / height;
+            RGBA gradientColor(
+                static_cast<unsigned char>(DarkGray.r * (1 - ratio) + Black.r * ratio),
+                static_cast<unsigned char>(DarkGray.g * (1 - ratio) + Black.g * ratio),
+                static_cast<unsigned char>(DarkGray.b * (1 - ratio) + Black.b * ratio),
+                0xFF
+            );
+            image.SetPixel(x, y, gradientColor);
+        }
+    }
 
     std::cout << "Initializing PNGPlotter with FreeType text rendering" << std::endl;
 
     // Initialize all specialized drawers
-    gridDrawer = new GridDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left, min_price, max_price);
-    candlestickDrawer = new CandlestickDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left, candle_width, color_bullish, color_bearish);
-    arrowDrawer = new ArrowDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left);
-    histogramDrawer = new HistogramDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left, min_price, max_price, graphSize);
-    labelsDrawer = new LabelsDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left);
-    dataDrawer = new DataDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left, min_price, max_price, graphSize, lines);
+    gridDrawer = new GridDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left, min_price, max_price);
+    candlestickDrawer = new CandlestickDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left, candle_width, color_bullish, color_bearish);
+    arrowDrawer = new ArrowDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left);
+    histogramDrawer = new HistogramDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left, min_price, max_price, graphSize);
+    labelsDrawer = new LabelsDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left);
+    dataDrawer = new DataDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left, min_price, max_price, graphSize, lines);
+    legendDrawer = new LegendDrawer(image, width, height, this->margin_top, this->margin_right, this->margin_bottom, this->margin_left);
+
+    // Connect the GridDrawer to the LabelsDrawer for axis labels
+    gridDrawer->setLabelsDrawer(labelsDrawer);
+    
+    // Draw a border around the plotting area
+    RGBA borderColor(0x80, 0x80, 0x80, 0xFF); // Gray border
+    for (int x = this->margin_left - 2; x <= width - this->margin_right + 2; x++) {
+        image.SetPixel(x, this->margin_top - 2, borderColor);
+        image.SetPixel(x, this->margin_top - 1, borderColor);
+        image.SetPixel(x, height - this->margin_bottom + 1, borderColor);
+        image.SetPixel(x, height - this->margin_bottom + 2, borderColor);
+    }
+    
+    for (int y = this->margin_top - 2; y <= height - this->margin_bottom + 2; y++) {
+        image.SetPixel(this->margin_left - 2, y, borderColor);
+        image.SetPixel(this->margin_left - 1, y, borderColor);
+        image.SetPixel(width - this->margin_right + 1, y, borderColor);
+        image.SetPixel(width - this->margin_right + 2, y, borderColor);
+    }
 
     if (fourQuadrants) {
         gridDrawer->drawFourQuadrants();
+    }
+
+    // Add default title and axis labels with appropriate font sizes
+    setTitle("Data Visualization", 300);  // Reduced font size for title
+    setXAxisLabel("Time", 200);           // Reduced font size for X axis
+    setYAxisLabel("Value", 200);          // Reduced font size for Y axis
+    
+    // Add some default legend entries if lines were provided
+    if (lines > 0) {
+        addLegendEntry("Series 1", RGBA(0x00, 0x00, 0xFF, 0xFF)); // Blue
+        if (lines > 1) {
+            addLegendEntry("Series 2", RGBA(0xFF, 0xA5, 0x00, 0xFF)); // Orange
+        }
+        if (lines > 2) {
+            addLegendEntry("Series 3", RGBA(0x80, 0x00, 0x80, 0xFF)); // Purple
+        }
+        // Draw the legend
+        drawLegend();
     }
 
     // Initialize AGG_SIZE mapping
@@ -72,6 +124,7 @@ PNGPlotter::~PNGPlotter() {
     delete histogramDrawer;
     delete labelsDrawer;
     delete dataDrawer;
+    delete legendDrawer;
 }
 
 int PNGPlotter::getWidth() {
@@ -88,6 +141,16 @@ void PNGPlotter::drawYGrid() {
 
 void PNGPlotter::drawXGrid(int64_t start, int64_t end) {
     gridDrawer->drawXGrid(start, end, graphSize);
+}
+
+void PNGPlotter::drawGridWithLabels(int64_t start, int64_t end) {
+    // First draw the grid lines
+    drawYGrid();
+    drawXGrid(start, end);
+    
+    // Then draw the labels with proper font size
+    gridDrawer->drawYAxisLabels(180);  // Smaller font size for Y-axis labels
+    gridDrawer->drawXAxisLabels(start, end, graphSize, 180);  // Smaller font size for X-axis labels
 }
 
 void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::string indicator, std::string value) {
@@ -183,7 +246,64 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
 }
 
 void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize, unsigned int headerPos, unsigned int rePositionY, RGBA headerTextColor) {
+    // Draw title centered at the top of the image
     labelsDrawer->drawHeader(text, fontSize, headerPos, rePositionY, headerTextColor);
+}
+
+void PNGPlotter::setTitle(const std::string& title, unsigned int fontSize, RGBA titleColor) {
+    // Position the title significantly above the top margin to ensure visibility
+    unsigned int titleX = width / 2;
+    // Move title further up, away from the graph area
+    unsigned int titleY = margin_top / 3;
+    
+    // Ensure there's minimum padding
+    if (titleY < fontSize / 2) {
+        titleY = fontSize / 2;
+    }
+    
+    labelsDrawer->drawCenteredText(titleX, titleY, title, fontSize, titleColor);
+}
+
+void PNGPlotter::setXAxisLabel(const std::string& label, unsigned int fontSize, RGBA labelColor) {
+    // Position the X-axis label at the bottom center of the graph
+    unsigned int labelX = margin_left + (width - margin_left - margin_right) / 2;
+    unsigned int labelY = height - margin_bottom / 2;
+    
+    // Ensure label has enough space below the bottom margin
+    if (labelY >= height - fontSize / 2) {
+        labelY = height - fontSize / 2 - 10; // Add extra padding
+    }
+    
+    labelsDrawer->drawCenteredText(labelX, labelY, label, fontSize, labelColor);
+}
+
+void PNGPlotter::setYAxisLabel(const std::string& label, unsigned int fontSize, RGBA labelColor) {
+    // Move Y-axis label further left and ensure it's centered
+    unsigned int labelX = fontSize; // Just use fontSize as the X position to ensure visibility
+    unsigned int labelY = margin_top + (height - margin_top - margin_bottom) / 2;
+    
+    // Ensure label is clear of the left edge
+    labelX = std::max(labelX, static_cast<unsigned int>(fontSize * 1.2));
+    
+    labelsDrawer->drawRotatedText(labelX, labelY, label, fontSize, labelColor);
+}
+
+void PNGPlotter::addLegendEntry(const std::string& label, const RGBA& color) {
+    legendDrawer->addEntry(label, color);
+}
+
+void PNGPlotter::drawLegend() {
+    // Position the legend in the top-left corner, but completely within the padding area
+    // Make sure it stays above the plot area boundary
+    unsigned int legendX = 5; // Small offset from the left edge
+    unsigned int legendY = 5; // Small offset from the top edge
+    
+    // Make sure the legend is drawn completely above the graph
+    legendDrawer->setMaxHeight(margin_top - 10); // Set maximum height to be within top margin
+    legendDrawer->setFontSize(180); // Use a smaller font size for the legend
+    legendDrawer->setBorderColor(RGBA(0xA0, 0xA0, 0xA0, 0xFF)); // Lighter border
+    
+    legendDrawer->draw(legendX, legendY);
 }
 
 std::string PNGPlotter::aggString(int aggSize) {

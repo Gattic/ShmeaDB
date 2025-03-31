@@ -539,9 +539,9 @@ void DataDrawer::addDataPointsKMeans(const std::string& graphName,
                                     clusterColors[clusterID] : 
                                     RGBA(128, 128, 128, 255);
                 
-                // Make the outline semi-transparent
+                // Make the outline semi-transparent but more visible
                 RGBA outlineColor = clusterColor;
-                outlineColor.a = 150; // Semi-transparent
+                outlineColor.a = 200; // Less transparent for better visibility
                 
                 // Find the centroid of this cluster in screen coordinates
                 int sumX = 0, sumY = 0;
@@ -564,8 +564,17 @@ void DataDrawer::addDataPointsKMeans(const std::string& graphName,
                 // Add some padding to the radius
                 int radius = maxDist + pointThickness * 2;
                 
-                // Draw a circle to encompass all points in the cluster
-                drawCircle(centroidX, centroidY, radius, outlineColor);
+                // Draw a circle with thicker lines to encompass all points in the cluster
+                // Use a more contrasting color for better visibility
+                RGBA enhancedOutlineColor = outlineColor;
+                enhancedOutlineColor.r = std::min(255, enhancedOutlineColor.r + 30);
+                enhancedOutlineColor.g = std::min(255, enhancedOutlineColor.g + 30); 
+                enhancedOutlineColor.b = std::min(255, enhancedOutlineColor.b + 30);
+                
+                // Draw a slightly thicker circle
+                for (int thicknessOffset = -1; thicknessOffset <= 1; thicknessOffset++) {
+                    drawCircle(centroidX, centroidY, radius + thicknessOffset, enhancedOutlineColor);
+                }
                 
                 // Draw actual centroids with a special marker (if available)
                 if (centroids.size() > clusterID && centroids[clusterID].size() > j) {
@@ -580,28 +589,33 @@ void DataDrawer::addDataPointsKMeans(const std::string& graphName,
                     centScreenX = clamp(centScreenX, margin_left + paddingX, width - margin_right - paddingX);
                     centScreenY = clamp(centScreenY, margin_top + paddingY, height - margin_bottom - paddingY);
                     
-                    // Draw a special marker for the actual centroid
+                    // Draw a special marker for centroids
+                    // Use a smaller, more refined marker
                     RGBA centroidMarkerColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF); // White
                     
-                    // Draw a white cross inside a colored circle
-                    drawPoint(centScreenX, centScreenY, pointThickness * 1.5, clusterColor);
+                    // Draw a small cross - more precise and less intrusive
+                    drawPoint(centScreenX, centScreenY, pointThickness + 1, clusterColor); // Base circle in cluster color
                     
-                    // Cross lines
-                    for (int lineOffset = -pointThickness; lineOffset <= pointThickness; lineOffset++) {
-                        if (centScreenX + lineOffset >= margin_left && 
-                            centScreenX + lineOffset < width - margin_right &&
-                            centScreenY >= margin_top && 
-                            centScreenY < height - margin_bottom) {
-                            image.SetPixel(centScreenX + lineOffset, centScreenY, centroidMarkerColor);
-                        }
-                        
-                        if (centScreenX >= margin_left && 
-                            centScreenX < width - margin_right &&
-                            centScreenY + lineOffset >= margin_top && 
-                            centScreenY + lineOffset < height - margin_bottom) {
-                            image.SetPixel(centScreenX, centScreenY + lineOffset, centroidMarkerColor);
+                    // Draw a small white cross over the circle - more focused
+                    int crossSize = pointThickness * 0.7; // Smaller cross
+                    
+                    // Horizontal line
+                    for (int lineX = centScreenX - crossSize; lineX <= centScreenX + crossSize; lineX++) {
+                        if (lineX >= margin_left && lineX < width - margin_right &&
+                            centScreenY >= margin_top && centScreenY < height - margin_bottom) {
+                            image.SetPixel(lineX, centScreenY, centroidMarkerColor);
                         }
                     }
+                    
+                    // Vertical line
+                    for (int lineY = centScreenY - crossSize; lineY <= centScreenY + crossSize; lineY++) {
+                        if (centScreenX >= margin_left && centScreenX < width - margin_right &&
+                            lineY >= margin_top && lineY < height - margin_bottom) {
+                            image.SetPixel(centScreenX, lineY, centroidMarkerColor);
+                        }
+                    }
+                    
+                    // No additional dots, just the centroid marker
                 }
             }
         }

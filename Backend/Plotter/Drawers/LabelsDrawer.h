@@ -41,6 +41,13 @@ public:
     void drawHeader(const std::string& text, unsigned int fontSize, 
                    unsigned int headerPos = 0, unsigned int rePositionY = 0,
                    RGBA headerTextColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+                   
+    // New text rendering methods for chart labels
+    void drawCenteredText(unsigned int x, unsigned int y, const std::string& text,
+                         unsigned int fontSize, RGBA textColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+                         
+    void drawRotatedText(unsigned int x, unsigned int y, const std::string& text,
+                        unsigned int fontSize, RGBA textColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
 };
 
 }  // namespace shmea

@@ -14,13 +14,14 @@ else()
 endif()
 
 set(Drawers_src_files
-	ArrowDrawer.cpp
-	BaseDrawer.cpp
-	CandlestickDrawer.cpp
-	DataDrawer.cpp
-	GridDrawer.cpp
-	HistogramDrawer.cpp
-	LabelsDrawer.cpp
+    ArrowDrawer.cpp
+    BaseDrawer.cpp
+    CandlestickDrawer.cpp
+    DataDrawer.cpp
+    GridDrawer.cpp
+    HistogramDrawer.cpp
+    LabelsDrawer.cpp
+    LegendDrawer.cpp
 )
 add_library(Drawers ${Drawers_src_files})
 

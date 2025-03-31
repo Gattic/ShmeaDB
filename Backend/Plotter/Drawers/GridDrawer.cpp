@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sstream>
 #include <algorithm>
+#include <iomanip>
 
 namespace shmea {
 
@@ -10,7 +11,15 @@ GridDrawer::GridDrawer(Image& image, unsigned int width, unsigned int height,
                       int margin_top, int margin_right, int margin_bottom, int margin_left,
                       double min_price, double max_price)
     : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left),
-      min_price(min_price), max_price(max_price) {
+      min_price(min_price), max_price(max_price), labelsDrawer(NULL) {
+}
+
+GridDrawer::~GridDrawer() {
+    // Don't delete labelsDrawer here as it's owned by PNGPlotter
+}
+
+void GridDrawer::setLabelsDrawer(LabelsDrawer* drawer) {
+    labelsDrawer = drawer;
 }
 
 void GridDrawer::drawFourQuadrants() {
@@ -138,8 +147,15 @@ std::vector<std::string> GridDrawer::get_date_labels(int64_t start, int64_t end,
     return labels;
 }
 
+std::string GridDrawer::numberToString(float number) const {
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(2) << number;
+    return ss.str();
+}
+
 void GridDrawer::drawYGrid() {
     RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
+    RGBA labelColor(255, 255, 255, 255); // White for labels
 
     std::vector<float> horizontalLines = get_axis_ticks(max_price, min_price);
     float adjusted_max = max_price - min_price;
@@ -150,23 +166,76 @@ void GridDrawer::drawYGrid() {
         int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
         y = clamp(y, margin_top, height - margin_bottom);
 
+        // Draw the grid line
         drawLine(margin_left, y, width - margin_right, y, gridColor);
+        
+        // Draw the price label if we have a labelsDrawer
+        if (labelsDrawer != NULL) {
+            std::string priceLabel = numberToString(horizontalLines[i]);
+            unsigned int fontSize = 500;
+            unsigned int labelX = margin_left - 10; // Position slightly to the left of the graph area
+            labelsDrawer->drawLabel(labelX, y, priceLabel, fontSize, 0, 0, false, labelColor, labelColor);
+        }
     }
 }
 
 void GridDrawer::drawXGrid(int64_t start, int64_t end, int graphSize) {
     RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
 
-    std::vector<std::string> verticalLines = get_date_labels(start, end, graphSize);
+    std::vector<std::string> dateLabels = get_date_labels(start, end, graphSize);
     
     // Calculate step size for x-axis grid
-    int step = (width - margin_left - margin_right) / (verticalLines.size() - 1);
+    int step = (width - margin_left - margin_right) / (dateLabels.size() > 1 ? (dateLabels.size() - 1) : 1);
 
     // Draw vertical grid lines
-    for (size_t i = 0; i < verticalLines.size(); ++i) {
+    for (size_t i = 0; i < dateLabels.size(); ++i) {
         int x = margin_left + i * step;
+        
+        // Draw the grid line
         drawLine(x, margin_top, x, height - margin_bottom, gridColor);
+    }
+    
+    // Draw X-axis labels with a modest font size
+    drawXAxisLabels(start, end, graphSize, 180);
+}
+
+void GridDrawer::drawXAxisLabels(int64_t start, int64_t end, int graphSize, unsigned int fontSize) {
+    if (labelsDrawer == NULL) return;
+    
+    RGBA labelColor(255, 255, 255, 255); // White for labels
+    std::vector<std::string> dateLabels = get_date_labels(start, end, graphSize);
+    
+    // Calculate step size for x-axis labels
+    int step = (width - margin_left - margin_right) / (dateLabels.size() > 1 ? (dateLabels.size() - 1) : 1);
+
+    // Draw the date/time labels
+    for (size_t i = 0; i < dateLabels.size(); ++i) {
+        int x = margin_left + i * step;
+        unsigned int labelY = height - margin_bottom + fontSize/2; // Position below the graph area
+        labelsDrawer->drawCenteredText(x, labelY, dateLabels[i], fontSize, labelColor);
     }
 }
 
-}  // namespace shmea
+void GridDrawer::drawYAxisLabels(unsigned int fontSize) {
+    if (labelsDrawer == NULL) return;
+
+    RGBA labelColor(255, 255, 255, 255);
+    std::vector<float> ticks = get_axis_ticks(max_price, min_price);
+    float adjusted_max = max_price - min_price;
+    
+    for (size_t i = 0; i < ticks.size(); ++i) {
+        float adjusted_tick = ticks[i] - min_price;
+        int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
+        y = clamp(y, margin_top, height - margin_bottom);
+        
+        std::string label = numberToString(ticks[i]);
+        
+        // Position the labels further to the left to avoid overlap with the grid
+        unsigned int labelX = margin_left - fontSize/2 - 10;
+        
+        // Use drawLabel with proper alignment for Y-axis labels
+        labelsDrawer->drawLabel(labelX, y, label, fontSize, 0, 0, false, labelColor, labelColor);
+    }
+}
+
+} // namespace shmea

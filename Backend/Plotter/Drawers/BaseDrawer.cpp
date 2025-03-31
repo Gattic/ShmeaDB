@@ -125,7 +125,8 @@ void BaseDrawer::drawCircle(int x, int y, int radius, const RGBA& color) {
     }
     
     // Draw additional circles with slightly different radii for thickness
-    for (int thickness = 1; thickness <= 3; thickness++) {
+    // Increase thickness for better visibility
+    for (int thickness = 1; thickness <= 4; thickness++) {
         // Draw inner circle
         if (radius - thickness > 0) {
             int innerX0 = 0;
@@ -168,8 +169,9 @@ void BaseDrawer::drawCircle(int x, int y, int radius, const RGBA& color) {
 
 void BaseDrawer::drawCirclePoints(int x, int y, int x0, int y0, const RGBA& color) {
     // Draw points with additional pixels for thickness
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dy = -1; dy <= 1; dy++) {
+    // Increase range to improve visibility
+    for (int dx = -2; dx <= 2; dx++) {
+        for (int dy = -2; dy <= 2; dy++) {
             // Check if points are within the plotting area bounds
             if (x + x0 + dx >= margin_left && x + x0 + dx < width - margin_right &&
                 y + y0 + dy >= margin_top && y + y0 + dy < height - margin_bottom) {
