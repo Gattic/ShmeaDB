@@ -101,7 +101,8 @@ void LabelsDrawer::drawLabel(unsigned int penX, unsigned int penY, const std::st
     int ascender = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
     int descender = face->size->metrics.descender / 64; // Convert to pixels
     
-    float heightScale = 0.5;
+    // Improve aspect ratio by using a better height scale factor
+    float heightScale = 0.8; // Increased from 0.5 to 0.8 for better proportions
     
     // Compute a common baseline using font metrics
     int baseline = face->size->metrics.ascender / 64; 
@@ -173,7 +174,7 @@ void LabelsDrawer::drawLabel(unsigned int penX, unsigned int penY, const std::st
                 // Calculate adjusted position with improved aspect ratio
                 unsigned imgX = x0 + x;
                 
-                // Use heightScale to vertically compress the text for better aspect ratio
+                // Use heightScale to properly scale the text vertically
                 unsigned imgY = y0 + static_cast<unsigned int>(y * heightScale);
 
                 if (imgX < width && imgY < height) {
@@ -217,7 +218,9 @@ void LabelsDrawer::drawHeader(const std::string& text, unsigned int fontSize,
 
     unsigned int extraSpacing = fontSize / 4;
 
-    float heightScale = 0.3;
+    // Improved aspect ratio for better text proportions
+    float heightScale = 0.7; // Changed from 0.3 to 0.7 for better proportions
+    
     // Compute a common baseline using font metrics
     int baseline = face->size->metrics.ascender / 64;
 
@@ -303,7 +306,7 @@ void LabelsDrawer::drawCenteredText(unsigned int x, unsigned int y, const std::s
     unsigned int startX = x - ((totalWidth - extraSpacing) / 2);
     
     // Draw the text
-    float heightScale = 0.5;
+    float heightScale = 0.8; // Increased from 0.5 to 0.8 for better proportions
     int baseline = face->size->metrics.ascender / 64;
     
     unsigned int penX = startX;
@@ -398,7 +401,7 @@ void LabelsDrawer::drawRotatedText(unsigned int x, unsigned int y, const std::st
     unsigned int startY = y - (totalHeight / 2);
     
     // Draw the text vertically
-    float heightScale = 0.5;
+    float heightScale = 0.8; // Increased from 0.5 to 0.8 for better proportions
     unsigned int penY = startY;
     
     // Limit the total height of the text

@@ -51,8 +51,8 @@ PNGPlotter::PNGPlotter(unsigned int width, unsigned int height, int graphSize,
       titleColor(0xFF, 0xFF, 0xFF, 0xFF),
       xAxisLabelColor(0xFF, 0xFF, 0xFF, 0xFF),
       yAxisLabelColor(0xFF, 0xFF, 0xFF, 0xFF),
-      titleFontSize(300),
-      axisLabelFontSize(200)
+      titleFontSize(240), // Reduced from 300 to 240 for better proportions
+      axisLabelFontSize(180) // Reduced from 200 to 180 for better proportions
 {
     image.Allocate(width, height);
     RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
@@ -174,8 +174,8 @@ PNGPlotter::PNGPlotter(unsigned int width, unsigned int height, int graphSize,
       titleColor(0xFF, 0xFF, 0xFF, 0xFF),
       xAxisLabelColor(0xFF, 0xFF, 0xFF, 0xFF),
       yAxisLabelColor(0xFF, 0xFF, 0xFF, 0xFF),
-      titleFontSize(300),
-      axisLabelFontSize(200)
+      titleFontSize(240), // Reduced from 300 to 240 for better proportions
+      axisLabelFontSize(180) // Reduced from 200 to 180 for better proportions
 {
     image.Allocate(width, height);
     RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
@@ -389,48 +389,117 @@ Image PNGPlotter::downsampleToTargetSize() {
 }
 
 void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::string& text, unsigned int fontSize, unsigned int xOffset, unsigned int yOffset, bool hasBox, RGBA labelColor, RGBA textColor) {
-    labelsDrawer->drawLabel(penX, penY, text, fontSize, xOffset, yOffset, hasBox, labelColor, textColor);
+    // Adjust fontSize for better proportions with high-resolution graphics
+    unsigned int adjustedFontSize = static_cast<unsigned int>(fontSize * 0.9); // Slightly reduce font size for better proportions
+    labelsDrawer->drawLabel(penX, penY, text, adjustedFontSize, xOffset, yOffset, hasBox, labelColor, textColor);
 }
 
 void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize, unsigned int headerPos, unsigned int rePositionY, RGBA headerTextColor) {
-    // Draw title centered at the top of the image
-    labelsDrawer->drawHeader(text, fontSize, headerPos, rePositionY, headerTextColor);
+    // Adjust fontSize for better proportions with high-resolution graphics
+    unsigned int adjustedFontSize = static_cast<unsigned int>(fontSize * 0.9); // Slightly reduce font size for better proportions
+    labelsDrawer->drawHeader(text, adjustedFontSize, headerPos, rePositionY, headerTextColor);
 }
 
 void PNGPlotter::setTitle(const std::string& title, unsigned int fontSize, RGBA titleColor) {
+    this->title = title;
+    this->titleFontSize = fontSize;
+    this->titleColor = titleColor;
+    
     // Position the title significantly above the top margin to ensure visibility
     unsigned int titleX = width / 2;
     // Move title further up, away from the graph area
-    unsigned int titleY = margin_top / 3;
+    unsigned int titleY = margin_top / 2;
     
     // Ensure there's minimum padding
-    if (titleY < fontSize / 2) {
-        titleY = fontSize / 2;
+    if (titleY < fontSize / 3) {
+        titleY = fontSize / 3;
+    }
+    
+    // Apply gradient background in title area to match the rest of the image
+    RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
+    RGBA Black(0x00, 0x00, 0x00, 0xFF);
+    
+    for (unsigned int y = 0; y < margin_top - 2; ++y) {
+        float ratio = static_cast<float>(y) / height;
+        RGBA gradientColor(
+            static_cast<unsigned char>(DarkGray.r * (1 - ratio) + Black.r * ratio),
+            static_cast<unsigned char>(DarkGray.g * (1 - ratio) + Black.g * ratio),
+            static_cast<unsigned char>(DarkGray.b * (1 - ratio) + Black.b * ratio),
+            0xFF
+        );
+        
+        for (unsigned int x = 0; x < width; ++x) {
+            image.SetPixel(x, y, gradientColor);
+        }
     }
     
     labelsDrawer->drawCenteredText(titleX, titleY, title, fontSize, titleColor);
 }
 
 void PNGPlotter::setXAxisLabel(const std::string& label, unsigned int fontSize, RGBA labelColor) {
+    this->xAxisLabel = label;
+    this->axisLabelFontSize = fontSize;
+    this->xAxisLabelColor = labelColor;
+    
     // Position the X-axis label at the bottom center of the graph
     unsigned int labelX = margin_left + (width - margin_left - margin_right) / 2;
     unsigned int labelY = height - margin_bottom / 2;
     
     // Ensure label has enough space below the bottom margin
-    if (labelY >= height - fontSize / 2) {
-        labelY = height - fontSize / 2 - 10; // Add extra padding
+    if (labelY >= height - fontSize / 3) {
+        labelY = height - fontSize / 3 - 10; // Add extra padding
+    }
+    
+    // Apply gradient background in bottom margin area to match the rest of the image
+    RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
+    RGBA Black(0x00, 0x00, 0x00, 0xFF);
+    
+    for (unsigned int y = height - margin_bottom + 2; y < height; ++y) {
+        float ratio = static_cast<float>(y) / height;
+        RGBA gradientColor(
+            static_cast<unsigned char>(DarkGray.r * (1 - ratio) + Black.r * ratio),
+            static_cast<unsigned char>(DarkGray.g * (1 - ratio) + Black.g * ratio),
+            static_cast<unsigned char>(DarkGray.b * (1 - ratio) + Black.b * ratio),
+            0xFF
+        );
+        
+        for (unsigned int x = 0; x < width; ++x) {
+            image.SetPixel(x, y, gradientColor);
+        }
     }
     
     labelsDrawer->drawCenteredText(labelX, labelY, label, fontSize, labelColor);
 }
 
 void PNGPlotter::setYAxisLabel(const std::string& label, unsigned int fontSize, RGBA labelColor) {
+    this->yAxisLabel = label;
+    this->axisLabelFontSize = fontSize;
+    this->yAxisLabelColor = labelColor;
+    
     // Move Y-axis label further left and ensure it's centered
-    unsigned int labelX = fontSize; // Just use fontSize as the X position to ensure visibility
+    unsigned int labelX = fontSize / 2; // Adjusted for better positioning
     unsigned int labelY = margin_top + (height - margin_top - margin_bottom) / 2;
     
     // Ensure label is clear of the left edge
-    labelX = std::max(labelX, static_cast<unsigned int>(fontSize * 1.2));
+    labelX = std::max(labelX, static_cast<unsigned int>(fontSize * 0.8));
+    
+    // Apply gradient background in left margin area to match the rest of the image
+    RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
+    RGBA Black(0x00, 0x00, 0x00, 0xFF);
+    
+    for (unsigned int y = margin_top; y < height - margin_bottom; ++y) {
+        float ratio = static_cast<float>(y) / height;
+        RGBA gradientColor(
+            static_cast<unsigned char>(DarkGray.r * (1 - ratio) + Black.r * ratio),
+            static_cast<unsigned char>(DarkGray.g * (1 - ratio) + Black.g * ratio),
+            static_cast<unsigned char>(DarkGray.b * (1 - ratio) + Black.b * ratio),
+            0xFF
+        );
+        
+        for (unsigned int x = 0; x < margin_left - 2; ++x) {
+            image.SetPixel(x, y, gradientColor);
+        }
+    }
     
     labelsDrawer->drawRotatedText(labelX, labelY, label, fontSize, labelColor);
 }
@@ -467,37 +536,6 @@ void PNGPlotter::SavePNG(const std::string& filename, const std::string& folder)
     full_path.append("/");
     full_path.append(filename);
     downsampleImage.SavePNG(full_path.c_str());
-}
-
-void PNGPlotter::redrawTitlesAndLabels() {
-    // Clear the area where titles and labels were drawn
-    RGBA bgColor(0x40, 0x40, 0x40, 0xFF);
-    
-    // Clear title area (top margin)
-    for (unsigned int y = 0; y < margin_top - 2; ++y) {
-        for (unsigned int x = 0; x < width; ++x) {
-            image.SetPixel(x, y, bgColor);
-        }
-    }
-    
-    // Clear left margin (Y axis label)
-    for (unsigned int y = margin_top; y < height - margin_bottom; ++y) {
-        for (unsigned int x = 0; x < margin_left - 2; ++x) {
-            image.SetPixel(x, y, bgColor);
-        }
-    }
-    
-    // Clear bottom margin (X axis label)
-    for (unsigned int y = height - margin_bottom + 2; y < height; ++y) {
-        for (unsigned int x = 0; x < width; ++x) {
-            image.SetPixel(x, y, bgColor);
-        }
-    }
-    
-    // Redraw the title and labels
-    setTitle(title, titleFontSize, titleColor);
-    setXAxisLabel(xAxisLabel, axisLabelFontSize, xAxisLabelColor);
-    setYAxisLabel(yAxisLabel, axisLabelFontSize, yAxisLabelColor);
 }
 
 } // namespace shmea
