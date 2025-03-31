@@ -1,6 +1,6 @@
 //PNGPlotter.cpp
 #include "PNGPlotter.h"
-#include "png-helper.h"
+#include "../Database/png-helper.h"
 
 using namespace shmea;
 //Just as a reminder, graphSize is the amount of data points that are appearing across the graph. This can be candles, data points, bars, etc

@@ -2,7 +2,7 @@
 #ifndef PNGPLOTTER_H
 #define PNGPLOTTER_H
 
-#include "image.h"
+#include "../Database/image.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <string>

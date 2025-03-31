@@ -10,37 +10,18 @@ else()
     include_directories(${FREETYPE_INCLUDE_DIRS})
 endif()
 
-set(DB_src_files
-	lodepng.cpp
-	png-helper.cpp
-	image.cpp
-	GVector.h
-	GPointer.h
-	GType.cpp
-	GType_helpers.cpp
-	GType_operators.cpp
-	GString.cpp
-	GString_helpers.cpp
-	GList.cpp
-	GLogger.cpp
-	GTable.cpp
-	GObject.cpp
-	maxid.cpp
-	SaveTable.cpp
-	SaveFolder.cpp
-	Serializable.cpp
-	ServiceData.cpp
-	standardizable.cpp
+set(Plotter_src_files
+	PNGPlotter.cpp
 )
-add_library(DB ${DB_src_files})
+add_library(Plotter ${Plotter_src_files})
 
 #Link libraries
 if(EMSCRIPTEN)
 else()
-    target_link_libraries(DB ${FREETYPE_LIBRARIES})
+    target_link_libraries(Plotter ${FREETYPE_LIBRARIES})
 endif()
 
-install(TARGETS DB EXPORT shmeaConfig
+install(TARGETS Plotter EXPORT shmeaConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
@@ -48,4 +29,4 @@ install(TARGETS DB EXPORT shmeaConfig
 
 install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
 
-export(TARGETS DB FILE shmeaConfig.cmake)
+export(TARGETS Plotter FILE shmeaConfig.cmake)
