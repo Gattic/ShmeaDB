@@ -1038,7 +1038,7 @@ void PNGPlotter::addArrow(const std::vector<std::vector<double> >& sorted_eig_ve
     }
 }
 
-void PNGPlotter::addHistogram(std::vector<int>& bins, RGBA& barColor)
+void PNGPlotter::addHistogram(const std::vector<int>& bins, RGBA& barColor)
 {
     int max_count = *std::max_element(bins.begin(), bins.end());
 
