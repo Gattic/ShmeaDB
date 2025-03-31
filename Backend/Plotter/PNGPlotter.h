@@ -1,109 +1,110 @@
-//PNGPlotter.h
 #ifndef PNGPLOTTER_H
 #define PNGPLOTTER_H
 
 #include "../Database/image.h"
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include "Drawers/BaseDrawer.h"
+#include "Drawers/GridDrawer.h"
+#include "Drawers/CandlestickDrawer.h"
+#include "Drawers/ArrowDrawer.h"
+#include "Drawers/HistogramDrawer.h"
+#include "Drawers/LabelsDrawer.h"
+#include "Drawers/DataDrawer.h"
+
 #include <string>
 #include <limits>
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <iostream>
-#include <cmath>
 
-namespace shmea{
+namespace shmea {
 
-class PNGPlotter
-{
+class PNGPlotter {
+private:
+    Image image;
+    unsigned int width;
+    unsigned int height;
+    float min_price, max_price;
+    const int margin_top;
+    const int margin_right;
+    const int margin_bottom;
+    const int margin_left;
+    const bool fourQuadrants;
+    long last_timestamp;
+    int total_candles_drawn;
+    const int graphSize;
+    int candle_width;
+    int last_candle_pos;
+    int lines;
+    
+    // Specialized drawer components
+    GridDrawer* gridDrawer;
+    CandlestickDrawer* candlestickDrawer;
+    ArrowDrawer* arrowDrawer;
+    HistogramDrawer* histogramDrawer;
+    LabelsDrawer* labelsDrawer;
+    DataDrawer* dataDrawer;
+    
+    // Standard colors
+    RGBA color_bullish;
+    RGBA color_bearish;
 
-	private:
-		Image image;
-		unsigned int width;
-		unsigned int height;
-		float min_price, max_price;
-		const int margin_top;
-		const int margin_right;
-		const int margin_bottom;
-		const int margin_left;
-		const bool fourQuadrants;
-		long last_timestamp;
-		int total_candles_drawn;
-		const int graphSize;
-		int candle_width;
-		int last_candle_pos;
-		int lines;
-		std::vector<bool> first_line_point;
-		std::vector<int> last_price_pos;
-		int last_line_drawn;
-		std::vector<RGBA> line_colors;
-		std::map<std::string, RGBA> indicatorColors;
-		std::map<std::string, RGBA> indicatorTextColor;
-		std::map<std::string, int> indicatorPoint;
-		std::vector<std::string> line_color_names;
-		RGBA color_bullish;
-		RGBA color_bearish;
+    // Aggregation time mappings
+    std::map<int, std::string> AGG_SIZE;
 
-		unsigned int headerPenXStarting;
-		unsigned int headerPenYStarting;
-		unsigned int headerXSpacing;
-		unsigned int headerYSpacing;
+    // Downsample the high-res image to target size
+    Image downsampleToTargetSize();
 
-		std::vector<std::vector<unsigned int> > headerSpacings;
-
-		std::map<int, std::string> AGG_SIZE;
-		//font
-		FT_Library ft;
-		FT_Face face;
-		std::vector<float> horizontalLabels;
-
-
-//		RGB HSLToRGB(float, float, float);
-//		void generateUniqueColors(int);
-		void initialize_colors(std::vector<RGBA>&, std::vector<std::string>&);
-		void initialize_font(const std::string = "fonts/font.ttf");
-		Image downsampleToTargetSize();
-
-		void drawFourQuadrants();	
-
-		void drawPoint(int, int, int, const RGBA&);
-		void drawLine(int, int, int, int, const RGBA&, int = 6);
-		void drawCandleStick(Image&, int, int, int, int, int, RGBA&);
-		void drawArrow(int, int, int, int, const RGBA&, int);
-		void drawHistogram(int, int, int, RGBA&);
-		void drawCentroidCircle(int x, int y, int radius, const RGBA& color);
-		void drawClusterCircle(int x, int y, int radius, const RGBA& color);
-		void drawCirclePoints(int x, int y, int x0, int y0, const RGBA& color);
-	public:
-
-		
-		static const int TARGET_WIDTH = 2400;
-		static const int TARGET_HEIGHT = 1200;
-		static const int SUPERSAMPLE_SCALE = 4;
-		static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
-		static const int SUPERSAMPLE_HEIGHT = TARGET_HEIGHT * SUPERSAMPLE_SCALE;
-		
-		PNGPlotter(unsigned int, unsigned int, int, double, double, int = 0, int=0, int=0, int=0, int=0, bool = false);
-		void addDataPointWithIndicator(double, int = 0, std::string = "", std::string = "");
-		void addDataPoint(double, int = 0, bool = true, RGBA* = NULL, int = 6);
-		void addDataPointsPCA(const std::vector<std::vector<double> >&, const RGBA&);
-		void addDataPointsKMeans(const std::string&, const std::vector<std::vector<double> >& data, const std::vector<int>& labels, const std::vector<std::vector<float> >& centroids);
-		void addArrow(const std::vector<std::vector<double> >&, const std::vector<double>&, const RGBA&);
-		void addHistogram(const std::vector<int>&, RGBA&);
-		void drawNewCandle(long, float, float, float, float);
-		void SavePNG(const std::string&, const std::string&);
-
-		int getWidth();
-		int getHeight();
-	
-		void drawYGrid();
-		void drawXGrid(int64_t, int64_t);
-
-		void HeaderPNG(const std::string&, unsigned int, unsigned int = 0, unsigned int = 0, RGBA = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
-		void GraphLabel(unsigned int, unsigned int, const std::string&, unsigned int, unsigned int=0, unsigned int=0, bool = false, RGBA = RGBA(0xFF, 0xFF, 0xFF, 0xFF), RGBA = RGBA(0xFF, 0xFF, 0xFF, 0xFF) );
-
-		std::string aggString(int);
+public:
+    static const int TARGET_WIDTH = 2400;
+    static const int TARGET_HEIGHT = 1200;
+    static const int SUPERSAMPLE_SCALE = 4;
+    static const int SUPERSAMPLE_WIDTH = TARGET_WIDTH * SUPERSAMPLE_SCALE;
+    static const int SUPERSAMPLE_HEIGHT = TARGET_HEIGHT * SUPERSAMPLE_SCALE;
+    
+    PNGPlotter(unsigned int width, unsigned int height, int graphSize, 
+               double max_price, double low_price, int lines = 0, 
+               int margin_top = 0, int margin_right = 0, 
+               int margin_bottom = 0, int margin_left = 0, bool fourQuadrants = false);
+    ~PNGPlotter();
+    
+    // Data point addition methods
+    void addDataPointWithIndicator(double newPrice, int portIndex = 0, std::string indicator = "", std::string value = "");
+    void addDataPoint(double newPrice, int portIndex = 0, bool draw = true, RGBA* lineColor = NULL, int lineWidth = 6);
+    void addDataPointsPCA(const std::vector<std::vector<double> >& data, const RGBA& pointColor);
+    void addDataPointsKMeans(const std::string& graphName, 
+                             const std::vector<std::vector<double> >& data, 
+                             const std::vector<int>& labels, 
+                             const std::vector<std::vector<float> >& centroids);
+    void addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, 
+                  const std::vector<double>& variance_explained, 
+                  const RGBA& arrowColor);
+    void addHistogram(const std::vector<int>& bins, RGBA& barColor);
+    
+    // Candlestick charting
+    void drawNewCandle(long timestamp, float open, float close, float high, float low);
+    
+    // Grid and labels
+    void drawYGrid();
+    void drawXGrid(int64_t start, int64_t end);
+    void HeaderPNG(const std::string& text, unsigned int fontSize, 
+                   unsigned int headerPos = 0, unsigned int rePositionY = 0, 
+                   RGBA headerTextColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    void GraphLabel(unsigned int penX, unsigned int penY, 
+                    const std::string& text, unsigned int fontSize, 
+                    unsigned int xOffset = 0, unsigned int yOffset = 0, 
+                    bool hasBox = false, 
+                    RGBA labelColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF), 
+                    RGBA textColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    
+    // File operations
+    void SavePNG(const std::string& filename, const std::string& folder);
+    
+    // Utility functions
+    int getWidth();
+    int getHeight();
+    std::string aggString(int aggSize);
 };
-};
+
+} // namespace shmea
 #endif
