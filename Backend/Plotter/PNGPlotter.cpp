@@ -19,6 +19,18 @@ T getOptionValue(const std::map<std::string, std::string>& options, const std::s
     return defaultValue;
 }
 
+// Template specialization for std::string to handle spaces
+template<>
+std::string getOptionValue<std::string>(
+    const std::map<std::string, std::string>& options, 
+    const std::string& key, 
+    std::string defaultValue) {
+    if (options.find(key) != options.end()) {
+        return options.at(key); // Return the entire string without parsing
+    }
+    return defaultValue;
+}
+
 // Constructor that uses options map
 PNGPlotter::PNGPlotter(unsigned int width, unsigned int height, int graphSize, 
                       const std::map<std::string, std::string>& options)
