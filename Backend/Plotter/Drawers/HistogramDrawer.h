@@ -2,19 +2,19 @@
 #define HISTOGRAM_DRAWER_H
 
 #include "BaseDrawer.h"
+#include "../GraphBounds.h"
 #include <vector>
 
 namespace shmea {
 
 class HistogramDrawer : public BaseDrawer {
 private:
-    double min_price;
-    double max_price;
+    GraphBounds bounds;
     int graphSize;
 
 public:
     HistogramDrawer(Image& image, unsigned int width, unsigned int height,
-                   double min_price, double max_price, int graphSize);
+                   const GraphBounds& bounds, int graphSize);
 
     void drawBar(int x_start, int y_start, int bar_width, const RGBA& barColor);
     void addHistogram(const std::vector<int>& bins, const RGBA& barColor);

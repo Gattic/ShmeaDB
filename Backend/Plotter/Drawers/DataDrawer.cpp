@@ -7,9 +7,9 @@
 namespace shmea {
 
 DataDrawer::DataDrawer(Image& image, unsigned int width, unsigned int height,
-                     double min_price, double max_price, int graphSize, int lines)
+                     const GraphBounds& bounds, int graphSize, int lines)
     : BaseDrawer(image, width, height),
-      min_price(min_price), max_price(max_price), graphSize(graphSize), lines(lines),
+      bounds(bounds), graphSize(graphSize), lines(lines),
       first_line_point(lines, false), last_price_pos(lines, 0), last_line_drawn(0) {
     
     // Calculate margins for context
@@ -92,7 +92,7 @@ void DataDrawer::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* l
         lineColor = &line_colors[portIndex];
     }
 
-    int y = height - margin_bottom - static_cast<int>((newPrice - min_price) / (max_price - min_price) * (height - margin_top - margin_bottom));
+    int y = height - margin_bottom - static_cast<int>((newPrice - bounds.getMinPrice()) / bounds.getRange() * (height - margin_top - margin_bottom));
     y = clamp(y, margin_top, height - margin_bottom);    
 
     if (draw) {

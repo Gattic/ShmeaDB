@@ -23,8 +23,7 @@ T getOptionValue(const std::map<std::string, std::string>& options, const std::s
 PNGPlotter::PNGPlotter(unsigned int width, unsigned int height, int graphSize, 
                       const std::map<std::string, std::string>& options)
     : image(), width(width), height(height),
-      min_price(getOptionValue(options, "min_price", 0.0f)),
-      max_price(getOptionValue(options, "max_price", 0.0f)),
+      bounds(getOptionValue(options, "min_price", 0.0f), getOptionValue(options, "max_price", 100.0f)),
       fourQuadrants(getOptionValue(options, "four_quadrants", false)),
       last_timestamp(0),
       total_candles_drawn(0),
@@ -71,12 +70,12 @@ PNGPlotter::PNGPlotter(unsigned int width, unsigned int height, int graphSize,
     std::cout << "Initializing PNGPlotter with FreeType text rendering" << std::endl;
 
     // Initialize all specialized drawers
-    gridDrawer = new GridDrawer(image, width, height, min_price, max_price);
+    gridDrawer = new GridDrawer(image, width, height, bounds);
     candlestickDrawer = new CandlestickDrawer(image, width, height, candle_width, color_bullish, color_bearish);
     arrowDrawer = new ArrowDrawer(image, width, height);
-    histogramDrawer = new HistogramDrawer(image, width, height, min_price, max_price, graphSize);
+    histogramDrawer = new HistogramDrawer(image, width, height, bounds, graphSize);
     labelsDrawer = new LabelsDrawer(image, width, height);
-    dataDrawer = new DataDrawer(image, width, height, min_price, max_price, graphSize, lines);
+    dataDrawer = new DataDrawer(image, width, height, bounds, graphSize, lines);
     legendDrawer = new LegendDrawer(image, width, height);
 
     // Connect the GridDrawer to the LabelsDrawer for axis labels
@@ -168,8 +167,8 @@ void PNGPlotter::addDataPointWithIndicator(double newPrice, int portIndex, std::
         int margin_bottom = height * 0.15;
         int margin_top = height * 0.1;
         
-        float adjusted_max = max_price - min_price;
-        float adjusted_tick = newPrice - min_price;
+        float adjusted_max = bounds.getRange();
+        float adjusted_tick = newPrice - bounds.getMinPrice();
         int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
         
         std::ostringstream oss;
@@ -210,11 +209,11 @@ void PNGPlotter::drawNewCandle(long timestamp, float raw_open, float raw_close, 
     int margin_top = height * 0.1;
     
     // Adjust prices by subtracting min_price for normalization
-    float adjusted_open = raw_open - min_price;
-    float adjusted_close = raw_close - min_price;
-    float adjusted_high = raw_high - min_price;
-    float adjusted_low = raw_low - min_price;
-    float adjusted_max = max_price - min_price;
+    float adjusted_open = raw_open - bounds.getMinPrice();
+    float adjusted_close = raw_close - bounds.getMinPrice();
+    float adjusted_high = raw_high - bounds.getMinPrice();
+    float adjusted_low = raw_low - bounds.getMinPrice();
+    float adjusted_max = bounds.getRange();
 
     // Calculate y-coordinates with adjusted prices
     int y_open = height - margin_bottom - static_cast<int>(adjusted_open / adjusted_max * (height - margin_top - margin_bottom));

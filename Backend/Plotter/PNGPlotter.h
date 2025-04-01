@@ -2,6 +2,7 @@
 #define PNGPLOTTER_H
 
 #include "../Database/image.h"
+#include "GraphBounds.h"
 #include "Drawers/BaseDrawer.h"
 #include "Drawers/GridDrawer.h"
 #include "Drawers/CandlestickDrawer.h"
@@ -25,7 +26,7 @@ private:
     Image image;
     unsigned int width;
     unsigned int height;
-    float min_price, max_price;
+    GraphBounds bounds;
     const bool fourQuadrants;
     long last_timestamp;
     int total_candles_drawn;
@@ -145,6 +146,9 @@ public:
     int getWidth();
     int getHeight();
     std::string aggString(int aggSize);
+    
+    // Bounds access
+    const GraphBounds& getBounds() const { return bounds; }
 };
 
 } // namespace shmea

@@ -3,6 +3,7 @@
 
 #include "BaseDrawer.h"
 #include "LabelsDrawer.h" // Add this include
+#include "../GraphBounds.h"
 #include <string>
 #include <vector>
 #include <ctime>
@@ -13,8 +14,7 @@ namespace shmea {
 
 class GridDrawer : public BaseDrawer {
 private:
-    double min_price;
-    double max_price;
+    GraphBounds bounds;
     LabelsDrawer* labelsDrawer; // Add this pointer
     
     std::vector<float> get_axis_ticks(float max_price, float min_price, int max_ticks = 8) const;
@@ -24,7 +24,7 @@ private:
     
 public:
     GridDrawer(Image& image, unsigned int width, unsigned int height,
-               double min_price, double max_price);
+               const GraphBounds& bounds);
     ~GridDrawer();
     
     // Set the LabelsDrawer reference

@@ -4,22 +4,22 @@
 namespace shmea {
 
 HistogramDrawer::HistogramDrawer(Image& image, unsigned int width, unsigned int height,
-                               double min_price, double max_price, int graphSize)
+                               const GraphBounds& bounds, int graphSize)
     : BaseDrawer(image, width, height),
-      min_price(min_price), max_price(max_price), graphSize(graphSize) {
+      bounds(bounds), graphSize(graphSize) {
 }
 
 void HistogramDrawer::drawBar(int x_start, int y_start, int bar_width, const RGBA& barColor) {
-    // Calculate margins for context
+    // Calculate margins for context - standard calculations based on width and height
     int margin_left = width * 0.15;
     int margin_right = width * 0.1;
     int margin_top = height * 0.1;
     int margin_bottom = height * 0.15;
     
     for(int x = x_start; x < x_start + bar_width; ++x) {
-        for(int y = y_start; y < height - margin_bottom; ++y) {
-            if (x >= margin_left && x < width - margin_right &&
-                y >= margin_top && y < height - margin_bottom) {
+        for(int y = y_start; y < static_cast<int>(height) - margin_bottom; ++y) {
+            if (x >= margin_left && x < static_cast<int>(width) - margin_right &&
+                y >= margin_top && y < static_cast<int>(height) - margin_bottom) {
                 image.SetPixel(x, y, barColor);
             }
         }
@@ -27,7 +27,7 @@ void HistogramDrawer::drawBar(int x_start, int y_start, int bar_width, const RGB
 }
 
 void HistogramDrawer::addHistogram(const std::vector<int>& bins, const RGBA& barColor) {
-    // Calculate margins for context
+    // Calculate margins for context - standard calculations based on width and height
     int margin_left = width * 0.15;
     int margin_right = width * 0.1;
     int margin_top = height * 0.1;

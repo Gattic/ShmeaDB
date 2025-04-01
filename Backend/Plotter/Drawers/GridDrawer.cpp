@@ -8,9 +8,9 @@
 namespace shmea {
 
 GridDrawer::GridDrawer(Image& image, unsigned int width, unsigned int height,
-                      double min_price, double max_price)
+                      const GraphBounds& bounds)
     : BaseDrawer(image, width, height),
-      min_price(min_price), max_price(max_price), labelsDrawer(NULL) {
+      bounds(bounds), labelsDrawer(NULL) {
 }
 
 GridDrawer::~GridDrawer() {
@@ -168,12 +168,12 @@ void GridDrawer::drawYGrid() {
     RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
     RGBA labelColor(255, 255, 255, 255); // White for labels
 
-    std::vector<float> horizontalLines = get_axis_ticks(max_price, min_price);
-    float adjusted_max = max_price - min_price;
+    std::vector<float> horizontalLines = get_axis_ticks(bounds.getMaxPrice(), bounds.getMinPrice());
+    float adjusted_max = bounds.getRange();
     
     // Draw horizontal grid lines and y-axis labels
     for (size_t i = 0; i < horizontalLines.size(); ++i) {
-        float adjusted_tick = horizontalLines[i] - min_price;
+        float adjusted_tick = horizontalLines[i] - bounds.getMinPrice();
         int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
         y = clamp(y, margin_top, height - margin_bottom);
 
@@ -249,11 +249,11 @@ void GridDrawer::drawYAxisLabels(unsigned int fontSize) {
     if (labelsDrawer == NULL) return;
 
     RGBA labelColor(255, 255, 255, 255);
-    std::vector<float> ticks = get_axis_ticks(max_price, min_price);
-    float adjusted_max = max_price - min_price;
+    std::vector<float> ticks = get_axis_ticks(bounds.getMaxPrice(), bounds.getMinPrice());
+    float adjusted_max = bounds.getRange();
     
     for (size_t i = 0; i < ticks.size(); ++i) {
-        float adjusted_tick = ticks[i] - min_price;
+        float adjusted_tick = ticks[i] - bounds.getMinPrice();
         int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
         y = clamp(y, margin_top, height - margin_bottom);
         

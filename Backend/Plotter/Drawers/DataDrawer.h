@@ -2,6 +2,7 @@
 #define DATA_DRAWER_H
 
 #include "BaseDrawer.h"
+#include "../GraphBounds.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -25,8 +26,7 @@ private:
     std::map<std::string, int> indicatorPoint;
     
     // Dimensions
-    double min_price;
-    double max_price;
+    GraphBounds bounds;
     int graphSize;
     int candle_width;
     
@@ -35,7 +35,7 @@ private:
 
 public:
     DataDrawer(Image& image, unsigned int width, unsigned int height,
-               double min_price, double max_price, int graphSize, int lines);
+               const GraphBounds& bounds, int graphSize, int lines);
                
     void addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor = NULL, int lineWidth = 6);
     void addDataPointWithIndicator(double newPrice, int portIndex, const std::string& indicator, const std::string& value);
