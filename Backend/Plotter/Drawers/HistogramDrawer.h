@@ -13,8 +13,7 @@ private:
     int graphSize;
 
 public:
-    HistogramDrawer(Image& image, unsigned int width, unsigned int height, 
-                   int margin_top, int margin_right, int margin_bottom, int margin_left,
+    HistogramDrawer(Image& image, unsigned int width, unsigned int height,
                    double min_price, double max_price, int graphSize);
 
     void drawBar(int x_start, int y_start, int bar_width, const RGBA& barColor);

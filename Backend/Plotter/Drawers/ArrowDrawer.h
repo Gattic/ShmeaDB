@@ -8,8 +8,7 @@ namespace shmea {
 
 class ArrowDrawer : public BaseDrawer {
 public:
-    ArrowDrawer(Image& image, unsigned int width, unsigned int height, 
-                int margin_top, int margin_right, int margin_bottom, int margin_left);
+    ArrowDrawer(Image& image, unsigned int width, unsigned int height);
     
     void drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowColor, int arrowSize = 10);
     void addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, 

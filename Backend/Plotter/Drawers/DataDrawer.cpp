@@ -6,12 +6,15 @@
 
 namespace shmea {
 
-DataDrawer::DataDrawer(Image& image, unsigned int width, unsigned int height, 
-                     int margin_top, int margin_right, int margin_bottom, int margin_left,
+DataDrawer::DataDrawer(Image& image, unsigned int width, unsigned int height,
                      double min_price, double max_price, int graphSize, int lines)
-    : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left),
+    : BaseDrawer(image, width, height),
       min_price(min_price), max_price(max_price), graphSize(graphSize), lines(lines),
       first_line_point(lines, false), last_price_pos(lines, 0), last_line_drawn(0) {
+    
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
     
     candle_width = (width - margin_left - margin_right) / (graphSize > 0 ? graphSize : 1);
     initialize_colors();
@@ -69,6 +72,12 @@ void DataDrawer::initialize_colors() {
 }
 
 void DataDrawer::addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor, int lineWidth) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     if (lines == 0) { 
         std::cerr << "PNG Plotter not initialized with the correct amount of lines to draw" << std::endl;
         return;
@@ -138,6 +147,12 @@ const RGBA* DataDrawer::getIndicatorTextColor(const std::string& indicator) cons
 }
 
 void DataDrawer::addDataPointsPCA(const std::vector<std::vector<double> >& data, const RGBA& pointColor) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
@@ -303,6 +318,12 @@ void DataDrawer::addDataPointsKMeans(const std::string& graphName,
                                   const std::vector<std::vector<double> >& data, 
                                   const std::vector<int>& labels, 
                                   const std::vector<std::vector<float> >& centroids) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;

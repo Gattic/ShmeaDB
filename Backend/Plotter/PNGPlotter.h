@@ -26,10 +26,6 @@ private:
     unsigned int width;
     unsigned int height;
     float min_price, max_price;
-    const int margin_top;
-    const int margin_right;
-    const int margin_bottom;
-    const int margin_left;
     const bool fourQuadrants;
     long last_timestamp;
     int total_candles_drawn;
@@ -84,10 +80,6 @@ public:
      *        - "max_price": Maximum price value (default: 100.0)
      *        - "min_price": Minimum price value (default: 0.0)
      *        - "lines": Number of lines to plot (default: 0)
-     *        - "margin_top": Top margin in pixels (default: height*0.1)
-     *        - "margin_right": Right margin in pixels (default: width*0.1)
-     *        - "margin_bottom": Bottom margin in pixels (default: height*0.15)
-     *        - "margin_left": Left margin in pixels (default: width*0.15)
      *        - "four_quadrants": Whether to draw four quadrants (default: false)
      *        - "title": Chart title (default: "Data Visualization")
      *        - "x_axis_label": X-axis label (default: "Time")
@@ -95,12 +87,6 @@ public:
      */
     PNGPlotter(unsigned int width, unsigned int height, int graphSize, 
                const std::map<std::string, std::string>& options = std::map<std::string, std::string>());
-    
-    // Legacy constructor (kept for backward compatibility)
-    PNGPlotter(unsigned int width, unsigned int height, int graphSize, 
-               double max_price, double low_price, int lines = 0, 
-               int margin_top = 0, int margin_right = 0, 
-               int margin_bottom = 0, int margin_left = 0, bool fourQuadrants = false);
     
     ~PNGPlotter();
     

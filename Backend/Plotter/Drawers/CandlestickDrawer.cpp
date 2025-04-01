@@ -3,16 +3,21 @@
 
 namespace shmea {
 
-CandlestickDrawer::CandlestickDrawer(Image& image, unsigned int width, unsigned int height, 
-                                     int margin_top, int margin_right, int margin_bottom, int margin_left,
-                                     int candle_width, const RGBA& bullish_color, const RGBA& bearish_color)
-    : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left),
+CandlestickDrawer::CandlestickDrawer(Image& image, unsigned int width, unsigned int height,
+                                    int candle_width, const RGBA& bullish_color, const RGBA& bearish_color)
+    : BaseDrawer(image, width, height),
       candle_width(candle_width),
       color_bullish(bullish_color),
       color_bearish(bearish_color) {
 }
 
 void CandlestickDrawer::drawCandleStick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color) {
+    // Calculate margins for bounds checking
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     const int body_width = candle_width;
     const int half_body_width = body_width / 2;
     const int wick_thickness = 20;

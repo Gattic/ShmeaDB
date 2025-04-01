@@ -23,8 +23,7 @@ private:
     std::string numberToString(float number) const; // New method
     
 public:
-    GridDrawer(Image& image, unsigned int width, unsigned int height, 
-               int margin_top, int margin_right, int margin_bottom, int margin_left,
+    GridDrawer(Image& image, unsigned int width, unsigned int height,
                double min_price, double max_price);
     ~GridDrawer();
     

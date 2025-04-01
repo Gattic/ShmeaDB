@@ -7,10 +7,9 @@
 
 namespace shmea {
 
-GridDrawer::GridDrawer(Image& image, unsigned int width, unsigned int height, 
-                      int margin_top, int margin_right, int margin_bottom, int margin_left,
+GridDrawer::GridDrawer(Image& image, unsigned int width, unsigned int height,
                       double min_price, double max_price)
-    : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left),
+    : BaseDrawer(image, width, height),
       min_price(min_price), max_price(max_price), labelsDrawer(NULL) {
 }
 
@@ -23,6 +22,12 @@ void GridDrawer::setLabelsDrawer(LabelsDrawer* drawer) {
 }
 
 void GridDrawer::drawFourQuadrants() {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     RGBA lineColor(0xC8, 0xC8, 0xC8, 0xC8); // Light gray for the quadrant lines
 
     // Calculate positions for the middle lines
@@ -154,6 +159,12 @@ std::string GridDrawer::numberToString(float number) const {
 }
 
 void GridDrawer::drawYGrid() {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
     RGBA labelColor(255, 255, 255, 255); // White for labels
 
@@ -180,6 +191,12 @@ void GridDrawer::drawYGrid() {
 }
 
 void GridDrawer::drawXGrid(int64_t start, int64_t end, int graphSize) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
 
     std::vector<std::string> dateLabels = get_date_labels(start, end, graphSize);
@@ -200,6 +217,12 @@ void GridDrawer::drawXGrid(int64_t start, int64_t end, int graphSize) {
 }
 
 void GridDrawer::drawXAxisLabels(int64_t start, int64_t end, int graphSize, unsigned int fontSize) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     if (labelsDrawer == NULL) return;
     
     RGBA labelColor(255, 255, 255, 255); // White for labels
@@ -217,6 +240,12 @@ void GridDrawer::drawXAxisLabels(int64_t start, int64_t end, int graphSize, unsi
 }
 
 void GridDrawer::drawYAxisLabels(unsigned int fontSize) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     if (labelsDrawer == NULL) return;
 
     RGBA labelColor(255, 255, 255, 255);

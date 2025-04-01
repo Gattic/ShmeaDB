@@ -6,9 +6,8 @@
 
 namespace shmea {
 
-LabelsDrawer::LabelsDrawer(Image& image, unsigned int width, unsigned int height, 
-                          int margin_top, int margin_right, int margin_bottom, int margin_left)
-    : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left),
+LabelsDrawer::LabelsDrawer(Image& image, unsigned int width, unsigned int height)
+    : BaseDrawer(image, width, height),
       headerPenXStarting(500), headerPenYStarting(75), headerXSpacing(25), headerYSpacing(150),
       freetype_available(false) {
     
@@ -344,6 +343,11 @@ void LabelsDrawer::drawCenteredText(unsigned int x, unsigned int y, const std::s
 
 void LabelsDrawer::drawRotatedText(unsigned int x, unsigned int y, const std::string& text,
                                  unsigned int fontSize, RGBA textColor) {
+    // Calculate margins for context
+    int margin_left = width * 0.15;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
+    
     if (!freetype_available) {
         // Simple fallback when FreeType font couldn't be loaded
         // Make sure we always draw within bounds

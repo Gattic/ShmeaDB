@@ -33,8 +33,7 @@ private:
     void drawEntryLabel(int x, int y, const std::string& label);
 
 public:
-    LegendDrawer(Image& image, unsigned int width, unsigned int height, 
-                int margin_top, int margin_right, int margin_bottom, int margin_left);
+    LegendDrawer(Image& image, unsigned int width, unsigned int height);
     
     void addEntry(const std::string& label, const RGBA& color);
     void draw(unsigned int x, unsigned int y);

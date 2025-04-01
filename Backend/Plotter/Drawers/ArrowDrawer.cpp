@@ -4,9 +4,8 @@
 
 namespace shmea {
 
-ArrowDrawer::ArrowDrawer(Image& image, unsigned int width, unsigned int height, 
-                         int margin_top, int margin_right, int margin_bottom, int margin_left)
-    : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left) {
+ArrowDrawer::ArrowDrawer(Image& image, unsigned int width, unsigned int height)
+    : BaseDrawer(image, width, height) {
 }
 
 void ArrowDrawer::drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowColor, int arrowSize) {
@@ -50,6 +49,12 @@ void ArrowDrawer::drawArrow(int x1, int y1, int x2, int y2, const RGBA& arrowCol
 void ArrowDrawer::addArrow(const std::vector<std::vector<double> >& sorted_eig_vecs, 
                           const std::vector<double>& variance_explained, const RGBA& arrowColor) {
     int arrowSize = 100;
+
+    // Calculate margins based on image size
+    int margin_left = width * 0.15;
+    int margin_right = width * 0.1;
+    int margin_top = height * 0.1;
+    int margin_bottom = height * 0.15;
 
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = width - margin_left - margin_right;

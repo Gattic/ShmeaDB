@@ -34,8 +34,7 @@ private:
     void initialize_colors();
 
 public:
-    DataDrawer(Image& image, unsigned int width, unsigned int height, 
-               int margin_top, int margin_right, int margin_bottom, int margin_left,
+    DataDrawer(Image& image, unsigned int width, unsigned int height,
                double min_price, double max_price, int graphSize, int lines);
                
     void addDataPoint(double newPrice, int portIndex, bool draw, RGBA* lineColor = NULL, int lineWidth = 6);

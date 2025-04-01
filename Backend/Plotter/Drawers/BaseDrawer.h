@@ -11,10 +11,6 @@ protected:
     Image& image;
     unsigned int width;
     unsigned int height;
-    int margin_top;
-    int margin_right;
-    int margin_bottom;
-    int margin_left;
     
     // Helper methods
     void drawPoint(int x, int y, int thickness, const RGBA& pointColor);
@@ -26,8 +22,7 @@ protected:
     int clamp(int value, int min, int max) const;
     
 public:
-    BaseDrawer(Image& image, unsigned int width, unsigned int height, 
-               int margin_top, int margin_right, int margin_bottom, int margin_left);
+    BaseDrawer(Image& image, unsigned int width, unsigned int height);
     virtual ~BaseDrawer() {}; // Changed from "= default;" to empty implementation for C++03
 };
 

@@ -3,9 +3,8 @@
 
 namespace shmea {
 
-LegendDrawer::LegendDrawer(Image& image, unsigned int width, unsigned int height, 
-                          int margin_top, int margin_right, int margin_bottom, int margin_left)
-    : BaseDrawer(image, width, height, margin_top, margin_right, margin_bottom, margin_left),
+LegendDrawer::LegendDrawer(Image& image, unsigned int width, unsigned int height)
+    : BaseDrawer(image, width, height),
       entry_height(40), entry_spacing(10), box_size(30), 
       font_size(500), padding(20),
       background_color(0x20, 0x20, 0x20, 0xD0),
@@ -108,6 +107,9 @@ void LegendDrawer::drawEntryLabel(int x, int y, const std::string& label) {
 }
 
 void LegendDrawer::draw(unsigned int x, unsigned int y) {
+    // Calculate margins for context
+    int margin_top = height * 0.1;
+    
     if (entries.empty()) {
         return;  // Nothing to draw
     }

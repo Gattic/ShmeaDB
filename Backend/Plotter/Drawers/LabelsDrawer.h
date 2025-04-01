@@ -28,8 +28,7 @@ private:
     bool freetype_available;
 
 public:
-    LabelsDrawer(Image& image, unsigned int width, unsigned int height, 
-                int margin_top, int margin_right, int margin_bottom, int margin_left);
+    LabelsDrawer(Image& image, unsigned int width, unsigned int height);
     ~LabelsDrawer();
     
     // Text rendering methods
