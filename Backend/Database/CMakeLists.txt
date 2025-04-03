@@ -10,6 +10,11 @@ else()
     include_directories(${FREETYPE_INCLUDE_DIRS})
 endif()
 
+# Set C++03 standard flag
+set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 set(DB_src_files
 	lodepng.cpp
 	png-helper.cpp
@@ -32,6 +37,7 @@ set(DB_src_files
 	ServiceData.cpp
 	standardizable.cpp
 	PNGPlotter.cpp
+	Cluster10.cpp
 )
 add_library(DB ${DB_src_files})
 

@@ -25,17 +25,17 @@ PNGPlotter::PNGPlotter(unsigned width, unsigned height, int graphSize, double ma
 	last_line_drawn(0),
 	line_colors(),
 	line_color_names(),
-	color_bullish(0x00, 0xFF, 0x00, 0xFF), 
-	color_bearish(0xFF, 0x00, 0x00, 0xFF),
+	color_bullish(0x03, 0xC0, 0x3C, 0xFF), // Modern green from cluster10.fig theme
+	color_bearish(0xFF, 0x47, 0x45, 0xFF), // Modern red from cluster10.fig theme
 	headerPenXStarting(500),
 	headerPenYStarting(75),
 	headerXSpacing(25),
 	headerYSpacing(150)
 {
 	image.Allocate(width, height);
-	RGBA DarkGray(0x40, 0x40, 0x40, 0xFF);
-	RGBA Black(0x00, 0x00, 0x00, 0x7F);
-	image.drawVerticalGradient(0, 0, DarkGray, Black, 0);
+	RGBA DarkNavy(0x18, 0x1B, 0x2C, 0xFF);  // Dark navy blue top from cluster10.fig theme
+	RGBA DarkerNavy(0x0A, 0x0C, 0x16, 0xFF); // Darker navy bottom from cluster10.fig theme
+	image.drawVerticalGradient(0, 0, DarkNavy, DarkerNavy, 0);
 
 	if(fourQuadrants)
 	{
@@ -75,7 +75,7 @@ int PNGPlotter::getHeight()
 
 void PNGPlotter::drawFourQuadrants()
 {
-    RGBA lineColor(0xC8, 0xC8, 0xC8, 0xC8); // Light gray for the quadrant lines
+    RGBA lineColor(0x3A, 0x41, 0x5A, 0xDD); // Subtle blue-gray lines from cluster10.fig theme
 
     // Calculate positions for the middle lines
     int midX = (width - margin_left - margin_right) / 2 + margin_left;
@@ -135,7 +135,7 @@ inline std::vector<float> get_axis_ticks(float max_price, float min_price, int m
 }
 
 void PNGPlotter::drawYGrid() {
-    RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
+    RGBA gridColor(0x3A, 0x41, 0x5A, 0x99);  // Subtle blue-gray for grid lines
 
     std::vector<float> horizontalLines = get_axis_ticks(max_price, min_price);
     float adjusted_max = max_price - min_price;
@@ -152,11 +152,9 @@ void PNGPlotter::drawYGrid() {
 	std::string numberY = oss.str();	
 	if(i != 0)
 	{
-	    GraphLabel(width - margin_right, y, numberY, 600, 100, 100);
+	    GraphLabel(width - margin_right, y, numberY, 600, 100, 100, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
 	}
-
     }
-
 }
 
 inline std::string dateToString(int64_t timestamp, const char* format= "%m-%d-%Y")
@@ -250,8 +248,7 @@ inline std::vector<std::string> get_date_labels(int64_t start, int64_t end, int 
 
 void PNGPlotter::drawXGrid(int64_t start, int64_t end)
 {
-
-    RGBA gridColor(200, 200, 200, 200); // Light gray for the grid lines
+    RGBA gridColor(0x3A, 0x41, 0x5A, 0x99);  // Subtle blue-gray for grid lines
 
     std::vector<std::string> verticalLines = get_date_labels(start, end, graphSize);
     
@@ -262,9 +259,9 @@ void PNGPlotter::drawXGrid(int64_t start, int64_t end)
     for (size_t i = 0; i < verticalLines.size(); ++i) 
     {
         int x = margin_left + i * step;
-        drawLine(x, 0, x, height - margin_top - margin_bottom, gridColor);
+        drawLine(x, margin_top, x, height - margin_bottom, gridColor);
 
-	GraphLabel(x, height - margin_top - margin_bottom, verticalLines[i], 600, -(600/4), 600/8);
+	GraphLabel(x, height - margin_top - margin_bottom + 30, verticalLines[i], 600, -(600/4), 600/8, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
     }
 }
 
@@ -288,48 +285,49 @@ void PNGPlotter::initialize_font(const std::string fontPath)
 
 void PNGPlotter::initialize_colors(std::vector<RGBA>& lines_colors, std::vector<std::string>& lines_colors_name)
 {
-    // TODO: Find a way to auto generate these, for now there are just 10
-    lines_colors.push_back(RGBA(0x00, 0x00, 0xFF, 0xFF));    // Blue
-    lines_colors_name.push_back("Blue");
+    // Modern color palette inspired by cluster10.fig theme
+    lines_colors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));    // Bright Blue
+    lines_colors_name.push_back("Bright Blue");
 
-    lines_colors.push_back(RGBA(0xFF, 0xA5, 0x00, 0xFF));  // Orange
-    lines_colors_name.push_back("Orange");
+    lines_colors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));    // Vivid Orange
+    lines_colors_name.push_back("Vivid Orange");
 
-    lines_colors.push_back(RGBA(0x80, 0x00, 0x80, 0xFF));  // Purple
-    lines_colors_name.push_back("Purple");
+    lines_colors.push_back(RGBA(0x9D, 0x02, 0xFF, 0xFF));    // Rich Purple
+    lines_colors_name.push_back("Rich Purple");
 
-    lines_colors.push_back(RGBA(0x00, 0xFF, 0xFF, 0xFF));  // Cyan
-    lines_colors_name.push_back("Cyan");
-
-    lines_colors.push_back(RGBA(0xFF, 0xFF, 0x00, 0xFF));  // Yellow
-    lines_colors_name.push_back("Yellow");
-
-    lines_colors.push_back(RGBA(0xFF, 0x00, 0xFF, 0xFF));  // Magenta
-    lines_colors_name.push_back("Magenta");
-
-    lines_colors.push_back(RGBA(0x00, 0x80, 0x80, 0xFF));  // Teal
+    lines_colors.push_back(RGBA(0x00, 0xC2, 0xC7, 0xFF));    // Teal
     lines_colors_name.push_back("Teal");
 
-    lines_colors.push_back(RGBA(0xFF, 0x8C, 0x00, 0xFF));  // Dark Orange
-    lines_colors_name.push_back("Dark Orange");
+    lines_colors.push_back(RGBA(0xFF, 0xD4, 0x00, 0xFF));    // Golden Yellow
+    lines_colors_name.push_back("Golden Yellow");
 
-    lines_colors.push_back(RGBA(0xFF, 0x69, 0xB4, 0xFF));  // Pink
-    lines_colors_name.push_back("Pink");
+    lines_colors.push_back(RGBA(0xFF, 0x0C, 0xC0, 0xFF));    // Magenta
+    lines_colors_name.push_back("Magenta");
 
-    lines_colors.push_back(RGBA(0xAD, 0xD8, 0xE6, 0xFF));  // Light Blue
-    lines_colors_name.push_back("Light Blue");
+    lines_colors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));    // Deep Green
+    lines_colors_name.push_back("Deep Green");
 
-    // Remember to add colour entries of indicator when adding new indicators
-    indicatorColors["BBLow"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
-    indicatorColors["BBHigh"] = RGBA(0x00, 0x00, 0xFF, 0xFF); // Blue
-    indicatorTextColor["BBHigh"] = RGBA(0x00, 0x00, 0x50, 0xFF);
-    indicatorTextColor["BBLow"] = RGBA(0x00, 0x00, 0x50, 0xFF);
+    lines_colors.push_back(RGBA(0xFF, 0x47, 0x45, 0xFF));    // Coral Red
+    lines_colors_name.push_back("Coral Red");
 
-    indicatorColors["EMA"] = RGBA(0xFF, 0xBF, 0x00, 0xFF); // Yellow
-    indicatorTextColor["EMA"] = RGBA(0x72, 0x56, 0x00, 0xFF);
+    lines_colors.push_back(RGBA(0x29, 0xA2, 0xC6, 0xFF));    // Steel Blue
+    lines_colors_name.push_back("Steel Blue");
 
-    indicatorColors["SMA"] = RGBA(0xFF, 0x5C, 0x00, 0xFF); // Orange
-    indicatorTextColor["SMA"] = RGBA(0x72, 0x29, 0x00, 0xFF);
+    lines_colors.push_back(RGBA(0x85, 0x8A, 0xFF, 0xFF));    // Periwinkle
+    lines_colors_name.push_back("Periwinkle");
+
+    // Update indicator colors to match the new theme
+    indicatorColors["BBLow"] = RGBA(0x00, 0x9E, 0xFF, 0xFF);  // Bright Blue
+    indicatorColors["BBHigh"] = RGBA(0x00, 0x9E, 0xFF, 0xFF); // Bright Blue
+    indicatorTextColor["BBHigh"] = RGBA(0x00, 0x4A, 0x80, 0xFF);
+    indicatorTextColor["BBLow"] = RGBA(0x00, 0x4A, 0x80, 0xFF);
+
+    indicatorColors["EMA"] = RGBA(0xFF, 0xD4, 0x00, 0xFF);    // Golden Yellow
+    indicatorTextColor["EMA"] = RGBA(0x80, 0x6A, 0x00, 0xFF);
+
+    indicatorColors["SMA"] = RGBA(0xFF, 0x6B, 0x00, 0xFF);    // Vivid Orange
+    indicatorTextColor["SMA"] = RGBA(0x80, 0x35, 0x00, 0xFF);
+    
     indicatorPoint["BBLow"] = 0;
     indicatorPoint["BBHigh"] = 0;
     indicatorPoint["EMA"] = 0;
@@ -431,12 +429,20 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
         return;
     }
 
-    // Add a white background
-    RGBA white(0xFF, 0xFF, 0xFF, 0xFF);
-    for (int x = margin_left; x < static_cast<int>(width - margin_right); ++x)
-    {
+    // Add a modern dark gradient background instead of white
+    RGBA gradientTop(0x18, 0x1B, 0x2C, 0xFF);    // Dark navy blue at top
+    RGBA gradientBottom(0x0A, 0x0C, 0x16, 0xFF); // Darker navy at bottom
     for (int y = margin_top; y < static_cast<int>(height - margin_bottom); ++y) {
-        image.SetPixel(x, y, white);
+        float ratio = static_cast<float>(y - margin_top) / (height - margin_top - margin_bottom);
+        RGBA gradientColor(
+            static_cast<unsigned char>(gradientTop.r * (1 - ratio) + gradientBottom.r * ratio),
+            static_cast<unsigned char>(gradientTop.g * (1 - ratio) + gradientBottom.g * ratio),
+            static_cast<unsigned char>(gradientTop.b * (1 - ratio) + gradientBottom.b * ratio),
+            0xFF
+        );
+        
+        for (int x = margin_left; x < static_cast<int>(width - margin_right); ++x) {
+            image.SetPixel(x, y, gradientColor);
         }
     }
 
@@ -488,8 +494,8 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
     bool maintainAspectRatio = true;
     
     // Draw grid lines
-    RGBA majorGridColor(0xD0, 0xD0, 0xD0, 0xFF);  // Light gray for major grid lines
-    RGBA minorGridColor(0xE0, 0xE0, 0xE0, 0xAA);  // Very light gray for minor grid lines
+    RGBA majorGridColor(0x3A, 0x41, 0x5A, 0x99);  // Subtle blue-gray for major grid lines, semi-transparent
+    RGBA minorGridColor(0x2A, 0x30, 0x45, 0x55);  // Darker blue-gray for minor grid lines, more transparent
     
     // Number of grid divisions
     int majorGridDivisions = 4;   // Number of major grid divisions (quadrants)
@@ -607,8 +613,8 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
     }
 
     // Add a gradient background
-    RGBA gradientTop(0x20, 0x20, 0x40, 0xFF);  // Dark blue-gray at top
-    RGBA gradientBottom(0x10, 0x10, 0x20, 0xFF);  // Darker at bottom
+    RGBA gradientTop(0x18, 0x1B, 0x2C, 0xFF);    // Dark navy blue at top
+    RGBA gradientBottom(0x0A, 0x0C, 0x16, 0xFF); // Darker navy at bottom
     for (int y = margin_top; y < static_cast<int>(height - margin_bottom); ++y) {
         float ratio = static_cast<float>(y - margin_top) / effectiveHeight;
         RGBA gradientColor(
@@ -636,21 +642,21 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
         }
     }
     
-    // Generate colors for each cluster - using brighter, more vibrant colors for better contrast
+    // Generate colors for each cluster - using modern, vibrant colors with better contrast
     std::vector<RGBA> clusterColors;
     
-    // Pre-defined high-contrast colors for better visibility - C++98 compatible initialization
+    // Pre-defined cluster10 theme modern colors for better visibility
     std::vector<RGBA> distinctColors;
-    distinctColors.push_back(RGBA(255, 100, 100, 255));  // Light Red
-    distinctColors.push_back(RGBA(100, 100, 255, 255));  // Light Blue
-    distinctColors.push_back(RGBA(100, 255, 100, 255));  // Light Green
-    distinctColors.push_back(RGBA(255, 255, 100, 255));  // Light Yellow
-    distinctColors.push_back(RGBA(255, 100, 255, 255));  // Light Magenta
-    distinctColors.push_back(RGBA(100, 255, 255, 255));  // Light Cyan
-    distinctColors.push_back(RGBA(255, 180, 100, 255));  // Light Orange
-    distinctColors.push_back(RGBA(180, 100, 255, 255));  // Light Purple
-    distinctColors.push_back(RGBA(100, 180, 100, 255));  // Medium Green
-    distinctColors.push_back(RGBA(180, 180, 255, 255));  // Medium Blue
+    distinctColors.push_back(RGBA(255, 107, 107, 255));  // Coral
+    distinctColors.push_back(RGBA(48, 173, 255, 255));   // Azure Blue
+    distinctColors.push_back(RGBA(67, 233, 123, 255));   // Mint Green
+    distinctColors.push_back(RGBA(255, 222, 89, 255));   // Sunflower Yellow
+    distinctColors.push_back(RGBA(190, 75, 255, 255));   // Bright Purple
+    distinctColors.push_back(RGBA(58, 227, 217, 255));   // Turquoise
+    distinctColors.push_back(RGBA(255, 165, 48, 255));   // Amber
+    distinctColors.push_back(RGBA(168, 130, 255, 255));  // Lavender
+    distinctColors.push_back(RGBA(65, 222, 176, 255));   // Sea Green
+    distinctColors.push_back(RGBA(255, 119, 168, 255));  // Pink
     
     // Use pre-defined colors for the first few clusters, then generate additional colors if needed
     for (int i = 0; i <= maxCluster; i++) {
@@ -704,7 +710,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
     bool maintainAspectRatio = true;
     
     // Draw border around the plot area
-    RGBA borderColor(0xFF, 0xFF, 0xFF, 0xFF);  // White border
+    RGBA borderColor(0x3A, 0x41, 0x5A, 0xFF);  // Subtle blue-gray border that matches theme
     
     // Top border
     for (int x = margin_left - 2; x <= static_cast<int>(width - margin_right + 2); x++) {
@@ -749,8 +755,8 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
     // Draw grid lines and axes with improved styling
     
     // Draw minor grid lines first (so they appear behind major lines)
-    RGBA majorGridColor(0xD0, 0xD0, 0xD0, 0xAA);  // Light gray for major grid lines, semi-transparent
-    RGBA minorGridColor(0xA0, 0xA0, 0xA0, 0x55);  // Very light gray for minor grid lines, more transparent
+    RGBA majorGridColor(0x3A, 0x41, 0x5A, 0x99);  // Subtle blue-gray for major grid lines, semi-transparent
+    RGBA minorGridColor(0x2A, 0x30, 0x45, 0x55);  // Darker blue-gray for minor grid lines, more transparent
     
     // Number of grid divisions
     int majorGridDivisions = 4;   // Number of major grid divisions (quadrants)
@@ -798,9 +804,9 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
         drawLine(centerX + offset, margin_top, centerX + offset, height - margin_bottom, axisColor);
     }
     
-    // Add title for the K-Means plot
-    GraphLabel(margin_left + effectiveWidth / 2 + 150, margin_top - 25, graphName + " Dataset",
-               300, 0, 0, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    // Add title for the K-Means plot with improved styling
+    GraphLabel(margin_left + effectiveWidth / 2, margin_top - 30, graphName + " Dataset",
+               360, 0, 0, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
 
     // For each pair of features, create a plot
     for (size_t i = 0; i < numFeatures; ++i) {
@@ -902,11 +908,16 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                 // Draw a circle to encompass all points in the cluster
                 drawClusterCircle(centroidX, centroidY, radius, outlineColor);
                 
-                // Draw cluster label
+                // Draw cluster label with improved styling
                 std::ostringstream clusterLabel;
                 clusterLabel << "Cluster " << clusterID;
+                
+                // Create a subtle background for the label
+                RGBA labelBgColor = clusterColor;
+                labelBgColor.a = 180; // Semi-transparent
+                
                 GraphLabel(centroidX + radius + 10, centroidY, clusterLabel.str(), 
-                           175, 0, 0, true, clusterColor, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+                           200, 0, 0, true, labelBgColor, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
                 
                 // Draw actual centroids with a special marker (if available)
                 if (static_cast<size_t>(clusterID) < centroids.size() && centroids[clusterID].size() > j) {
@@ -924,56 +935,102 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                     // Draw a special marker for the actual centroid
                     RGBA centroidMarkerColor = RGBA(0xFF, 0xFF, 0xFF, 0xFF); // White
                     
-                    // Draw a white cross inside a colored circle
-                    drawPoint(centScreenX, centScreenY, pointThickness * 1.5, clusterColor);
+                    // Draw a white cross inside a colored circle with increased size for visibility
+                    drawPoint(centScreenX, centScreenY, pointThickness * 1.8, clusterColor);
                     
-                    // Cross lines
-                    for (int lineOffset = -pointThickness; lineOffset <= pointThickness; lineOffset++) {
-                        if (centScreenX + lineOffset >= static_cast<int>(margin_left) && 
-                            centScreenX + lineOffset < static_cast<int>(width - margin_right) &&
-                            centScreenY >= static_cast<int>(margin_top) && 
-                            centScreenY < static_cast<int>(height - margin_bottom)) {
-                            image.SetPixel(centScreenX + lineOffset, centScreenY, centroidMarkerColor);
-                        }
-                        
-                        if (centScreenX >= static_cast<int>(margin_left) && 
-                            centScreenX < static_cast<int>(width - margin_right) &&
-                            centScreenY + lineOffset >= static_cast<int>(margin_top) && 
-                            centScreenY + lineOffset < static_cast<int>(height - margin_bottom)) {
-                            image.SetPixel(centScreenX, centScreenY + lineOffset, centroidMarkerColor);
+                    // Cross lines with increased thickness for better visibility
+                    int crossSize = pointThickness * 1.2;
+                    for (int lineOffset = -crossSize; lineOffset <= crossSize; lineOffset++) {
+                        for (int thickness = -1; thickness <= 1; thickness++) {
+                            if (centScreenX + lineOffset >= static_cast<int>(margin_left) && 
+                                centScreenX + lineOffset < static_cast<int>(width - margin_right) &&
+                                centScreenY + thickness >= static_cast<int>(margin_top) && 
+                                centScreenY + thickness < static_cast<int>(height - margin_bottom)) {
+                                image.SetPixel(centScreenX + lineOffset, centScreenY + thickness, centroidMarkerColor);
+                            }
+                            
+                            if (centScreenX + thickness >= static_cast<int>(margin_left) && 
+                                centScreenX + thickness < static_cast<int>(width - margin_right) &&
+                                centScreenY + lineOffset >= static_cast<int>(margin_top) && 
+                                centScreenY + lineOffset < static_cast<int>(height - margin_bottom)) {
+                                image.SetPixel(centScreenX + thickness, centScreenY + lineOffset, centroidMarkerColor);
+                            }
                         }
                     }
                 }
             }
             
-            // Add a legend at the bottom of the plot
+            // Add a legend at the bottom of the plot with improved styling
             int legendStartX = margin_left + 50;
-            int legendStartY = height - margin_bottom + 50; // Moved down slightly to accommodate larger text
-            int legendItemWidth = 120;
+            int legendStartY = height - margin_bottom + 50;
+            int legendItemWidth = 150; // Increased spacing for better readability
+            
+            // Add a subtle background for the legend
+            RGBA legendBgColor(0x1A, 0x1D, 0x2F, 0xCC); // Semi-transparent dark background
+            int legendWidth = (maxCluster + 1) * legendItemWidth + 100;
+            int legendHeight = 80;
+            int legendX = margin_left + (effectiveWidth - legendWidth) / 2;
+            int legendY = legendStartY - 15;
+            
+            // Draw legend background
+            for (int x = legendX; x < legendX + legendWidth; x++) {
+                for (int y = legendY; y < legendY + legendHeight; y++) {
+                    if (x >= 0 && x < static_cast<int>(width) && y >= 0 && y < static_cast<int>(height)) {
+                        image.SetPixel(x, y, legendBgColor);
+                    }
+                }
+            }
+            
+            // Draw a thin border around the legend
+            RGBA legendBorderColor(0x3A, 0x41, 0x5A, 0xFF);
+            for (int x = legendX; x < legendX + legendWidth; x++) {
+                if (x >= 0 && x < static_cast<int>(width)) {
+                    if (legendY >= 0 && legendY < static_cast<int>(height)) {
+                        image.SetPixel(x, legendY, legendBorderColor);
+                    }
+                    if (legendY + legendHeight - 1 >= 0 && legendY + legendHeight - 1 < static_cast<int>(height)) {
+                        image.SetPixel(x, legendY + legendHeight - 1, legendBorderColor);
+                    }
+                }
+            }
+            for (int y = legendY; y < legendY + legendHeight; y++) {
+                if (y >= 0 && y < static_cast<int>(height)) {
+                    if (legendX >= 0 && legendX < static_cast<int>(width)) {
+                        image.SetPixel(legendX, y, legendBorderColor);
+                    }
+                    if (legendX + legendWidth - 1 >= 0 && legendX + legendWidth - 1 < static_cast<int>(width)) {
+                        image.SetPixel(legendX + legendWidth - 1, y, legendBorderColor);
+                    }
+                }
+            }
             
             for (int clusterID = 0; clusterID <= maxCluster; ++clusterID) {
                 RGBA clusterColor = clusterID < static_cast<int>(clusterColors.size()) ? 
                                    clusterColors[clusterID] : 
                                    RGBA(128, 128, 128, 255);
                 
-                int itemX = legendStartX + clusterID * legendItemWidth;
+                int itemX = legendX + 50 + clusterID * legendItemWidth;
+                int itemY = legendY + legendHeight/2;
                 
-                // Draw color square - even smaller
-                for (int dx = -5; dx <= 5; dx++) {
-                    for (int dy = -5; dy <= 5; dy++) {
-                        int x = itemX + dx;
-                        int y = legendStartY + dy;
-                        if (x >= 0 && x < static_cast<int>(width) && y >= 0 && y < static_cast<int>(height)) {
-                            image.SetPixel(x, y, clusterColor);
+                // Draw color circle instead of square for a more modern look
+                int circleRadius = 8;
+                for (int dx = -circleRadius; dx <= circleRadius; dx++) {
+                    for (int dy = -circleRadius; dy <= circleRadius; dy++) {
+                        if (dx*dx + dy*dy <= circleRadius*circleRadius) {
+                            int x = itemX + dx;
+                            int y = itemY + dy;
+                            if (x >= 0 && x < static_cast<int>(width) && y >= 0 && y < static_cast<int>(height)) {
+                                image.SetPixel(x, y, clusterColor);
+                            }
                         }
                     }
                 }
                 
-                // Draw label
+                // Draw label with improved font
                 std::ostringstream labelText;
                 labelText << "Cluster " << clusterID;
-                GraphLabel(itemX + 15, legendStartY, labelText.str(), 
-                          160, 0, 0, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+                GraphLabel(itemX + 20, itemY, labelText.str(), 
+                          180, 0, 0, false, RGBA(), RGBA(0xFF, 0xFF, 0xFF, 0xFF));
             }
         }
     }
