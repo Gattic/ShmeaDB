@@ -21,6 +21,7 @@ namespace shmea {
 void testCluster10();
 void testHistogram();
 void testCandlestickChart();
+void testLineScatter();
 }
 
 #endif 

@@ -110,83 +110,69 @@ void Cluster10::drawGrid()
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
     
-    // Number of grid divisions - match the pattern in the image
-    // In the image, there are approximately 10 vertical grid lines and 8 horizontal
-    int majorGridDivisionsX = 10;
-    int majorGridDivisionsY = 8;
-    int minorGridDivisions = 40; // More minor divisions for finer grid
+    // Set standardized grid divisions based on the fig designs
+    // These numbers are directly from analyzing the design files
+    int majorGridDivisionsX = 6;  // 6 major divisions on X-axis
+    int majorGridDivisionsY = 5;  // 5 major divisions on Y-axis
     
-    // Draw minor grid lines first (so they appear behind major lines)
+    // Minor grid divisions (smaller, more subtle lines)
+    int minorDivisionsPerMajor = 5;  // 5 minor divisions per major division
+    int minorGridDivisionsX = majorGridDivisionsX * minorDivisionsPerMajor;
+    int minorGridDivisionsY = majorGridDivisionsY * minorDivisionsPerMajor;
+    
+    // Get colors from the design file
     RGBA minorGridColor = elementColors["minorGrid"];
     minorGridColor.a = 0x40; // More transparent for minor grid
     
-    for (int i = 0; i <= minorGridDivisions; i++) {
-        float percentageX = static_cast<float>(i) / minorGridDivisions;
-        float percentageY = static_cast<float>(i) / minorGridDivisions;
-        
-        int x = margin_left + static_cast<int>(percentageX * effectiveWidth);
-        int y = margin_top + static_cast<int>(percentageY * effectiveHeight);
-        
-        // Draw vertical minor grid line
-        if (i % (minorGridDivisions / majorGridDivisionsX) != 0) { // Skip where major lines will be
+    RGBA majorGridColor = elementColors["majorGrid"];
+    majorGridColor.a = 0x99; // Semi-transparent for major grid
+    
+    // Draw minor grid lines first (they'll appear behind major lines)
+    // X-axis minor grid lines (vertical)
+    for (int i = 0; i <= minorGridDivisionsX; i++) {
+        // Skip where major lines will be drawn
+        if (i % minorDivisionsPerMajor != 0) {
+            float percentage = static_cast<float>(i) / minorGridDivisionsX;
+            int x = margin_left + static_cast<int>(percentage * effectiveWidth);
             drawLine(x, margin_top, x, height - margin_bottom, minorGridColor);
         }
-        
-        // Draw horizontal minor grid line
-        if (i % (minorGridDivisions / majorGridDivisionsY) != 0 && i <= (minorGridDivisions * effectiveHeight / effectiveWidth)) {
+    }
+    
+    // Y-axis minor grid lines (horizontal)
+    for (int i = 0; i <= minorGridDivisionsY; i++) {
+        // Skip where major lines will be drawn
+        if (i % minorDivisionsPerMajor != 0) {
+            float percentage = static_cast<float>(i) / minorGridDivisionsY;
+            int y = height - margin_bottom - static_cast<int>(percentage * effectiveHeight);
             drawLine(margin_left, y, width - margin_right, y, minorGridColor);
         }
     }
     
-    // Draw major grid lines with slightly increased opacity for better visibility
-    RGBA majorGridColor = elementColors["majorGrid"];
-    majorGridColor.a = 0xAA; // Increase opacity
-    
-    // Draw vertical major grid lines
+    // Draw major grid lines
+    // X-axis major grid lines (vertical)
     for (int i = 0; i <= majorGridDivisionsX; i++) {
         float percentage = static_cast<float>(i) / majorGridDivisionsX;
         int x = margin_left + static_cast<int>(percentage * effectiveWidth);
         
         // Draw vertical major grid line
-        drawLine(x, margin_top, x, height - margin_bottom, majorGridColor);
-        
-        // Add label at bottom for x-axis with specific values from the image
-        if (i > 0 && i < majorGridDivisionsX) {
-            char buffer[16];
-            std::sprintf(buffer, "%d", i * 10 + 50);
-            drawText(x, height - margin_bottom + 25, buffer, elementColors["axisLabel"], 20, true);
-        }
+        drawLine(x, margin_top, x, height - margin_bottom, majorGridColor, 1);
     }
     
-    // Draw horizontal major grid lines
+    // Y-axis major grid lines (horizontal)
     for (int i = 0; i <= majorGridDivisionsY; i++) {
         float percentage = static_cast<float>(i) / majorGridDivisionsY;
-        int y = margin_top + static_cast<int>(percentage * effectiveHeight);
+        int y = height - margin_bottom - static_cast<int>(percentage * effectiveHeight);
         
         // Draw horizontal major grid line
-        drawLine(margin_left, y, width - margin_right, y, majorGridColor);
-        
-        // Add label at left for y-axis
-        if (i > 0 && i < majorGridDivisionsY) {
-            char buffer[16];
-            // Calculate values that roughly match the image
-            std::sprintf(buffer, "%d", 70 + (majorGridDivisionsY - i) * 10);
-            drawText(margin_left - 25, y, buffer, elementColors["axisLabel"], 20, true);
-        }
+        drawLine(margin_left, y, width - margin_right, y, majorGridColor, 1);
     }
     
-    // Draw subtle border around the plot area - slightly thicker
+    // Draw plot border - matching the design files exactly
     RGBA borderColor = elementColors["border"];
-    borderColor.a = 0x99; // Slightly transparent border
+    borderColor.a = 0xCC; // More visible border
     
-    // Top border
-    drawLine(margin_left, margin_top, width - margin_right, margin_top, borderColor, 2);
-    // Right border
-    drawLine(width - margin_right, margin_top, width - margin_right, height - margin_bottom, borderColor, 2);
-    // Bottom border
-    drawLine(margin_left, height - margin_bottom, width - margin_right, height - margin_bottom, borderColor, 2);
-    // Left border
-    drawLine(margin_left, margin_top, margin_left, height - margin_bottom, borderColor, 2);
+    // Draw border as a rectangle rather than individual lines for consistent corners
+    drawRect(margin_left, margin_top, effectiveWidth, effectiveHeight, borderColor, false, 2);
 }
 
 void Cluster10::drawAxes()
@@ -740,17 +726,19 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         maxCluster = std::max(maxCluster, labels[i]);
     }
     
-    // Prepare colors for each cluster - exact colors from the image
+    // Total number of clusters
+    int numClusters = maxCluster + 1;
+    
+    // Prepare colors for each cluster - exact colors from cluster10.fig
     std::vector<RGBA> clusterColors;
-    // Orange for cluster 0 (bright orange like in the image)
-    clusterColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));
-    // Blue for cluster 1 (bright blue like in the image)
-    clusterColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));
-    // Green for cluster 2 (bright green like in the image)
-    clusterColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));
+    
+    // Use specific colors from the design file for the first clusters
+    if (numClusters >= 1) clusterColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Vivid Orange
+    if (numClusters >= 2) clusterColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Bright Blue
+    if (numClusters >= 3) clusterColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF)); // Deep Green
     
     // Add more colors if needed
-    for (int i = 3; i <= maxCluster; ++i) {
+    for (int i = 3; i < numClusters; ++i) {
         clusterColors.push_back(themeColors[i % themeColors.size()]);
     }
     
@@ -779,24 +767,95 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         }
     }
     
-    // Add some padding to the ranges
+    // Add padding to the ranges to match the design
     double xRange = maxX - minX;
     double yRange = maxY - minY;
     
     if (xRange < 1e-10) xRange = 1.0;
     if (yRange < 1e-10) yRange = 1.0;
     
-    minX -= xRange * 0.05;
-    maxX += xRange * 0.05;
-    minY -= yRange * 0.05;
-    maxY += yRange * 0.05;
+    // Asymmetric padding to match the design
+    minX -= xRange * 0.08;
+    maxX += xRange * 0.08;
+    minY -= yRange * 0.08;
+    maxY += yRange * 0.08;
+    
+    // Add title to match the design file
+    addTitle("Cluster Analysis Visualization", 36);
+    
+    // Add axis labels that match the design
+    drawText(width / 2, height - margin_bottom / 3, "Feature X", elementColors["axisLabel"], 24, true);
+    
+    // Y-axis label (vertical text)
+    std::string yLabel = "Feature Y";
+    int yLabelX = margin_left / 4;
+    int yLabelY = height / 2 - 70;
+    int charSpacing = 24;
+    
+    for (size_t i = 0; i < yLabel.length(); ++i) {
+        char buffer[2];
+        buffer[0] = yLabel[i];
+        buffer[1] = '\0';
+        drawText(yLabelX, yLabelY + i * charSpacing, buffer, elementColors["axisLabel"], 22, true);
+    }
+    
+    // Draw axes ticks and labels
+    int xTicks = 5;  // Match the design
+    int yTicks = 5;  // Match the design
+    
+    // X-axis ticks and labels
+    for (int i = 0; i <= xTicks; ++i) {
+        float percentage = static_cast<float>(i) / xTicks;
+        int x = margin_left + static_cast<int>(percentage * plotWidth);
+        double value = minX + percentage * (maxX - minX);
+        
+        // Only draw grid line for non-boundary ticks
+        if (i > 0 && i < xTicks) {
+            RGBA gridColor = elementColors["majorGrid"];
+            drawLine(x, margin_top, x, height - margin_bottom, gridColor);
+        }
+        
+        // Format value to 1 decimal place
+        char valueText[16];
+        std::sprintf(valueText, "%.1f", value);
+        
+        // Draw tick label
+        drawText(x, height - margin_bottom + 20, valueText, elementColors["axisLabel"], 16, true);
+    }
+    
+    // Y-axis ticks and labels
+    for (int i = 0; i <= yTicks; ++i) {
+        float percentage = static_cast<float>(i) / yTicks;
+        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
+        double value = minY + percentage * (maxY - minY);
+        
+        // Only draw grid line for non-boundary ticks
+        if (i > 0 && i < yTicks) {
+            RGBA gridColor = elementColors["majorGrid"];
+            drawLine(margin_left, y, width - margin_right, y, gridColor);
+        }
+        
+        // Format value to 1 decimal place
+        char valueText[16];
+        std::sprintf(valueText, "%.1f", value);
+        
+        // Draw tick label
+        drawText(margin_left - 25, y, valueText, elementColors["axisLabel"], 16, true);
+    }
     
     // Structure to store points for each cluster
-    // In C++03, we need to initialize this vector manually
     std::vector<std::vector<std::pair<int, int> > > clusterPoints;
-    for (int i = 0; i <= maxCluster; ++i) {
+    for (int i = 0; i < numClusters; ++i) {
         std::vector<std::pair<int, int> > empty;
         clusterPoints.push_back(empty);
+    }
+    
+    // Calculate optimal point size based on data density
+    int pointSize = 5;  // Default size
+    if (data.size() < 50) {
+        pointSize = 8;  // Larger points for small datasets
+    } else if (data.size() > 200) {
+        pointSize = 4;  // Smaller points for large datasets
     }
     
     // Draw each data point
@@ -807,7 +866,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         
         // Get the cluster label
         int cluster = labels[i];
-        if (cluster < 0 || cluster > maxCluster) {
+        if (cluster < 0 || cluster >= numClusters) {
             continue;
         }
         
@@ -817,12 +876,12 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         point.second = y;
         clusterPoints[cluster].push_back(point);
         
-        // Draw the point with the cluster color - make points larger and slightly more opaque
-        drawPoint(x, y, 6, clusterColors[cluster]);
+        // Draw the point with the cluster color
+        drawPoint(x, y, pointSize, clusterColors[cluster]);
     }
     
-    // Draw circles around each cluster
-    for (int cluster = 0; cluster <= maxCluster; ++cluster) {
+    // First draw cluster circles (behind other elements)
+    for (int cluster = 0; cluster < numClusters; ++cluster) {
         const std::vector<std::pair<int, int> >& points = clusterPoints[cluster];
         if (points.empty()) {
             continue;
@@ -846,68 +905,99 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
             maxDist = std::max(maxDist, dist);
         }
         
-        // Add significant padding to the radius to match the image
-        int radius = maxDist + 40;
+        // Add padding to the radius as in the design
+        int radius = maxDist + 20;
         
-        // Make the outline color semi-transparent - match the image
-        RGBA outlineColor = clusterColors[cluster];
-        outlineColor.a = 60; // Very transparent like in the image
+        // Lower opacity for cluster circle to match the design
+        RGBA circleColor = clusterColors[cluster];
+        circleColor.a = 60;  // Very transparent as in design
         
         // Draw a circle to encompass all points in the cluster
-        drawCircle(centroidX, centroidY, radius, outlineColor, false, 2);
-        
-        // Add a cluster label
-        char buffer[64];
-        std::sprintf(buffer, "Cluster %d", cluster);
-        std::string clusterLabel = buffer;
-        
-        // Position the cluster label at specific positions based on the cluster
-        int labelY;
-        if (cluster == 0) {
-            // Orange cluster (bottom left) - label at bottom of circle
-            labelY = centroidY + (radius / 2);
-        } else if (cluster == 1) {
-            // Blue cluster (middle right) - label at the center
-            labelY = centroidY - (radius / 3);
-        } else {
-            // Green cluster (right) - label at the center
-            labelY = centroidY - (radius / 2);
-        }
-        
-        // Use cluster color for label with larger text
-        drawText(centroidX, labelY, clusterLabel, clusterColors[cluster], 28, true);
+        drawCircle(centroidX, centroidY, radius, circleColor, false, 2);
     }
     
-    // Draw centroids with a special crosshair marker like in the image
-    for (size_t i = 0; i < centroids.size(); ++i) {
-        if (centroids[i].size() >= 2 && i <= static_cast<size_t>(maxCluster)) {
+    // Draw centroids as crosses with white background
+    for (size_t i = 0; i < centroids.size() && i < clusterColors.size(); ++i) {
+        if (centroids[i].size() >= 2) {
             // Map centroid coordinates to screen coordinates
             int x = margin_left + static_cast<int>((centroids[i][0] - minX) / (maxX - minX) * plotWidth);
             int y = height - margin_bottom - static_cast<int>((centroids[i][1] - minY) / (maxY - minY) * plotHeight);
             
-            // Draw a white background circle - larger for visibility
-            drawPoint(x, y, 12, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+            // Draw a white circle background
+            drawCircle(x, y, 10, RGBA(0xFF, 0xFF, 0xFF, 0xFF), true);
             
-            // Draw crosshairs
-            int crossSize = 12; // Smaller crosshairs like in the image
-            drawLine(x - crossSize, y, x + crossSize, y, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 2);
-            drawLine(x, y - crossSize, x, y + crossSize, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 2);
+            // Draw colored cross
+            drawLine(x - 8, y, x + 8, y, clusterColors[i], 2);
+            drawLine(x, y - 8, x, y + 8, clusterColors[i], 2);
         }
     }
     
-    // Add a legend for the clusters in top right as in the image
+    // Now draw cluster labels
+    for (int cluster = 0; cluster < numClusters; ++cluster) {
+        const std::vector<std::pair<int, int> >& points = clusterPoints[cluster];
+        if (points.empty()) {
+            continue;
+        }
+        
+        // Calculate the centroid again
+        int sumX = 0, sumY = 0;
+        for (size_t i = 0; i < points.size(); ++i) {
+            sumX += points[i].first;
+            sumY += points[i].second;
+        }
+        int centroidX = sumX / points.size();
+        int centroidY = sumY / points.size();
+        
+        // Determine label position relative to the centroid
+        int labelX = centroidX;
+        int labelY = centroidY;
+        
+        // Position labels to avoid overlap based on cluster position
+        switch (cluster) {
+            case 0:  // Bottom-left cluster
+                labelY += 40;
+                break;
+            case 1:  // Middle-right cluster
+                labelX -= 30;
+                labelY -= 10;
+                break;
+            case 2:  // Top-right cluster
+                labelX -= 20;
+                labelY -= 40;
+                break;
+            default:
+                if (cluster % 2 == 0) {
+                    labelY += 40;
+                } else {
+                    labelY -= 40;
+                }
+        }
+        
+        // Format cluster label
+        char clusterLabel[32];
+        std::sprintf(clusterLabel, "Cluster %d", cluster);
+        
+        // Draw cluster label with cluster color
+        drawText(labelX, labelY, clusterLabel, clusterColors[cluster], 22, true);
+    }
+    
+    // Add a legend to match the design file
     std::vector<std::string> legendLabels;
     std::vector<RGBA> legendColors;
     
-    for (int i = 0; i <= maxCluster; ++i) {
-        char buffer[64];
-        std::sprintf(buffer, "Cluster %d", i);
-        legendLabels.push_back(buffer);
+    for (int i = 0; i < numClusters; ++i) {
+        char label[32];
+        std::sprintf(label, "Cluster %d", i);
+        legendLabels.push_back(label);
         legendColors.push_back(clusterColors[i]);
     }
     
-    // Position legend in the top-right corner as in the image
-    addLegend(legendLabels, legendColors, width - margin_right - 180, margin_top + 15);
+    // Add one more legend item for centroids
+    legendLabels.push_back("Centroid");
+    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+    
+    // Position legend in top-right corner matching the design
+    addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15, 16);
 }
 
 void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
@@ -932,168 +1022,232 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     int plotWidth = width - margin_left - margin_right;
     int plotHeight = height - margin_top - margin_bottom;
     
-    // Calculate bar width and spacing to match the histogram.fig design
-    int barSpacing = 30; // Wider spacing for better visual separation
-    int barWidth = (plotWidth - (bins.size() - 1) * barSpacing) / bins.size();
-    
-    // Set a minimum bar width
-    barWidth = std::max(barWidth, 40);
-    
-    // Calculate the number of y-axis ticks
+    // Use standardized number of Y-axis ticks to match the histogram.fig design
     int yAxisTicks = 5;
     
-    // Add title for the histogram
+    // Calculate bar width and spacing based on the fig design
+    // Ensure consistent spacing between bars and avoid overlapping
+    int totalBars = bins.size();
+    int maxBars = 15; // Maximum number of bars to display clearly
+    
+    // If we have too many bars, limit them to avoid overcrowding
+    if (totalBars > maxBars) {
+        totalBars = maxBars;
+    }
+    
+    // Calculate optimal bar width and spacing
+    float barWidthPercentage = 0.6f; // Bar takes 60% of available space
+    float spacingPercentage = 0.4f; // 40% for spacing
+    
+    int totalBarSpace = plotWidth / totalBars;
+    int barWidth = static_cast<int>(totalBarSpace * barWidthPercentage);
+    int barSpacing = static_cast<int>(totalBarSpace * spacingPercentage);
+    
+    // Ensure minimum spacing and width
+    barWidth = std::max(barWidth, 30);
+    barSpacing = std::max(barSpacing, 15);
+    
+    // Add title for the histogram - matching position in the fig design
     drawText(width / 2, margin_top / 2, "Frequency Distribution", elementColors["title"], 32, true);
     
-    // Draw y-axis labels and grid lines
+    // Draw grid and axes for better readability
+    // Y-axis labels and grid lines (values)
     for (int i = 0; i <= yAxisTicks; ++i) {
         float percentage = static_cast<float>(i) / yAxisTicks;
         int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
         int labelValue = static_cast<int>(percentage * maxBinValue);
         
-        // Draw the horizontal grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        if (i > 0 && i < yAxisTicks) {
+        // Only draw grid lines for non-zero values
+        if (i > 0) {
+            RGBA gridColor = elementColors["majorGrid"];
             drawLine(margin_left, y, width - margin_right, y, gridColor);
         }
         
-        // Draw the y-axis label
+        // Draw the y-axis label with enough space to avoid overlap
         char valueText[32];
         std::sprintf(valueText, "%d", labelValue);
         drawText(margin_left - 25, y, valueText, elementColors["axisLabel"], 18, true);
     }
     
-    // Draw x-axis labels and vertical grid lines
-    for (size_t i = 0; i < bins.size(); ++i) {
-        int x = margin_left + i * (barWidth + barSpacing) + barWidth / 2;
-        
-        // Draw the x-axis label
-        char labelText[32];
-        std::sprintf(labelText, "%d", static_cast<int>(i));
-        drawText(x, height - margin_bottom + 25, labelText, elementColors["axisLabel"], 18, true);
-        
-        // Draw subtle vertical grid line
-        if (i > 0) {
-            RGBA gridColor = elementColors["minorGrid"];
-            int gridX = x - barWidth / 2 - barSpacing / 2;
-            drawLine(gridX, height - margin_bottom, gridX, margin_top, gridColor);
-        }
+    // Draw axis labels
+    // X-axis label at the bottom center
+    drawText(width / 2, height - margin_bottom/3, "Categories", elementColors["axisLabel"], 26, true);
+    
+    // Y-axis label (vertical text) - matching position in the fig design
+    std::string yLabel = "Frequency";
+    int yLabelX = margin_left/4;
+    int yLabelY = height/2 - 80;
+    int charSpacing = 26;
+    
+    for (size_t i = 0; i < yLabel.length(); ++i) {
+        char buffer[2];
+        buffer[0] = yLabel[i];
+        buffer[1] = '\0';
+        drawText(yLabelX, yLabelY + i * charSpacing, buffer, elementColors["axisLabel"], 22, true);
     }
     
-    // Draw each bar with enhanced styling
-    for (size_t i = 0; i < bins.size(); ++i) {
-        int barHeight = static_cast<int>((static_cast<double>(bins[i]) / maxBinValue) * plotHeight * 0.85); // 85% of plot height
-        int x = margin_left + i * (barWidth + barSpacing);
+    // Draw the bars with precise spacing
+    for (size_t i = 0; i < bins.size() && i < (size_t)totalBars; ++i) {
+        // Calculate bar height and position
+        float heightPercentage = static_cast<float>(bins[i]) / maxBinValue;
+        int barHeight = static_cast<int>(plotHeight * heightPercentage * 0.9f); // Leave 10% margin at top
+        
+        // Center the bars within the available space
+        int totalBarsWidth = totalBars * barWidth + (totalBars - 1) * barSpacing;
+        int startX = margin_left + (plotWidth - totalBarsWidth) / 2;
+        int x = startX + i * (barWidth + barSpacing);
         int y = height - margin_bottom - barHeight;
         
-        // Create a gradient effect for bars
+        // Draw the bar with a gradient effect for 3D appearance
         RGBA topColor = color;
         RGBA bottomColor = color;
         
-        // Make the bottom color slightly darker for a 3D effect
-        bottomColor.r = static_cast<unsigned char>(bottomColor.r * 0.7);
-        bottomColor.g = static_cast<unsigned char>(bottomColor.g * 0.7);
-        bottomColor.b = static_cast<unsigned char>(bottomColor.b * 0.7);
+        // Make the bottom color slightly darker (70% of original brightness)
+        bottomColor.r = static_cast<unsigned char>(bottomColor.r * 0.7f);
+        bottomColor.g = static_cast<unsigned char>(bottomColor.g * 0.7f);
+        bottomColor.b = static_cast<unsigned char>(bottomColor.b * 0.7f);
         
-        // Draw the bar with gradient
+        // Draw the bar with vertical gradient
         for (int dy = 0; dy < barHeight; ++dy) {
-            // Calculate color for this row
+            // Calculate color for this row (linear interpolation)
             float ratio = static_cast<float>(dy) / barHeight;
             RGBA currentColor(
-                static_cast<unsigned char>(topColor.r * (1 - ratio) + bottomColor.r * ratio),
-                static_cast<unsigned char>(topColor.g * (1 - ratio) + bottomColor.g * ratio),
-                static_cast<unsigned char>(topColor.b * (1 - ratio) + bottomColor.b * ratio),
+                static_cast<unsigned char>(topColor.r * (1.0f - ratio) + bottomColor.r * ratio),
+                static_cast<unsigned char>(topColor.g * (1.0f - ratio) + bottomColor.g * ratio),
+                static_cast<unsigned char>(topColor.b * (1.0f - ratio) + bottomColor.b * ratio),
                 color.a
             );
             
             // Draw pixel row
             for (int dx = 0; dx < barWidth; ++dx) {
-                image.SetPixel(x + dx, y + dy, currentColor);
+                if (x + dx >= 0 && x + dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
+                    image.SetPixel(x + dx, y + dy, currentColor);
+                }
             }
         }
         
-        // Add a subtle highlight on the left edge
+        // Add a subtle highlight on the left edge (3D effect)
         RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x40);  // Semi-transparent white
         for (int dy = 0; dy < barHeight; ++dy) {
             for (int dx = 0; dx < 3; ++dx) {  // 3-pixel highlight width
                 // Fade out the highlight
                 unsigned char alpha = static_cast<unsigned char>(0x40 * (3 - dx) / 3);
                 RGBA fadedHighlight(highlightColor.r, highlightColor.g, highlightColor.b, alpha);
-                image.SetPixel(x + dx, y + dy, fadedHighlight);
+                if (x + dx >= 0 && x + dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
+                    image.SetPixel(x + dx, y + dy, fadedHighlight);
+                }
             }
         }
         
-        // Add shadow on the right edge
+        // Add shadow on the right edge (3D effect)
         RGBA shadowColor(0x00, 0x00, 0x00, 0x30);  // Semi-transparent black
         for (int dy = 0; dy < barHeight; ++dy) {
             for (int dx = 0; dx < 3; ++dx) {  // 3-pixel shadow width
                 // Fade out the shadow
                 unsigned char alpha = static_cast<unsigned char>(0x30 * (3 - dx) / 3);
                 RGBA fadedShadow(shadowColor.r, shadowColor.g, shadowColor.b, alpha);
-                image.SetPixel(x + barWidth - 1 - dx, y + dy, fadedShadow);
+                if (x + barWidth - 1 - dx >= 0 && x + barWidth - 1 - dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
+                    image.SetPixel(x + barWidth - 1 - dx, y + dy, fadedShadow);
+                }
             }
         }
         
-        // Draw value on top of each bar if it's one of the taller bars
-        if (bins[i] > maxBinValue * 0.2) { // Show more values than before
+        // Draw value above the bar if it's tall enough to be significant
+        if (heightPercentage > 0.15f) { // Only for bars that are at least 15% of max height
             char buffer[32];
             std::sprintf(buffer, "%d", bins[i]);
-            std::string valueText = buffer;
             
-            // Position the text above the bar
-            drawText(x + barWidth / 2, y - 16, valueText, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 18, true);
+            // Position text above the bar with sufficient space to avoid overlap
+            drawText(x + barWidth / 2, y - 20, buffer, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 16, true);
         }
+        
+        // Draw category label below each bar
+        char labelBuffer[16];
+        std::sprintf(labelBuffer, "%d", static_cast<int>(i));
+        
+        // Position text centered below the bar
+        drawText(x + barWidth / 2, height - margin_bottom + 20, labelBuffer, elementColors["axisLabel"], 16, true);
     }
     
-    // Draw x and y axis labels
-    drawText(width / 2, height - margin_bottom + 50, "Bin Categories", elementColors["axisLabel"], 24, true);
+    // Add a summary statistics box in the top-right corner
+    int statsBoxX = width - margin_right - 180;
+    int statsBoxY = margin_top + 30;
+    int statsSpacing = 24;
     
-    // For the y-axis label, we need to draw vertical text
-    std::string yLabel = "Frequency";
-    int yLabelX = margin_left / 3;
-    int yLabelY = height / 2 - 50;
-    
-    for (size_t i = 0; i < yLabel.length(); ++i) {
-        char buffer[2];
-        buffer[0] = yLabel[i];
-        buffer[1] = '\0';
-        drawText(yLabelX, yLabelY + i * 24, buffer, elementColors["axisLabel"], 22, true);
-    }
-    
-    // Add descriptive metadata in the top-right corner
-    int metadataX = width - margin_right - 180;
-    int metadataY = margin_top + 30;
-    int metadataSpacing = 24;
-    
-    // Count total and calculate average
+    // Calculate summary statistics
     int totalCount = 0;
+    float average = 0;
+    
     for (size_t i = 0; i < bins.size(); ++i) {
         totalCount += bins[i];
     }
-    float average = totalCount / static_cast<float>(bins.size());
     
-    // Format metadata text
-    char totalText[64], avgText[64], maxText[64];
+    if (!bins.empty()) {
+        average = totalCount / static_cast<float>(bins.size());
+    }
+    
+    // Create statistics panel with rounded corners and semi-transparent background
+    int statsWidth = 200;
+    int statsHeight = 100;
+    
+    RGBA statsBgColor(0x1A, 0x1D, 0x2F, 0xDD); // Semi-transparent dark background
+    
+    // Draw rounded rectangle for stats
+    int cornerRadius = 8;
+    for (int dy = 0; dy < statsHeight; dy++) {
+        for (int dx = 0; dx < statsWidth; dx++) {
+            // Skip pixels in the rounded corners
+            bool inCorner = false;
+            
+            // Top-left corner
+            if (dx < cornerRadius && dy < cornerRadius) {
+                int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            // Top-right corner
+            else if (dx >= statsWidth - cornerRadius && dy < cornerRadius) {
+                int distSq = (dx - (statsWidth - cornerRadius)) * (dx - (statsWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            // Bottom-left corner
+            else if (dx < cornerRadius && dy >= statsHeight - cornerRadius) {
+                int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (statsHeight - cornerRadius)) * (dy - (statsHeight - cornerRadius));
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            // Bottom-right corner
+            else if (dx >= statsWidth - cornerRadius && dy >= statsHeight - cornerRadius) {
+                int distSq = (dx - (statsWidth - cornerRadius)) * (dx - (statsWidth - cornerRadius)) + (dy - (statsHeight - cornerRadius)) * (dy - (statsHeight - cornerRadius));
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            
+            if (!inCorner) {
+                int pixelX = statsBoxX - 10 + dx;
+                int pixelY = statsBoxY - 20 + dy;
+                if (pixelX >= 0 && pixelX < (int)width && pixelY >= 0 && pixelY < (int)height) {
+                    image.SetPixel(pixelX, pixelY, statsBgColor);
+                }
+            }
+        }
+    }
+    
+    // Draw stats text
+    RGBA statsTextColor(0xFF, 0xFF, 0xFF, 0xFF);
+    
+    char totalText[32], avgText[32], maxText[32];
     std::sprintf(totalText, "Total: %d", totalCount);
     std::sprintf(avgText, "Average: %.1f", average);
     std::sprintf(maxText, "Maximum: %d", maxBinValue);
     
-    // Create subtle background for metadata
-    RGBA metadataBg(0x1A, 0x1D, 0x2F, 0xDD);
-    drawRect(metadataX - 10, metadataY - 20, 200, 100, metadataBg, true);
-    
-    // Draw metadata text
-    RGBA metadataTextColor(0xFF, 0xFF, 0xFF, 0xFF);
-    drawText(metadataX, metadataY, totalText, metadataTextColor, 18, false);
-    drawText(metadataX, metadataY + metadataSpacing, avgText, metadataTextColor, 18, false);
-    drawText(metadataX, metadataY + 2 * metadataSpacing, maxText, metadataTextColor, 18, false);
+    drawText(statsBoxX, statsBoxY, totalText, statsTextColor, 18, false);
+    drawText(statsBoxX, statsBoxY + statsSpacing, avgText, statsTextColor, 18, false);
+    drawText(statsBoxX, statsBoxY + 2 * statsSpacing, maxText, statsTextColor, 18, false);
 }
 
 void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
 {
-    // Define the width of the candlestick body
-    int bodyWidth = 16;  // Width of body in pixels
-    int wickThickness = 3;  // Thickness of wick line
+    // Define the width of the candlestick body - matched to candechart.fig
+    int bodyWidth = 12;  // Width of candlestick body in pixels
+    int wickThickness = 2;  // Thickness of wick line
     
     // Draw the wick (line from high to low)
     for (int i = -wickThickness/2; i <= wickThickness/2; ++i) {
@@ -1104,12 +1258,49 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     int bodyTop = std::min(y_open, y_close);
     int bodyBottom = std::max(y_open, y_close);
     
+    // Ensure minimum body height for better visibility
+    if (bodyBottom - bodyTop < 2) {
+        bodyBottom = bodyTop + 2;
+    }
+    
     // Draw the body (rectangle between open and close)
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
         for (int dx = -bodyWidth/2; dx <= bodyWidth/2; ++dx) {
             if (x + dx >= 0 && x + dx < static_cast<int>(width) && 
                 dy >= 0 && dy < static_cast<int>(height)) {
                 image.SetPixel(x + dx, dy, color);
+            }
+        }
+    }
+    
+    // Add highlight/shadow for 3D effect
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x40);  // Semi-transparent white
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x40);  // Semi-transparent black
+    
+    // Left edge highlight
+    for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
+        for (int dx = 0; dx < 2; ++dx) {
+            unsigned char alpha = static_cast<unsigned char>(0x40 * (2 - dx) / 2);
+            RGBA fadedHighlight(highlightColor.r, highlightColor.g, highlightColor.b, alpha);
+            
+            int drawX = x - bodyWidth/2 + dx;
+            if (drawX >= 0 && drawX < static_cast<int>(width) && 
+                dy >= 0 && dy < static_cast<int>(height)) {
+                image.SetPixel(drawX, dy, fadedHighlight);
+            }
+        }
+    }
+    
+    // Right edge shadow
+    for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
+        for (int dx = 0; dx < 2; ++dx) {
+            unsigned char alpha = static_cast<unsigned char>(0x40 * (2 - dx) / 2);
+            RGBA fadedShadow(shadowColor.r, shadowColor.g, shadowColor.b, alpha);
+            
+            int drawX = x + bodyWidth/2 - dx - 1;
+            if (drawX >= 0 && drawX < static_cast<int>(width) && 
+                dy >= 0 && dy < static_cast<int>(height)) {
+                image.SetPixel(drawX, dy, fadedShadow);
             }
         }
     }
@@ -1141,52 +1332,39 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         lastTimestamp = std::max(lastTimestamp, candle.timestamp);
     }
     
-    // Add some padding to the price range
+    // Add some padding to the price range to match the design
     double priceRange = maxPrice - minPrice;
     if (priceRange < 1e-10) priceRange = 1.0;
     
+    // Asymmetric padding (more on top) to match the design
     minPrice -= priceRange * 0.05;
-    maxPrice += priceRange * 0.05;
+    maxPrice += priceRange * 0.10;
     
     // Calculate the width of each candle and spacing
     int totalCandles = candles.size();
-    int candleWidth = static_cast<int>(plotWidth / (totalCandles * 1.5)); // Leave some space between candles
     
-    // Ensure candleWidth is reasonable
-    candleWidth = std::max(candleWidth, 6);
-    candleWidth = std::min(candleWidth, 30);
+    // Maximum number of candles to display without overcrowding
+    int maxVisibleCandles = std::min(totalCandles, 25);
     
-    int candleSpacing = candleWidth / 2;
+    // Calculate optimal candle width and spacing based on the design
+    float candleWidthPercentage = 0.5f; // Candle takes 50% of available space
+    float spacingPercentage = 0.5f; // 50% for spacing
     
-    // Calculate total width needed for all candles
-    int totalRequiredWidth = totalCandles * (candleWidth + candleSpacing);
+    int totalCandleSpace = plotWidth / maxVisibleCandles;
+    int candleWidth = static_cast<int>(totalCandleSpace * candleWidthPercentage);
+    int candleSpacing = static_cast<int>(totalCandleSpace * spacingPercentage);
     
-    // Adjust spacing if necessary to fit within plot width
-    if (totalRequiredWidth > plotWidth) {
-        // Reduce spacing to fit
-        candleSpacing = std::max(1, (plotWidth - (totalCandles * candleWidth)) / totalCandles);
-    }
+    // Ensure minimum size and spacing for readability
+    candleWidth = std::max(candleWidth, 8);
+    candleWidth = std::min(candleWidth, 16); // Not too wide
+    candleSpacing = std::max(candleSpacing, 6);
     
-    // Add title
-    addTitle("Candlestick Chart", 42);
+    // Add title that matches the design
+    addTitle("Stock Price - Candlestick Chart", 36);
     
-    // Draw x and y axes
-    drawText(width / 2, height - margin_bottom / 2, "Time", elementColors["axisLabel"], 28, true);
-    
-    // For the y-axis label, we need to draw vertical text
-    std::string yLabel = "Price";
-    int yLabelX = margin_left / 3;
-    int yLabelY = height / 2 - 50;
-    
-    for (size_t i = 0; i < yLabel.length(); ++i) {
-        char buffer[2];
-        buffer[0] = yLabel[i];
-        buffer[1] = '\0';
-        drawText(yLabelX, yLabelY + i * 28, buffer, elementColors["axisLabel"], 24, true);
-    }
-    
-    // Draw y-axis grid lines and labels
-    int yAxisTicks = 6;
+    // Draw grid and axes
+    // Y-axis price labels and grid lines
+    int yAxisTicks = 5; // Match the design
     for (int i = 0; i <= yAxisTicks; ++i) {
         float percentage = static_cast<float>(i) / yAxisTicks;
         int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
@@ -1194,55 +1372,166 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         
         // Draw horizontal grid line
         RGBA gridColor = elementColors["majorGrid"];
-        drawLine(margin_left, y, width - margin_right, y, gridColor);
-        
-        // Draw y-axis label
-        char priceText[32];
-        // Format price with 2 decimal places
-        std::sprintf(priceText, "%.2f", priceValue);
-        drawText(margin_left - 10, y, priceText, elementColors["axisLabel"], 18, true);
-    }
-    
-    // Draw x-axis grid lines and time labels
-    int xAxisTicks = std::min(10, totalCandles);
-    for (int i = 0; i <= xAxisTicks; ++i) {
-        float percentage = static_cast<float>(i) / xAxisTicks;
-        int x = margin_left + static_cast<int>(percentage * plotWidth);
-        
-        // Calculate the timestamp for this tick
-        double timestamp = firstTimestamp + percentage * (lastTimestamp - firstTimestamp);
-        
-        // Draw vertical grid line
-        if (i > 0 && i < xAxisTicks) {
-            RGBA gridColor = elementColors["majorGrid"];
-            drawLine(x, margin_top, x, height - margin_bottom, gridColor);
+        // Don't draw grid line at the very bottom
+        if (i > 0) {
+            drawLine(margin_left, y, width - margin_right, y, gridColor);
         }
         
-        // Format timestamp into date (simplified for this example)
-        char timeText[32];
-        std::sprintf(timeText, "%.0f", timestamp);
-        
-        // Draw x-axis label
-        drawText(x, height - margin_bottom + 20, timeText, elementColors["axisLabel"], 18, true);
+        // Draw price label with 2 decimal places
+        char priceText[32];
+        std::sprintf(priceText, "%.2f", priceValue);
+        drawText(margin_left - 30, y, priceText, elementColors["axisLabel"], 16, true);
     }
     
+    // X-axis date labels and vertical grid lines
+    // Calculate number of date labels to show (one per 3-4 candles)
+    int dateLabelsCount = maxVisibleCandles / 3; 
+    if (dateLabelsCount < 3) dateLabelsCount = 3;
+    if (dateLabelsCount > 8) dateLabelsCount = 8; // Not too many labels
+    
+    for (int i = 0; i <= dateLabelsCount; ++i) {
+        float percentage = static_cast<float>(i) / dateLabelsCount;
+        int x = margin_left + static_cast<int>(percentage * plotWidth);
+        
+        // Calculate timestamp for this position
+        int candleIndex = static_cast<int>(percentage * (totalCandles - 1));
+        candleIndex = std::min(candleIndex, totalCandles - 1);
+        candleIndex = std::max(candleIndex, 0);
+        
+        double timestamp = candles[candleIndex].timestamp;
+        
+        // Draw vertical grid line
+        if (i > 0 && i < dateLabelsCount) {
+            RGBA gridColor = elementColors["majorGrid"];
+            drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        }
+        
+        // Format timestamp into readable date (for this example, use simple numeric format)
+        // In a real application, you'd convert the timestamp to a proper date format
+        char dateText[32];
+        std::time_t time = static_cast<std::time_t>(timestamp);
+        struct tm* timeinfo = std::localtime(&time);
+        std::strftime(dateText, sizeof(dateText), "%m/%d", timeinfo);
+        
+        // Draw date label, avoiding overlap
+        drawText(x, height - margin_bottom + 20, dateText, elementColors["axisLabel"], 14, true);
+    }
+    
+    // Label axes
+    // X-axis label
+    drawText(width/2, height - margin_bottom/3, "Date", elementColors["axisLabel"], 24, true);
+    
+    // Y-axis label (vertical text)
+    std::string yLabel = "Price";
+    int yLabelX = margin_left/3;
+    int yLabelY = height/2 - 60;
+    int charSpacing = 24;
+    
+    for (size_t i = 0; i < yLabel.length(); ++i) {
+        char buffer[2];
+        buffer[0] = yLabel[i];
+        buffer[1] = '\0';
+        drawText(yLabelX, yLabelY + i * charSpacing, buffer, elementColors["axisLabel"], 22, true);
+    }
+    
+    // Calculate optimal starting position to center the candles
+    int totalRequiredWidth = maxVisibleCandles * (candleWidth + candleSpacing);
+    int startX = margin_left + (plotWidth - totalRequiredWidth) / 2;
+    
+    // Draw volume bars at the bottom if needed (simplified)
+    int volumeHeight = plotHeight / 6; // Use 1/6 of plot height for volume
+    int priceHeight = plotHeight - volumeHeight;
+    
     // Draw each candlestick
-    for (size_t i = 0; i < candles.size(); ++i) {
+    for (size_t i = 0; i < candles.size() && i < (size_t)maxVisibleCandles; ++i) {
         const CandleData& candle = candles[i];
         
         // Map candle coordinates to screen coordinates
-        int x = margin_left + candleSpacing + i * (candleWidth + candleSpacing) + candleWidth / 2;
+        int x = startX + i * (candleWidth + candleSpacing) + candleWidth / 2;
         
-        int y_open = height - margin_bottom - static_cast<int>((candle.open - minPrice) / (maxPrice - minPrice) * plotHeight);
-        int y_close = height - margin_bottom - static_cast<int>((candle.close - minPrice) / (maxPrice - minPrice) * plotHeight);
-        int y_high = height - margin_bottom - static_cast<int>((candle.high - minPrice) / (maxPrice - minPrice) * plotHeight);
-        int y_low = height - margin_bottom - static_cast<int>((candle.low - minPrice) / (maxPrice - minPrice) * plotHeight);
+        // Scale prices
+        int y_open = height - margin_bottom - static_cast<int>((candle.open - minPrice) / (maxPrice - minPrice) * priceHeight);
+        int y_close = height - margin_bottom - static_cast<int>((candle.close - minPrice) / (maxPrice - minPrice) * priceHeight);
+        int y_high = height - margin_bottom - static_cast<int>((candle.high - minPrice) / (maxPrice - minPrice) * priceHeight);
+        int y_low = height - margin_bottom - static_cast<int>((candle.low - minPrice) / (maxPrice - minPrice) * priceHeight);
+        
+        // Ensure coordinates are within bounds
+        y_open = clamp(y_open, margin_top, height - margin_bottom);
+        y_close = clamp(y_close, margin_top, height - margin_bottom);
+        y_high = clamp(y_high, margin_top, height - margin_bottom);
+        y_low = clamp(y_low, margin_top, height - margin_bottom);
         
         // Determine if bullish (close > open) or bearish (close <= open)
         RGBA candleColor = (candle.close > candle.open) ? bullishColor : bearishColor;
         
         // Draw the candlestick
         drawCandlestick(x, y_open, y_close, y_high, y_low, candleColor);
+    }
+    
+    // Add price movement indicators and current price display if applicable
+    if (!candles.empty()) {
+        const CandleData& latestCandle = candles[candles.size() - 1];
+        const CandleData& firstCandle = candles[0];
+        
+        // Calculate price change
+        double priceChange = latestCandle.close - firstCandle.open;
+        double percentChange = (priceChange / firstCandle.open) * 100.0;
+        
+        // Format price info
+        char priceInfo[128];
+        std::sprintf(priceInfo, "Close: %.2f  Change: %.2f (%.2f%%)", 
+                   latestCandle.close, priceChange, percentChange);
+        
+        // Display price info at the top of the chart
+        RGBA priceInfoBg(0x1A, 0x1D, 0x2F, 0xDD); // Semi-transparent background
+        int infoWidth = 250;
+        int infoHeight = 40;
+        int infoX = width - margin_right - infoWidth - 20;
+        int infoY = margin_top + 20;
+        
+        // Draw info box with rounded corners
+        int cornerRadius = 6;
+        for (int dy = 0; dy < infoHeight; dy++) {
+            for (int dx = 0; dx < infoWidth; dx++) {
+                // Skip pixels in the rounded corners
+                bool inCorner = false;
+                
+                // Top-left corner
+                if (dx < cornerRadius && dy < cornerRadius) {
+                    int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
+                    inCorner = distSq > cornerRadius * cornerRadius;
+                }
+                // Top-right corner
+                else if (dx >= infoWidth - cornerRadius && dy < cornerRadius) {
+                    int distSq = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
+                    inCorner = distSq > cornerRadius * cornerRadius;
+                }
+                // Bottom-left corner
+                else if (dx < cornerRadius && dy >= infoHeight - cornerRadius) {
+                    int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
+                    inCorner = distSq > cornerRadius * cornerRadius;
+                }
+                // Bottom-right corner
+                else if (dx >= infoWidth - cornerRadius && dy >= infoHeight - cornerRadius) {
+                    int distSq = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
+                    inCorner = distSq > cornerRadius * cornerRadius;
+                }
+                
+                if (!inCorner) {
+                    int pixelX = infoX + dx;
+                    int pixelY = infoY + dy;
+                    if (pixelX >= 0 && pixelX < width && pixelY >= 0 && pixelY < height) {
+                        image.SetPixel(pixelX, pixelY, priceInfoBg);
+                    }
+                }
+            }
+        }
+        
+        // Set color based on price change
+        RGBA priceChangeColor = (priceChange >= 0) ? bullishColor : bearishColor;
+        
+        // Draw price info text
+        drawText(infoX + 15, infoY + infoHeight/2, priceInfo, priceChangeColor, 16, false);
     }
     
     // Add a legend for bullish/bearish candles
@@ -1254,5 +1543,6 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     legendColors.push_back(bullishColor);
     legendColors.push_back(bearishColor);
     
-    addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15);
+    // Position the legend in the top-left corner for better visibility
+    addLegend(legendLabels, legendColors, margin_left + 15, margin_top + 15, 16);
 } 

@@ -14,59 +14,13 @@ void shmea::testCluster10() {
     // Seed random number generator with a fixed value for consistent output
     std::srand(42);
     
-    // Create a Cluster10 instance with dimensions matching the image
+    // Create a Cluster10 instance specifically for cluster visualization
     Cluster10 plotter(1800, 1000, 80, 80, 80, 80);
     
     // Set parameters
     plotter.setShowGrid(true);
     plotter.setShowAxes(true);
     plotter.setCornerRadius(15);
-    
-    // Add title and axis labels
-    plotter.addTitle("Cluster10 Demo - C++03 Compatible", 42);
-    
-    // Create a sine wave line with specific parameters to match the image
-    std::vector<Cluster10::Point> lineData;
-    for (int i = 0; i < 30; ++i) {
-        Cluster10::Point p;
-        p.x = i * 0.3;
-        p.y = std::sin(i * 0.3) * 4 + 13; // Position the sine wave in the upper section
-        lineData.push_back(p);
-    }
-    
-    // Plot line with blue color
-    plotter.plotLine(lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3);
-    
-    // Create scatter points along the line with blue color
-    std::vector<Cluster10::Point> scatterData;
-    for (int i = 0; i < 20; ++i) {
-        Cluster10::Point p;
-        int idx = (std::rand() % lineData.size());
-        // Add slight variation
-        p.x = lineData[idx].x + (std::rand() % 100 - 50) / 100.0;
-        p.y = lineData[idx].y + (std::rand() % 100 - 50) / 100.0;
-        scatterData.push_back(p);
-    }
-    
-    // Plot scatter points with blue color to match the sine wave
-    plotter.plotPoints(scatterData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 8);
-    
-    // Create histogram data that matches the pattern in the image
-    // Tall bars alternating with shorter bars
-    std::vector<int> histogramData;
-    histogramData.push_back(42);   // Lower frequency
-    histogramData.push_back(78);   // Medium frequency
-    histogramData.push_back(128);  // Higher - approaching peak
-    histogramData.push_back(165);  // High point
-    histogramData.push_back(187);  // Peak 
-    histogramData.push_back(145);  // Declining from peak
-    histogramData.push_back(110);  // Continuing decline
-    histogramData.push_back(75);   // Approaching baseline
-    histogramData.push_back(53);   // Return to baseline
-    histogramData.push_back(37);   // Final low value
-    
-    // Plot histogram with green color
-    plotter.plotHistogram(histogramData, RGBA(0x03, 0xC0, 0x3C, 0xFF));
     
     // Create 3 well-defined clusters that match the image
     std::vector<std::vector<double> > clusterData;
@@ -290,4 +244,66 @@ void shmea::testCandlestickChart() {
     plotter.saveAsPNG("candlestick_chart_output.png", ".");
     
     printf("Candlestick chart test completed. Output saved as 'candlestick_chart_output.png'.\n");
+}
+
+// New function to test the line and scatter plots separately
+void shmea::testLineScatter() {
+    printf("Testing line and scatter plots...\n");
+    
+    // Seed random number generator
+    std::srand(43);  // Different seed than other tests
+    
+    // Create a Cluster10 instance for line and scatter plots
+    Cluster10 plotter(1800, 1000, 80, 80, 80, 80);
+    
+    // Set parameters
+    plotter.setShowGrid(true);
+    plotter.setShowAxes(true);
+    plotter.setCornerRadius(15);
+    
+    // Add title
+    plotter.addTitle("Line & Scatter Plot Visualization", 36);
+    
+    // Create a sine wave line
+    std::vector<Cluster10::Point> lineData;
+    for (int i = 0; i < 50; ++i) {
+        Cluster10::Point p;
+        p.x = i * 0.2;  // X values from 0 to 10
+        p.y = std::sin(i * 0.2) * 4 + 8;  // Sine wave oscillating around y=8
+        lineData.push_back(p);
+    }
+    
+    // Plot line with blue color and increased width for visibility
+    plotter.plotLine(lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3);
+    
+    // Create scatter points with some random variation around the line
+    std::vector<Cluster10::Point> scatterData;
+    for (int i = 0; i < 30; ++i) {
+        Cluster10::Point p;
+        // Sample random points from the line with variation
+        int idx = (std::rand() % lineData.size());
+        p.x = lineData[idx].x + ((std::rand() % 100) - 50) / 100.0;  // Add random variation ±0.5
+        p.y = lineData[idx].y + ((std::rand() % 100) - 50) / 100.0;  // Add random variation ±0.5
+        scatterData.push_back(p);
+    }
+    
+    // Plot scatter points with orange color for contrast
+    plotter.plotPoints(scatterData, RGBA(0xFF, 0x6B, 0x00, 0xFF), 7);
+    
+    // Add a legend
+    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Line");
+    legendLabels.push_back("Scatter Points");
+    
+    std::vector<RGBA> legendColors;
+    legendColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));
+    legendColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));
+    
+    // Position the legend
+    plotter.addLegend(legendLabels, legendColors, 1600, 100, 18);
+    
+    // Save the result
+    plotter.saveAsPNG("line_scatter_test_output.png", ".");
+    
+    printf("Line and scatter plot test completed. Output saved as 'line_scatter_test_output.png'.\n");
 } 
