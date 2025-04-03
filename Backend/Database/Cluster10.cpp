@@ -40,25 +40,25 @@ Cluster10::~Cluster10()
 
 void Cluster10::initialize_colors()
 {
-    // Initialize the color palette based on cluster10.fig design
+    // Initialize the color palette based on cluster10.fig design - darker, more sophisticated colors
     
-    // Dark theme background colors
+    // Dark theme background colors - deeper, more modern navy
     elementColors["bgGradientTop"] = RGBA(0x18, 0x1B, 0x2C, 0xFF);    // Dark navy blue top
     elementColors["bgGradientBottom"] = RGBA(0x0A, 0x0C, 0x16, 0xFF); // Darker navy bottom
     
-    // Grid and axes colors
-    elementColors["majorGrid"] = RGBA(0x3A, 0x41, 0x5A, 0x99);        // Subtle blue-gray for grid lines, semi-transparent
-    elementColors["minorGrid"] = RGBA(0x2A, 0x30, 0x45, 0x55);        // Darker blue-gray for minor grid lines, more transparent
+    // Grid and axes colors - more subtle, less intrusive
+    elementColors["majorGrid"] = RGBA(0x2A, 0x31, 0x45, 0x99);        // Subtle blue-gray for grid lines
+    elementColors["minorGrid"] = RGBA(0x20, 0x25, 0x35, 0x55);        // Darker blue-gray for minor grid
     elementColors["axes"] = RGBA(0xF0, 0xF0, 0xF0, 0xFF);             // Almost white for axes
     elementColors["border"] = RGBA(0x3A, 0x41, 0x5A, 0xFF);           // Border color
     
-    // Text colors
-    elementColors["title"] = RGBA(0xFF, 0xFF, 0xFF, 0xFF);            // White for titles
+    // Text colors - improved contrast for better readability
+    elementColors["title"] = RGBA(0xFF, 0xFF, 0xFF, 0xFF);            // Pure white for titles
     elementColors["axisLabel"] = RGBA(0xCC, 0xCC, 0xCC, 0xFF);        // Light gray for axis labels
     elementColors["legend"] = RGBA(0xEE, 0xEE, 0xEE, 0xFF);           // Off-white for legend text
     
-    // Data visualization colors - vibrant modern palette
-    themeColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));              // Vivid Orange
+    // Data visualization colors - more vibrant and distinct colors from the image
+    themeColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));              // Vivid Orange 
     themeColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));              // Bright Blue
     themeColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));              // Deep Green
     themeColors.push_back(RGBA(0xFF, 0x47, 0x45, 0xFF));              // Coral Red
@@ -110,9 +110,9 @@ void Cluster10::drawGrid()
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
     
-    // Number of grid divisions
-    int majorGridDivisions = 4;   // Number of major grid divisions
-    int minorGridDivisions = 16;  // Number of minor grid divisions
+    // Number of grid divisions - using more divisions for a finer grid like in the image
+    int majorGridDivisions = 6;   // Increase number of major grid divisions for more detailed grid
+    int minorGridDivisions = 24;  // Increase number of minor grid divisions
     
     // Draw minor grid lines first (so they appear behind major lines)
     for (int i = 0; i <= minorGridDivisions; i++) {
@@ -131,24 +131,37 @@ void Cluster10::drawGrid()
         }
     }
     
-    // Draw major grid lines
+    // Draw major grid lines with slightly increased opacity for better visibility
+    RGBA majorGridColor = elementColors["majorGrid"];
+    majorGridColor.a = 0xAA; // Increase opacity
+    
     for (int i = 0; i <= majorGridDivisions; i++) {
         float percentage = static_cast<float>(i) / majorGridDivisions;
         int x = margin_left + static_cast<int>(percentage * effectiveWidth);
         int y = margin_top + static_cast<int>(percentage * effectiveHeight);
         
         // Draw vertical major grid line
-        drawLine(x, margin_top, x, height - margin_bottom, elementColors["majorGrid"]);
+        drawLine(x, margin_top, x, height - margin_bottom, majorGridColor);
         
         // Draw horizontal major grid line
-        drawLine(margin_left, y, width - margin_right, y, elementColors["majorGrid"]);
+        drawLine(margin_left, y, width - margin_right, y, majorGridColor);
+        
+        // Add number labels at x-axis gridlines as seen in the image
+        if (i > 0 && i < majorGridDivisions) {
+            char buffer[16];
+            std::sprintf(buffer, "%d", i * 20 + 50); // Example labeling
+            drawText(x, height - margin_bottom + 25, buffer, elementColors["axisLabel"], 20, true);
+        }
     }
     
-    // Draw border around the plot area
-    drawLine(margin_left, margin_top, width - margin_right, margin_top, elementColors["border"]);
-    drawLine(width - margin_right, margin_top, width - margin_right, height - margin_bottom, elementColors["border"]);
-    drawLine(margin_left, height - margin_bottom, width - margin_right, height - margin_bottom, elementColors["border"]);
-    drawLine(margin_left, margin_top, margin_left, height - margin_bottom, elementColors["border"]);
+    // Draw subtle border around the plot area
+    RGBA borderColor = elementColors["border"];
+    borderColor.a = 0x99; // Slightly transparent border
+    
+    drawLine(margin_left, margin_top, width - margin_right, margin_top, borderColor);
+    drawLine(width - margin_right, margin_top, width - margin_right, height - margin_bottom, borderColor);
+    drawLine(margin_left, height - margin_bottom, width - margin_right, height - margin_bottom, borderColor);
+    drawLine(margin_left, margin_top, margin_left, height - margin_bottom, borderColor);
 }
 
 void Cluster10::drawAxes()
@@ -157,14 +170,20 @@ void Cluster10::drawAxes()
     int centerX = margin_left + (width - margin_left - margin_right) / 2;
     int centerY = margin_top + (height - margin_top - margin_bottom) / 2;
     
-    // Draw X-axis (thicker line)
-    for (int offset = -1; offset <= 1; offset++) {
-        drawLine(margin_left, centerY + offset, width - margin_right, centerY + offset, elementColors["axes"]);
-    }
+    // Draw X-axis label at the bottom of the chart
+    drawText(centerX, height - margin_bottom/3, "X Axis", elementColors["axisLabel"], 26, true);
     
-    // Draw Y-axis (thicker line)
-    for (int offset = -1; offset <= 1; offset++) {
-        drawLine(centerX + offset, margin_top, centerX + offset, height - margin_bottom, elementColors["axes"]);
+    // Draw Y-axis label vertically along the left side
+    // For the vertical text "Y Axis", we'll draw each letter vertically
+    int verticalSpacing = 30;
+    int startY = centerY - 100;
+    std::string yLabel = "Y Axis";
+    
+    for (size_t i = 0; i < yLabel.length(); i++) {
+        char buffer[2];
+        buffer[0] = yLabel[i];
+        buffer[1] = '\0';
+        drawText(margin_left/3, startY + (i * verticalSpacing), buffer, elementColors["axisLabel"], 26, true);
     }
 }
 
@@ -473,23 +492,25 @@ void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vec
         return;
     }
     
-    // Calculate legend dimensions
-    int itemHeight = fontSize + 10;
-    int itemSpacing = 20;
-    int colorBoxSize = fontSize - 4;
+    // Calculate legend dimensions - wider and more compact
+    int itemHeight = fontSize + 5;
+    int itemSpacing = 10; // Reduced spacing for more compact look
+    int colorBoxSize = fontSize + 2; // Slightly larger color box
     int textOffset = colorBoxSize + 10;
     
     // Draw legend background with rounded corners
-    int legendWidth = 200; // Fixed width
+    int legendWidth = 180; // Fixed width
     int legendHeight = labels.size() * itemHeight + (labels.size() - 1) * itemSpacing + 20; // Height based on items
     
-    // Draw a semi-transparent background
+    // Draw a semi-transparent background - darker, more modern
     RGBA bgColor(0x1A, 0x1D, 0x2F, 0xCC); // Semi-transparent dark background
+    
+    // Draw rounded rectangle for legend background
+    int cornerRadius = 10;
     for (int dy = 0; dy < legendHeight; dy++) {
         for (int dx = 0; dx < legendWidth; dx++) {
             // Check if this pixel is in the rounded corner region
             bool inCorner = false;
-            int cornerRadius = 10;
             
             // Check top-left corner
             if (dx < cornerRadius && dy < cornerRadius) {
@@ -524,17 +545,20 @@ void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vec
         }
     }
     
-    // Draw each legend item
+    // Draw each legend item - larger, more visible
     for (size_t i = 0; i < labels.size(); ++i) {
         int itemY = y + 10 + i * (itemHeight + itemSpacing);
         
-        // Draw color box
-        int boxX = x + 10;
-        int boxY = itemY;
-        drawRect(boxX, boxY, colorBoxSize, colorBoxSize, colors[i], true);
+        // Draw color circular dot instead of square (more modern)
+        int dotX = x + 20;
+        int dotY = itemY + itemHeight/2;
+        drawCircle(dotX, dotY, colorBoxSize/2, colors[i], true);
         
-        // Draw label text
-        drawText(boxX + textOffset, boxY + fontSize/2, labels[i], elementColors["legend"], fontSize, false);
+        // Draw label text - brighter text
+        RGBA textColor = elementColors["legend"];
+        textColor.a = 0xFF; // Fully opaque for better visibility
+        
+        drawText(dotX + textOffset, dotY, labels[i], textColor, fontSize, false);
     }
 }
 
@@ -692,9 +716,17 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         maxCluster = std::max(maxCluster, labels[i]);
     }
     
-    // Prepare colors for each cluster
+    // Prepare colors for each cluster - matching the image colors
     std::vector<RGBA> clusterColors;
-    for (int i = 0; i <= maxCluster; ++i) {
+    // Orange for cluster 0
+    clusterColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));
+    // Blue for cluster 1
+    clusterColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));
+    // Green for cluster 2
+    clusterColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));
+    
+    // Add more colors if needed
+    for (int i = 3; i <= maxCluster; ++i) {
         clusterColors.push_back(themeColors[i % themeColors.size()]);
     }
     
@@ -761,11 +793,11 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         point.second = y;
         clusterPoints[cluster].push_back(point);
         
-        // Draw the point with the cluster color
-        drawPoint(x, y, 6, clusterColors[cluster]);
+        // Draw the point with the cluster color - make points larger and more vibrant
+        drawPoint(x, y, 8, clusterColors[cluster]);
     }
     
-    // Draw circles around each cluster
+    // Draw circles around each cluster - with larger, more transparent circles
     for (int cluster = 0; cluster <= maxCluster; ++cluster) {
         const std::vector<std::pair<int, int> >& points = clusterPoints[cluster];
         if (points.empty()) {
@@ -790,44 +822,46 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
             maxDist = std::max(maxDist, dist);
         }
         
-        // Add some padding to the radius
-        int radius = maxDist + 10;
+        // Add significant padding to the radius for a more generous circle
+        int radius = maxDist + 30;
         
-        // Make the outline color semi-transparent
+        // Make the outline color semi-transparent - more subtle than before
         RGBA outlineColor = clusterColors[cluster];
-        outlineColor.a = 120; // Semi-transparent
+        outlineColor.a = 80; // Very transparent
         
         // Draw a circle to encompass all points in the cluster
-        drawCircle(centroidX, centroidY, radius, outlineColor, false, 3);
+        drawCircle(centroidX, centroidY, radius, outlineColor, false, 2);
         
         // Add a cluster label
         char buffer[64];
         std::sprintf(buffer, "Cluster %d", cluster);
         std::string clusterLabel = buffer;
-        drawText(centroidX, centroidY - radius - 15, clusterLabel, clusterColors[cluster], 24, true);
+        
+        // Position the cluster label at the top of the circle (for cluster 0, at the bottom for others)
+        int labelY = (cluster == 0) ? centroidY + radius + 15 : centroidY - radius - 15;
+        
+        // Use cluster color for label
+        drawText(centroidX, labelY, clusterLabel, clusterColors[cluster], 28, true);
     }
     
-    // Draw centroids with a special marker if available
+    // Draw centroids with a special marker if available - make more visible with crosshair
     for (size_t i = 0; i < centroids.size(); ++i) {
         if (centroids[i].size() >= 2 && i <= static_cast<size_t>(maxCluster)) {
             // Map centroid coordinates to screen coordinates
             int x = margin_left + static_cast<int>((centroids[i][0] - minX) / (maxX - minX) * plotWidth);
             int y = height - margin_bottom - static_cast<int>((centroids[i][1] - minY) / (maxY - minY) * plotHeight);
             
-            // Draw a larger white point for the centroid
-            drawPoint(x, y, 10, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
+            // Draw a larger white point for the centroid background
+            drawPoint(x, y, 12, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
             
-            // Draw a smaller colored point on top
-            drawPoint(x, y, 7, clusterColors[i]);
-            
-            // Draw crosshairs
-            int crossSize = 15;
-            drawLine(x - crossSize, y, x + crossSize, y, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 2);
-            drawLine(x, y - crossSize, x, y + crossSize, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 2);
+            // Draw crosshairs - larger, more noticeable
+            int crossSize = 20;
+            drawLine(x - crossSize, y, x + crossSize, y, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 3);
+            drawLine(x, y - crossSize, x, y + crossSize, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 3);
         }
     }
     
-    // Add a legend for the clusters
+    // Add a legend for the clusters - more visually appealing
     std::vector<std::string> legendLabels;
     std::vector<RGBA> legendColors;
     
@@ -838,7 +872,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         legendColors.push_back(clusterColors[i]);
     }
     
-    addLegend(legendLabels, legendColors, width - margin_right - 220, margin_top + 20);
+    // Position legend in the top-right corner as in the image
+    addLegend(legendLabels, legendColors, width - margin_right - 200, margin_top + 20);
 }
 
 void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
@@ -863,8 +898,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     int plotWidth = width - margin_left - margin_right;
     int plotHeight = height - margin_top - margin_bottom;
     
-    // Calculate bar width and spacing
-    int barSpacing = 5;
+    // Calculate bar width and spacing - wider bars, less spacing
+    int barSpacing = 2;
     int barWidth = (plotWidth - (bins.size() - 1) * barSpacing) / bins.size();
     
     // Draw each bar
@@ -873,7 +908,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
         int x = margin_left + i * (barWidth + barSpacing);
         int y = height - margin_bottom - barHeight;
         
-        // Draw the bar with a gradient effect
+        // Draw the bar with a brighter gradient effect
         for (int dy = 0; dy < barHeight; ++dy) {
             // Calculate fade factor (1.0 at bottom, 0.7 at top)
             float fadeFactor = 0.7f + 0.3f * (1.0f - static_cast<float>(dy) / barHeight);
@@ -890,10 +925,14 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
             }
         }
         
-        // Draw value on top of the bar
-        char buffer[64];
-        std::sprintf(buffer, "%d", bins[i]);
-        std::string valueText = buffer;
-        drawText(x + barWidth / 2, y - 15, valueText, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 18, true);
+        // Draw value on top of each bar - make only taller bars show values
+        if (bins[i] > maxBinValue * 0.2) { // Only show values for taller bars
+            char buffer[64];
+            std::sprintf(buffer, "%d", bins[i]);
+            std::string valueText = buffer;
+            
+            // Make the text larger and more visible
+            drawText(x + barWidth / 2, y - 20, valueText, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 22, true);
+        }
     }
 } 
