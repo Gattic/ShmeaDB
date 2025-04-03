@@ -19,6 +19,7 @@
 
 namespace shmea {
 void testCluster10();
+void testHistogram();
 }
 
 #endif 

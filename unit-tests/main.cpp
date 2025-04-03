@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
 	CryptUnitTest();
 	ImageUnitTest();
 	shmea::testCluster10();
+	shmea::testHistogram();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
