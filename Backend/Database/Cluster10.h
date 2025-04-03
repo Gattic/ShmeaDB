@@ -48,6 +48,9 @@ private:
     // Helper method to clamp values
     inline int clamp(int value, int min, int max);
 
+    // Candlestick chart helper methods
+    void drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color);
+
 public:
     // Pair struct to replace std::pair from C++11
     struct Point {
@@ -55,6 +58,19 @@ public:
         double y;
         Point() : x(0.0), y(0.0) {}
         Point(double x_, double y_) : x(x_), y(y_) {}
+    };
+
+    // Candlestick data structure
+    struct CandleData {
+        double timestamp;  // Unix timestamp for the candle
+        double open;
+        double close;
+        double high;
+        double low;
+        
+        CandleData() : timestamp(0.0), open(0.0), close(0.0), high(0.0), low(0.0) {}
+        CandleData(double t, double o, double c, double h, double l) 
+            : timestamp(t), open(o), close(c), high(h), low(l) {}
     };
 
     // Constants for standard sizes
@@ -78,6 +94,9 @@ public:
     void plotHistogram(const std::vector<int>& bins, const RGBA& color);
     void plotPieChart(const std::vector<double>& values, const std::vector<RGBA>& colors);
     void plotHeatmap(const std::vector<std::vector<double> >& data, bool useColorGradient = true);
+    void plotCandlestickChart(const std::vector<CandleData>& candles, 
+                             const RGBA& bullishColor = RGBA(0x03, 0xC0, 0x3C, 0xFF),
+                             const RGBA& bearishColor = RGBA(0xFF, 0x47, 0x45, 0xFF));
     
     // Cluster visualization
     void plotClusters(const std::vector<std::vector<double> >& data, const std::vector<int>& labels, 

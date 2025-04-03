@@ -30,6 +30,7 @@ int main(int argc, char* argv[])
 	ImageUnitTest();
 	shmea::testCluster10();
 	shmea::testHistogram();
+	shmea::testCandlestickChart();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");

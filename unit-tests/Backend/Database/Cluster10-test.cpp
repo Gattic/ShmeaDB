@@ -199,4 +199,95 @@ void shmea::testHistogram() {
     plotter2.saveAsPNG("histogram_skewed_output.png", ".");
     
     printf("Skewed histogram test completed. Output saved as 'histogram_skewed_output.png'.\n");
+}
+
+void shmea::testCandlestickChart() {
+    printf("Testing candlestick chart visualization from candechart.fig...\n");
+    
+    // Create a Cluster10 instance optimized for candlestick chart display
+    Cluster10 plotter(1800, 1000, 120, 150, 150, 150);
+    
+    // Set parameters
+    plotter.setShowGrid(true);
+    plotter.setShowAxes(true);
+    plotter.setCornerRadius(15);
+    
+    // Add title
+    plotter.addTitle("Stock Price Candlestick Chart", 42);
+    
+    // Create sample candlestick data with a realistic price pattern
+    std::vector<Cluster10::CandleData> candleData;
+    
+    // Starting price and timestamp
+    double basePrice = 142.50;
+    double timestamp = 1680000000; // Example timestamp
+    
+    // Create a series of candles with realistic price movements
+    // Day 1
+    candleData.push_back(Cluster10::CandleData(timestamp, 142.50, 143.80, 144.20, 142.10));
+    timestamp += 86400; // add a day
+    
+    // Day 2 - uptrend
+    candleData.push_back(Cluster10::CandleData(timestamp, 143.90, 145.20, 145.60, 143.70));
+    timestamp += 86400;
+    
+    // Day 3 - continued uptrend
+    candleData.push_back(Cluster10::CandleData(timestamp, 145.30, 147.80, 148.10, 144.90));
+    timestamp += 86400;
+    
+    // Day 4 - reversal day (bearish)
+    candleData.push_back(Cluster10::CandleData(timestamp, 148.00, 146.30, 149.20, 146.00));
+    timestamp += 86400;
+    
+    // Day 5 - continued downtrend
+    candleData.push_back(Cluster10::CandleData(timestamp, 146.20, 144.50, 146.40, 144.30));
+    timestamp += 86400;
+    
+    // Day 6 - stabilizing
+    candleData.push_back(Cluster10::CandleData(timestamp, 144.60, 145.10, 145.70, 144.10));
+    timestamp += 86400;
+    
+    // Day 7 - small bullish candle
+    candleData.push_back(Cluster10::CandleData(timestamp, 145.20, 146.40, 146.70, 144.90));
+    timestamp += 86400;
+    
+    // Day 8 - gap up
+    candleData.push_back(Cluster10::CandleData(timestamp, 147.10, 149.30, 149.80, 146.80));
+    timestamp += 86400;
+    
+    // Day 9 - high volume bullish candle
+    candleData.push_back(Cluster10::CandleData(timestamp, 149.40, 153.20, 153.80, 149.00));
+    timestamp += 86400;
+    
+    // Day 10 - profit taking (bearish)
+    candleData.push_back(Cluster10::CandleData(timestamp, 153.30, 151.80, 154.00, 151.20));
+    timestamp += 86400;
+    
+    // Day 11 - consolidation (small candle)
+    candleData.push_back(Cluster10::CandleData(timestamp, 151.90, 152.20, 152.90, 151.40));
+    timestamp += 86400;
+    
+    // Day 12 - breakdown (large bearish)
+    candleData.push_back(Cluster10::CandleData(timestamp, 152.10, 148.70, 152.30, 148.20));
+    timestamp += 86400;
+    
+    // Day 13 - continued selling
+    candleData.push_back(Cluster10::CandleData(timestamp, 148.60, 146.90, 149.10, 146.50));
+    timestamp += 86400;
+    
+    // Day 14 - bottoming (hammer candle)
+    candleData.push_back(Cluster10::CandleData(timestamp, 146.80, 147.50, 147.70, 144.30));
+    timestamp += 86400;
+    
+    // Day 15 - reversal confirmation
+    candleData.push_back(Cluster10::CandleData(timestamp, 147.60, 149.80, 150.20, 147.30));
+    
+    // Plot the candlestick chart
+    // Use modern green for bullish and red for bearish
+    plotter.plotCandlestickChart(candleData, RGBA(0x03, 0xC0, 0x3C, 0xFF), RGBA(0xFF, 0x47, 0x45, 0xFF));
+    
+    // Save the result
+    plotter.saveAsPNG("candlestick_chart_output.png", ".");
+    
+    printf("Candlestick chart test completed. Output saved as 'candlestick_chart_output.png'.\n");
 } 

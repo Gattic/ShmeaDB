@@ -1087,4 +1087,172 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     drawText(metadataX, metadataY, totalText, metadataTextColor, 18, false);
     drawText(metadataX, metadataY + metadataSpacing, avgText, metadataTextColor, 18, false);
     drawText(metadataX, metadataY + 2 * metadataSpacing, maxText, metadataTextColor, 18, false);
+}
+
+void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
+{
+    // Define the width of the candlestick body
+    int bodyWidth = 16;  // Width of body in pixels
+    int wickThickness = 3;  // Thickness of wick line
+    
+    // Draw the wick (line from high to low)
+    for (int i = -wickThickness/2; i <= wickThickness/2; ++i) {
+        drawLine(x + i, y_high, x + i, y_low, color);
+    }
+    
+    // Determine the top and bottom of the body
+    int bodyTop = std::min(y_open, y_close);
+    int bodyBottom = std::max(y_open, y_close);
+    
+    // Draw the body (rectangle between open and close)
+    for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
+        for (int dx = -bodyWidth/2; dx <= bodyWidth/2; ++dx) {
+            if (x + dx >= 0 && x + dx < static_cast<int>(width) && 
+                dy >= 0 && dy < static_cast<int>(height)) {
+                image.SetPixel(x + dx, dy, color);
+            }
+        }
+    }
+}
+
+void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles, 
+                                   const RGBA& bullishColor, 
+                                   const RGBA& bearishColor)
+{
+    if (candles.empty()) {
+        return;
+    }
+    
+    // Calculate the effective plotting area
+    int plotWidth = width - margin_left - margin_right;
+    int plotHeight = height - margin_top - margin_bottom;
+    
+    // Find min and max price values for scaling
+    double minPrice = candles[0].low;
+    double maxPrice = candles[0].high;
+    double firstTimestamp = candles[0].timestamp;
+    double lastTimestamp = candles[0].timestamp;
+    
+    for (size_t i = 0; i < candles.size(); ++i) {
+        const CandleData& candle = candles[i];
+        minPrice = std::min(minPrice, candle.low);
+        maxPrice = std::max(maxPrice, candle.high);
+        firstTimestamp = std::min(firstTimestamp, candle.timestamp);
+        lastTimestamp = std::max(lastTimestamp, candle.timestamp);
+    }
+    
+    // Add some padding to the price range
+    double priceRange = maxPrice - minPrice;
+    if (priceRange < 1e-10) priceRange = 1.0;
+    
+    minPrice -= priceRange * 0.05;
+    maxPrice += priceRange * 0.05;
+    
+    // Calculate the width of each candle and spacing
+    int totalCandles = candles.size();
+    int candleWidth = static_cast<int>(plotWidth / (totalCandles * 1.5)); // Leave some space between candles
+    
+    // Ensure candleWidth is reasonable
+    candleWidth = std::max(candleWidth, 6);
+    candleWidth = std::min(candleWidth, 30);
+    
+    int candleSpacing = candleWidth / 2;
+    
+    // Calculate total width needed for all candles
+    int totalRequiredWidth = totalCandles * (candleWidth + candleSpacing);
+    
+    // Adjust spacing if necessary to fit within plot width
+    if (totalRequiredWidth > plotWidth) {
+        // Reduce spacing to fit
+        candleSpacing = std::max(1, (plotWidth - (totalCandles * candleWidth)) / totalCandles);
+    }
+    
+    // Add title
+    addTitle("Candlestick Chart", 42);
+    
+    // Draw x and y axes
+    drawText(width / 2, height - margin_bottom / 2, "Time", elementColors["axisLabel"], 28, true);
+    
+    // For the y-axis label, we need to draw vertical text
+    std::string yLabel = "Price";
+    int yLabelX = margin_left / 3;
+    int yLabelY = height / 2 - 50;
+    
+    for (size_t i = 0; i < yLabel.length(); ++i) {
+        char buffer[2];
+        buffer[0] = yLabel[i];
+        buffer[1] = '\0';
+        drawText(yLabelX, yLabelY + i * 28, buffer, elementColors["axisLabel"], 24, true);
+    }
+    
+    // Draw y-axis grid lines and labels
+    int yAxisTicks = 6;
+    for (int i = 0; i <= yAxisTicks; ++i) {
+        float percentage = static_cast<float>(i) / yAxisTicks;
+        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
+        double priceValue = minPrice + percentage * (maxPrice - minPrice);
+        
+        // Draw horizontal grid line
+        RGBA gridColor = elementColors["majorGrid"];
+        drawLine(margin_left, y, width - margin_right, y, gridColor);
+        
+        // Draw y-axis label
+        char priceText[32];
+        // Format price with 2 decimal places
+        std::sprintf(priceText, "%.2f", priceValue);
+        drawText(margin_left - 10, y, priceText, elementColors["axisLabel"], 18, true);
+    }
+    
+    // Draw x-axis grid lines and time labels
+    int xAxisTicks = std::min(10, totalCandles);
+    for (int i = 0; i <= xAxisTicks; ++i) {
+        float percentage = static_cast<float>(i) / xAxisTicks;
+        int x = margin_left + static_cast<int>(percentage * plotWidth);
+        
+        // Calculate the timestamp for this tick
+        double timestamp = firstTimestamp + percentage * (lastTimestamp - firstTimestamp);
+        
+        // Draw vertical grid line
+        if (i > 0 && i < xAxisTicks) {
+            RGBA gridColor = elementColors["majorGrid"];
+            drawLine(x, margin_top, x, height - margin_bottom, gridColor);
+        }
+        
+        // Format timestamp into date (simplified for this example)
+        char timeText[32];
+        std::sprintf(timeText, "%.0f", timestamp);
+        
+        // Draw x-axis label
+        drawText(x, height - margin_bottom + 20, timeText, elementColors["axisLabel"], 18, true);
+    }
+    
+    // Draw each candlestick
+    for (size_t i = 0; i < candles.size(); ++i) {
+        const CandleData& candle = candles[i];
+        
+        // Map candle coordinates to screen coordinates
+        int x = margin_left + candleSpacing + i * (candleWidth + candleSpacing) + candleWidth / 2;
+        
+        int y_open = height - margin_bottom - static_cast<int>((candle.open - minPrice) / (maxPrice - minPrice) * plotHeight);
+        int y_close = height - margin_bottom - static_cast<int>((candle.close - minPrice) / (maxPrice - minPrice) * plotHeight);
+        int y_high = height - margin_bottom - static_cast<int>((candle.high - minPrice) / (maxPrice - minPrice) * plotHeight);
+        int y_low = height - margin_bottom - static_cast<int>((candle.low - minPrice) / (maxPrice - minPrice) * plotHeight);
+        
+        // Determine if bullish (close > open) or bearish (close <= open)
+        RGBA candleColor = (candle.close > candle.open) ? bullishColor : bearishColor;
+        
+        // Draw the candlestick
+        drawCandlestick(x, y_open, y_close, y_high, y_low, candleColor);
+    }
+    
+    // Add a legend for bullish/bearish candles
+    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Bullish");
+    legendLabels.push_back("Bearish");
+    
+    std::vector<RGBA> legendColors;
+    legendColors.push_back(bullishColor);
+    legendColors.push_back(bearishColor);
+    
+    addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15);
 } 
