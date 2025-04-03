@@ -140,7 +140,7 @@ void PNGPlotter::drawYGrid() {
     std::vector<float> horizontalLines = get_axis_ticks(max_price, min_price);
     float adjusted_max = max_price - min_price;
     // Draw horizontal grid lines and y-axis labels
-    for (int i = 0; i < horizontalLines.size(); ++i) {
+    for (size_t i = 0; i < horizontalLines.size(); ++i) {
 	float adjusted_tick = horizontalLines[i] - min_price;
 	int y = height - margin_bottom - static_cast<int>(adjusted_tick / adjusted_max * (height - margin_top - margin_bottom));
 	y = clamp(y, margin_top, height - margin_bottom);
@@ -259,7 +259,7 @@ void PNGPlotter::drawXGrid(int64_t start, int64_t end)
     int step = (width - margin_left - margin_right) / (verticalLines.size() - 1);
 
     // Draw vertical grid lines and x-axis labels
-    for (int i = 0; i < verticalLines.size(); ++i) 
+    for (size_t i = 0; i < verticalLines.size(); ++i) 
     {
         int x = margin_left + i * step;
         drawLine(x, 0, x, height - margin_top - margin_bottom, gridColor);
@@ -433,9 +433,9 @@ void PNGPlotter::addDataPointsPCA(const std::vector<std::vector<double> >& data,
 
     // Add a white background
     RGBA white(0xFF, 0xFF, 0xFF, 0xFF);
-    for (int x = margin_left; x < width - margin_right; ++x)
+    for (int x = margin_left; x < static_cast<int>(width - margin_right); ++x)
     {
-    for (int y = margin_top; y < height - margin_bottom; ++y) {
+    for (int y = margin_top; y < static_cast<int>(height - margin_bottom); ++y) {
         image.SetPixel(x, y, white);
         }
     }
@@ -609,7 +609,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
     // Add a gradient background
     RGBA gradientTop(0x20, 0x20, 0x40, 0xFF);  // Dark blue-gray at top
     RGBA gradientBottom(0x10, 0x10, 0x20, 0xFF);  // Darker at bottom
-    for (int y = margin_top; y < height - margin_bottom; ++y) {
+    for (int y = margin_top; y < static_cast<int>(height - margin_bottom); ++y) {
         float ratio = static_cast<float>(y - margin_top) / effectiveHeight;
         RGBA gradientColor(
             static_cast<unsigned char>(gradientTop.r * (1 - ratio) + gradientBottom.r * ratio),
@@ -618,7 +618,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
             0xFF
         );
         
-        for (int x = margin_left; x < width - margin_right; ++x) {
+        for (int x = margin_left; x < static_cast<int>(width - margin_right); ++x) {
             image.SetPixel(x, y, gradientColor);
         }
     }
@@ -707,40 +707,40 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
     RGBA borderColor(0xFF, 0xFF, 0xFF, 0xFF);  // White border
     
     // Top border
-    for (int x = margin_left - 2; x <= width - margin_right + 2; x++) {
+    for (int x = margin_left - 2; x <= static_cast<int>(width - margin_right + 2); x++) {
         for (int t = 0; t < 2; t++) {
             int y = margin_top - 2 + t;
-            if (y >= 0 && y < height && x >= 0 && x < width) {
+            if (y >= 0 && y < static_cast<int>(height) && x >= 0 && x < static_cast<int>(width)) {
                 image.SetPixel(x, y, borderColor);
             }
         }
     }
     
     // Bottom border
-    for (int x = margin_left - 2; x <= width - margin_right + 2; x++) {
+    for (int x = margin_left - 2; x <= static_cast<int>(width - margin_right + 2); x++) {
         for (int t = 0; t < 2; t++) {
             int y = height - margin_bottom + t;
-            if (y >= 0 && y < height && x >= 0 && x < width) {
+            if (y >= 0 && y < static_cast<int>(height) && x >= 0 && x < static_cast<int>(width)) {
                 image.SetPixel(x, y, borderColor);
             }
         }
     }
     
     // Left border
-    for (int y = margin_top - 2; y <= height - margin_bottom + 2; y++) {
+    for (int y = margin_top - 2; y <= static_cast<int>(height - margin_bottom + 2); y++) {
         for (int t = 0; t < 2; t++) {
             int x = margin_left - 2 + t;
-            if (y >= 0 && y < height && x >= 0 && x < width) {
+            if (y >= 0 && y < static_cast<int>(height) && x >= 0 && x < static_cast<int>(width)) {
                 image.SetPixel(x, y, borderColor);
             }
         }
     }
     
     // Right border
-    for (int y = margin_top - 2; y <= height - margin_bottom + 2; y++) {
+    for (int y = margin_top - 2; y <= static_cast<int>(height - margin_bottom + 2); y++) {
         for (int t = 0; t < 2; t++) {
             int x = width - margin_right + t;
-            if (y >= 0 && y < height && x >= 0 && x < width) {
+            if (y >= 0 && y < static_cast<int>(height) && x >= 0 && x < static_cast<int>(width)) {
                 image.SetPixel(x, y, borderColor);
             }
         }
@@ -854,7 +854,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                 
                 // Select color based on the cluster label
                 RGBA pointColorToUse;
-                if (k < labels.size() && labels[k] >= 0 && labels[k] < clusterColors.size()) {
+                if (k < labels.size() && labels[k] >= 0 && labels[k] < static_cast<int>(clusterColors.size())) {
                     pointColorToUse = clusterColors[labels[k]];
                 } else {
                     // Default color if label is invalid - make this visibly different
@@ -870,7 +870,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                 if (clusterPoints[clusterID].empty()) continue;
                 
                 // Get the color for this cluster
-                RGBA clusterColor = clusterID < clusterColors.size() ? 
+                RGBA clusterColor = clusterID < static_cast<int>(clusterColors.size()) ? 
                                     clusterColors[clusterID] : 
                                     RGBA(128, 128, 128, 255);
                 
@@ -909,7 +909,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                            175, 0, 0, true, clusterColor, RGBA(0xFF, 0xFF, 0xFF, 0xFF));
                 
                 // Draw actual centroids with a special marker (if available)
-                if (centroids.size() > clusterID && centroids[clusterID].size() > j) {
+                if (static_cast<size_t>(clusterID) < centroids.size() && centroids[clusterID].size() > j) {
                     // Map the actual centroid coordinates to screen coordinates
                     double centValueX = centroids[clusterID][i];
                     double centValueY = centroids[clusterID][j];
@@ -929,17 +929,17 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                     
                     // Cross lines
                     for (int lineOffset = -pointThickness; lineOffset <= pointThickness; lineOffset++) {
-                        if (centScreenX + lineOffset >= margin_left && 
-                            centScreenX + lineOffset < width - margin_right &&
-                            centScreenY >= margin_top && 
-                            centScreenY < height - margin_bottom) {
+                        if (centScreenX + lineOffset >= static_cast<int>(margin_left) && 
+                            centScreenX + lineOffset < static_cast<int>(width - margin_right) &&
+                            centScreenY >= static_cast<int>(margin_top) && 
+                            centScreenY < static_cast<int>(height - margin_bottom)) {
                             image.SetPixel(centScreenX + lineOffset, centScreenY, centroidMarkerColor);
                         }
                         
-                        if (centScreenX >= margin_left && 
-                            centScreenX < width - margin_right &&
-                            centScreenY + lineOffset >= margin_top && 
-                            centScreenY + lineOffset < height - margin_bottom) {
+                        if (centScreenX >= static_cast<int>(margin_left) && 
+                            centScreenX < static_cast<int>(width - margin_right) &&
+                            centScreenY + lineOffset >= static_cast<int>(margin_top) && 
+                            centScreenY + lineOffset < static_cast<int>(height - margin_bottom)) {
                             image.SetPixel(centScreenX, centScreenY + lineOffset, centroidMarkerColor);
                         }
                     }
@@ -952,7 +952,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
             int legendItemWidth = 120;
             
             for (int clusterID = 0; clusterID <= maxCluster; ++clusterID) {
-                RGBA clusterColor = clusterID < clusterColors.size() ? 
+                RGBA clusterColor = clusterID < static_cast<int>(clusterColors.size()) ? 
                                    clusterColors[clusterID] : 
                                    RGBA(128, 128, 128, 255);
                 
@@ -963,7 +963,7 @@ void PNGPlotter::addDataPointsKMeans(const std::string& graphName, const std::ve
                     for (int dy = -5; dy <= 5; dy++) {
                         int x = itemX + dx;
                         int y = legendStartY + dy;
-                        if (x >= 0 && x < width && y >= 0 && y < height) {
+                        if (x >= 0 && x < static_cast<int>(width) && y >= 0 && y < static_cast<int>(height)) {
                             image.SetPixel(x, y, clusterColor);
                         }
                     }
@@ -1068,20 +1068,18 @@ void PNGPlotter::drawHistogram(int x_start, int y_start, int bar_width, RGBA& ba
 {
     for(int x = x_start; x < x_start + bar_width; ++x)
     {
-	for(int y = y_start; y < height - margin_bottom; ++y)
+	for(int y = y_start; y < static_cast<int>(height - margin_bottom); ++y)
 	{
 	    image.SetPixel(x, y, barColor);
 	}
     }
-
-
 }
 
 void PNGPlotter::drawPoint(int x, int y, int thickness, const RGBA& pointColor)
 {
  // Check if the main point is within the plotting area bounds
-    if (x >= margin_left && x < (width - margin_right) &&
-        y >= margin_top && y < (height - margin_bottom)) {
+    if (x >= static_cast<int>(margin_left) && x < static_cast<int>(width - margin_right) &&
+        y >= static_cast<int>(margin_top) && y < static_cast<int>(height - margin_bottom)) {
         
         // Draw the main point
         image.SetPixel(x, y, pointColor);
@@ -1093,8 +1091,8 @@ void PNGPlotter::drawPoint(int x, int y, int thickness, const RGBA& pointColor)
 		if (dx * dx + dy * dy <= thickness * thickness) {
 		    int newX = x + dx;
 		    int newY = y + dy;
-		    if (newX >= margin_left && newX < (width - margin_right) &&
-			newY >= margin_top && newY < (height - margin_bottom)) {
+		    if (newX >= static_cast<int>(margin_left) && newX < static_cast<int>(width - margin_right) &&
+			newY >= static_cast<int>(margin_top) && newY < static_cast<int>(height - margin_bottom)) {
 			image.SetPixel(newX, newY, pointColor);
 		    }
 		}
@@ -1152,8 +1150,8 @@ void PNGPlotter::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor,
                 int newX = steep ? y1 + i : x1 + i;
                 int newY = steep ? x1 + j : y1 + j;
 
-                if (newX >= margin_left && newX < (width - margin_right) &&
-                    newY >= margin_top && newY < (height - margin_bottom)) {
+                if (newX >= static_cast<int>(margin_left) && newX < static_cast<int>(width - margin_right) &&
+                    newY >= static_cast<int>(margin_top) && newY < static_cast<int>(height - margin_bottom)) {
                     image.SetPixel(newX, newY, lineColor);
                 }
             }
@@ -1212,7 +1210,10 @@ void PNGPlotter::drawCandleStick(Image& img, int x, int y_open, int y_close, int
     for (int y = wick_top; y <= wick_bottom; ++y) {
 	for(int i = -wick_thickness; i <= wick_thickness; ++i)
 	{
-            if (x + i >= margin_left && x + i < static_cast<int>(img.getWidth()) - margin_right && y >= margin_top && y < static_cast<int>(img.getHeight()) - margin_bottom) 
+            if (x + i >= static_cast<int>(margin_left) && 
+                x + i < static_cast<int>(img.getWidth()) - static_cast<int>(margin_right) && 
+                y >= static_cast<int>(margin_top) && 
+                y < static_cast<int>(img.getHeight()) - static_cast<int>(margin_bottom)) 
             {
                 img.SetPixel(x + i, y, color);
             }
@@ -1224,7 +1225,10 @@ void PNGPlotter::drawCandleStick(Image& img, int x, int y_open, int y_close, int
     int body_bottom = std::max(y_open, y_close);
     for (int y = body_top; y <= body_bottom; ++y) {
         for (int dx = -half_body_width; dx <= half_body_width; ++dx) {
-            if (x + dx >= margin_left && x + dx < static_cast<int>(img.getWidth()) - margin_right && y >= margin_top && y < static_cast<int>(img.getHeight()) - margin_bottom) {
+            if (x + dx >= static_cast<int>(margin_left) && 
+                x + dx < static_cast<int>(img.getWidth()) - static_cast<int>(margin_right) && 
+                y >= static_cast<int>(margin_top) && 
+                y < static_cast<int>(img.getHeight()) - static_cast<int>(margin_bottom)) {
                 img.SetPixel(x + dx, y, color);
             }
         }
@@ -1348,8 +1352,9 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
     unsigned int boxHeight = static_cast<unsigned int>((ascender - descender) * heightScale); // Total scaled height of the text block
 
     // Measure the total width of the text with reduced spacing
-    for (char c : text)
+    for (size_t i = 0; i < text.length(); ++i)
     {
+        char c = text[i];
         if (FT_Load_Char(face, c, FT_LOAD_RENDER))
         {
             printf("Warning: Could not load character %c\n", c);
@@ -1388,8 +1393,9 @@ void PNGPlotter::GraphLabel(unsigned int penX, unsigned int penY, const std::str
         }
     }
 
-    for (char c : text) 
+    for (size_t i = 0; i < text.length(); ++i) 
     {
+        char c = text[i];
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) 
         {
             printf("Warning: Could not load character %c\n", c);
@@ -1462,8 +1468,9 @@ void PNGPlotter::HeaderPNG(const std::string& text, unsigned int fontSize, unsig
     // Compute a common baseline using font metrics
     int baseline = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
 
-    for (char c : text) 
+    for (size_t i = 0; i < text.length(); ++i) 
     {
+        char c = text[i];
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) 
 	{
             printf("Warning: Could not load character %c\n", c);
@@ -1596,36 +1603,52 @@ void PNGPlotter::drawCirclePoints(int x, int y, int x0, int y0, const RGBA& colo
     for (int dx = -1; dx <= 1; dx++) {
         for (int dy = -1; dy <= 1; dy++) {
             // Check if points are within the plotting area bounds
-            if (x + x0 + dx >= margin_left && x + x0 + dx < width - margin_right &&
-                y + y0 + dy >= margin_top && y + y0 + dy < height - margin_bottom) {
+            if (x + x0 + dx >= static_cast<int>(margin_left) && 
+                x + x0 + dx < static_cast<int>(width - margin_right) &&
+                y + y0 + dy >= static_cast<int>(margin_top) && 
+                y + y0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x + x0 + dx, y + y0 + dy, color);
             }
-            if (x - x0 + dx >= margin_left && x - x0 + dx < width - margin_right &&
-                y + y0 + dy >= margin_top && y + y0 + dy < height - margin_bottom) {
+            if (x - x0 + dx >= static_cast<int>(margin_left) && 
+                x - x0 + dx < static_cast<int>(width - margin_right) &&
+                y + y0 + dy >= static_cast<int>(margin_top) && 
+                y + y0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x - x0 + dx, y + y0 + dy, color);
             }
-            if (x + x0 + dx >= margin_left && x + x0 + dx < width - margin_right &&
-                y - y0 + dy >= margin_top && y - y0 + dy < height - margin_bottom) {
+            if (x + x0 + dx >= static_cast<int>(margin_left) && 
+                x + x0 + dx < static_cast<int>(width - margin_right) &&
+                y - y0 + dy >= static_cast<int>(margin_top) && 
+                y - y0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x + x0 + dx, y - y0 + dy, color);
             }
-            if (x - x0 + dx >= margin_left && x - x0 + dx < width - margin_right &&
-                y - y0 + dy >= margin_top && y - y0 + dy < height - margin_bottom) {
+            if (x - x0 + dx >= static_cast<int>(margin_left) && 
+                x - x0 + dx < static_cast<int>(width - margin_right) &&
+                y - y0 + dy >= static_cast<int>(margin_top) && 
+                y - y0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x - x0 + dx, y - y0 + dy, color);
             }
-            if (x + y0 + dx >= margin_left && x + y0 + dx < width - margin_right &&
-                y + x0 + dy >= margin_top && y + x0 + dy < height - margin_bottom) {
+            if (x + y0 + dx >= static_cast<int>(margin_left) && 
+                x + y0 + dx < static_cast<int>(width - margin_right) &&
+                y + x0 + dy >= static_cast<int>(margin_top) && 
+                y + x0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x + y0 + dx, y + x0 + dy, color);
             }
-            if (x - y0 + dx >= margin_left && x - y0 + dx < width - margin_right &&
-                y + x0 + dy >= margin_top && y + x0 + dy < height - margin_bottom) {
+            if (x - y0 + dx >= static_cast<int>(margin_left) && 
+                x - y0 + dx < static_cast<int>(width - margin_right) &&
+                y + x0 + dy >= static_cast<int>(margin_top) && 
+                y + x0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x - y0 + dx, y + x0 + dy, color);
             }
-            if (x + y0 + dx >= margin_left && x + y0 + dx < width - margin_right &&
-                y - x0 + dy >= margin_top && y - x0 + dy < height - margin_bottom) {
+            if (x + y0 + dx >= static_cast<int>(margin_left) && 
+                x + y0 + dx < static_cast<int>(width - margin_right) &&
+                y - x0 + dy >= static_cast<int>(margin_top) && 
+                y - x0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x + y0 + dx, y - x0 + dy, color);
             }
-            if (x - y0 + dx >= margin_left && x - y0 + dx < width - margin_right &&
-                y - x0 + dy >= margin_top && y - x0 + dy < height - margin_bottom) {
+            if (x - y0 + dx >= static_cast<int>(margin_left) && 
+                x - y0 + dx < static_cast<int>(width - margin_right) &&
+                y - x0 + dy >= static_cast<int>(margin_top) && 
+                y - x0 + dy < static_cast<int>(height - margin_bottom)) {
                 image.SetPixel(x - y0 + dx, y - x0 + dy, color);
             }
         }
