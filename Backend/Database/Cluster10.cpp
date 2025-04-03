@@ -578,47 +578,17 @@ void Cluster10::plotPoints(const std::vector<Point>& points, const RGBA& color, 
         return;
     }
     
-    // Calculate the effective plotting area
-    int plotWidth = width - margin_left - margin_right;
-    int plotHeight = height - margin_top - margin_bottom;
-    
-    // Find min and max values for scaling
-    double minX = points[0].x;
-    double maxX = points[0].x;
-    double minY = points[0].y;
-    double maxY = points[0].y;
-    
-    // C++03 way to iterate through vector
-    for (size_t i = 0; i < points.size(); ++i) {
-        const Point& point = points[i];
-        minX = std::min(minX, point.x);
-        maxX = std::max(maxX, point.x);
-        minY = std::min(minY, point.y);
-        maxY = std::max(maxY, point.y);
-    }
-    
-    // Add some padding to the ranges
-    double xRange = maxX - minX;
-    double yRange = maxY - minY;
-    
-    if (xRange < 1e-10) xRange = 1.0;
-    if (yRange < 1e-10) yRange = 1.0;
-    
-    minX -= xRange * 0.05;
-    maxX += xRange * 0.05;
-    minY -= yRange * 0.05;
-    maxY += yRange * 0.05;
+    // Calculate axis ranges for scaling
+    AxisRange xRange = calculateXRange(points);
+    AxisRange yRange = calculateYRange(points);
     
     // Draw each point
-    // C++03 way to iterate through vector
     for (size_t i = 0; i < points.size(); ++i) {
-        const Point& point = points[i];
-        // Map point coordinates to screen coordinates
-        int x = margin_left + static_cast<int>((point.x - minX) / (maxX - minX) * plotWidth);
-        int y = height - margin_bottom - static_cast<int>((point.y - minY) / (maxY - minY) * plotHeight);
+        // Map point to screen coordinates
+        Point p = mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
         
         // Draw the point
-        drawPoint(x, y, pointSize, color);
+        drawPoint(p.x, p.y, pointSize, color);
     }
 }
 
@@ -628,48 +598,18 @@ void Cluster10::plotLine(const std::vector<Point>& points, const RGBA& color, in
         return;
     }
     
-    // Calculate the effective plotting area
-    int plotWidth = width - margin_left - margin_right;
-    int plotHeight = height - margin_top - margin_bottom;
-    
-    // Find min and max values for scaling
-    double minX = points[0].x;
-    double maxX = points[0].x;
-    double minY = points[0].y;
-    double maxY = points[0].y;
-    
-    // C++03 way to iterate through vector
-    for (size_t i = 0; i < points.size(); ++i) {
-        const Point& point = points[i];
-        minX = std::min(minX, point.x);
-        maxX = std::max(maxX, point.x);
-        minY = std::min(minY, point.y);
-        maxY = std::max(maxY, point.y);
-    }
-    
-    // Add some padding to the ranges
-    double xRange = maxX - minX;
-    double yRange = maxY - minY;
-    
-    if (xRange < 1e-10) xRange = 1.0;
-    if (yRange < 1e-10) yRange = 1.0;
-    
-    minX -= xRange * 0.05;
-    maxX += xRange * 0.05;
-    minY -= yRange * 0.05;
-    maxY += yRange * 0.05;
+    // Calculate axis ranges for scaling
+    AxisRange xRange = calculateXRange(points);
+    AxisRange yRange = calculateYRange(points);
     
     // Draw line segments between adjacent points
     for (size_t i = 1; i < points.size(); ++i) {
-        // Map point coordinates to screen coordinates
-        int x1 = margin_left + static_cast<int>((points[i-1].x - minX) / (maxX - minX) * plotWidth);
-        int y1 = height - margin_bottom - static_cast<int>((points[i-1].y - minY) / (maxY - minY) * plotHeight);
-        
-        int x2 = margin_left + static_cast<int>((points[i].x - minX) / (maxX - minX) * plotWidth);
-        int y2 = height - margin_bottom - static_cast<int>((points[i].y - minY) / (maxY - minY) * plotHeight);
+        // Map points to screen coordinates
+        Point p1 = mapDataToScreen(points[i-1].x, points[i-1].y, xRange, yRange);
+        Point p2 = mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
         
         // Draw the line segment
-        drawLine(x1, y1, x2, y2, color, lineWidth);
+        drawLine(p1.x, p1.y, p2.x, p2.y, color, lineWidth);
     }
 }
 
@@ -717,8 +657,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     }
     
     // Calculate the effective plotting area
-    int plotWidth = width - margin_left - margin_right;
-    int plotHeight = height - margin_top - margin_bottom;
+    int plotWidth = getPlotWidth();
+    int plotHeight = getPlotHeight();
     
     // Find number of unique clusters
     int maxCluster = -1;
@@ -742,43 +682,21 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         clusterColors.push_back(themeColors[i % themeColors.size()]);
     }
     
-    // Find min and max values for each dimension
-    double minX = data[0][0];
-    double maxX = data[0][0];
-    double minY = data[0][1];
-    double maxY = data[0][1];
-    
-    for (size_t i = 0; i < data.size(); ++i) {
-        const std::vector<double>& point = data[i];
-        minX = std::min(minX, point[0]);
-        maxX = std::max(maxX, point[0]);
-        minY = std::min(minY, point[1]);
-        maxY = std::max(maxY, point[1]);
-    }
+    // Calculate axis ranges for X and Y dimensions, including centroids in the calculation
+    AxisRange xRange = calculateXRange(data);
+    AxisRange yRange = calculateYRange(data);
     
     // Also consider centroids for scaling
     for (size_t i = 0; i < centroids.size(); ++i) {
         const std::vector<double>& centroid = centroids[i];
         if (centroid.size() >= 2) {
-            minX = std::min(minX, centroid[0]);
-            maxX = std::max(maxX, centroid[0]);
-            minY = std::min(minY, centroid[1]);
-            maxY = std::max(maxY, centroid[1]);
+            // Update ranges if centroid extends beyond current range
+            xRange.min = std::min(xRange.min, centroid[0] - xRange.padding);
+            xRange.max = std::max(xRange.max, centroid[0] + xRange.padding);
+            yRange.min = std::min(yRange.min, centroid[1] - yRange.padding);
+            yRange.max = std::max(yRange.max, centroid[1] + yRange.padding);
         }
     }
-    
-    // Add padding to the ranges to match the design
-    double xRange = maxX - minX;
-    double yRange = maxY - minY;
-    
-    if (xRange < 1e-10) xRange = 1.0;
-    if (yRange < 1e-10) yRange = 1.0;
-    
-    // Asymmetric padding to match the design
-    minX -= xRange * 0.08;
-    maxX += xRange * 0.08;
-    minY -= yRange * 0.08;
-    maxY += yRange * 0.08;
     
     // Add title to match the design file
     addTitle("Cluster Analysis Visualization", 36);
@@ -807,7 +725,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     for (int i = 0; i <= xTicks; ++i) {
         float percentage = static_cast<float>(i) / xTicks;
         int x = margin_left + static_cast<int>(percentage * plotWidth);
-        double value = minX + percentage * (maxX - minX);
+        double value = xRange.min + percentage * (xRange.max - xRange.min);
         
         // Only draw grid line for non-boundary ticks
         if (i > 0 && i < xTicks) {
@@ -827,7 +745,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     for (int i = 0; i <= yTicks; ++i) {
         float percentage = static_cast<float>(i) / yTicks;
         int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
-        double value = minY + percentage * (maxY - minY);
+        double value = yRange.min + percentage * (yRange.max - yRange.min);
         
         // Only draw grid line for non-boundary ticks
         if (i > 0 && i < yTicks) {
@@ -860,9 +778,11 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     
     // Draw each data point
     for (size_t i = 0; i < data.size(); ++i) {
-        // Map point coordinates to screen coordinates
-        int x = margin_left + static_cast<int>((data[i][0] - minX) / (maxX - minX) * plotWidth);
-        int y = height - margin_bottom - static_cast<int>((data[i][1] - minY) / (maxY - minY) * plotHeight);
+        // Skip if data point doesn't have at least 2 dimensions
+        if (data[i].size() < 2) continue;
+        
+        // Map data point to screen coordinates using helper method
+        Point screenPoint = mapDataToScreen(data[i][0], data[i][1], xRange, yRange);
         
         // Get the cluster label
         int cluster = labels[i];
@@ -872,12 +792,12 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         
         // Store point coordinates for later use
         std::pair<int, int> point;
-        point.first = x;
-        point.second = y;
+        point.first = screenPoint.x;
+        point.second = screenPoint.y;
         clusterPoints[cluster].push_back(point);
         
         // Draw the point with the cluster color
-        drawPoint(x, y, pointSize, clusterColors[cluster]);
+        drawPoint(screenPoint.x, screenPoint.y, pointSize, clusterColors[cluster]);
     }
     
     // First draw cluster circles (behind other elements)
@@ -919,16 +839,15 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Draw centroids as crosses with white background
     for (size_t i = 0; i < centroids.size() && i < clusterColors.size(); ++i) {
         if (centroids[i].size() >= 2) {
-            // Map centroid coordinates to screen coordinates
-            int x = margin_left + static_cast<int>((centroids[i][0] - minX) / (maxX - minX) * plotWidth);
-            int y = height - margin_bottom - static_cast<int>((centroids[i][1] - minY) / (maxY - minY) * plotHeight);
+            // Map centroid to screen coordinates using helper method
+            Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
             
             // Draw a white circle background
-            drawCircle(x, y, 10, RGBA(0xFF, 0xFF, 0xFF, 0xFF), true);
+            drawCircle(centroidPoint.x, centroidPoint.y, 10, RGBA(0xFF, 0xFF, 0xFF, 0xFF), true);
             
             // Draw colored cross
-            drawLine(x - 8, y, x + 8, y, clusterColors[i], 2);
-            drawLine(x, y - 8, x, y + 8, clusterColors[i], 2);
+            drawLine(centroidPoint.x - 8, centroidPoint.y, centroidPoint.x + 8, centroidPoint.y, clusterColors[i], 2);
+            drawLine(centroidPoint.x, centroidPoint.y - 8, centroidPoint.x, centroidPoint.y + 8, clusterColors[i], 2);
         }
     }
     
@@ -1009,9 +928,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Calculate the maximum bin value
     int maxBinValue = bins[0];
     for (size_t i = 1; i < bins.size(); ++i) {
-        if (bins[i] > maxBinValue) {
-            maxBinValue = bins[i];
-        }
+        maxBinValue = std::max(maxBinValue, bins[i]);
     }
     
     if (maxBinValue == 0) {
@@ -1019,8 +936,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     }
     
     // Calculate the effective plotting area
-    int plotWidth = width - margin_left - margin_right;
-    int plotHeight = height - margin_top - margin_bottom;
+    int plotWidth = getPlotWidth();
+    int plotHeight = getPlotHeight();
     
     // Use standardized number of Y-axis ticks to match the histogram.fig design
     int yAxisTicks = 5;
@@ -1050,12 +967,32 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Add title for the histogram - matching position in the fig design
     drawText(width / 2, margin_top / 2, "Frequency Distribution", elementColors["title"], 32, true);
     
-    // Draw grid and axes for better readability
-    // Y-axis labels and grid lines (values)
-    for (int i = 0; i <= yAxisTicks; ++i) {
-        float percentage = static_cast<float>(i) / yAxisTicks;
+    // Draw Y-axis grid lines and labels (values)
+    drawHistogramYAxis(maxBinValue, yAxisTicks);
+    
+    // Draw axis labels
+    // X-axis label at the bottom center
+    drawText(width / 2, height - margin_bottom/3, "Categories", elementColors["axisLabel"], 26, true);
+    
+    // Y-axis label (vertical text) - matching position in the fig design
+    drawVerticalText("Frequency", margin_left/4, height/2 - 80, 26, elementColors["axisLabel"]);
+    
+    // Draw the bars with precise spacing
+    drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, color);
+    
+    // Add summary statistics box
+    drawHistogramStats(bins, maxBinValue);
+}
+
+// Helper method to draw Y-axis grid lines and labels for histogram
+void Cluster10::drawHistogramYAxis(int maxValue, int numTicks)
+{
+    int plotHeight = getPlotHeight();
+    
+    for (int i = 0; i <= numTicks; ++i) {
+        float percentage = static_cast<float>(i) / numTicks;
         int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
-        int labelValue = static_cast<int>(percentage * maxBinValue);
+        int labelValue = static_cast<int>(percentage * maxValue);
         
         // Only draw grid lines for non-zero values
         if (i > 0) {
@@ -1068,33 +1005,35 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
         std::sprintf(valueText, "%d", labelValue);
         drawText(margin_left - 25, y, valueText, elementColors["axisLabel"], 18, true);
     }
-    
-    // Draw axis labels
-    // X-axis label at the bottom center
-    drawText(width / 2, height - margin_bottom/3, "Categories", elementColors["axisLabel"], 26, true);
-    
-    // Y-axis label (vertical text) - matching position in the fig design
-    std::string yLabel = "Frequency";
-    int yLabelX = margin_left/4;
-    int yLabelY = height/2 - 80;
-    int charSpacing = 26;
-    
-    for (size_t i = 0; i < yLabel.length(); ++i) {
+}
+
+// Helper method to draw vertical text (for axis labels)
+void Cluster10::drawVerticalText(const std::string& text, int x, int y, int charSpacing, const RGBA& color, unsigned int fontSize)
+{
+    for (size_t i = 0; i < text.length(); ++i) {
         char buffer[2];
-        buffer[0] = yLabel[i];
+        buffer[0] = text[i];
         buffer[1] = '\0';
-        drawText(yLabelX, yLabelY + i * charSpacing, buffer, elementColors["axisLabel"], 22, true);
+        drawText(x, y + i * charSpacing, buffer, color, fontSize, true);
     }
+}
+
+// Helper method to draw histogram bars
+void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue, int totalBars, 
+                                 int barWidth, int barSpacing, const RGBA& color)
+{
+    int plotHeight = getPlotHeight();
+    int plotWidth = getPlotWidth();
     
-    // Draw the bars with precise spacing
+    // Center the bars within the available space
+    int totalBarsWidth = totalBars * barWidth + (totalBars - 1) * barSpacing;
+    int startX = margin_left + (plotWidth - totalBarsWidth) / 2;
+    
     for (size_t i = 0; i < bins.size() && i < (size_t)totalBars; ++i) {
         // Calculate bar height and position
         float heightPercentage = static_cast<float>(bins[i]) / maxBinValue;
         int barHeight = static_cast<int>(plotHeight * heightPercentage * 0.9f); // Leave 10% margin at top
         
-        // Center the bars within the available space
-        int totalBarsWidth = totalBars * barWidth + (totalBars - 1) * barSpacing;
-        int startX = margin_left + (plotWidth - totalBarsWidth) / 2;
         int x = startX + i * (barWidth + barSpacing);
         int y = height - margin_bottom - barHeight;
         
@@ -1127,30 +1066,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
         }
         
         // Add a subtle highlight on the left edge (3D effect)
-        RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x40);  // Semi-transparent white
-        for (int dy = 0; dy < barHeight; ++dy) {
-            for (int dx = 0; dx < 3; ++dx) {  // 3-pixel highlight width
-                // Fade out the highlight
-                unsigned char alpha = static_cast<unsigned char>(0x40 * (3 - dx) / 3);
-                RGBA fadedHighlight(highlightColor.r, highlightColor.g, highlightColor.b, alpha);
-                if (x + dx >= 0 && x + dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
-                    image.SetPixel(x + dx, y + dy, fadedHighlight);
-                }
-            }
-        }
-        
-        // Add shadow on the right edge (3D effect)
-        RGBA shadowColor(0x00, 0x00, 0x00, 0x30);  // Semi-transparent black
-        for (int dy = 0; dy < barHeight; ++dy) {
-            for (int dx = 0; dx < 3; ++dx) {  // 3-pixel shadow width
-                // Fade out the shadow
-                unsigned char alpha = static_cast<unsigned char>(0x30 * (3 - dx) / 3);
-                RGBA fadedShadow(shadowColor.r, shadowColor.g, shadowColor.b, alpha);
-                if (x + barWidth - 1 - dx >= 0 && x + barWidth - 1 - dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
-                    image.SetPixel(x + barWidth - 1 - dx, y + dy, fadedShadow);
-                }
-            }
-        }
+        drawHistogramBarHighlights(x, y, barWidth, barHeight);
         
         // Draw value above the bar if it's tall enough to be significant
         if (heightPercentage > 0.15f) { // Only for bars that are at least 15% of max height
@@ -1168,7 +1084,41 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
         // Position text centered below the bar
         drawText(x + barWidth / 2, height - margin_bottom + 20, labelBuffer, elementColors["axisLabel"], 16, true);
     }
+}
+
+// Helper method to draw 3D highlights and shadows for histogram bars
+void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight)
+{
+    // Add a subtle highlight on the left edge (3D effect)
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x40);  // Semi-transparent white
+    for (int dy = 0; dy < barHeight; ++dy) {
+        for (int dx = 0; dx < 3; ++dx) {  // 3-pixel highlight width
+            // Fade out the highlight
+            unsigned char alpha = static_cast<unsigned char>(0x40 * (3 - dx) / 3);
+            RGBA fadedHighlight(highlightColor.r, highlightColor.g, highlightColor.b, alpha);
+            if (x + dx >= 0 && x + dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
+                image.SetPixel(x + dx, y + dy, fadedHighlight);
+            }
+        }
+    }
     
+    // Add shadow on the right edge (3D effect)
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x30);  // Semi-transparent black
+    for (int dy = 0; dy < barHeight; ++dy) {
+        for (int dx = 0; dx < 3; ++dx) {  // 3-pixel shadow width
+            // Fade out the shadow
+            unsigned char alpha = static_cast<unsigned char>(0x30 * (3 - dx) / 3);
+            RGBA fadedShadow(shadowColor.r, shadowColor.g, shadowColor.b, alpha);
+            if (x + barWidth - 1 - dx >= 0 && x + barWidth - 1 - dx < (int)width && y + dy >= 0 && y + dy < (int)height) {
+                image.SetPixel(x + barWidth - 1 - dx, y + dy, fadedShadow);
+            }
+        }
+    }
+}
+
+// Helper method to draw statistics summary box for histogram
+void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue)
+{
     // Add a summary statistics box in the top-right corner
     int statsBoxX = width - margin_right - 180;
     int statsBoxY = margin_top + 30;
@@ -1243,6 +1193,122 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     drawText(statsBoxX, statsBoxY + 2 * statsSpacing, maxText, statsTextColor, 18, false);
 }
 
+Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<Point>& points)
+{
+    if (points.empty()) {
+        return AxisRange();
+    }
+    
+    // Find min and max values
+    double minX = points[0].x;
+    double maxX = points[0].x;
+    
+    for (size_t i = 0; i < points.size(); ++i) {
+        minX = std::min(minX, points[i].x);
+        maxX = std::max(maxX, points[i].x);
+    }
+    
+    // Calculate padding based on range
+    double range = maxX - minX;
+    if (range < 1e-10) range = 1.0;
+    
+    double padding = range * 0.05;
+    
+    return AxisRange(minX - padding, maxX + padding, padding);
+}
+
+Cluster10::AxisRange Cluster10::calculateYRange(const std::vector<Point>& points)
+{
+    if (points.empty()) {
+        return AxisRange();
+    }
+    
+    // Find min and max values
+    double minY = points[0].y;
+    double maxY = points[0].y;
+    
+    for (size_t i = 0; i < points.size(); ++i) {
+        minY = std::min(minY, points[i].y);
+        maxY = std::max(maxY, points[i].y);
+    }
+    
+    // Calculate padding based on range
+    double range = maxY - minY;
+    if (range < 1e-10) range = 1.0;
+    
+    double padding = range * 0.05;
+    
+    return AxisRange(minY - padding, maxY + padding, padding);
+}
+
+Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<std::vector<double> >& data)
+{
+    if (data.empty() || data[0].empty()) {
+        return AxisRange();
+    }
+    
+    // Find min and max values for X (first dimension)
+    double minX = data[0][0];
+    double maxX = data[0][0];
+    
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (!data[i].empty()) {
+            minX = std::min(minX, data[i][0]);
+            maxX = std::max(maxX, data[i][0]);
+        }
+    }
+    
+    // Calculate padding based on range
+    double range = maxX - minX;
+    if (range < 1e-10) range = 1.0;
+    
+    double padding = range * 0.08; // Use 8% padding as in the design
+    
+    return AxisRange(minX - padding, maxX + padding, padding);
+}
+
+Cluster10::AxisRange Cluster10::calculateYRange(const std::vector<std::vector<double> >& data)
+{
+    if (data.empty() || data[0].size() < 2) {
+        return AxisRange();
+    }
+    
+    // Find min and max values for Y (second dimension)
+    double minY = data[0][1];
+    double maxY = data[0][1];
+    
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (data[i].size() >= 2) {
+            minY = std::min(minY, data[i][1]);
+            maxY = std::max(maxY, data[i][1]);
+        }
+    }
+    
+    // Calculate padding based on range
+    double range = maxY - minY;
+    if (range < 1e-10) range = 1.0;
+    
+    double padding = range * 0.08; // Use 8% padding as in the design
+    
+    return AxisRange(minY - padding, maxY + padding, padding);
+}
+
+Cluster10::Point Cluster10::mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange)
+{
+    int plotWidth = getPlotWidth();
+    int plotHeight = getPlotHeight();
+    
+    // Map x and y to screen coordinates
+    int screenX = margin_left + static_cast<int>((x - xRange.min) / (xRange.max - xRange.min) * plotWidth);
+    int screenY = height - margin_bottom - static_cast<int>((y - yRange.min) / (yRange.max - yRange.min) * plotHeight);
+    
+    // Ensure coordinates are within bounds
+    screenX = clamp(screenX, margin_left, width - margin_right);
+    screenY = clamp(screenY, margin_top, height - margin_bottom);
+    
+    return Point(screenX, screenY);
+}
+
 void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
 {
     // Define the width of the candlestick body - matched to candechart.fig
@@ -1315,8 +1381,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     }
     
     // Calculate the effective plotting area
-    int plotWidth = width - margin_left - margin_right;
-    int plotHeight = height - margin_top - margin_bottom;
+    int plotWidth = getPlotWidth();
+    int plotHeight = getPlotHeight();
     
     // Find min and max price values for scaling
     double minPrice = candles[0].low;
@@ -1362,77 +1428,18 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Add title that matches the design
     addTitle("Stock Price - Candlestick Chart", 36);
     
-    // Draw grid and axes
-    // Y-axis price labels and grid lines
-    int yAxisTicks = 5; // Match the design
-    for (int i = 0; i <= yAxisTicks; ++i) {
-        float percentage = static_cast<float>(i) / yAxisTicks;
-        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
-        double priceValue = minPrice + percentage * (maxPrice - minPrice);
-        
-        // Draw horizontal grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        // Don't draw grid line at the very bottom
-        if (i > 0) {
-            drawLine(margin_left, y, width - margin_right, y, gridColor);
-        }
-        
-        // Draw price label with 2 decimal places
-        char priceText[32];
-        std::sprintf(priceText, "%.2f", priceValue);
-        drawText(margin_left - 30, y, priceText, elementColors["axisLabel"], 16, true);
-    }
+    // Draw Y-axis with price labels
+    drawCandlestickYAxis(minPrice, maxPrice, 5);
     
-    // X-axis date labels and vertical grid lines
-    // Calculate number of date labels to show (one per 3-4 candles)
-    int dateLabelsCount = maxVisibleCandles / 3; 
-    if (dateLabelsCount < 3) dateLabelsCount = 3;
-    if (dateLabelsCount > 8) dateLabelsCount = 8; // Not too many labels
-    
-    for (int i = 0; i <= dateLabelsCount; ++i) {
-        float percentage = static_cast<float>(i) / dateLabelsCount;
-        int x = margin_left + static_cast<int>(percentage * plotWidth);
-        
-        // Calculate timestamp for this position
-        int candleIndex = static_cast<int>(percentage * (totalCandles - 1));
-        candleIndex = std::min(candleIndex, totalCandles - 1);
-        candleIndex = std::max(candleIndex, 0);
-        
-        double timestamp = candles[candleIndex].timestamp;
-        
-        // Draw vertical grid line
-        if (i > 0 && i < dateLabelsCount) {
-            RGBA gridColor = elementColors["majorGrid"];
-            drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
-        }
-        
-        // Format timestamp into readable date (for this example, use simple numeric format)
-        // In a real application, you'd convert the timestamp to a proper date format
-        char dateText[32];
-        std::time_t time = static_cast<std::time_t>(timestamp);
-        struct tm* timeinfo = std::localtime(&time);
-        std::strftime(dateText, sizeof(dateText), "%m/%d", timeinfo);
-        
-        // Draw date label, avoiding overlap
-        drawText(x, height - margin_bottom + 20, dateText, elementColors["axisLabel"], 14, true);
-    }
+    // Draw X-axis with date labels
+    drawCandlestickXAxis(candles, maxVisibleCandles, totalCandles, firstTimestamp, lastTimestamp);
     
     // Label axes
     // X-axis label
     drawText(width/2, height - margin_bottom/3, "Date", elementColors["axisLabel"], 24, true);
     
     // Y-axis label (vertical text)
-    std::string yLabel = "Price";
-    int yLabelX = margin_left/3;
-    int yLabelY = height/2 - 60;
-    int charSpacing = 24;
-    
-    for (size_t i = 0; i < yLabel.length(); ++i) {
-        char buffer[2];
-        buffer[0] = yLabel[i];
-        buffer[1] = '\0';
-        drawText(yLabelX, yLabelY + i * charSpacing, buffer, elementColors["axisLabel"], 22, true);
-    }
+    drawVerticalText("Price", margin_left/3, height/2 - 60, 24, elementColors["axisLabel"]);
     
     // Calculate optimal starting position to center the candles
     int totalRequiredWidth = maxVisibleCandles * (candleWidth + candleSpacing);
@@ -1468,71 +1475,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         drawCandlestick(x, y_open, y_close, y_high, y_low, candleColor);
     }
     
-    // Add price movement indicators and current price display if applicable
-    if (!candles.empty()) {
-        const CandleData& latestCandle = candles[candles.size() - 1];
-        const CandleData& firstCandle = candles[0];
-        
-        // Calculate price change
-        double priceChange = latestCandle.close - firstCandle.open;
-        double percentChange = (priceChange / firstCandle.open) * 100.0;
-        
-        // Format price info
-        char priceInfo[128];
-        std::sprintf(priceInfo, "Close: %.2f  Change: %.2f (%.2f%%)", 
-                   latestCandle.close, priceChange, percentChange);
-        
-        // Display price info at the top of the chart
-        RGBA priceInfoBg(0x1A, 0x1D, 0x2F, 0xDD); // Semi-transparent background
-        int infoWidth = 250;
-        int infoHeight = 40;
-        int infoX = width - margin_right - infoWidth - 20;
-        int infoY = margin_top + 20;
-        
-        // Draw info box with rounded corners
-        int cornerRadius = 6;
-        for (int dy = 0; dy < infoHeight; dy++) {
-            for (int dx = 0; dx < infoWidth; dx++) {
-                // Skip pixels in the rounded corners
-                bool inCorner = false;
-                
-                // Top-left corner
-                if (dx < cornerRadius && dy < cornerRadius) {
-                    int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
-                    inCorner = distSq > cornerRadius * cornerRadius;
-                }
-                // Top-right corner
-                else if (dx >= infoWidth - cornerRadius && dy < cornerRadius) {
-                    int distSq = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
-                    inCorner = distSq > cornerRadius * cornerRadius;
-                }
-                // Bottom-left corner
-                else if (dx < cornerRadius && dy >= infoHeight - cornerRadius) {
-                    int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
-                    inCorner = distSq > cornerRadius * cornerRadius;
-                }
-                // Bottom-right corner
-                else if (dx >= infoWidth - cornerRadius && dy >= infoHeight - cornerRadius) {
-                    int distSq = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
-                    inCorner = distSq > cornerRadius * cornerRadius;
-                }
-                
-                if (!inCorner) {
-                    int pixelX = infoX + dx;
-                    int pixelY = infoY + dy;
-                    if (pixelX >= 0 && pixelX < width && pixelY >= 0 && pixelY < height) {
-                        image.SetPixel(pixelX, pixelY, priceInfoBg);
-                    }
-                }
-            }
-        }
-        
-        // Set color based on price change
-        RGBA priceChangeColor = (priceChange >= 0) ? bullishColor : bearishColor;
-        
-        // Draw price info text
-        drawText(infoX + 15, infoY + infoHeight/2, priceInfo, priceChangeColor, 16, false);
-    }
+    // Add price movement indicators and current price display
+    drawCandlestickPriceInfo(candles, bullishColor, bearishColor);
     
     // Add a legend for bullish/bearish candles
     std::vector<std::string> legendLabels;
@@ -1545,4 +1489,138 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     
     // Position the legend in the top-left corner for better visibility
     addLegend(legendLabels, legendColors, margin_left + 15, margin_top + 15, 16);
+}
+
+void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks)
+{
+    int plotHeight = getPlotHeight();
+    
+    // Y-axis price labels and grid lines
+    for (int i = 0; i <= numTicks; ++i) {
+        float percentage = static_cast<float>(i) / numTicks;
+        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
+        double priceValue = minPrice + percentage * (maxPrice - minPrice);
+        
+        // Draw horizontal grid line
+        RGBA gridColor = elementColors["majorGrid"];
+        // Don't draw grid line at the very bottom
+        if (i > 0) {
+            drawLine(margin_left, y, width - margin_right, y, gridColor);
+        }
+        
+        // Draw price label with 2 decimal places
+        char priceText[32];
+        std::sprintf(priceText, "%.2f", priceValue);
+        drawText(margin_left - 30, y, priceText, elementColors["axisLabel"], 16, true);
+    }
+}
+
+void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
+                                   int totalCandles, double firstTimestamp, double lastTimestamp)
+{
+    int plotWidth = getPlotWidth();
+    
+    // Calculate number of date labels to show (one per 3-4 candles)
+    int dateLabelsCount = maxVisibleCandles / 3; 
+    if (dateLabelsCount < 3) dateLabelsCount = 3;
+    if (dateLabelsCount > 8) dateLabelsCount = 8; // Not too many labels
+    
+    for (int i = 0; i <= dateLabelsCount; ++i) {
+        float percentage = static_cast<float>(i) / dateLabelsCount;
+        int x = margin_left + static_cast<int>(percentage * plotWidth);
+        
+        // Calculate timestamp for this position
+        int candleIndex = static_cast<int>(percentage * (totalCandles - 1));
+        candleIndex = std::min(candleIndex, totalCandles - 1);
+        candleIndex = std::max(candleIndex, 0);
+        
+        double timestamp = candles[candleIndex].timestamp;
+        
+        // Draw vertical grid line
+        if (i > 0 && i < dateLabelsCount) {
+            RGBA gridColor = elementColors["majorGrid"];
+            drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        }
+        
+        // Format timestamp into readable date (for this example, use simple numeric format)
+        // In a real application, you'd convert the timestamp to a proper date format
+        char dateText[32];
+        std::time_t time = static_cast<std::time_t>(timestamp);
+        struct tm* timeinfo = std::localtime(&time);
+        std::strftime(dateText, sizeof(dateText), "%m/%d", timeinfo);
+        
+        // Draw date label, avoiding overlap
+        drawText(x, height - margin_bottom + 20, dateText, elementColors["axisLabel"], 14, true);
+    }
+}
+
+void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
+                                      const RGBA& bullishColor, const RGBA& bearishColor)
+{
+    if (candles.empty()) {
+        return;
+    }
+    
+    const CandleData& latestCandle = candles[candles.size() - 1];
+    const CandleData& firstCandle = candles[0];
+    
+    // Calculate price change
+    double priceChange = latestCandle.close - firstCandle.open;
+    double percentChange = (priceChange / firstCandle.open) * 100.0;
+    
+    // Format price info
+    char priceInfo[128];
+    std::sprintf(priceInfo, "Close: %.2f  Change: %.2f (%.2f%%)", 
+               latestCandle.close, priceChange, percentChange);
+    
+    // Display price info at the top of the chart
+    RGBA priceInfoBg(0x1A, 0x1D, 0x2F, 0xDD); // Semi-transparent background
+    int infoWidth = 250;
+    int infoHeight = 40;
+    int infoX = width - margin_right - infoWidth - 20;
+    int infoY = margin_top + 20;
+    
+    // Draw info box with rounded corners
+    int cornerRadius = 6;
+    for (int dy = 0; dy < infoHeight; dy++) {
+        for (int dx = 0; dx < infoWidth; dx++) {
+            // Skip pixels in the rounded corners
+            bool inCorner = false;
+            
+            // Top-left corner
+            if (dx < cornerRadius && dy < cornerRadius) {
+                int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            // Top-right corner
+            else if (dx >= infoWidth - cornerRadius && dy < cornerRadius) {
+                int distSq = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            // Bottom-left corner
+            else if (dx < cornerRadius && dy >= infoHeight - cornerRadius) {
+                int distSq = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            // Bottom-right corner
+            else if (dx >= infoWidth - cornerRadius && dy >= infoHeight - cornerRadius) {
+                int distSq = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
+                inCorner = distSq > cornerRadius * cornerRadius;
+            }
+            
+            if (!inCorner) {
+                int pixelX = infoX + dx;
+                int pixelY = infoY + dy;
+                if (pixelX >= 0 && pixelX < width && pixelY >= 0 && pixelY < height) {
+                    image.SetPixel(pixelX, pixelY, priceInfoBg);
+                }
+            }
+        }
+    }
+    
+    // Set color based on price change
+    RGBA priceChangeColor = (priceChange >= 0) ? bullishColor : bearishColor;
+    
+    // Draw price info text
+    drawText(infoX + 15, infoY + infoHeight/2, priceInfo, priceChangeColor, 16, false);
 } 
