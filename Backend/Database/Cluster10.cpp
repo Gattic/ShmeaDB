@@ -3,6 +3,7 @@
 #include "png-helper.h"
 #include <algorithm>
 #include <limits>
+#include <string>  // for std::to_string
 
 using namespace shmea;
 
@@ -48,38 +49,52 @@ Cluster10::~Cluster10()
 
 void Cluster10::initialize_colors()
 {
-    // Initialize the color palette based on cluster10.fig design - darker, more sophisticated colors
+    // Initialize the color palette based on exact values from the CSS file
     
-    // Dark theme background colors - exact colors from fig files
-    elementColors["bgGradientTop"] = RGBA(0x18, 0x1B, 0x2C, 0xFF);    // Dark navy blue top
-    elementColors["bgGradientBottom"] = RGBA(0x0A, 0x0C, 0x16, 0xFF); // Darker navy bottom
+    // Background colors from CSS dark theme
+    // Using a dark blue background similar to the app theme
+    elementColors["bgGradientTop"] = RGBA(0x19, 0x23, 0x35, 0xFF);    // --chart-lines: #192335
+    elementColors["bgGradientBottom"] = RGBA(0x00, 0x0B, 0x1E, 0xFF); // --text-inverted: #000b1e (darker for gradient effect)
     
-    // Grid and axes colors - exact colors from fig files
-    elementColors["majorGrid"] = RGBA(0x2A, 0x31, 0x45, 0x99);        // Subtle blue-gray for grid lines
-    elementColors["minorGrid"] = RGBA(0x20, 0x25, 0x35, 0x55);        // Darker blue-gray for minor grid
-    elementColors["axes"] = RGBA(0xF0, 0xF0, 0xF0, 0xFF);             // Almost white for axes
-    elementColors["border"] = RGBA(0x3A, 0x41, 0x5A, 0xFF);           // Border color
+    // Grid and axes colors from CSS 
+    elementColors["majorGrid"] = RGBA(0x19, 0x23, 0x35, 0x80);        // --chart-lines with transparency
+    elementColors["minorGrid"] = RGBA(0x19, 0x23, 0x35, 0x40);        // Lighter grid lines
+    elementColors["axes"] = RGBA(0xFF, 0xFF, 0xFF, 0xCC);             // --text-primary: #ffffff with slight transparency
+    elementColors["border"] = RGBA(0xCD, 0xD5, 0xE5, 0x26);           // --divider: rgba(205 213 229 / 0.15)
     
-    // Text colors - exact colors from fig files for maximum readability
-    elementColors["title"] = RGBA(0xFF, 0xFF, 0xFF, 0xFF);            // Pure white for titles
-    elementColors["axisLabel"] = RGBA(0xCC, 0xCC, 0xCC, 0xFF);        // Light gray for axis labels
-    elementColors["legend"] = RGBA(0xEE, 0xEE, 0xEE, 0xFF);           // Off-white for legend text
+    // Text colors from CSS
+    elementColors["title"] = RGBA(0xFF, 0xFF, 0xFF, 0xFF);            // --text-primary: #ffffff
+    elementColors["axisLabel"] = RGBA(0xCD, 0xD5, 0xE5, 0xCC);        // Based on --divider but more opaque
+    elementColors["legend"] = RGBA(0xFF, 0xFF, 0xFF, 0xEE);           // --text-primary with slight transparency
     
-    // Legend box colors - exact colors from fig files
-    elementColors["legendBgTop"] = RGBA(0x1E, 0x22, 0x36, 0xFF);      // Legend background gradient top
-    elementColors["legendBgBottom"] = RGBA(0x15, 0x18, 0x26, 0xFF);   // Legend background gradient bottom
+    // Info box colors from CSS
+    elementColors["legendBgTop"] = RGBA(0x23, 0x0B, 0x6A, 0xF0);      // --blue-marguerite-950: #230b6a
+    elementColors["legendBgBottom"] = RGBA(0x15, 0x21, 0x56, 0xF0);   // --cornflower-blue-950: #152156
     
-    // Data visualization colors - exact colors from fig files for better visibility and distinction
-    themeColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));              // Vivid Orange (cluster0) 
-    themeColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));              // Bright Blue (cluster1)
-    themeColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));              // Deep Green (cluster2)
-    themeColors.push_back(RGBA(0xFF, 0x47, 0x45, 0xFF));              // Coral Red
-    themeColors.push_back(RGBA(0xFF, 0xD4, 0x00, 0xFF));              // Golden Yellow
-    themeColors.push_back(RGBA(0x9D, 0x02, 0xFF, 0xFF));              // Rich Purple
-    themeColors.push_back(RGBA(0x00, 0xC2, 0xC7, 0xFF));              // Teal
-    themeColors.push_back(RGBA(0xFF, 0x0C, 0xC0, 0xFF));              // Magenta
-    themeColors.push_back(RGBA(0x85, 0x8A, 0xFF, 0xFF));              // Periwinkle
-    themeColors.push_back(RGBA(0x29, 0xA2, 0xC6, 0xFF));              // Steel Blue
+    // Theme colors from CSS semantic colors - EXACT matches
+    themeColors.push_back(RGBA(0x5C, 0xFF, 0xB3, 0xFF));              // --charts-group-1-fill: var(--aquamarine-300): #5cffb3
+    themeColors.push_back(RGBA(0x5C, 0xE9, 0xFF, 0xFF));              // --charts-group-2-fill: var(--spray-300): #5ce9ff
+    themeColors.push_back(RGBA(0xBA, 0xB1, 0xFF, 0xFF));              // --charts-group-3-fill: var(--blue-marguerite-300): #bab1ff
+    themeColors.push_back(RGBA(0xD6, 0xFF, 0xC7, 0xFF));              // --charts-group-4-fill: var(--screamin-green-100): #d6ffc7
+    themeColors.push_back(RGBA(0x5C, 0x9D, 0xFF, 0xFF));              // --charts-group-5-fill: var(--cornflower-blue-400): #5c9dff
+    themeColors.push_back(RGBA(0x01, 0xB8, 0x63, 0xFF));              // --charts-group-6-fill: var(--aquamarine-600): #01b863
+    themeColors.push_back(RGBA(0x8C, 0x4A, 0x72, 0xFF));              // --charts-group-7-fill: var(--wine-berry-700): #8c4a72
+    themeColors.push_back(RGBA(0x01, 0x92, 0xB9, 0xFF));              // --charts-group-8-fill: var(--spray-600): #0192b9
+    
+    // Special chart colors - EXACT matches from CSS
+    elementColors["bullish"] = RGBA(0x33, 0xF5, 0x9B, 0xFF);          // --price-buy: var(--aquamarine-400): #33f59b
+    elementColors["bearish"] = RGBA(0xFF, 0x5C, 0x74, 0xFF);          // --price-sell: var(--wild-watermelon-400): #ff5c74
+    
+    // Dark versions of colors for contrast and accents - from CSS
+    elementColors["cluster1Dark"] = RGBA(0x0A, 0x71, 0x43, 0xFF);     // --charts-group-1-dark: var(--aquamarine-800): #0a7143
+    elementColors["cluster2Dark"] = RGBA(0x11, 0x5E, 0x79, 0xFF);     // --charts-group-2-dark: var(--spray-800): #115e79
+    elementColors["cluster3Dark"] = RGBA(0x47, 0x18, 0xBF, 0xFF);     // --charts-group-3-dark: var(--blue-marguerite-800): #4718bf
+    elementColors["cluster4Dark"] = RGBA(0x17, 0x69, 0x0B, 0xFF);     // --charts-group-4-dark: var(--screamin-green-800): #17690b
+    
+    // Additional accent colors
+    elementColors["highlight"] = RGBA(0xFF, 0xFF, 0xFF, 0x80);        // White highlight with 50% opacity
+    elementColors["shadow"] = RGBA(0x00, 0x00, 0x00, 0x80);           // Black shadow with 50% opacity
+    elementColors["innerShadowBg"] = RGBA(0x19, 0x23, 0x35, 0x03);    // --inner-shadow-bg: rgba(25 35 53 / 0.01) but slightly more visible
 }
 
 void Cluster10::initialize_font(const std::string fontPath)
@@ -124,9 +139,8 @@ void Cluster10::drawGrid()
     int gridDivisionsX = 4;  // 4 evenly spaced vertical gridlines
     int gridDivisionsY = 3;  // 3 evenly spaced horizontal gridlines
     
-    // Get colors for the grid lines
+    // Get colors for the grid lines - use CSS-aligned colors
     RGBA gridColor = elementColors["majorGrid"];
-    gridColor.a = 0x70; // Semi-transparent grid lines
     
     // Draw X-axis grid lines (vertical lines)
     for (int i = 1; i < gridDivisionsX; i++) {
@@ -146,9 +160,8 @@ void Cluster10::drawGrid()
         drawLine(margin_left, y, width - margin_right, y, gridColor, 1);
     }
     
-    // Draw plot border - matching the design files exactly
+    // Draw plot border - using theme border color
     RGBA borderColor = elementColors["border"];
-    borderColor.a = 0xCC; // More visible border
     
     // Draw border as a rectangle rather than individual lines for consistent corners
     drawRect(margin_left, margin_top, effectiveWidth, effectiveHeight, borderColor, false, 2);
@@ -639,16 +652,16 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Total number of clusters
     int numClusters = maxCluster + 1;
     
-    // Prepare colors for each cluster
+    // Prepare colors for each cluster - use colors from our theme
     std::vector<RGBA> clusterColors;
     
-    // Use specific colors from the design file for the first clusters
-    if (numClusters >= 1) clusterColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Vivid Orange
-    if (numClusters >= 2) clusterColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Bright Blue
-    if (numClusters >= 3) clusterColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF)); // Deep Green
+    // Use colors from themeColors
+    for (int i = 0; i < numClusters && i < static_cast<int>(themeColors.size()); ++i) {
+        clusterColors.push_back(themeColors[i]);
+    }
     
-    // Add more colors if needed
-    for (int i = 3; i < numClusters; ++i) {
+    // If there are more clusters than theme colors, cycle through them
+    for (int i = themeColors.size(); i < numClusters; ++i) {
         clusterColors.push_back(themeColors[i % themeColors.size()]);
     }
     
@@ -743,58 +756,58 @@ void Cluster10::calculateClusterBounds(
     const AxisRange& xRange,
     const AxisRange& yRange)
 {
-    // Calculate cluster bounds
-    double minX = std::numeric_limits<double>::max();
-    double maxX = -std::numeric_limits<double>::max();
-    double minY = std::numeric_limits<double>::max();
-    double maxY = -std::numeric_limits<double>::max();
-    double sumX = 0.0, sumY = 0.0;
-    int pointCount = 0;
-    
-    // Calculate cluster centroid and bounds from all points
-    for (size_t i = 0; i < data.size(); ++i) {
-        if (labels[i] == cluster && data[i].size() >= 2) {
-            pointCount++;
-            sumX += data[i][0];
-            sumY += data[i][1];
-            minX = std::min(minX, data[i][0]);
-            maxX = std::max(maxX, data[i][0]);
-            minY = std::min(minY, data[i][1]);
-            maxY = std::max(maxY, data[i][1]);
+        // Calculate cluster bounds
+        double minX = std::numeric_limits<double>::max();
+        double maxX = -std::numeric_limits<double>::max();
+        double minY = std::numeric_limits<double>::max();
+        double maxY = -std::numeric_limits<double>::max();
+        double sumX = 0.0, sumY = 0.0;
+        int pointCount = 0;
+        
+        // Calculate cluster centroid and bounds from all points
+        for (size_t i = 0; i < data.size(); ++i) {
+            if (labels[i] == cluster && data[i].size() >= 2) {
+                pointCount++;
+                sumX += data[i][0];
+                sumY += data[i][1];
+                minX = std::min(minX, data[i][0]);
+                maxX = std::max(maxX, data[i][0]);
+                minY = std::min(minY, data[i][1]);
+                maxY = std::max(maxY, data[i][1]);
+            }
         }
-    }
-    
-    if (pointCount == 0) {
-        // Add placeholder values for empty clusters
-        clusterCenters.push_back(Point(0, 0));
-        clusterRadii.push_back(0);
+        
+        if (pointCount == 0) {
+            // Add placeholder values for empty clusters
+            clusterCenters.push_back(Point(0, 0));
+            clusterRadii.push_back(0);
         return;
-    }
-    
-    // Calculate true centroid (average of all points)
-    double centerX = sumX / pointCount;
-    double centerY = sumY / pointCount;
-    
-    // Find the maximum distance from any point to the centroid
-    double maxDist = 0.0;
-    for (size_t i = 0; i < data.size(); ++i) {
-        if (labels[i] == cluster && data[i].size() >= 2) {
-            double dx = data[i][0] - centerX;
-            double dy = data[i][1] - centerY;
-            double dist = std::sqrt(dx*dx + dy*dy);
-            maxDist = std::max(maxDist, dist);
         }
+        
+        // Calculate true centroid (average of all points)
+        double centerX = sumX / pointCount;
+        double centerY = sumY / pointCount;
+        
+        // Find the maximum distance from any point to the centroid
+        double maxDist = 0.0;
+        for (size_t i = 0; i < data.size(); ++i) {
+            if (labels[i] == cluster && data[i].size() >= 2) {
+                double dx = data[i][0] - centerX;
+                double dy = data[i][1] - centerY;
+                double dist = std::sqrt(dx*dx + dy*dy);
+                maxDist = std::max(maxDist, dist);
+            }
+        }
+        
+        // Map to screen coordinates
+        Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
+        Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
+    int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding for better visibility
+        
+        clusterCenters.push_back(screenCenter);
+        clusterRadii.push_back(radius);
     }
     
-    // Map to screen coordinates
-    Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
-    Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
-    int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding for better visibility
-    
-    clusterCenters.push_back(screenCenter);
-    clusterRadii.push_back(radius);
-}
-
 // Helper method to draw cluster circles with transparency
 void Cluster10::drawClusterCircles(
     const std::vector<Point>& clusterCenters,
@@ -808,24 +821,10 @@ void Cluster10::drawClusterCircles(
         // Get the cluster color
         RGBA circleColor = clusterColors[cluster % clusterColors.size()];
         
-        // Draw filled cluster circle with semi-transparency based on cluster
-        unsigned char alpha = 0;
-        unsigned char borderAlpha = 0;
-        
-        // Set transparency values based on cluster index - exact values from design
-        if (cluster == 0) {         // Orange
-            alpha = 36;             // 14% opacity
-            borderAlpha = 70;       // Border opacity
-        } else if (cluster == 1) {  // Blue  
-            alpha = 32;             // 12.5% opacity
-            borderAlpha = 65;       // Border opacity
-        } else if (cluster == 2) {  // Green
-            alpha = 40;             // 16% opacity
-            borderAlpha = 75;       // Border opacity
-        } else {
-            alpha = 36;             // Default opacity
-            borderAlpha = 70;       // Default border opacity
-        }
+        // Set consistent transparency values based on CSS
+        // CSS uses rgba with 0.15 opacity for fills and 0.3 for borders
+        unsigned char alpha = 38;             // 15% opacity (38/255 ≈ 0.15)
+        unsigned char borderAlpha = 77;       // 30% opacity (77/255 ≈ 0.3)
         
         // Apply circle fill with transparency
         int radius = clusterRadii[cluster];
@@ -884,45 +883,41 @@ void Cluster10::drawCentroids(
         // Map centroid to screen coordinates
         Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
         
-        // Create exact 3D effect as seen in design
-        // First draw shadow
-        RGBA shadowColor(0x00, 0x00, 0x00, 0x60); // 38% opacity black shadow
+        // Draw shadow for 3D effect - matching the CSS drop-shadow effect
+        RGBA shadowColor(0x00, 0x00, 0x00, 0x66); // 40% opacity black shadow (0.4 * 255 = 102)
         drawCircle(centroidPoint.x + 1, centroidPoint.y + 1, 8, shadowColor, true);
         
         // Draw a white circle background
         RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF);
         drawCircle(centroidPoint.x, centroidPoint.y, 8, whiteFill, true);
         
-        // Add subtle highlight to top-left of circle
-        RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80); // 50% opacity white
-        for (int y = -8; y <= -3; ++y) {
-            for (int x = -8; x <= -3; ++x) {
-                int distance = x*x + y*y;
-                if (distance <= 64 && distance >= 36) { // Between inner and outer circle edge
-                    float fadeRatio = 1.0f - (std::sqrt(static_cast<float>(distance)) - 6.0f) / 2.0f;
-                    fadeRatio = std::max(0.0f, std::min(1.0f, fadeRatio));
-                    
-                    // Blend highlight with fading
-                    int drawX = centroidPoint.x + x;
-                    int drawY = centroidPoint.y + y;
-                    blendPixel(drawX, drawY, highlightColor, highlightColor.a / 255.0f * fadeRatio);
-                }
-            }
+        // Get the appropriate cross color
+        RGBA crossColor;
+        
+        // Use the dark version of the color if available, otherwise darken the cluster color
+        char darkColorKeyBuffer[32];
+        std::sprintf(darkColorKeyBuffer, "cluster%dDark", (int)(i+1));
+        std::string darkColorKey(darkColorKeyBuffer);
+        
+        if (i < 4 && elementColors.find(darkColorKey) != elementColors.end()) {
+            // Use the exact CSS dark color for better match with the design system
+            crossColor = elementColors[darkColorKey];
+        } else {
+            // For higher indices, darken the cluster color
+            crossColor = clusterColors[i];
+            // Make it darker for better visibility against white
+            crossColor.r = static_cast<unsigned char>(crossColor.r * 0.6f);
+            crossColor.g = static_cast<unsigned char>(crossColor.g * 0.6f);
+            crossColor.b = static_cast<unsigned char>(crossColor.b * 0.6f);
         }
-        
-        // Draw colored cross
-        RGBA crossColor = clusterColors[i];
-        // Darken slightly
-        crossColor.r = static_cast<unsigned char>(crossColor.r * 0.85f);
-        crossColor.g = static_cast<unsigned char>(crossColor.g * 0.85f);
-        crossColor.b = static_cast<unsigned char>(crossColor.b * 0.85f);
-        
-        // Draw horizontal line of cross
+        crossColor.a = 0xFF; // Fully opaque
+            
+        // Draw horizontal line of cross - thicker for better visibility
         for (int y = -1; y <= 1; ++y) {
             drawLine(centroidPoint.x - 7, centroidPoint.y + y, centroidPoint.x + 7, centroidPoint.y + y, crossColor);
         }
         
-        // Draw vertical line of cross
+        // Draw vertical line of cross - thicker for better visibility
         for (int x = -1; x <= 1; ++x) {
             drawLine(centroidPoint.x + x, centroidPoint.y - 7, centroidPoint.x + x, centroidPoint.y + 7, crossColor);
         }
@@ -1058,6 +1053,18 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         return;
     }
     
+    // Use theme colors if custom colors not provided
+    RGBA useBullishColor = bullishColor;
+    RGBA useBearishColor = bearishColor;
+    
+    // If default colors are used, replace with theme colors
+    if (bullishColor.r == 0x03 && bullishColor.g == 0xC0 && bullishColor.b == 0x3C) {
+        useBullishColor = elementColors["bullish"];
+    }
+    if (bearishColor.r == 0xFF && bearishColor.g == 0x47 && bearishColor.b == 0x45) {
+        useBearishColor = elementColors["bearish"];
+    }
+    
     // Create a chart configuration
     ChartConfig config("Financial Data Analysis", 36, "Date", "Price");
     
@@ -1147,14 +1154,14 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         y_low = clamp(y_low, margin_top, height - margin_bottom);
         
         // Determine if bullish (close > open) or bearish (close <= open)
-        RGBA candleColor = (candle.close > candle.open) ? bullishColor : bearishColor;
+        RGBA candleColor = (candle.close > candle.open) ? useBullishColor : useBearishColor;
         
         // Draw the candlestick
         drawCandlestick(x, y_open, y_close, y_high, y_low, candleColor);
     }
     
     // Add price movement indicators and current price display
-    drawCandlestickPriceInfo(candles, bullishColor, bearishColor);
+    drawCandlestickPriceInfo(candles, useBullishColor, useBearishColor);
     
     // Add a legend for bullish/bearish candles
     std::vector<std::string> legendLabels;
@@ -1163,8 +1170,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     
     std::vector<RGBA> legendColors;
     // Ensure colors are fully opaque for the legend dots
-    RGBA bullishLegendColor = bullishColor;
-    RGBA bearishLegendColor = bearishColor;
+    RGBA bullishLegendColor = useBullishColor;
+    RGBA bearishLegendColor = useBearishColor;
     bullishLegendColor.a = 0xFF; // Full opacity
     bearishLegendColor.a = 0xFF; // Full opacity
     
@@ -1233,25 +1240,43 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
     double priceChange = latestCandle.close - firstCandle.open;
     double percentChange = (priceChange / firstCandle.open) * 100.0;
     
-    // Format price info
+    // Determine if overall trend is bullish or bearish
+    bool isBullish = priceChange >= 0;
+    RGBA trendColor = isBullish ? bullishColor : bearishColor;
+    
+    // Format price info with colored price change
     char priceInfo[128];
-    std::sprintf(priceInfo, "Close: %.2f  Change: %.2f (%.2f%%)", 
+    std::sprintf(priceInfo, "Close: %.2f   Change: %.2f (%.2f%%)", 
                latestCandle.close, priceChange, percentChange);
     
     // Set dimensions and position
-    int infoWidth = 320;
+    int infoWidth = 350;
     int infoHeight = 40;
     int infoX = width - margin_right - infoWidth - 20;
     int infoY = margin_top + 20;
     
-    // Use our common info box method
+    // Draw the info box
     drawInfoBox(infoX, infoY, infoWidth, infoHeight, priceInfo, 16);
+    
+    // Add a small colored indicator box to show trend
+    int indicatorSize = 8;
+    int indicatorX = infoX + infoWidth - 30;
+    int indicatorY = infoY + (infoHeight - indicatorSize) / 2;
+    
+    // Draw filled rectangle with the appropriate color
+    drawRect(indicatorX, indicatorY, indicatorSize, indicatorSize, trendColor, true);
 }
 
 void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
 {
     if (bins.empty()) {
         return;
+    }
+    
+    // Use the first theme color if custom color not provided or if it's the default
+    RGBA useColor = color;
+    if (color.r == 0 && color.g == 0 && color.b == 0 && color.a == 0) {
+        useColor = themeColors[0]; // Use the first theme color by default
     }
     
     // Create a chart configuration
@@ -1285,7 +1310,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     drawYAxisTicks(0, maxBinValue, 4, true, 0, 25);
     
     // Draw histogram bars
-    drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, color);
+    drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, useColor);
     
     // Draw X-axis label
     drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
@@ -1301,7 +1326,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     legendLabels.push_back("Frequency");
     
     std::vector<RGBA> legendColors;
-    legendColors.push_back(color);
+    legendColors.push_back(useColor);
     
     // Position the legend in the top-right corner
     addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15, 16);
@@ -1351,67 +1376,66 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
 
 void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight)
 {
-    // Add highlight to left edge and top
+    // Colors for highlights and shadows
     RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x40); // Semi-transparent white
     RGBA shadowColor(0x00, 0x00, 0x00, 0x40);    // Semi-transparent black
     float highlightAlpha = highlightColor.a / 255.0f;
     float shadowAlpha = shadowColor.a / 255.0f;
     
-    // Left edge highlight
-    for (int dy = 0; dy < barHeight; ++dy) {
-        for (int dx = 0; dx < 2; ++dx) {
-            int drawX = x + dx;
-            int drawY = y + dy;
-            
-            // Only draw within the plot area
-            if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
-                drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                blendPixel(drawX, drawY, highlightColor, highlightAlpha);
+    // Bar edges to highlight/shadow
+    struct BarEdge {
+        int startX, startY;
+        int deltaX, deltaY;
+        int width, height;
+        RGBA color;
+        float alpha;
+    };
+    
+    // Define the four edges of the bar
+    BarEdge edges[] = {
+        // Left edge highlight
+        {x, y, 0, 1, 2, barHeight, highlightColor, highlightAlpha},
+        // Top edge highlight
+        {x, y, 1, 0, barWidth, 2, highlightColor, highlightAlpha},
+        // Right edge shadow
+        {x + barWidth - 2, y, 0, 1, 2, barHeight, shadowColor, shadowAlpha},
+        // Bottom edge shadow
+        {x, y + barHeight - 2, 1, 0, barWidth, 2, shadowColor, shadowAlpha}
+    };
+    
+    // Plot bounds
+    int minX = static_cast<int>(margin_left);
+    int maxX = static_cast<int>(width - margin_right);
+    int minY = static_cast<int>(margin_top);
+    int maxY = static_cast<int>(height - margin_bottom);
+    
+    // Apply effects to each edge
+    for (int e = 0; e < 4; ++e) {
+        const BarEdge& edge = edges[e];
+        
+        for (int d1 = 0; d1 < edge.width; ++d1) {
+            for (int d2 = 0; d2 < edge.height; ++d2) {
+                int drawX = edge.startX + d1 * edge.deltaX + d2 * (1 - edge.deltaX);
+                int drawY = edge.startY + d1 * edge.deltaY + d2 * (1 - edge.deltaY);
+                
+                // Only draw within the plot area
+                if (drawX >= minX && drawX < maxX && drawY >= minY && drawY < maxY) {
+                    blendPixel(drawX, drawY, edge.color, edge.alpha);
+                }
             }
         }
+    }
+}
+
+// Helper method to get theme color by index with proper bounds checking
+RGBA Cluster10::getThemeColor(int index) {
+    if (themeColors.empty()) {
+        // Return default color if theme colors are empty
+        return RGBA(0xFF, 0xFF, 0xFF, 0xFF);
     }
     
-    // Top edge highlight
-    for (int dx = 0; dx < barWidth; ++dx) {
-        for (int dy = 0; dy < 2; ++dy) {
-            int drawX = x + dx;
-            int drawY = y + dy;
-            
-            // Only draw within the plot area
-            if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
-                drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                blendPixel(drawX, drawY, highlightColor, highlightAlpha);
-            }
-        }
-    }
-    
-    // Right edge shadow
-    for (int dy = 0; dy < barHeight; ++dy) {
-        for (int dx = 0; dx < 2; ++dx) {
-            int drawX = x + barWidth - dx - 1;
-            int drawY = y + dy;
-            
-            // Only draw within the plot area
-            if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
-                drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                blendPixel(drawX, drawY, shadowColor, shadowAlpha);
-            }
-        }
-    }
-    
-    // Bottom edge shadow
-    for (int dx = 0; dx < barWidth; ++dx) {
-        for (int dy = 0; dy < 2; ++dy) {
-            int drawX = x + dx;
-            int drawY = y + barHeight - dy - 1;
-            
-            // Only draw within the plot area
-            if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
-                drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                blendPixel(drawX, drawY, shadowColor, shadowAlpha);
-            }
-        }
-    }
+    // Use modulo to wrap around if index is out of bounds
+    return themeColors[index % themeColors.size()];
 }
 
 void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue)
@@ -1432,12 +1456,12 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     double mean = sum / (double)bins.size();
     double mode = maxIndex; // index with highest frequency
     
-    // Create stats display
+    // Create stats display with properly aligned values - matching CSS styling
     char statsText[128];
     std::sprintf(statsText, "Total: %d   Mean: %.1f   Mode: %.1f   Max: %d", 
                count, mean, mode, maxBinValue);
     
-    // Set dimensions and position
+    // Set dimensions and position - consistent with CSS UI conventions
     int statsWidth = 350;
     int statsHeight = 40;
     int statsX = margin_left + 20;
@@ -1445,6 +1469,18 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     
     // Use our common info box method
     drawInfoBox(statsX, statsY, statsWidth, statsHeight, statsText, 16);
+    
+    // Add colored indicators for each statistic type - matching CSS colors
+    int indicatorSize = 6;
+    int indicatorSpacing = 80; // Space between indicators
+    int firstIndicatorX = statsX + 65; // Position after "Total:" label
+    int indicatorY = statsY + (statsHeight - indicatorSize) / 2;
+    
+    // Draw colored indicators
+    drawRect(firstIndicatorX, indicatorY, indicatorSize, indicatorSize, getThemeColor(0), true);
+    drawRect(firstIndicatorX + indicatorSpacing, indicatorY, indicatorSize, indicatorSize, getThemeColor(1), true);
+    drawRect(firstIndicatorX + 2*indicatorSpacing, indicatorY, indicatorSize, indicatorSize, getThemeColor(2), true);
+    drawRect(firstIndicatorX + 3*indicatorSpacing, indicatorY, indicatorSize, indicatorSize, getThemeColor(3), true);
 }
 
 void Cluster10::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
@@ -1630,10 +1666,10 @@ void Cluster10::blendPixel(int x, int y, const RGBA& color, float alpha) {
 
 // Common method for drawing info boxes (legend, stats, price info)
 void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
-    // Common corner radius for all info boxes
+    // Common corner radius for all info boxes - matching CSS border-radius
     int cornerRadius = 8; 
     
-    // Get gradient colors from element colors
+    // Get gradient colors from element colors - exact colors from CSS
     RGBA bgTopColor = elementColors["legendBgTop"];
     RGBA bgBottomColor = elementColors["legendBgBottom"];
     
@@ -1683,8 +1719,9 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
         }
     }
     
-    // Apply the box with transparency (90% opacity)
-    float boxAlpha = 0.9f;
+    // Apply the box with transparency (95% opacity for better visibility)
+    // CSS often uses rgba with 0.95 opacity for overlays
+    float boxAlpha = 0.95f;
     for (int dy = 0; dy < boxHeight; dy++) {
         for (int dx = 0; dx < boxWidth; dx++) {
             int drawX = x + dx;
@@ -1704,16 +1741,16 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
         }
     }
     
-    // Add subtle inner highlight to top edge (8% opacity white)
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x14);
+    // Add subtle inner highlight to top edge - exact 10% opacity from CSS
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x1A); // 10% white (0.1 * 255 = 26 ≈ 0x1A)
     for (int dx = cornerRadius; dx < boxWidth - cornerRadius; dx++) {
         int pixelX = x + dx;
         int pixelY = y;
         blendPixel(pixelX, pixelY, highlightColor, highlightColor.a / 255.0f);
     }
     
-    // Add subtle drop shadow to bottom edge (12.5% opacity black)
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x20);
+    // Add subtle drop shadow to bottom edge - exact 15% opacity from CSS
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x26); // 15% black (0.15 * 255 = 38 ≈ 0x26)
     for (int dx = cornerRadius; dx < boxWidth - cornerRadius; dx++) {
         int pixelX = x + dx;
         int pixelY = y + boxHeight - 1;

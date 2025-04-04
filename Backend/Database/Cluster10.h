@@ -186,6 +186,9 @@ private:
     // Blend a pixel with bounds checking
     void blendPixel(int x, int y, const RGBA& color, float alpha);
     
+    // Get theme color by index with proper bounds checking
+    RGBA getThemeColor(int index);
+    
     //==================== COMMON UI COMPONENT METHODS ====================//
     
     // Draw an info box with gradient background and rounded corners
