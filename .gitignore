@@ -13,3 +13,4 @@ alpaca.key
 unit-tests/out-png-test.png
 unit-tests/hello/
 .vscode
+concepts/*
