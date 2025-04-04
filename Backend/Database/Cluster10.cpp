@@ -95,6 +95,13 @@ void Cluster10::initialize_colors()
     elementColors["highlight"] = RGBA(0xFF, 0xFF, 0xFF, 0x80);        // White highlight with 50% opacity
     elementColors["shadow"] = RGBA(0x00, 0x00, 0x00, 0x80);           // Black shadow with 50% opacity
     elementColors["innerShadowBg"] = RGBA(0x19, 0x23, 0x35, 0x03);    // --inner-shadow-bg: rgba(25 35 53 / 0.01) but slightly more visible
+    
+    // Colors for cluster shadows from cluster10.css
+    // From box-shadow: inset 0px 0px 248.9px -140px #BAB1FF;
+    elementColors["cluster1Shadow"] = RGBA(0x5C, 0xFF, 0xB3, 0x80);   // Cluster 1 shadow color (#5CFFB3 with 50% opacity)
+    elementColors["cluster2Shadow"] = RGBA(0x5C, 0xE9, 0xFF, 0x80);   // Cluster 2 shadow color (#5CE9FF with 50% opacity)
+    elementColors["cluster3Shadow"] = RGBA(0xBA, 0xB1, 0xFF, 0x80);   // Cluster 3 shadow color (#BAB1FF with 50% opacity)
+    elementColors["cluster4Shadow"] = RGBA(0xD6, 0xFF, 0xC7, 0x80);   // Cluster 4 shadow color (#D6FFC7 with 50% opacity)
 }
 
 void Cluster10::initialize_font(const std::string fontPath)
@@ -112,13 +119,44 @@ void Cluster10::initialize_font(const std::string fontPath)
 
 void Cluster10::drawBackground()
 {
-    // Draw the dark gradient background from the cluster10.fig design
-    image.drawVerticalGradient(
-        0, 0, 
-        elementColors["bgGradientTop"], 
-        elementColors["bgGradientBottom"], 
-        cornerRadius
-    );
+    // Draw the dark gradient background from the cluster10.css design
+    // CSS: background: radial-gradient(164.63% 83.5% at 54.69% 50%, #021331 0%, #000B1E 100%);
+    
+    // Define the gradient center point (at 54.69% 50% as specified in CSS)
+    float centerX = width * 0.5469f;
+    float centerY = height * 0.5f;
+    
+    // Define the gradient radius (164.63% width and 83.5% height elliptical gradient)
+    float radiusX = width * 1.6463f;
+    float radiusY = height * 0.835f;
+    
+    // Define the colors from CSS
+    RGBA centerColor(0x02, 0x13, 0x31, 0xFF); // #021331
+    RGBA edgeColor(0x00, 0x0B, 0x1E, 0xFF);   // #000B1E
+    
+    // Render the radial gradient
+    for (unsigned int y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x) {
+            // Calculate distance from center (normalize based on elliptical radiuses)
+            float dx = (x - centerX) / radiusX;
+            float dy = (y - centerY) / radiusY;
+            
+            // Calculate normalized distance (0.0 to 1.0) - squared for smoother gradient
+            float dist = std::sqrt(dx*dx + dy*dy);
+            dist = std::min(1.0f, dist); // Clamp to maximum 1.0
+            
+            // Interpolate between the two colors
+            RGBA pixelColor(
+                static_cast<unsigned char>(centerColor.r * (1.0f - dist) + edgeColor.r * dist),
+                static_cast<unsigned char>(centerColor.g * (1.0f - dist) + edgeColor.g * dist),
+                static_cast<unsigned char>(centerColor.b * (1.0f - dist) + edgeColor.b * dist),
+                0xFF
+            );
+            
+            // Set the pixel
+            image.SetPixel(x, y, pixelColor);
+        }
+    }
     
     // Draw grid if enabled
     if (showGrid) {
@@ -821,70 +859,86 @@ void Cluster10::drawClusterCircles(
         // Get the cluster color
         RGBA circleColor = clusterColors[cluster % clusterColors.size()];
         
-        // Set consistent transparency values based on CSS
-        // CSS uses rgba with 0.15 opacity for fills and 0.3 for borders
-        unsigned char alpha = 38;             // 15% opacity (38/255 ≈ 0.15)
-        unsigned char borderAlpha = 77;       // 30% opacity (77/255 ≈ 0.3)
+        // Get the appropriate shadow color based on cluster index (matching CSS)
+        RGBA shadowColor;
+        char shadowKeyBuffer[32];
+        std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
+        std::string shadowKey(shadowKeyBuffer);
         
-        // Apply circle fill with transparency
+        // Use the specific cluster shadow if defined, otherwise fallback to the cluster color
+        if (elementColors.find(shadowKey) != elementColors.end()) {
+            shadowColor = elementColors[shadowKey];
+        } else {
+            // If not found, create a semi-transparent version of the cluster color
+            shadowColor = circleColor;
+            shadowColor.a = 0x80; // 50% opacity
+        }
+        
+        // CSS styling from cluster10.css
+        // box-sizing: border-box;
+        // background: rgba(25, 35, 53, 0.01);
+        // box-shadow: inset 0px 0px 248.9px -140px #BAB1FF;
+        // border: 1px solid clusterColor;
+        
+        // Create fill and border colors with proper opacity
+        RGBA fillColor = circleColor;
+        fillColor.a = 38; // 15% opacity (38/255 ≈ 0.15)
+        
+        RGBA borderColor = circleColor;
+        borderColor.a = 0xCC; // 80% opacity (0xCC ≈ 204/255 ≈ 0.8)
+        
         int radius = clusterRadii[cluster];
         Point center = clusterCenters[cluster];
         
-        // Draw the filled circle with transparency
+        // Draw the cluster circle in a single pass
         for (int dy = -radius; dy <= radius; dy++) {
             for (int dx = -radius; dx <= radius; dx++) {
-                // Check if this pixel is within the circle
+                // Calculate exact distance from center
                 int distSqr = dx*dx + dy*dy;
-                if (distSqr <= radius * radius) {
-                    int drawX = center.x + dx;
-                    int drawY = center.y + dy;
+                float dist = std::sqrt(static_cast<float>(distSqr));
+                
+                // Skip pixels outside the circle
+                if (dist > radius) continue;
+                
+                int drawX = center.x + dx;
+                int drawY = center.y + dy;
+                
+                // Check plot area bounds
+                if (drawX < static_cast<int>(margin_left) || 
+                    drawX >= static_cast<int>(width - margin_right) ||
+                    drawY < static_cast<int>(margin_top) || 
+                    drawY >= static_cast<int>(height - margin_bottom)) {
+                    continue; // Skip pixels outside plot area
+                }
+                
+                // Get the existing pixel color to blend with
+                RGBA existingColor = image.GetPixel(drawX, drawY);
+                
+                // Layer 1: Base fill color (main circle fill)
+                // All pixels within the circle get this base fill color
+                RGBA baseColor = fillColor;
+                image.SetPixel(drawX, drawY, blendColors(existingColor, baseColor, 0.15f));
+                
+                // Layer 2: Apply inner shadow if within shadow distance
+                float maxShadowDist = radius * 0.65f; // From CSS box-shadow radius
+                if (dist <= maxShadowDist) {
+                    // Shadow intensity follows a natural curve - stronger near the edge
+                    float shadowFactor = 1.0f - (dist / maxShadowDist);
+                    float innerShadowIntensity = 0.3f * shadowFactor * shadowFactor;
                     
-                    // Check plot area bounds
-                    if (drawX >= static_cast<int>(margin_left) && 
-                        drawX < static_cast<int>(width - margin_right) &&
-                        drawY >= static_cast<int>(margin_top) && 
-                        drawY < static_cast<int>(height - margin_bottom)) {
-                        
-                        // Check if this is a border pixel
-                        bool isBorder = false;
-                        int borderSize = 2;  // 2px border
-                        
-                        // A pixel is a border if it's near the edge of the circle
-                        int distFromEdge = radius - static_cast<int>(std::sqrt(distSqr));
-                        if (distFromEdge <= borderSize && distFromEdge >= 0) {
-                            isBorder = true;
-                        }
-                        
-                        // Calculate inner shadow effect - darker towards the edges
-                        // This matches CSS inner-shadow-bg: rgba(25 35 53 / 0.01) from the CSS file
-                        float pixelAlpha = isBorder ? borderAlpha / 255.0f : alpha / 255.0f;
-                        
-                        // Apply inner shadow for non-border pixels (only inside the circle)
-                        if (!isBorder) {
-                            // Calculate inner shadow strength based on distance from edge
-                            // Closer to edge = stronger shadow
-                            float innerShadowStrength = 0.0f;
-                            
-                            // Inner shadow width - about 15% of radius
-                            int innerShadowWidth = std::max(5, radius / 6);
-                            
-                            if (distFromEdge < innerShadowWidth) {
-                                // Linear gradient from edge (max shadow) to inside (no shadow)
-                                innerShadowStrength = 1.0f - (float)distFromEdge / innerShadowWidth;
-                                
-                                // Apply inner shadow by blending with inner shadow color
-                                // Use CSS inner-shadow-bg color: rgba(25, 35, 53, 0.01) but with higher alpha
-                                RGBA innerShadowColor = elementColors["innerShadowBg"];
-                                innerShadowColor.a = static_cast<unsigned char>(255 * innerShadowStrength * 0.2f);
-                                
-                                // Blend the inner shadow
-                                blendPixel(drawX, drawY, innerShadowColor, innerShadowStrength * 0.5f);
-                            }
-                        }
-                            
-                        // Blend the pixel with cluster color
-                        blendPixel(drawX, drawY, circleColor, pixelAlpha);
-                    }
+                    // Apply shadow with blending (gets current color and blends shadow on top)
+                    RGBA currentColor = image.GetPixel(drawX, drawY);
+                    RGBA withShadow = blendColors(currentColor, shadowColor, innerShadowIntensity);
+                    image.SetPixel(drawX, drawY, withShadow);
+                }
+                
+                // Layer 3: Add border if pixel is at the edge
+                float distFromEdge = radius - dist;
+                if (distFromEdge < 1.0f) {
+                    // This is a border pixel - use higher opacity border color
+                    RGBA currentColor = image.GetPixel(drawX, drawY);
+                    RGBA withBorder = blendColors(currentColor, borderColor, 0.8f);
+                    image.SetPixel(drawX, drawY, withBorder);
                 }
             }
         }
@@ -905,15 +959,51 @@ void Cluster10::drawCentroids(
         // Map centroid to screen coordinates
         Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
         
-        // Draw shadow for 3D effect - matching the CSS drop-shadow effect
+        // From cluster10.css - centroids are solid circles with drop shadows
+        // First draw shadow - offset by 1px and 40% opacity
         RGBA shadowColor(0x00, 0x00, 0x00, 0x66); // 40% opacity black shadow (0.4 * 255 = 102)
-        drawCircle(centroidPoint.x + 1, centroidPoint.y + 1, 8, shadowColor, true);
         
-        // Draw a white circle background
-        RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF);
-        drawCircle(centroidPoint.x, centroidPoint.y, 8, whiteFill, true);
+        // Draw larger soft shadow first (matches CSS box-shadow effect)
+        for (int dy = -10; dy <= 10; dy++) {
+            for (int dx = -10; dx <= 10; dx++) {
+                int distSqr = dx*dx + dy*dy;
+                if (distSqr > 100) continue; // Only pixels within 10px radius
+                
+                // Calculate shadow intensity - fade out toward edges
+                float shadowIntensity = 0.3f * (1.0f - std::sqrt(distSqr) / 10.0f);
+                
+                int drawX = centroidPoint.x + dx + 1; // +1 for shadow offset
+                int drawY = centroidPoint.y + dy + 1; // +1 for shadow offset
+                
+                if (drawX >= 0 && drawX < static_cast<int>(width) &&
+                    drawY >= 0 && drawY < static_cast<int>(height)) {
+                    RGBA pixelShadow = shadowColor;
+                    pixelShadow.a = static_cast<unsigned char>(shadowColor.a * shadowIntensity);
+                    blendPixel(drawX, drawY, pixelShadow, shadowIntensity);
+                }
+            }
+        }
         
-        // Get the appropriate cross color
+        // Draw the white circle on top of the shadow (matches CSS)
+        RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF); // Solid white
+        
+        // Draw solid white circle (8px radius as in CSS)
+        for (int dy = -8; dy <= 8; dy++) {
+            for (int dx = -8; dx <= 8; dx++) {
+                int distSqr = dx*dx + dy*dy;
+                if (distSqr > 64) continue; // Only pixels within 8px radius
+                
+                int drawX = centroidPoint.x + dx;
+                int drawY = centroidPoint.y + dy;
+                
+                if (drawX >= 0 && drawX < static_cast<int>(width) &&
+                    drawY >= 0 && drawY < static_cast<int>(height)) {
+                    image.SetPixel(drawX, drawY, whiteFill);
+                }
+            }
+        }
+        
+        // Get the appropriate cross color (dark version of the cluster color)
         RGBA crossColor;
         
         // Use the dark version of the color if available, otherwise darken the cluster color
@@ -933,13 +1023,13 @@ void Cluster10::drawCentroids(
             crossColor.b = static_cast<unsigned char>(crossColor.b * 0.6f);
         }
         crossColor.a = 0xFF; // Fully opaque
-            
-        // Draw horizontal line of cross - thicker for better visibility
+        
+        // Draw horizontal line of cross - exactly as in CSS (3px thick line)
         for (int y = -1; y <= 1; ++y) {
             drawLine(centroidPoint.x - 7, centroidPoint.y + y, centroidPoint.x + 7, centroidPoint.y + y, crossColor);
         }
         
-        // Draw vertical line of cross - thicker for better visibility
+        // Draw vertical line of cross - exactly as in CSS (3px thick line)
         for (int x = -1; x <= 1; ++x) {
             drawLine(centroidPoint.x + x, centroidPoint.y - 7, centroidPoint.x + x, centroidPoint.y + 7, crossColor);
         }
@@ -1415,7 +1505,7 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
     
     // Define the four edges of the bar
     BarEdge edges[] = {
-        // Left edge highlight
+    // Left edge highlight
         {x, y, 0, 1, 2, barHeight, highlightColor, highlightAlpha},
         // Top edge highlight
         {x, y, 1, 0, barWidth, 2, highlightColor, highlightAlpha},
