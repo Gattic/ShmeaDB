@@ -855,12 +855,34 @@ void Cluster10::drawClusterCircles(
                             isBorder = true;
                         }
                         
-                        // Use higher alpha for border pixels
-                        float pixelAlpha = isBorder ? 
-                            borderAlpha / 255.0f : 
-                            alpha / 255.0f;
+                        // Calculate inner shadow effect - darker towards the edges
+                        // This matches CSS inner-shadow-bg: rgba(25 35 53 / 0.01) from the CSS file
+                        float pixelAlpha = isBorder ? borderAlpha / 255.0f : alpha / 255.0f;
+                        
+                        // Apply inner shadow for non-border pixels (only inside the circle)
+                        if (!isBorder) {
+                            // Calculate inner shadow strength based on distance from edge
+                            // Closer to edge = stronger shadow
+                            float innerShadowStrength = 0.0f;
                             
-                        // Blend the pixel
+                            // Inner shadow width - about 15% of radius
+                            int innerShadowWidth = std::max(5, radius / 6);
+                            
+                            if (distFromEdge < innerShadowWidth) {
+                                // Linear gradient from edge (max shadow) to inside (no shadow)
+                                innerShadowStrength = 1.0f - (float)distFromEdge / innerShadowWidth;
+                                
+                                // Apply inner shadow by blending with inner shadow color
+                                // Use CSS inner-shadow-bg color: rgba(25, 35, 53, 0.01) but with higher alpha
+                                RGBA innerShadowColor = elementColors["innerShadowBg"];
+                                innerShadowColor.a = static_cast<unsigned char>(255 * innerShadowStrength * 0.2f);
+                                
+                                // Blend the inner shadow
+                                blendPixel(drawX, drawY, innerShadowColor, innerShadowStrength * 0.5f);
+                            }
+                        }
+                            
+                        // Blend the pixel with cluster color
                         blendPixel(drawX, drawY, circleColor, pixelAlpha);
                     }
                 }
