@@ -17,7 +17,14 @@ Cluster10::Cluster10(unsigned int width, unsigned int height,
       margin_left(margin_left),
       showGrid(true),
       showAxes(true),
-      cornerRadius(12) // Set to 12px to match the fig file designs
+      cornerRadius(12)
+{
+    // Initialize the visualization
+    initialize();
+}
+
+// Helper method for constructor initialization
+void Cluster10::initialize()
 {
     // Allocate image
     image.Allocate(width, height);
@@ -583,6 +590,33 @@ void Cluster10::setCornerRadius(int radius)
     drawBackground();
 }
 
+// Helper for creating cluster legends
+void Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y)
+{
+    std::vector<std::string> legendLabels;
+    std::vector<RGBA> legendColors;
+    
+    // Add cluster entries
+    for (int i = 0; i < numClusters; ++i) {
+        char label[32];
+        std::sprintf(label, "Cluster %d", i);
+        legendLabels.push_back(label);
+        
+        // Use fully opaque colors for the legend dots
+        RGBA legendColor = clusterColors[i];
+        legendColor.a = 0xFF; // Full opacity for legend dots
+        legendColors.push_back(legendColor);
+    }
+    
+    // Add the centroid legend item
+    legendLabels.push_back("Centroid");
+    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // Fully opaque
+    
+    // Add the legend to the visualization
+    addLegend(legendLabels, legendColors, x, y, 16);
+}
+
+// Plot clusters with centroids
 void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, const std::vector<int>& labels, 
                            const std::vector<std::vector<double> >& centroids)
 {
@@ -590,8 +624,11 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         return;
     }
     
+    // Create a chart configuration
+    ChartConfig config("Cluster Analysis", 36, "Feature X", "Feature Y");
+    
     // Initialize chart with background, grid, etc.
-    initializeChart("Cluster Analysis", 36);
+    initializeChart(config.title, config.titleFontSize);
     
     // Find number of unique clusters
     int maxCluster = -1;
@@ -632,8 +669,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     }
     
     // Add axis labels
-    drawText(width / 2, height - margin_bottom / 3, "Feature X", elementColors["axisLabel"], 24, true);
-    drawVerticalText("Feature Y", margin_left/4, height/2 - 70, 24, elementColors["axisLabel"]);
+    drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
+    drawVerticalText(config.yAxisLabel, margin_left/4, height/2 - 70, config.axisFontSize, elementColors["axisLabel"]);
     
     // Draw axis ticks using our helper methods
     drawXAxisTicks(xRange.min, xRange.max, 4, 1);
@@ -659,138 +696,15 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     std::vector<int> clusterRadii;
     
     for (int cluster = 0; cluster < numClusters; ++cluster) {
-        // Calculate cluster bounds
-        double minX = std::numeric_limits<double>::max();
-        double maxX = -std::numeric_limits<double>::max();
-        double minY = std::numeric_limits<double>::max();
-        double maxY = -std::numeric_limits<double>::max();
-        double sumX = 0.0, sumY = 0.0;
-        int pointCount = 0;
-        
-        // Calculate cluster centroid and bounds from all points
-        for (size_t i = 0; i < data.size(); ++i) {
-            if (labels[i] == cluster && data[i].size() >= 2) {
-                pointCount++;
-                sumX += data[i][0];
-                sumY += data[i][1];
-                minX = std::min(minX, data[i][0]);
-                maxX = std::max(maxX, data[i][0]);
-                minY = std::min(minY, data[i][1]);
-                maxY = std::max(maxY, data[i][1]);
-            }
-        }
-        
-        if (pointCount == 0) {
-            // Add placeholder values for empty clusters
-            clusterCenters.push_back(Point(0, 0));
-            clusterRadii.push_back(0);
-            continue;
-        }
-        
-        // Calculate true centroid (average of all points)
-        double centerX = sumX / pointCount;
-        double centerY = sumY / pointCount;
-        
-        // Find the maximum distance from any point to the centroid
-        double maxDist = 0.0;
-        for (size_t i = 0; i < data.size(); ++i) {
-            if (labels[i] == cluster && data[i].size() >= 2) {
-                double dx = data[i][0] - centerX;
-                double dy = data[i][1] - centerY;
-                double dist = std::sqrt(dx*dx + dy*dy);
-                maxDist = std::max(maxDist, dist);
-            }
-        }
-        
-        // Map to screen coordinates
-        Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
-        Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
-        int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding - exact padding from cluster10.fig
-        
-        clusterCenters.push_back(screenCenter);
-        clusterRadii.push_back(radius);
+        // Calculate cluster bounds and center
+        calculateClusterBounds(data, labels, cluster, clusterCenters, clusterRadii, xRange, yRange);
     }
-    
-    // Create a temporary buffer for cluster circles to handle transparency properly
-    Image circleBuffer;
-    circleBuffer.Allocate(width, height);
-    
-    // Make sure we have the grid before blending the clusters
-    if (showGrid) {
-        drawGrid();
-    }
-    
-    // Draw cluster circles with proper transparency - exact transparencies from cluster10.fig
-    for (int cluster = 0; cluster < numClusters; ++cluster) {
-        if (clusterRadii[cluster] == 0) continue; // Skip empty clusters
-        
-        // Get the exact colors from the cluster10.fig design
-        RGBA circleColor = clusterColors[cluster]; 
-        
-        // Draw filled cluster circle with semi-transparency based on cluster - exact alpha values from cluster10.fig
-        unsigned char alpha = 0;
-        unsigned char borderAlpha = 0;
-        if (cluster == 0) {         // Orange
-            alpha = 36;             // Exact 14% opacity from cluster10.fig
-            borderAlpha = 70;       // Exact border opacity from cluster10.fig
-        } else if (cluster == 1) {  // Blue  
-            alpha = 32;             // Exact 12.5% opacity from cluster10.fig
-            borderAlpha = 65;       // Exact border opacity from cluster10.fig
-        } else if (cluster == 2) {  // Green
-            alpha = 40;             // Exact 16% opacity from cluster10.fig
-            borderAlpha = 75;       // Exact border opacity from cluster10.fig
-        } else {
-            alpha = 36;             // Default opacity
-            borderAlpha = 70;       // Default border opacity
-        }
-        
-        // Apply the transparency directly to the main image with proper blending
-        for (int dy = -clusterRadii[cluster]; dy <= clusterRadii[cluster]; dy++) {
-            for (int dx = -clusterRadii[cluster]; dx <= clusterRadii[cluster]; dx++) {
-                // Check if this pixel is within the circle
-                if (dx*dx + dy*dy <= clusterRadii[cluster] * clusterRadii[cluster]) {
-                    int drawX = clusterCenters[cluster].x + dx;
-                    int drawY = clusterCenters[cluster].y + dy;
-                    
-                    // Only draw within the plot area and check bounds
-                    if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
-                        drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                        
-                        // Check if this is a border pixel (edge of the circle)
-                        bool isBorder = false;
-                        int borderSize = 2;  // Exact 2px border from cluster10.fig
-                        
-                        // A pixel is a border if it's near the edge of the circle
-                        int distFromEdge = clusterRadii[cluster] - static_cast<int>(std::sqrt(dx*dx + dy*dy));
-                        if (distFromEdge <= borderSize && distFromEdge >= 0) {
-                            isBorder = true;
-                        }
-                        
-                        // Use higher alpha for border pixels - exact border alpha from cluster10.fig
-                        unsigned char pixelAlpha = isBorder ? borderAlpha : alpha;
-                            
-                        // Get the existing pixel color for proper blending
-                        RGBA baseColor = image.GetPixel(drawX, drawY);
-                        
-                        // Apply alpha blending
-                        float blendFactor = pixelAlpha / 255.0f;
-                        RGBA blendedColor(
-                            static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + circleColor.r * blendFactor),
-                            static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + circleColor.g * blendFactor),
-                            static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + circleColor.b * blendFactor),
-                            baseColor.a  // Keep the original alpha
-                        );
-                        
-                        image.SetPixel(drawX, drawY, blendedColor);
-                    }
-                }
-            }
-        }
-    }
-    
+
+    // Draw cluster circles with proper transparency
+    drawClusterCircles(clusterCenters, clusterRadii, clusterColors);
+
     // Draw each data point on top of the circles
     for (size_t i = 0; i < data.size(); ++i) {
-        // Skip if data point doesn't have at least 2 dimensions
         if (data[i].size() < 2) continue;
         
         // Get the cluster label
@@ -799,85 +713,230 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
             continue;
         }
         
-        // Map data point to screen coordinates using helper method
+        // Map data point to screen coordinates
         Point screenPoint = mapDataToScreen(data[i][0], data[i][1], xRange, yRange);
         
         // Store point coordinates for later use
-        std::pair<int, int> point;
-        point.first = screenPoint.x;
-        point.second = screenPoint.y;
-        clusterPoints[cluster].push_back(point);
+        clusterPoints[cluster].push_back(std::make_pair(screenPoint.x, screenPoint.y));
         
-        // Draw the point with the cluster color - exact radius from cluster10.fig
+        // Draw the point with the cluster color
         drawPoint(screenPoint.x, screenPoint.y, pointSize, clusterColors[cluster]);
     }
     
-    // Draw centroids last so they appear on top - exact styling from cluster10.fig
-    for (size_t i = 0; i < centroids.size() && i < clusterColors.size(); ++i) {
-        if (centroids[i].size() >= 2) {
-            // Map centroid to screen coordinates using helper method
-            Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
-            
-            // Create exact 3D effect as seen in cluster10.fig
-            // First draw shadow
-            RGBA shadowColor(0x00, 0x00, 0x00, 0x60); // Exact 38% opacity black shadow
-            drawCircle(centroidPoint.x + 1, centroidPoint.y + 1, 8, shadowColor, true);
-            
-            // Draw a white circle background - exact size (8px) and gradient from design
-            RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF);
-            drawCircle(centroidPoint.x, centroidPoint.y, 8, whiteFill, true);
-            
-            // Add subtle highlight to top-left of circle
-            RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80); // Exact 50% opacity white
-            for (int y = -8; y <= -3; ++y) {
-                for (int x = -8; x <= -3; ++x) {
-                    int distance = x*x + y*y;
-                    if (distance <= 64 && distance >= 36) { // Between inner and outer circle edge
-                        float fadeRatio = 1.0f - (std::sqrt(static_cast<float>(distance)) - 6.0f) / 2.0f;
-                        fadeRatio = std::max(0.0f, std::min(1.0f, fadeRatio));
-                        RGBA fadedHighlight = highlightColor;
-                        fadedHighlight.a = static_cast<unsigned char>(highlightColor.a * fadeRatio);
-                        
-                        int drawX = centroidPoint.x + x;
-                        int drawY = centroidPoint.y + y;
-                        if (drawX >= 0 && drawX < static_cast<int>(width) && drawY >= 0 && drawY < static_cast<int>(height)) {
-                            // Apply highlight with alpha blending
-                            RGBA currentPixel = image.GetPixel(drawX, drawY);
-                            float alpha = fadedHighlight.a / 255.0f;
-                            RGBA blendedColor(
-                                static_cast<unsigned char>(currentPixel.r * (1.0f - alpha) + fadedHighlight.r * alpha),
-                                static_cast<unsigned char>(currentPixel.g * (1.0f - alpha) + fadedHighlight.g * alpha),
-                                static_cast<unsigned char>(currentPixel.b * (1.0f - alpha) + fadedHighlight.b * alpha),
-                                currentPixel.a
-                            );
-                            image.SetPixel(drawX, drawY, blendedColor);
-                        }
-                    }
-                }
-            }
-            
-            // Draw colored cross - exact size (6px arms) and thickness (2px) from design
-            // The color is slightly darker than the main cluster color for better contrast
-            RGBA crossColor = clusterColors[i];
-            // Darken slightly
-            crossColor.r = static_cast<unsigned char>(crossColor.r * 0.85f);
-            crossColor.g = static_cast<unsigned char>(crossColor.g * 0.85f);
-            crossColor.b = static_cast<unsigned char>(crossColor.b * 0.85f);
-            
-            // Draw horizontal line of cross
-            for (int y = -1; y <= 1; ++y) {
-                drawLine(centroidPoint.x - 7, centroidPoint.y + y, centroidPoint.x + 7, centroidPoint.y + y, crossColor);
-            }
-            
-            // Draw vertical line of cross
-            for (int x = -1; x <= 1; ++x) {
-                drawLine(centroidPoint.x + x, centroidPoint.y - 7, centroidPoint.x + x, centroidPoint.y + 7, crossColor);
-            }
+    // Draw centroids as white circles with colored crosses
+    drawCentroids(centroids, clusterColors, xRange, yRange);
+    
+    // Draw cluster labels
+    drawClusterLabels(clusterCenters, clusterPoints, clusterColors);
+    
+    // Add the legend
+    createClusterLegend(clusterColors, numClusters, width - margin_right - 150, margin_top + 15);
+}
+
+// Helper method to calculate cluster bounds
+void Cluster10::calculateClusterBounds(
+    const std::vector<std::vector<double> >& data,
+    const std::vector<int>& labels,
+    int cluster,
+    std::vector<Point>& clusterCenters,
+    std::vector<int>& clusterRadii,
+    const AxisRange& xRange,
+    const AxisRange& yRange)
+{
+    // Calculate cluster bounds
+    double minX = std::numeric_limits<double>::max();
+    double maxX = -std::numeric_limits<double>::max();
+    double minY = std::numeric_limits<double>::max();
+    double maxY = -std::numeric_limits<double>::max();
+    double sumX = 0.0, sumY = 0.0;
+    int pointCount = 0;
+    
+    // Calculate cluster centroid and bounds from all points
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (labels[i] == cluster && data[i].size() >= 2) {
+            pointCount++;
+            sumX += data[i][0];
+            sumY += data[i][1];
+            minX = std::min(minX, data[i][0]);
+            maxX = std::max(maxX, data[i][0]);
+            minY = std::min(minY, data[i][1]);
+            maxY = std::max(maxY, data[i][1]);
         }
     }
     
-    // Draw cluster labels with exact positioning from design
-    for (int cluster = 0; cluster < numClusters; ++cluster) {
+    if (pointCount == 0) {
+        // Add placeholder values for empty clusters
+        clusterCenters.push_back(Point(0, 0));
+        clusterRadii.push_back(0);
+        return;
+    }
+    
+    // Calculate true centroid (average of all points)
+    double centerX = sumX / pointCount;
+    double centerY = sumY / pointCount;
+    
+    // Find the maximum distance from any point to the centroid
+    double maxDist = 0.0;
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (labels[i] == cluster && data[i].size() >= 2) {
+            double dx = data[i][0] - centerX;
+            double dy = data[i][1] - centerY;
+            double dist = std::sqrt(dx*dx + dy*dy);
+            maxDist = std::max(maxDist, dist);
+        }
+    }
+    
+    // Map to screen coordinates
+    Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
+    Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
+    int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding for better visibility
+    
+    clusterCenters.push_back(screenCenter);
+    clusterRadii.push_back(radius);
+}
+
+// Helper method to draw cluster circles with transparency
+void Cluster10::drawClusterCircles(
+    const std::vector<Point>& clusterCenters,
+    const std::vector<int>& clusterRadii,
+    const std::vector<RGBA>& clusterColors)
+{
+    // Draw each cluster circle with proper transparency
+    for (size_t cluster = 0; cluster < clusterCenters.size(); ++cluster) {
+        if (clusterRadii[cluster] == 0) continue; // Skip empty clusters
+        
+        // Get the cluster color
+        RGBA circleColor = clusterColors[cluster % clusterColors.size()];
+        
+        // Draw filled cluster circle with semi-transparency based on cluster
+        unsigned char alpha = 0;
+        unsigned char borderAlpha = 0;
+        
+        // Set transparency values based on cluster index - exact values from design
+        if (cluster == 0) {         // Orange
+            alpha = 36;             // 14% opacity
+            borderAlpha = 70;       // Border opacity
+        } else if (cluster == 1) {  // Blue  
+            alpha = 32;             // 12.5% opacity
+            borderAlpha = 65;       // Border opacity
+        } else if (cluster == 2) {  // Green
+            alpha = 40;             // 16% opacity
+            borderAlpha = 75;       // Border opacity
+        } else {
+            alpha = 36;             // Default opacity
+            borderAlpha = 70;       // Default border opacity
+        }
+        
+        // Apply circle fill with transparency
+        int radius = clusterRadii[cluster];
+        Point center = clusterCenters[cluster];
+        
+        // Draw the filled circle with transparency
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                // Check if this pixel is within the circle
+                int distSqr = dx*dx + dy*dy;
+                if (distSqr <= radius * radius) {
+                    int drawX = center.x + dx;
+                    int drawY = center.y + dy;
+                    
+                    // Check plot area bounds
+                    if (drawX >= static_cast<int>(margin_left) && 
+                        drawX < static_cast<int>(width - margin_right) &&
+                        drawY >= static_cast<int>(margin_top) && 
+                        drawY < static_cast<int>(height - margin_bottom)) {
+                        
+                        // Check if this is a border pixel
+                        bool isBorder = false;
+                        int borderSize = 2;  // 2px border
+                        
+                        // A pixel is a border if it's near the edge of the circle
+                        int distFromEdge = radius - static_cast<int>(std::sqrt(distSqr));
+                        if (distFromEdge <= borderSize && distFromEdge >= 0) {
+                            isBorder = true;
+                        }
+                        
+                        // Use higher alpha for border pixels
+                        float pixelAlpha = isBorder ? 
+                            borderAlpha / 255.0f : 
+                            alpha / 255.0f;
+                            
+                        // Blend the pixel
+                        blendPixel(drawX, drawY, circleColor, pixelAlpha);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Helper method to draw centroids
+void Cluster10::drawCentroids(
+    const std::vector<std::vector<double> >& centroids,
+    const std::vector<RGBA>& clusterColors,
+    const AxisRange& xRange,
+    const AxisRange& yRange)
+{
+    // Draw centroids
+    for (size_t i = 0; i < centroids.size() && i < clusterColors.size(); ++i) {
+        if (centroids[i].size() < 2) continue;
+        
+        // Map centroid to screen coordinates
+        Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
+        
+        // Create exact 3D effect as seen in design
+        // First draw shadow
+        RGBA shadowColor(0x00, 0x00, 0x00, 0x60); // 38% opacity black shadow
+        drawCircle(centroidPoint.x + 1, centroidPoint.y + 1, 8, shadowColor, true);
+        
+        // Draw a white circle background
+        RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF);
+        drawCircle(centroidPoint.x, centroidPoint.y, 8, whiteFill, true);
+        
+        // Add subtle highlight to top-left of circle
+        RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80); // 50% opacity white
+        for (int y = -8; y <= -3; ++y) {
+            for (int x = -8; x <= -3; ++x) {
+                int distance = x*x + y*y;
+                if (distance <= 64 && distance >= 36) { // Between inner and outer circle edge
+                    float fadeRatio = 1.0f - (std::sqrt(static_cast<float>(distance)) - 6.0f) / 2.0f;
+                    fadeRatio = std::max(0.0f, std::min(1.0f, fadeRatio));
+                    
+                    // Blend highlight with fading
+                    int drawX = centroidPoint.x + x;
+                    int drawY = centroidPoint.y + y;
+                    blendPixel(drawX, drawY, highlightColor, highlightColor.a / 255.0f * fadeRatio);
+                }
+            }
+        }
+        
+        // Draw colored cross
+        RGBA crossColor = clusterColors[i];
+        // Darken slightly
+        crossColor.r = static_cast<unsigned char>(crossColor.r * 0.85f);
+        crossColor.g = static_cast<unsigned char>(crossColor.g * 0.85f);
+        crossColor.b = static_cast<unsigned char>(crossColor.b * 0.85f);
+        
+        // Draw horizontal line of cross
+        for (int y = -1; y <= 1; ++y) {
+            drawLine(centroidPoint.x - 7, centroidPoint.y + y, centroidPoint.x + 7, centroidPoint.y + y, crossColor);
+        }
+        
+        // Draw vertical line of cross
+        for (int x = -1; x <= 1; ++x) {
+            drawLine(centroidPoint.x + x, centroidPoint.y - 7, centroidPoint.x + x, centroidPoint.y + 7, crossColor);
+        }
+    }
+}
+
+// Helper method to draw cluster labels
+void Cluster10::drawClusterLabels(
+    const std::vector<Point>& clusterCenters,
+    const std::vector<std::vector<std::pair<int, int> > >& clusterPoints,
+    const std::vector<RGBA>& clusterColors)
+{
+    // Draw cluster labels
+    for (size_t cluster = 0; cluster < clusterPoints.size(); ++cluster) {
         if (clusterPoints[cluster].empty()) continue;
         
         // Calculate optimal label position based on cluster layout
@@ -902,36 +961,15 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
                 offsetY = (cluster % 2 == 0) ? 30 : -30;
         }
         
-        // Format label with exact text from design
+        // Format label
         char label[32];
-        std::sprintf(label, "Cluster %d", cluster);
+        std::sprintf(label, "Cluster %d", (int)cluster);
         
-        // Draw label at calculated position with exact font size from design
+        // Draw label at calculated position
+        RGBA labelColor = clusterColors[cluster % clusterColors.size()];
         drawText(clusterCenters[cluster].x + offsetX, clusterCenters[cluster].y + offsetY, 
-                label, clusterColors[cluster], 22, true);
+                label, labelColor, 22, true);
     }
-    
-    // Add a legend to match the design file - exact position and content
-    std::vector<std::string> legendLabels;
-    std::vector<RGBA> legendColors;
-    
-    for (int i = 0; i < numClusters; ++i) {
-        char label[32];
-        std::sprintf(label, "Cluster %d", i);
-        legendLabels.push_back(label);
-        
-        // Use fully opaque colors for the legend dots
-        RGBA legendColor = clusterColors[i];
-        legendColor.a = 0xFF; // Full opacity for legend dots
-        legendColors.push_back(legendColor);
-    }
-    
-    // Add the centroid legend item - exact text from design
-    legendLabels.push_back("Centroid");
-    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // Fully opaque
-    
-    // Position legend in top-right corner - exact position from design
-    addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15, 16);
 }
 
 void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
@@ -999,7 +1037,7 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     
     // Subtle top highlight (rounded top effect)
     float topBottomAlpha = 0x60 / 255.0f; // 38% opacity
-    
+        
     for (int dx = -bodyWidth/2 + 1; dx <= bodyWidth/2 - 1; ++dx) {
         int drawX = x + dx;
         blendPixel(drawX, bodyTop, highlightColor, topBottomAlpha);
@@ -1020,8 +1058,11 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         return;
     }
     
+    // Create a chart configuration
+    ChartConfig config("Financial Data Analysis", 36, "Date", "Price");
+    
     // Initialize chart with background, grid, etc.
-    initializeChart("Financial Data Analysis", 36);
+    initializeChart(config.title, config.titleFontSize);
     
     // Calculate the effective plotting area
     int plotWidth = getPlotWidth();
@@ -1075,11 +1116,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     drawCandlestickXAxis(candles, maxVisibleCandles, totalCandles, firstTimestamp, lastTimestamp);
     
     // Label axes
-    // X-axis label
-    drawText(width/2, height - margin_bottom/3, "Date", elementColors["axisLabel"], 24, true);
-    
-    // Y-axis label (vertical text)
-    drawVerticalText("Price", margin_left/3, height/2 - 55, 24, elementColors["axisLabel"]);
+    drawText(width/2, height - margin_bottom/3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
+    drawVerticalText(config.yAxisLabel, margin_left/3, height/2 - 55, config.axisFontSize, elementColors["axisLabel"]);
     
     // Calculate optimal starting position to center the candles
     int totalRequiredWidth = maxVisibleCandles * (candleWidth + candleSpacing);
@@ -1216,8 +1254,11 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
         return;
     }
     
+    // Create a chart configuration
+    ChartConfig config("Data Distribution", 36, "Values", "Frequency");
+    
     // Initialize chart with background, grid, etc.
-    initializeChart("Data Distribution", 36);
+    initializeChart(config.title, config.titleFontSize);
     
     // Calculate the effective plotting area
     int plotWidth = getPlotWidth();
@@ -1247,10 +1288,10 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, color);
     
     // Draw X-axis label
-    drawText(width / 2, height - margin_bottom / 3, "Values", elementColors["axisLabel"], 24, true);
+    drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
     
     // Draw Y-axis label (vertical text)
-    drawVerticalText("Frequency", margin_left / 4, height / 2 - 60, 24, elementColors["axisLabel"]);
+    drawVerticalText(config.yAxisLabel, margin_left / 4, height / 2 - 60, config.axisFontSize, elementColors["axisLabel"]);
     
     // Draw statistics info box
     drawHistogramStats(bins, maxBinValue);
@@ -1312,6 +1353,9 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
 {
     // Add highlight to left edge and top
     RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x40); // Semi-transparent white
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x40);    // Semi-transparent black
+    float highlightAlpha = highlightColor.a / 255.0f;
+    float shadowAlpha = shadowColor.a / 255.0f;
     
     // Left edge highlight
     for (int dy = 0; dy < barHeight; ++dy) {
@@ -1319,20 +1363,10 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + dx;
             int drawY = y + dy;
             
+            // Only draw within the plot area
             if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
                 drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                // Apply alpha blending
-                RGBA baseColor = image.GetPixel(drawX, drawY);
-                float blendFactor = highlightColor.a / 255.0f;
-                
-                RGBA blendedColor(
-                    static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + highlightColor.r * blendFactor),
-                    static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + highlightColor.g * blendFactor),
-                    static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + highlightColor.b * blendFactor),
-                    baseColor.a
-                );
-                
-                image.SetPixel(drawX, drawY, blendedColor);
+                blendPixel(drawX, drawY, highlightColor, highlightAlpha);
             }
         }
     }
@@ -1343,26 +1377,13 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + dx;
             int drawY = y + dy;
             
+            // Only draw within the plot area
             if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
                 drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                // Apply alpha blending
-                RGBA baseColor = image.GetPixel(drawX, drawY);
-                float blendFactor = highlightColor.a / 255.0f;
-                
-                RGBA blendedColor(
-                    static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + highlightColor.r * blendFactor),
-                    static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + highlightColor.g * blendFactor),
-                    static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + highlightColor.b * blendFactor),
-                    baseColor.a
-                );
-                
-                image.SetPixel(drawX, drawY, blendedColor);
+                blendPixel(drawX, drawY, highlightColor, highlightAlpha);
             }
         }
     }
-    
-    // Add shadow to right edge and bottom
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x40); // Semi-transparent black
     
     // Right edge shadow
     for (int dy = 0; dy < barHeight; ++dy) {
@@ -1370,20 +1391,10 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + barWidth - dx - 1;
             int drawY = y + dy;
             
+            // Only draw within the plot area
             if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
                 drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                // Apply alpha blending
-                RGBA baseColor = image.GetPixel(drawX, drawY);
-                float blendFactor = shadowColor.a / 255.0f;
-                
-                RGBA blendedColor(
-                    static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + shadowColor.r * blendFactor),
-                    static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + shadowColor.g * blendFactor),
-                    static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + shadowColor.b * blendFactor),
-                    baseColor.a
-                );
-                
-                image.SetPixel(drawX, drawY, blendedColor);
+                blendPixel(drawX, drawY, shadowColor, shadowAlpha);
             }
         }
     }
@@ -1394,20 +1405,10 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + dx;
             int drawY = y + barHeight - dy - 1;
             
+            // Only draw within the plot area
             if (drawX >= static_cast<int>(margin_left) && drawX < static_cast<int>(width - margin_right) &&
                 drawY >= static_cast<int>(margin_top) && drawY < static_cast<int>(height - margin_bottom)) {
-                // Apply alpha blending
-                RGBA baseColor = image.GetPixel(drawX, drawY);
-                float blendFactor = shadowColor.a / 255.0f;
-                
-                RGBA blendedColor(
-                    static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + shadowColor.r * blendFactor),
-                    static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + shadowColor.g * blendFactor),
-                    static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + shadowColor.b * blendFactor),
-                    baseColor.a
-                );
-                
-                image.SetPixel(drawX, drawY, blendedColor);
+                blendPixel(drawX, drawY, shadowColor, shadowAlpha);
             }
         }
     }
@@ -1828,4 +1829,5 @@ void Cluster10::initializeChart(const std::string& title, unsigned int titleFont
     }
 }
 
+// End of Cluster10.cpp
 // End of Cluster10.cpp

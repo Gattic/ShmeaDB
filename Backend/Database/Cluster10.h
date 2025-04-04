@@ -49,6 +49,22 @@ public:
             : min(min_), max(max_), padding(padding_) {}
     };
 
+    // Chart configuration structure
+    struct ChartConfig {
+        std::string title;
+        unsigned int titleFontSize;
+        std::string xAxisLabel;
+        std::string yAxisLabel;
+        unsigned int axisFontSize;
+        
+        ChartConfig() 
+            : title(""), titleFontSize(36), xAxisLabel(""), yAxisLabel(""), axisFontSize(24) {}
+        
+        ChartConfig(const std::string& title_, unsigned int titleSize, 
+                   const std::string& xLabel, const std::string& yLabel, unsigned int axisSize = 24)
+            : title(title_), titleFontSize(titleSize), xAxisLabel(xLabel), yAxisLabel(yLabel), axisFontSize(axisSize) {}
+    };
+
     // Constants for standard sizes
     static const int DEFAULT_WIDTH = 2400;
     static const int DEFAULT_HEIGHT = 1200;
@@ -84,7 +100,9 @@ public:
     void saveAsPNG(const std::string& filename, const std::string& folder = ".");
 
 private:
-    // Internal state
+    //==================== MEMBER VARIABLES ====================//
+    
+    // Image and dimensions
     Image image;
     unsigned int width;
     unsigned int height;
@@ -106,70 +124,169 @@ private:
     bool showAxes;
     int cornerRadius;
     
-    // Initialization methods
+    //==================== INITIALIZATION METHODS ====================//
+    
+    // Common initialization for constructor
+    void initialize();
+    
+    // Initialize color palette
     void initialize_colors();
+    
+    // Initialize font system
     void initialize_font(const std::string fontPath = "fonts/font.ttf");
     
-    // Background and layout methods
+    //==================== BASIC DRAWING METHODS ====================//
+    
+    // Draw the chart background gradient
     void drawBackground();
+    
+    // Draw grid lines
     void drawGrid();
+    
+    // Draw x and y axes
     void drawAxes();
+    
+    // Initialize a chart with background, grid, title, etc.
     void initializeChart(const std::string& title = "", unsigned int titleFontSize = 36);
     
-    // Text rendering
+    //==================== TEXT RENDERING METHODS ====================//
+    
+    // Draw text at specified position
     void drawText(int x, int y, const std::string& text, const RGBA& color, 
                  unsigned int fontSize = 18, bool centerAligned = false);
+    
+    // Draw text vertically (for y-axis labels)
     void drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color);
     
-    // Primitive drawing methods
+    //==================== PRIMITIVE DRAWING METHODS ====================//
+    
+    // Draw a point (filled circle)
     void drawPoint(int x, int y, int size, const RGBA& color);
+    
+    // Draw a line between two points
     void drawLine(int x1, int y1, int x2, int y2, const RGBA& color, int width = 2);
+    
+    // Draw a rectangle
     void drawRect(int x, int y, int width, int height, const RGBA& color, bool filled = true, int borderWidth = 1);
+    
+    // Draw a circle
     void drawCircle(int x, int y, int radius, const RGBA& color, bool filled = true, int borderWidth = 1);
+    
+    // Draw rounded corners
     void drawCornerRadius(int x, int y, int radius, bool topLeft, bool topRight, bool bottomRight, bool bottomLeft);
     
-    // Helper methods
+    //==================== COLOR AND PIXEL METHODS ====================//
+    
+    // Clamp a value between min and max
     inline int clamp(int value, int min, int max);
     
-    // Common reusable components
-    void drawInfoBox(int x, int y, int width, int height, const std::string& text, unsigned int fontSize = 16);
-    void blendPixel(int x, int y, const RGBA& color, float alpha);
+    // Blend two colors with alpha
     RGBA blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha);
     
-    // Axis rendering helpers
+    // Blend a pixel with bounds checking
+    void blendPixel(int x, int y, const RGBA& color, float alpha);
+    
+    //==================== COMMON UI COMPONENT METHODS ====================//
+    
+    // Draw an info box with gradient background and rounded corners
+    void drawInfoBox(int x, int y, int width, int height, const std::string& text, unsigned int fontSize = 16);
+    
+    //==================== AXIS RENDERING METHODS ====================//
+    
+    // Draw Y-axis ticks and labels
     void drawYAxisTicks(double minValue, double maxValue, int numTicks, bool isInteger = false, 
                        int precision = 1, int labelOffset = 25);
+    
+    // Draw X-axis ticks with text labels
     void drawXAxisTicks(const std::vector<std::string>& labels, int numTicks);
+    
+    // Draw X-axis ticks with numeric values
     void drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision = 1);
     
-    // Chart-specific components
+    //==================== CHART-SPECIFIC COMPONENTS ====================//
+    
+    // Draw a candlestick for financial charts
     void drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color);
     
-    // Histogram-specific helpers
+    // Draw histogram Y-axis
     void drawHistogramYAxis(int maxValue, int numTicks);
+    
+    // Draw histogram bars
     void drawHistogramBars(const std::vector<int>& bins, int maxBinValue, int totalBars, 
                           int barWidth, int barSpacing, const RGBA& color);
+    
+    // Add 3D effect to histogram bars
     void drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight);
+    
+    // Draw statistics box for histogram
     void drawHistogramStats(const std::vector<int>& bins, int maxBinValue);
     
-    // Candlestick chart helpers
+    // Draw candlestick chart X-axis with dates
     void drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
                              int totalCandles, double firstTimestamp, double lastTimestamp);
+    
+    // Draw candlestick chart Y-axis with prices
     void drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks);
+    
+    // Draw price info box for candlestick chart
     void drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
                                 const RGBA& bullishColor, const RGBA& bearishColor);
     
-    // Data scaling helpers
+    // Create cluster visualization legend
+    void createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y);
+    
+    // Calculate cluster boundaries for visualization
+    void calculateClusterBounds(
+        const std::vector<std::vector<double> >& data,
+        const std::vector<int>& labels,
+        int cluster,
+        std::vector<Point>& clusterCenters,
+        std::vector<int>& clusterRadii,
+        const AxisRange& xRange,
+        const AxisRange& yRange);
+    
+    // Draw cluster circles with proper transparency
+    void drawClusterCircles(
+        const std::vector<Point>& clusterCenters,
+        const std::vector<int>& clusterRadii,
+        const std::vector<RGBA>& clusterColors);
+    
+    // Draw centroids for cluster visualization
+    void drawCentroids(
+        const std::vector<std::vector<double> >& centroids,
+        const std::vector<RGBA>& clusterColors,
+        const AxisRange& xRange,
+        const AxisRange& yRange);
+    
+    // Draw cluster labels
+    void drawClusterLabels(
+        const std::vector<Point>& clusterCenters,
+        const std::vector<std::vector<std::pair<int, int> > >& clusterPoints,
+        const std::vector<RGBA>& clusterColors);
+    
+    //==================== DATA SCALING METHODS ====================//
+    
+    // Calculate X range for points
     AxisRange calculateXRange(const std::vector<Point>& points);
+    
+    // Calculate Y range for points
     AxisRange calculateYRange(const std::vector<Point>& points);
+    
+    // Calculate X range for data matrix
     AxisRange calculateXRange(const std::vector<std::vector<double> >& data);
+    
+    // Calculate Y range for data matrix
     AxisRange calculateYRange(const std::vector<std::vector<double> >& data);
     
-    // Coordinate mapping
+    // Map data coordinates to screen coordinates
     Point mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange);
     
-    // Layout calculation
+    //==================== LAYOUT HELPERS ====================//
+    
+    // Get the width of the plotting area
     int getPlotWidth() const { return width - margin_left - margin_right; }
+    
+    // Get the height of the plotting area
     int getPlotHeight() const { return height - margin_top - margin_bottom; }
 };
 
