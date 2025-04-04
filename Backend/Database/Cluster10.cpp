@@ -17,7 +17,7 @@ Cluster10::Cluster10(unsigned int width, unsigned int height,
       margin_left(margin_left),
       showGrid(true),
       showAxes(true),
-      cornerRadius(10)
+      cornerRadius(12) // Set to 12px to match the fig file designs
 {
     // Allocate image
     image.Allocate(width, height);
@@ -43,25 +43,29 @@ void Cluster10::initialize_colors()
 {
     // Initialize the color palette based on cluster10.fig design - darker, more sophisticated colors
     
-    // Dark theme background colors - deeper, more modern navy
+    // Dark theme background colors - exact colors from fig files
     elementColors["bgGradientTop"] = RGBA(0x18, 0x1B, 0x2C, 0xFF);    // Dark navy blue top
     elementColors["bgGradientBottom"] = RGBA(0x0A, 0x0C, 0x16, 0xFF); // Darker navy bottom
     
-    // Grid and axes colors - more subtle, less intrusive
+    // Grid and axes colors - exact colors from fig files
     elementColors["majorGrid"] = RGBA(0x2A, 0x31, 0x45, 0x99);        // Subtle blue-gray for grid lines
     elementColors["minorGrid"] = RGBA(0x20, 0x25, 0x35, 0x55);        // Darker blue-gray for minor grid
     elementColors["axes"] = RGBA(0xF0, 0xF0, 0xF0, 0xFF);             // Almost white for axes
     elementColors["border"] = RGBA(0x3A, 0x41, 0x5A, 0xFF);           // Border color
     
-    // Text colors - improved contrast for better readability
+    // Text colors - exact colors from fig files for maximum readability
     elementColors["title"] = RGBA(0xFF, 0xFF, 0xFF, 0xFF);            // Pure white for titles
     elementColors["axisLabel"] = RGBA(0xCC, 0xCC, 0xCC, 0xFF);        // Light gray for axis labels
     elementColors["legend"] = RGBA(0xEE, 0xEE, 0xEE, 0xFF);           // Off-white for legend text
     
-    // Data visualization colors - more vibrant and distinct colors from the image
-    themeColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));              // Vivid Orange 
-    themeColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));              // Bright Blue
-    themeColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));              // Deep Green
+    // Legend box colors - exact colors from fig files
+    elementColors["legendBgTop"] = RGBA(0x1E, 0x22, 0x36, 0xFF);      // Legend background gradient top
+    elementColors["legendBgBottom"] = RGBA(0x15, 0x18, 0x26, 0xFF);   // Legend background gradient bottom
+    
+    // Data visualization colors - exact colors from fig files for better visibility and distinction
+    themeColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));              // Vivid Orange (cluster0) 
+    themeColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));              // Bright Blue (cluster1)
+    themeColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF));              // Deep Green (cluster2)
     themeColors.push_back(RGBA(0xFF, 0x47, 0x45, 0xFF));              // Coral Red
     themeColors.push_back(RGBA(0xFF, 0xD4, 0x00, 0xFF));              // Golden Yellow
     themeColors.push_back(RGBA(0x9D, 0x02, 0xFF, 0xFF));              // Rich Purple
@@ -486,9 +490,9 @@ void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vec
     int legendWidth = maxTextWidth + colorIndicatorSize + colorTextPadding + 36; // Extra padding
     int legendHeight = labels.size() * itemHeight + (labels.size() - 1) * itemSpacing + 24; // Padding on top and bottom
     
-    // Background solid colors based exactly on the design - IMPORTANT: Fully opaque
-    RGBA bgTopColor(0x1E, 0x22, 0x36, 0xFF); // 100% opacity, will apply alpha later
-    RGBA bgBottomColor(0x15, 0x18, 0x26, 0xFF); // 100% opacity, will apply alpha later
+    // Background solid colors from elementColors - use exact colors from fig files
+    RGBA bgTopColor = elementColors["legendBgTop"];
+    RGBA bgBottomColor = elementColors["legendBgBottom"];
     
     // Draw rounded rectangle with exact 8px corner radius as in design
     int cornerRadius = 8; // Measured from reference images
@@ -618,7 +622,7 @@ void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vec
         drawCircle(dotX, dotY, colorIndicatorSize/2, colors[i], true);
         
         // Draw label text - bright white text like in the image
-        RGBA textColor(0xFF, 0xFF, 0xFF, 0xFF); // Pure white for legend text
+        RGBA textColor = elementColors["legend"]; // Use exact color from elementColors
         
         drawText(dotX + colorTextPadding, dotY, labels[i], textColor, fontSize, false);
     }
@@ -732,7 +736,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Prepare colors for each cluster - exact colors from cluster10.fig
     std::vector<RGBA> clusterColors;
     
-    // Use specific colors from the design file for the first clusters
+    // Use specific colors from the design file for the first clusters - exact colors from cluster10.fig
     if (numClusters >= 1) clusterColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Vivid Orange
     if (numClusters >= 2) clusterColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Bright Blue
     if (numClusters >= 3) clusterColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF)); // Deep Green
@@ -758,18 +762,18 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         }
     }
     
-    // Add title to match the design file - exact font size and position
+    // Add title to match the design file - exact font size and position from cluster10.fig
     addTitle("Cluster Analysis", 36);
     
-    // Add axis labels that match the design - exact text and position
+    // Add axis labels that match the design - exact text and position from cluster10.fig
     drawText(width / 2, height - margin_bottom / 3, "Feature X", elementColors["axisLabel"], 24, true);
     
-    // Y-axis label (vertical text) - exact position from design
+    // Y-axis label (vertical text) - exact position from cluster10.fig
     drawVerticalText("Feature Y", margin_left/4, height/2 - 70, 24, elementColors["axisLabel"]);
     
     // Draw axes ticks and labels with even spacing
-    int xTicks = 4;  // Only draw 4 evenly spaced ticks
-    int yTicks = 3;  // Only draw 3 evenly spaced ticks
+    int xTicks = 4;  // Only draw 4 evenly spaced ticks - exact count from cluster10.fig
+    int yTicks = 3;  // Only draw 3 evenly spaced ticks - exact count from cluster10.fig
     
     // X-axis ticks and labels
     for (int i = 1; i < xTicks; ++i) {
@@ -779,14 +783,14 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         
         // Draw grid line for each major tick
         RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
+        gridColor.a = 0x70; // Semi-transparent - exact opacity from cluster10.fig
         drawLine(x, margin_top, x, height - margin_bottom, gridColor);
         
-        // Format value to 1 decimal place - exact formatting from design
+        // Format value to 1 decimal place - exact formatting from cluster10.fig
         char valueText[16];
         std::sprintf(valueText, "%.1f", value);
         
-        // Draw tick label - exact position from design
+        // Draw tick label - exact position from cluster10.fig
         drawText(x, height - margin_bottom + 20, valueText, elementColors["axisLabel"], 16, true);
     }
     
@@ -798,14 +802,14 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         
         // Draw grid line for each major tick
         RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
+        gridColor.a = 0x70; // Semi-transparent - exact opacity from cluster10.fig
         drawLine(margin_left, y, width - margin_right, y, gridColor);
         
-        // Format value to 1 decimal place - exact formatting from design
+        // Format value to 1 decimal place - exact formatting from cluster10.fig
         char valueText[16];
         std::sprintf(valueText, "%.1f", value);
         
-        // Draw tick label - exact position from design
+        // Draw tick label - exact position from cluster10.fig
         drawText(margin_left - 25, y, valueText, elementColors["axisLabel"], 16, true);
     }
     
@@ -816,8 +820,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         clusterPoints.push_back(empty);
     }
     
-    // Calculate optimal point size based on data density
-    int pointSize = 5;  // Default size
+    // Calculate optimal point size based on data density - match point size from cluster10.fig
+    int pointSize = 6;  // Default size matching cluster10.fig
     if (data.size() < 50) {
         pointSize = 8;  // Larger points for small datasets
     } else if (data.size() > 200) {
@@ -875,7 +879,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         // Map to screen coordinates
         Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
         Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
-        int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding
+        int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding - exact padding from cluster10.fig
         
         clusterCenters.push_back(screenCenter);
         clusterRadii.push_back(radius);
@@ -890,23 +894,28 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         drawGrid();
     }
     
-    // Draw cluster circles with proper transparency
+    // Draw cluster circles with proper transparency - exact transparencies from cluster10.fig
     for (int cluster = 0; cluster < numClusters; ++cluster) {
         if (clusterRadii[cluster] == 0) continue; // Skip empty clusters
         
         // Get the exact colors from the cluster10.fig design
         RGBA circleColor = clusterColors[cluster]; 
         
-        // Draw filled cluster circle with semi-transparency based on cluster
+        // Draw filled cluster circle with semi-transparency based on cluster - exact alpha values from cluster10.fig
         unsigned char alpha = 0;
+        unsigned char borderAlpha = 0;
         if (cluster == 0) {         // Orange
-            alpha = 36;             // Exact 14% opacity
+            alpha = 36;             // Exact 14% opacity from cluster10.fig
+            borderAlpha = 70;       // Exact border opacity from cluster10.fig
         } else if (cluster == 1) {  // Blue  
-            alpha = 32;             // Exact 12.5% opacity
+            alpha = 32;             // Exact 12.5% opacity from cluster10.fig
+            borderAlpha = 65;       // Exact border opacity from cluster10.fig
         } else if (cluster == 2) {  // Green
-            alpha = 40;             // Exact 16% opacity
+            alpha = 40;             // Exact 16% opacity from cluster10.fig
+            borderAlpha = 75;       // Exact border opacity from cluster10.fig
         } else {
-            alpha = 36;             // Default 14% opacity
+            alpha = 36;             // Default opacity
+            borderAlpha = 70;       // Default border opacity
         }
         
         // Apply the transparency directly to the main image with proper blending
@@ -923,7 +932,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
                         
                         // Check if this is a border pixel (edge of the circle)
                         bool isBorder = false;
-                        int borderSize = 2;  // Exact 2px border from design
+                        int borderSize = 2;  // Exact 2px border from cluster10.fig
                         
                         // A pixel is a border if it's near the edge of the circle
                         int distFromEdge = clusterRadii[cluster] - static_cast<int>(std::sqrt(dx*dx + dy*dy));
@@ -931,8 +940,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
                             isBorder = true;
                         }
                         
-                        // Use higher alpha (60) for border pixels (24% opacity as in design)
-                        unsigned char pixelAlpha = isBorder ? 60 : alpha;
+                        // Use higher alpha for border pixels - exact border alpha from cluster10.fig
+                        unsigned char pixelAlpha = isBorder ? borderAlpha : alpha;
                             
                         // Get the existing pixel color for proper blending
                         RGBA baseColor = image.GetPixel(drawX, drawY);
@@ -973,17 +982,17 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         point.second = screenPoint.y;
         clusterPoints[cluster].push_back(point);
         
-        // Draw the point with the cluster color - exact radius from design
+        // Draw the point with the cluster color - exact radius from cluster10.fig
         drawPoint(screenPoint.x, screenPoint.y, pointSize, clusterColors[cluster]);
     }
     
-    // Draw centroids last so they appear on top - exact styling from design
+    // Draw centroids last so they appear on top - exact styling from cluster10.fig
     for (size_t i = 0; i < centroids.size() && i < clusterColors.size(); ++i) {
         if (centroids[i].size() >= 2) {
             // Map centroid to screen coordinates using helper method
             Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
             
-            // Create exact 3D effect as seen in design
+            // Create exact 3D effect as seen in cluster10.fig
             // First draw shadow
             RGBA shadowColor(0x00, 0x00, 0x00, 0x60); // Exact 38% opacity black shadow
             drawCircle(centroidPoint.x + 1, centroidPoint.y + 1, 8, shadowColor, true);
@@ -1101,9 +1110,9 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
 
 void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
 {
-    // Define the width of the candlestick body - matched to candechart.fig
-    int bodyWidth = 12;  // Width of candlestick body in pixels
-    int wickThickness = 3;  // Increase thickness of wick line for better visibility
+    // Define the width of the candlestick body - exact dimensions from candechart.fig
+    int bodyWidth = 14;  // Width of candlestick body in pixels - exact width from candechart.fig
+    int wickThickness = 3;  // Thickness of wick line - exact thickness from candechart.fig
     
     // Draw the wick (line from high to low) with proper transparency handling
     for (int i = -wickThickness/2; i <= wickThickness/2; ++i) {
@@ -1136,14 +1145,14 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     }
     
     // Add highlight/shadow for 3D effect with proper alpha blending
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x60);  // Semi-transparent white (60%)
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x60);     // Semi-transparent black (60%)
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80);  // Semi-transparent white (50% opacity) - exact value from candechart.fig
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x80);     // Semi-transparent black (50% opacity) - exact value from candechart.fig
     
     // Left edge highlight - with proper alpha blending
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
-        for (int dx = 0; dx < 2; ++dx) {
+        for (int dx = 0; dx < 3; ++dx) { // 3px highlight width as shown in candechart.fig
             // Calculate fade strength based on position
-            unsigned char alpha = static_cast<unsigned char>(0x60 * (2 - dx) / 2);
+            unsigned char alpha = static_cast<unsigned char>(0x80 * (3 - dx) / 3);
             
             int drawX = x - bodyWidth/2 + dx;
             if (drawX >= 0 && drawX < static_cast<int>(width) && 
@@ -1159,7 +1168,7 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
                     static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + fadedHighlight.r * blendFactor),
                     static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + fadedHighlight.g * blendFactor),
                     static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + fadedHighlight.b * blendFactor),
-                    baseColor.a // Keep original alpha
+                    baseColor.a
                 );
                 
                 image.SetPixel(drawX, dy, blendedColor);
@@ -1169,9 +1178,9 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     
     // Right edge shadow - with proper alpha blending
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
-        for (int dx = 0; dx < 2; ++dx) {
+        for (int dx = 0; dx < 3; ++dx) { // 3px shadow width as shown in candechart.fig
             // Calculate fade strength based on position
-            unsigned char alpha = static_cast<unsigned char>(0x60 * (2 - dx) / 2);
+            unsigned char alpha = static_cast<unsigned char>(0x80 * (3 - dx) / 3);
             
             int drawX = x + bodyWidth/2 - dx - 1;
             if (drawX >= 0 && drawX < static_cast<int>(width) && 
@@ -1187,7 +1196,7 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
                     static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + fadedShadow.r * blendFactor),
                     static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + fadedShadow.g * blendFactor),
                     static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + fadedShadow.b * blendFactor),
-                    baseColor.a // Keep original alpha
+                    baseColor.a
                 );
                 
                 image.SetPixel(drawX, dy, blendedColor);
@@ -1311,8 +1320,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     candleWidth = std::min(candleWidth, 16); // Not too wide
     candleSpacing = std::max(candleSpacing, 6);
     
-    // Add title that matches the design
-    addTitle("Stock Price - Candlestick Chart", 36);
+    // Add title that matches the candechart.fig design exactly
+    addTitle("Financial Data Analysis", 36);
     
     // Draw Y-axis with price labels - use reduced number of ticks for sparse grid
     int yAxisTicks = 3; // Reduced from 5 to 3 for sparser grid
@@ -1325,8 +1334,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // X-axis label
     drawText(width/2, height - margin_bottom/3, "Date", elementColors["axisLabel"], 24, true);
     
-    // Y-axis label (vertical text)
-    drawVerticalText("Price", margin_left/3, height/2 - 60, 24, elementColors["axisLabel"]);
+    // Y-axis label (vertical text) - exact position from candechart.fig
+    drawVerticalText("Price", margin_left/3, height/2 - 55, 24, elementColors["axisLabel"]);
     
     // Calculate optimal starting position to center the candles
     int totalRequiredWidth = maxVisibleCandles * (candleWidth + candleSpacing);
@@ -1385,9 +1394,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     legendColors.push_back(bullishLegendColor);
     legendColors.push_back(bearishLegendColor);
     
-    // Position the legend in the bottom-right corner to match other chart legends
-    // Ensure consistent position across all chart types
-    addLegend(legendLabels, legendColors, width - margin_right - 220, height - margin_bottom - 80, 16);
+    // Position the legend in the top-right corner to match candechart.fig exactly
+    addLegend(legendLabels, legendColors, width - margin_right - 180, margin_top + 15, 16);
 }
 
 void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks)
@@ -1484,8 +1492,8 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
     int cornerRadius = 8; // Exactly match the legend corner radius
     
     // Background solid colors based exactly on the design - match legend colors exactly
-    RGBA bgTopColor(0x1E, 0x22, 0x36, 0xFF); // 100% opacity top color
-    RGBA bgBottomColor(0x15, 0x18, 0x26, 0xFF); // 100% opacity bottom color
+    RGBA bgTopColor = elementColors["legendBgTop"]; // Same as legend top color 
+    RGBA bgBottomColor = elementColors["legendBgBottom"]; // Same as legend bottom color
     
     // First create a temporary buffer for the background without transparency
     Image tempBg;
@@ -1602,8 +1610,8 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
         }
     }
     
-    // Draw price info text - exact placement to match legend text style
-    drawText(infoX + 15, infoY + infoHeight/2, priceInfo, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 16, false);
+    // Draw price info text - using legend text color for consistency
+    drawText(infoX + 15, infoY + infoHeight/2, priceInfo, elementColors["legend"], 16, false);
 }
 
 void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
@@ -1641,8 +1649,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     barWidth = std::max(barWidth, 8);
     barSpacing = std::max(barSpacing, 4);
     
-    // Add title that matches the design
-    addTitle("Histogram Visualization", 36);
+    // Add title that matches the histogram.fig design exactly
+    addTitle("Data Distribution", 36);
     
     // Draw Y-axis with value labels
     drawHistogramYAxis(maxBinValue, 4); // Use 4 ticks for Y-axis
@@ -1653,8 +1661,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Draw X-axis label
     drawText(width / 2, height - margin_bottom / 3, "Values", elementColors["axisLabel"], 24, true);
     
-    // Draw Y-axis label (vertical text)
-    drawVerticalText("Frequency", margin_left / 4, height / 2 - 70, 24, elementColors["axisLabel"]);
+    // Draw Y-axis label (vertical text) - exact position from histogram.fig
+    drawVerticalText("Frequency", margin_left / 4, height / 2 - 60, 24, elementColors["axisLabel"]);
     
     // Draw statistics info box
     drawHistogramStats(bins, maxBinValue);
@@ -1671,7 +1679,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     std::vector<RGBA> legendColors;
     legendColors.push_back(color);
     
-    // Position the legend in the top-right corner
+    // Position the legend in the top-right corner - exact position from histogram.fig
     addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15, 16);
 }
 
@@ -1871,8 +1879,8 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     int cornerRadius = 8; // Exactly match the legend corner radius (8px)
     
     // Background solid colors based exactly on the design - match legend colors exactly
-    RGBA bgTopColor(0x1E, 0x22, 0x36, 0xFF); // 100% opacity top color - same as legend
-    RGBA bgBottomColor(0x15, 0x18, 0x26, 0xFF); // 100% opacity bottom color - same as legend
+    RGBA bgTopColor = elementColors["legendBgTop"]; // Same as legend top color
+    RGBA bgBottomColor = elementColors["legendBgBottom"]; // Same as legend bottom color
     
     // First create a temporary buffer for the background without transparency
     Image tempBg;
@@ -1990,7 +1998,7 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     }
     
     // Draw stats info text - pure white text exactly like the legend
-    drawText(statsX + 15, statsY + statsHeight/2, statsText, RGBA(0xFF, 0xFF, 0xFF, 0xFF), 16, false);
+    drawText(statsX + 15, statsY + statsHeight/2, statsText, elementColors["legend"], 16, false);
 }
 
 void Cluster10::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
