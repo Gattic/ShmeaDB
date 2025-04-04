@@ -39,6 +39,16 @@ public:
             : timestamp(t), open(o), close(c), high(h), low(l) {}
     };
 
+    struct AxisRange {
+        double min;
+        double max;
+        double padding;
+        
+        AxisRange() : min(0.0), max(1.0), padding(0.05) {}
+        AxisRange(double min_, double max_, double padding_) 
+            : min(min_), max(max_), padding(padding_) {}
+    };
+
     // Constants for standard sizes
     static const int DEFAULT_WIDTH = 2400;
     static const int DEFAULT_HEIGHT = 1200;
@@ -108,8 +118,7 @@ private:
     // Text rendering
     void drawText(int x, int y, const std::string& text, const RGBA& color, 
                  unsigned int fontSize = 18, bool centerAligned = false);
-    void drawVerticalText(const std::string& text, int x, int y, int charSpacing, 
-                         const RGBA& color, unsigned int fontSize = 22);
+    void drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color);
     
     // Primitive drawing methods
     void drawPoint(int x, int y, int size, const RGBA& color);
@@ -139,15 +148,6 @@ private:
                                 const RGBA& bullishColor, const RGBA& bearishColor);
     
     // Data scaling helpers
-    struct AxisRange {
-        double min;
-        double max;
-        double padding;
-        
-        AxisRange(double min_ = 0.0, double max_ = 1.0, double padding_ = 0.05) 
-            : min(min_), max(max_), padding(padding_) {}
-    };
-    
     AxisRange calculateXRange(const std::vector<Point>& points);
     AxisRange calculateYRange(const std::vector<Point>& points);
     AxisRange calculateXRange(const std::vector<std::vector<double> >& data);
