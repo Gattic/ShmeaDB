@@ -125,6 +125,7 @@ private:
     void drawLine(int x1, int y1, int x2, int y2, const RGBA& color, int width = 2);
     void drawRect(int x, int y, int width, int height, const RGBA& color, bool filled = true, int borderWidth = 1);
     void drawCircle(int x, int y, int radius, const RGBA& color, bool filled = true, int borderWidth = 1);
+    void drawCircle(Image& targetImage, int x, int y, int radius, const RGBA& color, bool filled = true, int borderWidth = 1);
     void drawCornerRadius(int x, int y, int radius, bool topLeft, bool topRight, bool bottomRight, bool bottomLeft);
     
     // Helper methods
