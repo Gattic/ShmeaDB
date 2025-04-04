@@ -473,158 +473,36 @@ void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vec
         return;
     }
     
-    // Exact dimensions from design files, measured pixel-by-pixel
-    int itemHeight = fontSize + 6; // Exact height calculation
-    int itemSpacing = 10; // Exact spacing between items
-    int colorIndicatorSize = fontSize - 2; // Exact size of color indicator
-    int colorIndicatorRadius = colorIndicatorSize / 2;
-    int colorTextPadding = 12; // Exact spacing between color indicator and text
+    // Calculate dimensions based on content
+    int itemHeight = fontSize + 6;
+    int itemSpacing = 10;
+    int colorIndicatorSize = fontSize - 2;
+    int colorTextPadding = 12;
     
     // Calculate legend width based on text length
     int maxTextWidth = 0;
     for (size_t i = 0; i < labels.size(); ++i) {
-        int textWidth = static_cast<int>(labels[i].length() * fontSize * 0.6); // Approximate width
+        int textWidth = static_cast<int>(labels[i].length() * fontSize * 0.6);
         maxTextWidth = std::max(maxTextWidth, textWidth);
     }
     
-    int legendWidth = maxTextWidth + colorIndicatorSize + colorTextPadding + 36; // Extra padding
-    int legendHeight = labels.size() * itemHeight + (labels.size() - 1) * itemSpacing + 24; // Padding on top and bottom
+    int legendWidth = maxTextWidth + colorIndicatorSize + colorTextPadding + 36;
+    int legendHeight = labels.size() * itemHeight + (labels.size() - 1) * itemSpacing + 24;
     
-    // Background solid colors from elementColors - use exact colors from fig files
-    RGBA bgTopColor = elementColors["legendBgTop"];
-    RGBA bgBottomColor = elementColors["legendBgBottom"];
-    
-    // Draw rounded rectangle with exact 8px corner radius as in design
-    int cornerRadius = 8; // Measured from reference images
-    
-    // First create a temporary buffer for the legend background without transparency
-    Image tempBg;
-    tempBg.Allocate(legendWidth, legendHeight);
-    
-    // Draw gradient background to temp buffer
-    for (int dy = 0; dy < legendHeight; dy++) {
-        // Calculate gradient interpolation
-        float ratio = static_cast<float>(dy) / legendHeight;
-        RGBA currentBgColor(
-            static_cast<unsigned char>(bgTopColor.r * (1.0f - ratio) + bgBottomColor.r * ratio),
-            static_cast<unsigned char>(bgTopColor.g * (1.0f - ratio) + bgBottomColor.g * ratio),
-            static_cast<unsigned char>(bgTopColor.b * (1.0f - ratio) + bgBottomColor.b * ratio),
-            0xFF
-        );
-        
-        for (int dx = 0; dx < legendWidth; dx++) {
-            // Check if this pixel is in the rounded corner region
-            bool inCorner = false;
-            
-            // Check top-left corner
-            if (dx < cornerRadius && dy < cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check top-right corner
-            else if (dx >= legendWidth - cornerRadius && dy < cornerRadius) {
-                int distSquared = (dx - (legendWidth - cornerRadius)) * (dx - (legendWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check bottom-left corner
-            else if (dx < cornerRadius && dy >= legendHeight - cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (legendHeight - cornerRadius)) * (dy - (legendHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check bottom-right corner
-            else if (dx >= legendWidth - cornerRadius && dy >= legendHeight - cornerRadius) {
-                int distSquared = (dx - (legendWidth - cornerRadius)) * (dx - (legendWidth - cornerRadius)) + (dy - (legendHeight - cornerRadius)) * (dy - (legendHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            
-            if (!inCorner) {
-                tempBg.SetPixel(dx, dy, currentBgColor);
-            }
-        }
-    }
-    
-    // Now blend the temporary buffer to the main image with the correct alpha
-    float legendAlpha = 0.9f; // 90% opacity as measured from design
-    
-    // Apply the legend background with transparency
-    for (int dy = 0; dy < legendHeight; dy++) {
-        for (int dx = 0; dx < legendWidth; dx++) {
-            int drawX = x + dx;
-            int drawY = y + dy;
-            
-            if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                drawY >= 0 && drawY < static_cast<int>(height)) {
-                
-                // Get pixel from our temporary buffer (if it exists - check for rounded corners)
-                if (tempBg.GetPixel(dx, dy).a != 0) {
-                    RGBA bgColor = tempBg.GetPixel(dx, dy);
-                    RGBA destColor = image.GetPixel(drawX, drawY);
-                    
-                    // Apply alpha blending
-                    RGBA blendedColor(
-                        static_cast<unsigned char>(destColor.r * (1.0f - legendAlpha) + bgColor.r * legendAlpha),
-                        static_cast<unsigned char>(destColor.g * (1.0f - legendAlpha) + bgColor.g * legendAlpha),
-                        static_cast<unsigned char>(destColor.b * (1.0f - legendAlpha) + bgColor.b * legendAlpha),
-                        0xFF // Keep fully opaque
-                    );
-                    
-                    image.SetPixel(drawX, drawY, blendedColor);
-                }
-            }
-        }
-    }
-    
-    // Add subtle inner highlight to top edge - exactly 1px bright line
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x14); // Exact 8% opacity white - measured from design
-    for (int dx = cornerRadius; dx < legendWidth - cornerRadius; dx++) {
-        int pixelX = x + dx;
-        int pixelY = y;
-        if (pixelX >= 0 && pixelX < static_cast<int>(width) && pixelY >= 0 && pixelY < static_cast<int>(height)) {
-            // Blend with the existing color
-            RGBA baseColor = image.GetPixel(pixelX, pixelY);
-            float blendFactor = highlightColor.a / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + highlightColor.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + highlightColor.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + highlightColor.b * blendFactor),
-                baseColor.a
-            );
-            image.SetPixel(pixelX, pixelY, blendedColor);
-        }
-    }
-    
-    // Add subtle drop shadow to bottom edge - exactly 1px dark line
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x20); // Exact 12.5% opacity black - measured from design
-    for (int dx = cornerRadius; dx < legendWidth - cornerRadius; dx++) {
-        int pixelX = x + dx;
-        int pixelY = y + legendHeight - 1;
-        if (pixelX >= 0 && pixelX < static_cast<int>(width) && pixelY >= 0 && pixelY < static_cast<int>(height)) {
-            // Blend with the existing color
-            RGBA baseColor = image.GetPixel(pixelX, pixelY);
-            float blendFactor = shadowColor.a / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + shadowColor.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + shadowColor.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + shadowColor.b * blendFactor),
-                baseColor.a
-            );
-            image.SetPixel(pixelX, pixelY, blendedColor);
-        }
-    }
+    // Draw the box using our common method (no text initially)
+    drawInfoBox(x, y, legendWidth, legendHeight, "", fontSize);
     
     // Draw each legend item with exact positioning
     for (size_t i = 0; i < labels.size(); ++i) {
         int itemY = y + 10 + i * (itemHeight + itemSpacing);
         
-        // Draw color circular dot (matches the image)
+        // Draw color indicator dot
         int dotX = x + 15;
         int dotY = itemY + itemHeight/2;
         drawCircle(dotX, dotY, colorIndicatorSize/2, colors[i], true);
         
-        // Draw label text - bright white text like in the image
-        RGBA textColor = elementColors["legend"]; // Use exact color from elementColors
-        
-        drawText(dotX + colorTextPadding, dotY, labels[i], textColor, fontSize, false);
+        // Draw label text
+        drawText(dotX + colorTextPadding, dotY, labels[i], elementColors["legend"], fontSize, false);
     }
 }
 
@@ -712,17 +590,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         return;
     }
     
-    // Draw the complete background first to ensure proper layering
-    image.drawVerticalGradient(
-        0, 0, 
-        elementColors["bgGradientTop"], 
-        elementColors["bgGradientBottom"], 
-        cornerRadius
-    );
-    
-    // Calculate the effective plotting area
-    int plotWidth = getPlotWidth();
-    int plotHeight = getPlotHeight();
+    // Initialize chart with background, grid, etc.
+    initializeChart("Cluster Analysis", 36);
     
     // Find number of unique clusters
     int maxCluster = -1;
@@ -733,10 +602,10 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Total number of clusters
     int numClusters = maxCluster + 1;
     
-    // Prepare colors for each cluster - exact colors from cluster10.fig
+    // Prepare colors for each cluster
     std::vector<RGBA> clusterColors;
     
-    // Use specific colors from the design file for the first clusters - exact colors from cluster10.fig
+    // Use specific colors from the design file for the first clusters
     if (numClusters >= 1) clusterColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Vivid Orange
     if (numClusters >= 2) clusterColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Bright Blue
     if (numClusters >= 3) clusterColors.push_back(RGBA(0x03, 0xC0, 0x3C, 0xFF)); // Deep Green
@@ -762,56 +631,13 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         }
     }
     
-    // Add title to match the design file - exact font size and position from cluster10.fig
-    addTitle("Cluster Analysis", 36);
-    
-    // Add axis labels that match the design - exact text and position from cluster10.fig
+    // Add axis labels
     drawText(width / 2, height - margin_bottom / 3, "Feature X", elementColors["axisLabel"], 24, true);
-    
-    // Y-axis label (vertical text) - exact position from cluster10.fig
     drawVerticalText("Feature Y", margin_left/4, height/2 - 70, 24, elementColors["axisLabel"]);
     
-    // Draw axes ticks and labels with even spacing
-    int xTicks = 4;  // Only draw 4 evenly spaced ticks - exact count from cluster10.fig
-    int yTicks = 3;  // Only draw 3 evenly spaced ticks - exact count from cluster10.fig
-    
-    // X-axis ticks and labels
-    for (int i = 1; i < xTicks; ++i) {
-        float percentage = static_cast<float>(i) / xTicks;
-        int x = margin_left + static_cast<int>(percentage * plotWidth);
-        double value = xRange.min + percentage * (xRange.max - xRange.min);
-        
-        // Draw grid line for each major tick
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent - exact opacity from cluster10.fig
-        drawLine(x, margin_top, x, height - margin_bottom, gridColor);
-        
-        // Format value to 1 decimal place - exact formatting from cluster10.fig
-        char valueText[16];
-        std::sprintf(valueText, "%.1f", value);
-        
-        // Draw tick label - exact position from cluster10.fig
-        drawText(x, height - margin_bottom + 20, valueText, elementColors["axisLabel"], 16, true);
-    }
-    
-    // Y-axis ticks and labels
-    for (int i = 1; i < yTicks; ++i) {
-        float percentage = static_cast<float>(i) / yTicks;
-        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
-        double value = yRange.min + percentage * (yRange.max - yRange.min);
-        
-        // Draw grid line for each major tick
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent - exact opacity from cluster10.fig
-        drawLine(margin_left, y, width - margin_right, y, gridColor);
-        
-        // Format value to 1 decimal place - exact formatting from cluster10.fig
-        char valueText[16];
-        std::sprintf(valueText, "%.1f", value);
-        
-        // Draw tick label - exact position from cluster10.fig
-        drawText(margin_left - 25, y, valueText, elementColors["axisLabel"], 16, true);
-    }
+    // Draw axis ticks using our helper methods
+    drawXAxisTicks(xRange.min, xRange.max, 4, 1);
+    drawYAxisTicks(yRange.min, yRange.max, 3, false, 1, 25);
     
     // Structure to store points for each cluster
     std::vector<std::vector<std::pair<int, int> > > clusterPoints;
@@ -820,8 +646,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         clusterPoints.push_back(empty);
     }
     
-    // Calculate optimal point size based on data density - match point size from cluster10.fig
-    int pointSize = 6;  // Default size matching cluster10.fig
+    // Calculate optimal point size based on data density
+    int pointSize = 6;  // Default size
     if (data.size() < 50) {
         pointSize = 8;  // Larger points for small datasets
     } else if (data.size() > 200) {
@@ -1110,9 +936,9 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
 
 void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
 {
-    // Define the width of the candlestick body - exact dimensions from candechart.fig
-    int bodyWidth = 14;  // Width of candlestick body in pixels - exact width from candechart.fig
-    int wickThickness = 3;  // Thickness of wick line - exact thickness from candechart.fig
+    // Define the width of the candlestick body
+    int bodyWidth = 14;  // Width of candlestick body in pixels
+    int wickThickness = 3;  // Thickness of wick line
     
     // Draw the wick (line from high to low) with proper transparency handling
     for (int i = -wickThickness/2; i <= wickThickness/2; ++i) {
@@ -1134,128 +960,55 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     // Draw the body (rectangle between open and close)
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
         for (int dx = -bodyWidth/2; dx <= bodyWidth/2; ++dx) {
-            if (x + dx >= 0 && x + dx < static_cast<int>(width) && 
-                dy >= 0 && dy < static_cast<int>(height)) {
-                // Use the full opacity color for the body
+            // Set the pixel directly with full opacity
+            int drawX = x + dx;
+            int drawY = dy;
+            
+            if (drawX >= 0 && drawX < static_cast<int>(width) && 
+                drawY >= 0 && drawY < static_cast<int>(height)) {
                 RGBA bodyColor = color;
                 bodyColor.a = 0xFF; // Make body fully opaque
-                image.SetPixel(x + dx, dy, bodyColor);
+                image.SetPixel(drawX, drawY, bodyColor);
             }
         }
     }
     
     // Add highlight/shadow for 3D effect with proper alpha blending
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80);  // Semi-transparent white (50% opacity) - exact value from candechart.fig
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x80);     // Semi-transparent black (50% opacity) - exact value from candechart.fig
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80);  // Semi-transparent white (50% opacity)
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x80);     // Semi-transparent black (50% opacity)
     
     // Left edge highlight - with proper alpha blending
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
-        for (int dx = 0; dx < 3; ++dx) { // 3px highlight width as shown in candechart.fig
+        for (int dx = 0; dx < 3; ++dx) { // 3px highlight width
             // Calculate fade strength based on position
-            unsigned char alpha = static_cast<unsigned char>(0x80 * (3 - dx) / 3);
-            
+            float alpha = 0x80 * (3.0f - dx) / 3.0f / 255.0f;
             int drawX = x - bodyWidth/2 + dx;
-            if (drawX >= 0 && drawX < static_cast<int>(width) && 
-                dy >= 0 && dy < static_cast<int>(height)) {
-                
-                // Get existing pixel color for proper blending
-                RGBA baseColor = image.GetPixel(drawX, dy);
-                RGBA fadedHighlight(highlightColor.r, highlightColor.g, highlightColor.b, alpha);
-                
-                // Apply alpha blending
-                float blendFactor = alpha / 255.0f;
-                RGBA blendedColor(
-                    static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + fadedHighlight.r * blendFactor),
-                    static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + fadedHighlight.g * blendFactor),
-                    static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + fadedHighlight.b * blendFactor),
-                    baseColor.a
-                );
-                
-                image.SetPixel(drawX, dy, blendedColor);
-            }
+            blendPixel(drawX, dy, highlightColor, alpha);
         }
     }
     
     // Right edge shadow - with proper alpha blending
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
-        for (int dx = 0; dx < 3; ++dx) { // 3px shadow width as shown in candechart.fig
+        for (int dx = 0; dx < 3; ++dx) { // 3px shadow width
             // Calculate fade strength based on position
-            unsigned char alpha = static_cast<unsigned char>(0x80 * (3 - dx) / 3);
-            
+            float alpha = 0x80 * (3.0f - dx) / 3.0f / 255.0f;
             int drawX = x + bodyWidth/2 - dx - 1;
-            if (drawX >= 0 && drawX < static_cast<int>(width) && 
-                dy >= 0 && dy < static_cast<int>(height)) {
-                
-                // Get existing pixel color for proper blending
-                RGBA baseColor = image.GetPixel(drawX, dy);
-                RGBA fadedShadow(shadowColor.r, shadowColor.g, shadowColor.b, alpha);
-                
-                // Apply alpha blending
-                float blendFactor = alpha / 255.0f;
-                RGBA blendedColor(
-                    static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + fadedShadow.r * blendFactor),
-                    static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + fadedShadow.g * blendFactor),
-                    static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + fadedShadow.b * blendFactor),
-                    baseColor.a
-                );
-                
-                image.SetPixel(drawX, dy, blendedColor);
-            }
+            blendPixel(drawX, dy, shadowColor, alpha);
         }
     }
     
     // Subtle top highlight (rounded top effect)
+    float topBottomAlpha = 0x60 / 255.0f; // 38% opacity
+    
     for (int dx = -bodyWidth/2 + 1; dx <= bodyWidth/2 - 1; ++dx) {
-        unsigned char alpha = 0x40; // 25% opacity
-        RGBA fadeHighlight(highlightColor.r, highlightColor.g, highlightColor.b, alpha);
-        
         int drawX = x + dx;
-        int drawY = bodyTop;
-        
-        if (drawX >= 0 && drawX < static_cast<int>(width) && 
-            drawY >= 0 && drawY < static_cast<int>(height)) {
-            
-            // Get existing pixel color for proper blending
-            RGBA baseColor = image.GetPixel(drawX, drawY);
-            
-            // Apply alpha blending
-            float blendFactor = alpha / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + fadeHighlight.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + fadeHighlight.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + fadeHighlight.b * blendFactor),
-                baseColor.a // Keep original alpha
-            );
-            
-            image.SetPixel(drawX, drawY, blendedColor);
-        }
+        blendPixel(drawX, bodyTop, highlightColor, topBottomAlpha);
     }
     
     // Subtle bottom shadow (rounded bottom effect)
     for (int dx = -bodyWidth/2 + 1; dx <= bodyWidth/2 - 1; ++dx) {
-        unsigned char alpha = 0x40; // 25% opacity
-        RGBA fadeShadow(shadowColor.r, shadowColor.g, shadowColor.b, alpha);
-        
         int drawX = x + dx;
-        int drawY = bodyBottom;
-        
-        if (drawX >= 0 && drawX < static_cast<int>(width) && 
-            drawY >= 0 && drawY < static_cast<int>(height)) {
-            
-            // Get existing pixel color for proper blending
-            RGBA baseColor = image.GetPixel(drawX, drawY);
-            
-            // Apply alpha blending
-            float blendFactor = alpha / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + fadeShadow.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + fadeShadow.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + fadeShadow.b * blendFactor),
-                baseColor.a // Keep original alpha
-            );
-            
-            image.SetPixel(drawX, drawY, blendedColor);
-        }
+        blendPixel(drawX, bodyBottom, shadowColor, topBottomAlpha);
     }
 }
 
@@ -1267,13 +1020,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         return;
     }
     
-    // Draw the complete background first to ensure proper layering
-    image.drawVerticalGradient(
-        0, 0, 
-        elementColors["bgGradientTop"], 
-        elementColors["bgGradientBottom"], 
-        cornerRadius
-    );
+    // Initialize chart with background, grid, etc.
+    initializeChart("Financial Data Analysis", 36);
     
     // Calculate the effective plotting area
     int plotWidth = getPlotWidth();
@@ -1320,12 +1068,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     candleWidth = std::min(candleWidth, 16); // Not too wide
     candleSpacing = std::max(candleSpacing, 6);
     
-    // Add title that matches the candechart.fig design exactly
-    addTitle("Financial Data Analysis", 36);
-    
-    // Draw Y-axis with price labels - use reduced number of ticks for sparse grid
-    int yAxisTicks = 3; // Reduced from 5 to 3 for sparser grid
-    drawCandlestickYAxis(minPrice, maxPrice, yAxisTicks);
+    // Draw Y-axis with price labels
+    drawCandlestickYAxis(minPrice, maxPrice, 3);
     
     // Draw X-axis with date labels
     drawCandlestickXAxis(candles, maxVisibleCandles, totalCandles, firstTimestamp, lastTimestamp);
@@ -1334,7 +1078,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // X-axis label
     drawText(width/2, height - margin_bottom/3, "Date", elementColors["axisLabel"], 24, true);
     
-    // Y-axis label (vertical text) - exact position from candechart.fig
+    // Y-axis label (vertical text)
     drawVerticalText("Price", margin_left/3, height/2 - 55, 24, elementColors["axisLabel"]);
     
     // Calculate optimal starting position to center the candles
@@ -1374,12 +1118,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Add price movement indicators and current price display
     drawCandlestickPriceInfo(candles, bullishColor, bearishColor);
     
-    // Draw grid if needed (to ensure grid is drawn behind the legend)
-    if (showGrid) {
-        drawGrid();
-    }
-    
-    // Add a legend for bullish/bearish candles that matches other chart legends
+    // Add a legend for bullish/bearish candles
     std::vector<std::string> legendLabels;
     legendLabels.push_back("Bullish Candle");
     legendLabels.push_back("Bearish Candle");
@@ -1394,7 +1133,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     legendColors.push_back(bullishLegendColor);
     legendColors.push_back(bearishLegendColor);
     
-    // Position the legend in the top-right corner to match candechart.fig exactly
+    // Position the legend in the top-right corner
     addLegend(legendLabels, legendColors, width - margin_right - 180, margin_top + 15, 16);
 }
 
@@ -1403,29 +1142,8 @@ void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTi
     // Use exactly 3 ticks with consistent spacing
     numTicks = 3;
     
-    int plotHeight = getPlotHeight();
-    
-    // Y-axis price labels and grid lines - draw only at major ticks
-    for (int i = 1; i < numTicks; ++i) {
-        float percentage = static_cast<float>(i) / numTicks;
-        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
-        double priceValue = minPrice + percentage * (maxPrice - minPrice);
-        
-        // Draw horizontal grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
-        drawLine(margin_left, y, width - margin_right, y, gridColor);
-        
-        // Draw price label with 2 decimal places
-        char priceText[32];
-        std::sprintf(priceText, "%.2f", priceValue);
-        drawText(margin_left - 30, y, priceText, elementColors["axisLabel"], 16, true);
-    }
-    
-    // Draw the max price label (top of y-axis)
-    char maxPriceText[32];
-    std::sprintf(maxPriceText, "%.2f", maxPrice);
-    drawText(margin_left - 30, margin_top, maxPriceText, elementColors["axisLabel"], 16, true);
+    // Use our common Y-axis method with 2 decimal places
+    drawYAxisTicks(minPrice, maxPrice, numTicks, false, 2, 30);
 }
 
 void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
@@ -1482,136 +1200,14 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
     std::sprintf(priceInfo, "Close: %.2f  Change: %.2f (%.2f%%)", 
                latestCandle.close, priceChange, percentChange);
     
-    // Exact dimensions from design files, measured pixel-by-pixel - match legend exactly
-    int infoWidth = 320; // Increase width to fit text
+    // Set dimensions and position
+    int infoWidth = 320;
     int infoHeight = 40;
     int infoX = width - margin_right - infoWidth - 20;
     int infoY = margin_top + 20;
     
-    // Draw info box with rounded corners - exact same style as legend
-    int cornerRadius = 8; // Exactly match the legend corner radius
-    
-    // Background solid colors based exactly on the design - match legend colors exactly
-    RGBA bgTopColor = elementColors["legendBgTop"]; // Same as legend top color 
-    RGBA bgBottomColor = elementColors["legendBgBottom"]; // Same as legend bottom color
-    
-    // First create a temporary buffer for the background without transparency
-    Image tempBg;
-    tempBg.Allocate(infoWidth, infoHeight);
-    
-    // Draw gradient background to temp buffer - exact match to legend gradient
-    for (int dy = 0; dy < infoHeight; dy++) {
-        // Calculate gradient interpolation - exact same formula as legend
-        float ratio = static_cast<float>(dy) / infoHeight;
-        RGBA currentBgColor(
-            static_cast<unsigned char>(bgTopColor.r * (1.0f - ratio) + bgBottomColor.r * ratio),
-            static_cast<unsigned char>(bgTopColor.g * (1.0f - ratio) + bgBottomColor.g * ratio),
-            static_cast<unsigned char>(bgTopColor.b * (1.0f - ratio) + bgBottomColor.b * ratio),
-            0xFF
-        );
-        
-        for (int dx = 0; dx < infoWidth; dx++) {
-            // Check if this pixel is in the rounded corner region - exact same corner check as legend
-            bool inCorner = false;
-            
-            // Check top-left corner
-            if (dx < cornerRadius && dy < cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check top-right corner
-            else if (dx >= infoWidth - cornerRadius && dy < cornerRadius) {
-                int distSquared = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check bottom-left corner
-            else if (dx < cornerRadius && dy >= infoHeight - cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check bottom-right corner
-            else if (dx >= infoWidth - cornerRadius && dy >= infoHeight - cornerRadius) {
-                int distSquared = (dx - (infoWidth - cornerRadius)) * (dx - (infoWidth - cornerRadius)) + (dy - (infoHeight - cornerRadius)) * (dy - (infoHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            
-            if (!inCorner) {
-                tempBg.SetPixel(dx, dy, currentBgColor);
-            }
-        }
-    }
-    
-    // Now blend the temporary buffer to the main image with the correct alpha - exactly match legend opacity
-    float infoAlpha = 0.9f; // 90% opacity as measured from design - exact match to legend
-    
-    // Apply the info box background with transparency - exactly like legend
-    for (int dy = 0; dy < infoHeight; dy++) {
-        for (int dx = 0; dx < infoWidth; dx++) {
-            int drawX = infoX + dx;
-            int drawY = infoY + dy;
-            
-            if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                drawY >= 0 && drawY < static_cast<int>(height)) {
-                
-                // Get pixel from our temporary buffer (if it exists - check for rounded corners)
-                if (tempBg.GetPixel(dx, dy).a != 0) {
-                    RGBA bgColor = tempBg.GetPixel(dx, dy);
-                    RGBA destColor = image.GetPixel(drawX, drawY);
-                    
-                    // Apply alpha blending - exact same as legend
-                    RGBA blendedColor(
-                        static_cast<unsigned char>(destColor.r * (1.0f - infoAlpha) + bgColor.r * infoAlpha),
-                        static_cast<unsigned char>(destColor.g * (1.0f - infoAlpha) + bgColor.g * infoAlpha),
-                        static_cast<unsigned char>(destColor.b * (1.0f - infoAlpha) + bgColor.b * infoAlpha),
-                        0xFF // Keep fully opaque
-                    );
-                    
-                    image.SetPixel(drawX, drawY, blendedColor);
-                }
-            }
-        }
-    }
-    
-    // Add subtle inner highlight to top edge - exactly 1px bright line - exact match to legend
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x14); // Exact 8% opacity white - measured from design
-    for (int dx = cornerRadius; dx < infoWidth - cornerRadius; dx++) {
-        int pixelX = infoX + dx;
-        int pixelY = infoY;
-        if (pixelX >= 0 && pixelX < static_cast<int>(width) && pixelY >= 0 && pixelY < static_cast<int>(height)) {
-            // Blend with the existing color - exact same as legend
-            RGBA baseColor = image.GetPixel(pixelX, pixelY);
-            float blendFactor = highlightColor.a / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + highlightColor.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + highlightColor.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + highlightColor.b * blendFactor),
-                baseColor.a
-            );
-            image.SetPixel(pixelX, pixelY, blendedColor);
-        }
-    }
-    
-    // Add subtle drop shadow to bottom edge - exactly 1px dark line - exact match to legend
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x20); // Exact 12.5% opacity black - measured from design
-    for (int dx = cornerRadius; dx < infoWidth - cornerRadius; dx++) {
-        int pixelX = infoX + dx;
-        int pixelY = infoY + infoHeight - 1;
-        if (pixelX >= 0 && pixelX < static_cast<int>(width) && pixelY >= 0 && pixelY < static_cast<int>(height)) {
-            // Blend with the existing color - exact same as legend
-            RGBA baseColor = image.GetPixel(pixelX, pixelY);
-            float blendFactor = shadowColor.a / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + shadowColor.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + shadowColor.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + shadowColor.b * blendFactor),
-                baseColor.a
-            );
-            image.SetPixel(pixelX, pixelY, blendedColor);
-        }
-    }
-    
-    // Draw price info text - using legend text color for consistency
-    drawText(infoX + 15, infoY + infoHeight/2, priceInfo, elementColors["legend"], 16, false);
+    // Use our common info box method
+    drawInfoBox(infoX, infoY, infoWidth, infoHeight, priceInfo, 16);
 }
 
 void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
@@ -1620,13 +1216,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
         return;
     }
     
-    // Draw the complete background first to ensure proper layering
-    image.drawVerticalGradient(
-        0, 0, 
-        elementColors["bgGradientTop"], 
-        elementColors["bgGradientBottom"], 
-        cornerRadius
-    );
+    // Initialize chart with background, grid, etc.
+    initializeChart("Data Distribution", 36);
     
     // Calculate the effective plotting area
     int plotWidth = getPlotWidth();
@@ -1649,11 +1240,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     barWidth = std::max(barWidth, 8);
     barSpacing = std::max(barSpacing, 4);
     
-    // Add title that matches the histogram.fig design exactly
-    addTitle("Data Distribution", 36);
-    
     // Draw Y-axis with value labels
-    drawHistogramYAxis(maxBinValue, 4); // Use 4 ticks for Y-axis
+    drawYAxisTicks(0, maxBinValue, 4, true, 0, 25);
     
     // Draw histogram bars
     drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, color);
@@ -1661,16 +1249,11 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Draw X-axis label
     drawText(width / 2, height - margin_bottom / 3, "Values", elementColors["axisLabel"], 24, true);
     
-    // Draw Y-axis label (vertical text) - exact position from histogram.fig
+    // Draw Y-axis label (vertical text)
     drawVerticalText("Frequency", margin_left / 4, height / 2 - 60, 24, elementColors["axisLabel"]);
     
     // Draw statistics info box
     drawHistogramStats(bins, maxBinValue);
-    
-    // Make sure grid is drawn before the legend
-    if (showGrid) {
-        drawGrid();
-    }
     
     // Add a simple legend
     std::vector<std::string> legendLabels;
@@ -1679,30 +1262,14 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     std::vector<RGBA> legendColors;
     legendColors.push_back(color);
     
-    // Position the legend in the top-right corner - exact position from histogram.fig
+    // Position the legend in the top-right corner
     addLegend(legendLabels, legendColors, width - margin_right - 150, margin_top + 15, 16);
 }
 
 void Cluster10::drawHistogramYAxis(int maxValue, int numTicks)
 {
-    int plotHeight = getPlotHeight();
-    
-    // Y-axis value labels and grid lines
-    for (int i = 0; i <= numTicks; ++i) {
-        float percentage = static_cast<float>(i) / numTicks;
-        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
-        int value = static_cast<int>(percentage * maxValue);
-        
-        // Draw horizontal grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
-        drawLine(margin_left, y, width - margin_right, y, gridColor);
-        
-        // Draw value label
-        char valueText[32];
-        std::sprintf(valueText, "%d", value);
-        drawText(margin_left - 25, y, valueText, elementColors["axisLabel"], 16, true);
-    }
+    // Use our common Y-axis method with integer values
+    drawYAxisTicks(0, maxValue, numTicks, true, 0, 25);
 }
 
 void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue, int totalBars, 
@@ -1869,136 +1436,14 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     std::sprintf(statsText, "Total: %d   Mean: %.1f   Mode: %.1f   Max: %d", 
                count, mean, mode, maxBinValue);
     
-    // Exact dimensions from design files, measured pixel-by-pixel - match legend exactly
+    // Set dimensions and position
     int statsWidth = 350;
     int statsHeight = 40;
     int statsX = margin_left + 20;
     int statsY = margin_top + 20;
     
-    // Draw info box with rounded corners - exact same style as legend
-    int cornerRadius = 8; // Exactly match the legend corner radius (8px)
-    
-    // Background solid colors based exactly on the design - match legend colors exactly
-    RGBA bgTopColor = elementColors["legendBgTop"]; // Same as legend top color
-    RGBA bgBottomColor = elementColors["legendBgBottom"]; // Same as legend bottom color
-    
-    // First create a temporary buffer for the background without transparency
-    Image tempBg;
-    tempBg.Allocate(statsWidth, statsHeight);
-    
-    // Draw gradient background to temp buffer - exact match to legend gradient
-    for (int dy = 0; dy < statsHeight; dy++) {
-        // Calculate gradient interpolation - exact same formula as legend
-        float ratio = static_cast<float>(dy) / statsHeight;
-        RGBA currentBgColor(
-            static_cast<unsigned char>(bgTopColor.r * (1.0f - ratio) + bgBottomColor.r * ratio),
-            static_cast<unsigned char>(bgTopColor.g * (1.0f - ratio) + bgBottomColor.g * ratio),
-            static_cast<unsigned char>(bgTopColor.b * (1.0f - ratio) + bgBottomColor.b * ratio),
-            0xFF
-        );
-        
-        for (int dx = 0; dx < statsWidth; dx++) {
-            // Check if this pixel is in the rounded corner region - exact same corner check as legend
-            bool inCorner = false;
-            
-            // Check top-left corner
-            if (dx < cornerRadius && dy < cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check top-right corner
-            else if (dx >= statsWidth - cornerRadius && dy < cornerRadius) {
-                int distSquared = (dx - (statsWidth - cornerRadius)) * (dx - (statsWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check bottom-left corner
-            else if (dx < cornerRadius && dy >= statsHeight - cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (statsHeight - cornerRadius)) * (dy - (statsHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            // Check bottom-right corner
-            else if (dx >= statsWidth - cornerRadius && dy >= statsHeight - cornerRadius) {
-                int distSquared = (dx - (statsWidth - cornerRadius)) * (dx - (statsWidth - cornerRadius)) + (dy - (statsHeight - cornerRadius)) * (dy - (statsHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
-            }
-            
-            if (!inCorner) {
-                tempBg.SetPixel(dx, dy, currentBgColor);
-            }
-        }
-    }
-    
-    // Now blend the temporary buffer to the main image with the correct alpha - exactly match legend opacity
-    float statsAlpha = 0.9f; // 90% opacity as measured from design - exact match to legend
-    
-    // Apply the stats box background with transparency - exactly like legend
-    for (int dy = 0; dy < statsHeight; dy++) {
-        for (int dx = 0; dx < statsWidth; dx++) {
-            int drawX = statsX + dx;
-            int drawY = statsY + dy;
-            
-            if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                drawY >= 0 && drawY < static_cast<int>(height)) {
-                
-                // Get pixel from our temporary buffer (if it exists - check for rounded corners)
-                if (tempBg.GetPixel(dx, dy).a != 0) {
-                    RGBA bgColor = tempBg.GetPixel(dx, dy);
-                    RGBA destColor = image.GetPixel(drawX, drawY);
-                    
-                    // Apply alpha blending - exact same as legend
-                    RGBA blendedColor(
-                        static_cast<unsigned char>(destColor.r * (1.0f - statsAlpha) + bgColor.r * statsAlpha),
-                        static_cast<unsigned char>(destColor.g * (1.0f - statsAlpha) + bgColor.g * statsAlpha),
-                        static_cast<unsigned char>(destColor.b * (1.0f - statsAlpha) + bgColor.b * statsAlpha),
-                        0xFF // Keep fully opaque
-                    );
-                    
-                    image.SetPixel(drawX, drawY, blendedColor);
-                }
-            }
-        }
-    }
-    
-    // Add subtle inner highlight to top edge - exactly 1px bright line - exact match to legend
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x14); // Exact 8% opacity white - measured from design
-    for (int dx = cornerRadius; dx < statsWidth - cornerRadius; dx++) {
-        int pixelX = statsX + dx;
-        int pixelY = statsY;
-        if (pixelX >= 0 && pixelX < static_cast<int>(width) && pixelY >= 0 && pixelY < static_cast<int>(height)) {
-            // Blend with the existing color - exact same as legend
-            RGBA baseColor = image.GetPixel(pixelX, pixelY);
-            float blendFactor = highlightColor.a / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + highlightColor.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + highlightColor.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + highlightColor.b * blendFactor),
-                baseColor.a
-            );
-            image.SetPixel(pixelX, pixelY, blendedColor);
-        }
-    }
-    
-    // Add subtle drop shadow to bottom edge - exactly 1px dark line - exact match to legend
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x20); // Exact 12.5% opacity black - measured from design
-    for (int dx = cornerRadius; dx < statsWidth - cornerRadius; dx++) {
-        int pixelX = statsX + dx;
-        int pixelY = statsY + statsHeight - 1;
-        if (pixelX >= 0 && pixelX < static_cast<int>(width) && pixelY >= 0 && pixelY < static_cast<int>(height)) {
-            // Blend with the existing color - exact same as legend
-            RGBA baseColor = image.GetPixel(pixelX, pixelY);
-            float blendFactor = shadowColor.a / 255.0f;
-            RGBA blendedColor(
-                static_cast<unsigned char>(baseColor.r * (1.0f - blendFactor) + shadowColor.r * blendFactor),
-                static_cast<unsigned char>(baseColor.g * (1.0f - blendFactor) + shadowColor.g * blendFactor),
-                static_cast<unsigned char>(baseColor.b * (1.0f - blendFactor) + shadowColor.b * blendFactor),
-                baseColor.a
-            );
-            image.SetPixel(pixelX, pixelY, blendedColor);
-        }
-    }
-    
-    // Draw stats info text - pure white text exactly like the legend
-    drawText(statsX + 15, statsY + statsHeight/2, statsText, elementColors["legend"], 16, false);
+    // Use our common info box method
+    drawInfoBox(statsX, statsY, statsWidth, statsHeight, statsText, 16);
 }
 
 void Cluster10::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
@@ -2161,6 +1606,226 @@ Cluster10::Point Cluster10::mapDataToScreen(double x, double y, const AxisRange&
     screenY = clamp(screenY, margin_top, height - margin_bottom);
     
     return Point(screenX, screenY);
+}
+
+// Helper for blending colors with alpha
+RGBA Cluster10::blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha) {
+    return RGBA(
+        static_cast<unsigned char>(baseColor.r * (1.0f - alpha) + overlayColor.r * alpha),
+        static_cast<unsigned char>(baseColor.g * (1.0f - alpha) + overlayColor.g * alpha),
+        static_cast<unsigned char>(baseColor.b * (1.0f - alpha) + overlayColor.b * alpha),
+        baseColor.a  // Keep the original alpha
+    );
+}
+
+// Helper for blending a pixel with bounds checking
+void Cluster10::blendPixel(int x, int y, const RGBA& color, float alpha) {
+    if (x >= 0 && x < static_cast<int>(width) && y >= 0 && y < static_cast<int>(height)) {
+        RGBA baseColor = image.GetPixel(x, y);
+        RGBA blendedColor = blendColors(baseColor, color, alpha);
+        image.SetPixel(x, y, blendedColor);
+    }
+}
+
+// Common method for drawing info boxes (legend, stats, price info)
+void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
+    // Common corner radius for all info boxes
+    int cornerRadius = 8; 
+    
+    // Get gradient colors from element colors
+    RGBA bgTopColor = elementColors["legendBgTop"];
+    RGBA bgBottomColor = elementColors["legendBgBottom"];
+    
+    // Create a temporary buffer for the background
+    Image tempBg;
+    tempBg.Allocate(boxWidth, boxHeight);
+    
+    // Draw gradient background
+    for (int dy = 0; dy < boxHeight; dy++) {
+        // Calculate gradient interpolation
+        float ratio = static_cast<float>(dy) / boxHeight;
+        RGBA currentBgColor(
+            static_cast<unsigned char>(bgTopColor.r * (1.0f - ratio) + bgBottomColor.r * ratio),
+            static_cast<unsigned char>(bgTopColor.g * (1.0f - ratio) + bgBottomColor.g * ratio),
+            static_cast<unsigned char>(bgTopColor.b * (1.0f - ratio) + bgBottomColor.b * ratio),
+            0xFF
+        );
+        
+        for (int dx = 0; dx < boxWidth; dx++) {
+            // Check if this pixel is in the rounded corner region
+            bool inCorner = false;
+            
+            // Check top-left corner
+            if (dx < cornerRadius && dy < cornerRadius) {
+                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
+                inCorner = distSquared > cornerRadius * cornerRadius;
+            }
+            // Check top-right corner
+            else if (dx >= boxWidth - cornerRadius && dy < cornerRadius) {
+                int distSquared = (dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
+                inCorner = distSquared > cornerRadius * cornerRadius;
+            }
+            // Check bottom-left corner
+            else if (dx < cornerRadius && dy >= boxHeight - cornerRadius) {
+                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius));
+                inCorner = distSquared > cornerRadius * cornerRadius;
+            }
+            // Check bottom-right corner
+            else if (dx >= boxWidth - cornerRadius && dy >= boxHeight - cornerRadius) {
+                int distSquared = (dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius));
+                inCorner = distSquared > cornerRadius * cornerRadius;
+            }
+            
+            if (!inCorner) {
+                tempBg.SetPixel(dx, dy, currentBgColor);
+            }
+        }
+    }
+    
+    // Apply the box with transparency (90% opacity)
+    float boxAlpha = 0.9f;
+    for (int dy = 0; dy < boxHeight; dy++) {
+        for (int dx = 0; dx < boxWidth; dx++) {
+            int drawX = x + dx;
+            int drawY = y + dy;
+            
+            if (drawX >= 0 && drawX < static_cast<int>(width) &&
+                drawY >= 0 && drawY < static_cast<int>(height)) {
+                
+                // Only blend if pixel exists in temp buffer (handles rounded corners)
+                if (tempBg.GetPixel(dx, dy).a != 0) {
+                    RGBA bgColor = tempBg.GetPixel(dx, dy);
+                    RGBA destColor = image.GetPixel(drawX, drawY);
+                    RGBA blendedColor = blendColors(destColor, bgColor, boxAlpha);
+                    image.SetPixel(drawX, drawY, blendedColor);
+                }
+            }
+        }
+    }
+    
+    // Add subtle inner highlight to top edge (8% opacity white)
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x14);
+    for (int dx = cornerRadius; dx < boxWidth - cornerRadius; dx++) {
+        int pixelX = x + dx;
+        int pixelY = y;
+        blendPixel(pixelX, pixelY, highlightColor, highlightColor.a / 255.0f);
+    }
+    
+    // Add subtle drop shadow to bottom edge (12.5% opacity black)
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x20);
+    for (int dx = cornerRadius; dx < boxWidth - cornerRadius; dx++) {
+        int pixelX = x + dx;
+        int pixelY = y + boxHeight - 1;
+        blendPixel(pixelX, pixelY, shadowColor, shadowColor.a / 255.0f);
+    }
+    
+    // Draw the text if provided
+    if (!text.empty()) {
+        drawText(x + 15, y + boxHeight/2, text, elementColors["legend"], fontSize, false);
+    }
+}
+
+// Common method for drawing Y-axis ticks and labels
+void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, bool isInteger, 
+                             int precision, int labelOffset) {
+    int plotHeight = getPlotHeight();
+    
+    // Draw each tick mark and label
+    for (int i = 0; i <= numTicks; ++i) {
+        float percentage = static_cast<float>(i) / numTicks;
+        int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
+        double value = minValue + percentage * (maxValue - minValue);
+        
+        // Draw horizontal grid line
+        RGBA gridColor = elementColors["majorGrid"];
+        gridColor.a = 0x70; // Semi-transparent
+        drawLine(margin_left, y, width - margin_right, y, gridColor);
+        
+        // Format the value based on type
+        char valueText[32];
+        if (isInteger) {
+            std::sprintf(valueText, "%d", static_cast<int>(value));
+        } else {
+            char formatStr[10];
+            std::sprintf(formatStr, "%%.%df", precision);
+            std::sprintf(valueText, formatStr, value);
+        }
+        
+        // Draw value label
+        drawText(margin_left - labelOffset, y, valueText, elementColors["axisLabel"], 16, true);
+    }
+}
+
+// Draw X-axis ticks with text labels
+void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTicks) {
+    int plotWidth = getPlotWidth();
+    
+    int totalLabels = static_cast<int>(labels.size());
+    int tickInterval = std::max(1, totalLabels / numTicks);
+    
+    for (int i = 0; i < totalLabels; i += tickInterval) {
+        float percentage = static_cast<float>(i) / totalLabels;
+        int x = margin_left + static_cast<int>(percentage * plotWidth);
+        
+        // Draw vertical grid line
+        RGBA gridColor = elementColors["majorGrid"];
+        gridColor.a = 0x70; // Semi-transparent
+        drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        
+        // Draw label
+        drawText(x, height - margin_bottom + 20, labels[i], elementColors["axisLabel"], 14, true);
+    }
+}
+
+// Draw X-axis ticks with numeric values
+void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision) {
+    int plotWidth = getPlotWidth();
+    
+    for (int i = 0; i < numTicks; ++i) {
+        float percentage = static_cast<float>(i) / (numTicks - 1);
+        int x = margin_left + static_cast<int>(percentage * plotWidth);
+        double value = minValue + percentage * (maxValue - minValue);
+        
+        // Draw vertical grid line
+        RGBA gridColor = elementColors["majorGrid"];
+        gridColor.a = 0x70; // Semi-transparent
+        drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        
+        // Format the value
+        char valueText[32];
+        char formatStr[10];
+        std::sprintf(formatStr, "%%.%df", precision);
+        std::sprintf(valueText, formatStr, value);
+        
+        // Draw value label
+        drawText(x, height - margin_bottom + 20, valueText, elementColors["axisLabel"], 14, true);
+    }
+}
+
+// Helper for common chart initialization steps
+void Cluster10::initializeChart(const std::string& title, unsigned int titleFontSize) {
+    // Draw the complete background first to ensure proper layering
+    image.drawVerticalGradient(
+        0, 0, 
+        elementColors["bgGradientTop"], 
+        elementColors["bgGradientBottom"], 
+        cornerRadius
+    );
+    
+    // Add title if provided
+    if (!title.empty()) {
+        addTitle(title, titleFontSize);
+    }
+    
+    // Draw grid if enabled
+    if (showGrid) {
+        drawGrid();
+    }
+    
+    // Draw axes if enabled
+    if (showAxes) {
+        drawAxes();
+    }
 }
 
 // End of Cluster10.cpp

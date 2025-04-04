@@ -114,6 +114,7 @@ private:
     void drawBackground();
     void drawGrid();
     void drawAxes();
+    void initializeChart(const std::string& title = "", unsigned int titleFontSize = 36);
     
     // Text rendering
     void drawText(int x, int y, const std::string& text, const RGBA& color, 
@@ -125,11 +126,21 @@ private:
     void drawLine(int x1, int y1, int x2, int y2, const RGBA& color, int width = 2);
     void drawRect(int x, int y, int width, int height, const RGBA& color, bool filled = true, int borderWidth = 1);
     void drawCircle(int x, int y, int radius, const RGBA& color, bool filled = true, int borderWidth = 1);
-    void drawCircle(Image& targetImage, int x, int y, int radius, const RGBA& color, bool filled = true, int borderWidth = 1);
     void drawCornerRadius(int x, int y, int radius, bool topLeft, bool topRight, bool bottomRight, bool bottomLeft);
     
     // Helper methods
     inline int clamp(int value, int min, int max);
+    
+    // Common reusable components
+    void drawInfoBox(int x, int y, int width, int height, const std::string& text, unsigned int fontSize = 16);
+    void blendPixel(int x, int y, const RGBA& color, float alpha);
+    RGBA blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha);
+    
+    // Axis rendering helpers
+    void drawYAxisTicks(double minValue, double maxValue, int numTicks, bool isInteger = false, 
+                       int precision = 1, int labelOffset = 25);
+    void drawXAxisTicks(const std::vector<std::string>& labels, int numTicks);
+    void drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision = 1);
     
     // Chart-specific components
     void drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color);
