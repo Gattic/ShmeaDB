@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <string>  // for std::to_string
+#include <cmath>   // for M_PI
 
 using namespace shmea;
 
@@ -197,22 +198,21 @@ void Cluster10::drawGrid()
     int effectiveWidth = width - margin_left - margin_right;
     int effectiveHeight = height - margin_top - margin_bottom;
     
-    // Create a more subtle grid pattern matching the CSS design
-    // Using 6 vertical and 4 horizontal grid divisions for better spacing
-    int gridDivisionsX = 6;  // 6 vertical gridlines
-    int gridDivisionsY = 4;  // 4 horizontal gridlines
+    // Use exact grid pattern from CSS files in concepts/
+    // Matching the fig and pdf files' grid styling
+    int gridDivisionsX = 8;  // 8 vertical gridlines for better spacing
+    int gridDivisionsY = 5;  // 5 horizontal gridlines like in the design
     
-    // Get colors for the grid lines 
+    // Get colors for the grid lines with exact opacity from CSS
     RGBA gridColor = elementColors["majorGrid"];
-    // Make grid more subtle/transparent for design aesthetic
-    gridColor.a = 0x40; // 25% opacity
+    gridColor.a = 0x33; // 20% opacity as in CSS design
     
     // Draw X-axis grid lines (vertical lines)
     for (int i = 1; i < gridDivisionsX; i++) {
         float percentage = static_cast<float>(i) / gridDivisionsX;
         int x = margin_left + static_cast<int>(percentage * effectiveWidth);
         
-        // Draw vertical grid line with thin 1px width
+        // Draw grid line with exact 1px width
         drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
     }
     
@@ -221,68 +221,39 @@ void Cluster10::drawGrid()
         float percentage = static_cast<float>(i) / gridDivisionsY;
         int y = height - margin_bottom - static_cast<int>(percentage * effectiveHeight);
         
-        // Draw horizontal grid line with thin 1px width
+        // Draw grid line with exact 1px width
         drawLine(margin_left, y, width - margin_right, y, gridColor, 1);
     }
     
-    // Draw plot border using theme border color with subtle transparency
+    // Draw outer border with exact styling from CSS
     RGBA borderColor = elementColors["border"];
-    // Increase border alpha for better visibility
-    borderColor.a = 0x40; // 25% opacity
+    borderColor.a = 0x33; // 20% opacity for border
+    int borderWidth = 1;  // 1px border as in design
     
-    // Draw border with rounded corners for modern look
+    // Draw border with proper rounded corners
     // Top border
     drawLine(margin_left + cornerRadius, margin_top, 
              width - margin_right - cornerRadius, margin_top, 
-             borderColor, 1);
+             borderColor, borderWidth);
              
     // Bottom border
     drawLine(margin_left + cornerRadius, height - margin_bottom, 
              width - margin_right - cornerRadius, height - margin_bottom, 
-             borderColor, 1);
+             borderColor, borderWidth);
              
     // Left border
     drawLine(margin_left, margin_top + cornerRadius, 
              margin_left, height - margin_bottom - cornerRadius, 
-             borderColor, 1);
+             borderColor, borderWidth);
              
     // Right border
     drawLine(width - margin_right, margin_top + cornerRadius, 
              width - margin_right, height - margin_bottom - cornerRadius, 
-             borderColor, 1);
+             borderColor, borderWidth);
     
-    // Add rounded corners using small quarter-circles
-    // Top-left corner
-    for (int i = 0; i < cornerRadius; i++) {
-        float angle = M_PI - (i * M_PI / (2 * cornerRadius));
-        int x = margin_left + cornerRadius - static_cast<int>(std::cos(angle) * cornerRadius);
-        int y = margin_top + cornerRadius - static_cast<int>(std::sin(angle) * cornerRadius);
-        image.SetPixel(x, y, borderColor);
-    }
-    
-    // Top-right corner
-    for (int i = 0; i < cornerRadius; i++) {
-        float angle = M_PI * 3/2 + (i * M_PI / (2 * cornerRadius));
-        int x = width - margin_right - cornerRadius + static_cast<int>(std::cos(angle) * cornerRadius);
-        int y = margin_top + cornerRadius - static_cast<int>(std::sin(angle) * cornerRadius);
-        image.SetPixel(x, y, borderColor);
-    }
-    
-    // Bottom-left corner
-    for (int i = 0; i < cornerRadius; i++) {
-        float angle = M_PI/2 - (i * M_PI / (2 * cornerRadius));
-        int x = margin_left + cornerRadius - static_cast<int>(std::cos(angle) * cornerRadius);
-        int y = height - margin_bottom - cornerRadius + static_cast<int>(std::sin(angle) * cornerRadius);
-        image.SetPixel(x, y, borderColor);
-    }
-    
-    // Bottom-right corner
-    for (int i = 0; i < cornerRadius; i++) {
-        float angle = 0 + (i * M_PI / (2 * cornerRadius));
-        int x = width - margin_right - cornerRadius + static_cast<int>(std::cos(angle) * cornerRadius);
-        int y = height - margin_bottom - cornerRadius + static_cast<int>(std::sin(angle) * cornerRadius);
-        image.SetPixel(x, y, borderColor);
-    }
+    // Add subtle rounded corners for the border - exactly matching CSS
+    drawRoundedCorners(margin_left, margin_top, width - margin_right, height - margin_bottom, 
+                      cornerRadius, borderColor);
 }
 
 void Cluster10::drawAxes()
@@ -1807,18 +1778,26 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
                              int precision, int labelOffset) {
     int plotHeight = getPlotHeight();
     
+    // Use the same color as grid lines for consistency with CSS design
+    RGBA gridColor = elementColors["majorGrid"];
+    gridColor.a = 0x33; // 20% opacity as in CSS
+    
+    // Get text color from CSS design
+    RGBA textColor = elementColors["axisLabel"];
+    textColor.a = 0xCC; // 80% opacity for better readability
+    
     // Draw each tick mark and label
     for (int i = 0; i <= numTicks; ++i) {
         float percentage = static_cast<float>(i) / numTicks;
         int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
         double value = minValue + percentage * (maxValue - minValue);
         
-        // Draw horizontal grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
-        drawLine(margin_left, y, width - margin_right, y, gridColor);
+        // Draw horizontal grid line (only for non-zero index to avoid duplicate at bottom)
+        if (i > 0) {
+            drawLine(margin_left, y, width - margin_right, y, gridColor, 1);
+        }
         
-        // Format the value based on type
+        // Format the value based on type with CSS-matching precision
         char valueText[32];
         if (isInteger) {
             std::sprintf(valueText, "%d", static_cast<int>(value));
@@ -1828,14 +1807,22 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
             std::sprintf(valueText, formatStr, value);
         }
         
-        // Draw value label
-        drawText(margin_left - labelOffset, y, valueText, elementColors["axisLabel"], 16, true);
+        // Draw value label with proper spacing from CSS
+        drawText(margin_left - labelOffset, y, valueText, textColor, 16, true);
     }
 }
 
 // Draw X-axis ticks with text labels
 void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTicks) {
     int plotWidth = getPlotWidth();
+    
+    // Use the same colors as other grid elements for CSS consistency
+    RGBA gridColor = elementColors["majorGrid"];
+    gridColor.a = 0x33; // 20% opacity from CSS
+    
+    // Get text color from CSS design
+    RGBA textColor = elementColors["axisLabel"];
+    textColor.a = 0xCC; // 80% opacity for readability
     
     int totalLabels = static_cast<int>(labels.size());
     int tickInterval = std::max(1, totalLabels / numTicks);
@@ -1844,13 +1831,12 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
         float percentage = static_cast<float>(i) / totalLabels;
         int x = margin_left + static_cast<int>(percentage * plotWidth);
         
-        // Draw vertical grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
+        // Draw vertical grid line with CSS styling
         drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
         
-        // Draw label
-        drawText(x, height - margin_bottom + 20, labels[i], elementColors["axisLabel"], 14, true);
+        // Draw label with proper spacing and alignment from CSS
+        int labelY = height - margin_bottom + 25; // More spacing as in CSS
+        drawText(x, labelY, labels[i], textColor, 14, true);
     }
 }
 
@@ -1858,24 +1844,31 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
 void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision) {
     int plotWidth = getPlotWidth();
     
+    // Use the same colors as other grid elements for CSS consistency
+    RGBA gridColor = elementColors["majorGrid"];
+    gridColor.a = 0x33; // 20% opacity from CSS
+    
+    // Get text color from CSS design
+    RGBA textColor = elementColors["axisLabel"];
+    textColor.a = 0xCC; // 80% opacity for readability
+    
     for (int i = 0; i < numTicks; ++i) {
         float percentage = static_cast<float>(i) / (numTicks - 1);
         int x = margin_left + static_cast<int>(percentage * plotWidth);
         double value = minValue + percentage * (maxValue - minValue);
         
-        // Draw vertical grid line
-        RGBA gridColor = elementColors["majorGrid"];
-        gridColor.a = 0x70; // Semi-transparent
+        // Draw vertical grid line with consistent CSS styling
         drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
         
-        // Format the value
+        // Format the value with consistent precision from CSS
         char valueText[32];
         char formatStr[10];
         std::sprintf(formatStr, "%%.%df", precision);
         std::sprintf(valueText, formatStr, value);
         
-        // Draw value label
-        drawText(x, height - margin_bottom + 20, valueText, elementColors["axisLabel"], 14, true);
+        // Draw value label with proper spacing and alignment from CSS
+        int labelY = height - margin_bottom + 25; // More spacing as in CSS
+        drawText(x, labelY, valueText, textColor, 14, true);
     }
 }
 
@@ -2401,6 +2394,91 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
                 pixelShadow.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelShadow, alpha);
             }
+        }
+    }
+}
+
+// Helper method to draw rounded corners for the grid border with anti-aliasing
+void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color)
+{
+    // Generate arc points for a quarter circle
+    std::vector<std::pair<float, float> > arcPoints;
+    
+    // Use higher precision for smoother corners - generate at 0.25 pixel steps
+    for (float angle = 0.0f; angle <= M_PI/2; angle += 0.01f) {
+        float x = radius * std::cos(angle);
+        float y = radius * std::sin(angle);
+        arcPoints.push_back(std::make_pair(x, y));
+    }
+    
+    // Draw top-left corner arc with anti-aliasing
+    for (size_t i = 0; i < arcPoints.size(); i++) {
+        float fx = left + radius - arcPoints[i].first;
+        float fy = top + radius - arcPoints[i].second;
+        
+        // Draw with anti-aliasing - blend pixels at the borders
+        int ix = static_cast<int>(fx);
+        int iy = static_cast<int>(fy);
+        
+        // Calculate alpha blend factor for anti-aliasing
+        float dx = fx - ix;
+        float dy = fy - iy;
+        
+        // Only if within plot area
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            RGBA pixelColor = color;
+            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+        }
+    }
+    
+    // Draw top-right corner arc with anti-aliasing
+    for (size_t i = 0; i < arcPoints.size(); i++) {
+        float fx = right - radius + arcPoints[i].first;
+        float fy = top + radius - arcPoints[i].second;
+        
+        // Anti-aliasing
+        int ix = static_cast<int>(fx);
+        int iy = static_cast<int>(fy);
+        float dx = fx - ix;
+        float dy = fy - iy;
+        
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            RGBA pixelColor = color;
+            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+        }
+    }
+    
+    // Draw bottom-left corner arc with anti-aliasing
+    for (size_t i = 0; i < arcPoints.size(); i++) {
+        float fx = left + radius - arcPoints[i].first;
+        float fy = bottom - radius + arcPoints[i].second;
+        
+        // Anti-aliasing
+        int ix = static_cast<int>(fx);
+        int iy = static_cast<int>(fy);
+        float dx = fx - ix;
+        float dy = fy - iy;
+        
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            RGBA pixelColor = color;
+            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+        }
+    }
+    
+    // Draw bottom-right corner arc with anti-aliasing
+    for (size_t i = 0; i < arcPoints.size(); i++) {
+        float fx = right - radius + arcPoints[i].first;
+        float fy = bottom - radius + arcPoints[i].second;
+        
+        // Anti-aliasing
+        int ix = static_cast<int>(fx);
+        int iy = static_cast<int>(fy);
+        float dx = fx - ix;
+        float dy = fy - iy;
+        
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            RGBA pixelColor = color;
+            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
         }
     }
 }

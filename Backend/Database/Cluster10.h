@@ -172,6 +172,9 @@ private:
     // Draw a circle
     void drawCircle(int x, int y, int radius, const RGBA& color, bool filled = true, int borderWidth = 1);
     
+    // Draw rounded corners for grid border (matches CSS styling)
+    void drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color);
+    
     // Draw rounded corners
     void drawCornerRadius(int x, int y, int radius, bool topLeft, bool topRight, bool bottomRight, bool bottomLeft);
     
