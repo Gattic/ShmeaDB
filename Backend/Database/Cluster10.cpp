@@ -19,7 +19,8 @@ Cluster10::Cluster10(unsigned int width, unsigned int height,
       margin_left(margin_left),
       showGrid(true),
       showAxes(true),
-      cornerRadius(12)
+      cornerRadius(12),
+      hasLogo(false)
 {
     // Initialize the visualization
     initialize();
@@ -690,6 +691,11 @@ void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder
             // Draw rotated label
             drawVerticalText(yAxisLabel, labelX, labelY, 16, textColor);
         }
+    }
+    
+    // Draw the logo if available
+    if (hasLogo) {
+        drawLogo();
     }
     
     // Make sure the directory exists
@@ -1773,7 +1779,7 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
         // Calculate gradient interpolation - diagonal gradient to match the histogram stats box
         for (int dx = 0; dx < boxWidth; dx++) {
             float gradPos = (dx + dy) / static_cast<float>(boxWidth + boxHeight);
-            RGBA currentBgColor(
+        RGBA currentBgColor(
                 static_cast<unsigned char>(bgTopColor.r * (1.0f - gradPos) + bgBottomColor.r * gradPos),
                 static_cast<unsigned char>(bgTopColor.g * (1.0f - gradPos) + bgBottomColor.g * gradPos),
                 static_cast<unsigned char>(bgTopColor.b * (1.0f - gradPos) + bgBottomColor.b * gradPos),
@@ -2555,6 +2561,81 @@ void Cluster10::setYAxisLabel(const std::string& label)
     
     // Draw rotated label
     drawVerticalText(yAxisLabel, labelX, labelY, 16, textColor);
+}
+
+// Load logo image from a file
+void Cluster10::loadLogo(const std::string& logoPath)
+{
+    // Try to load the logo image from the file
+    try {
+        logoImage = Image();
+        logoImage.LoadPNG(logoPath.c_str());
+        
+        if (logoImage.getWidth() > 0 && logoImage.getHeight() > 0) {
+            hasLogo = true;
+            printf("Logo loaded successfully from: %s\n", logoPath.c_str());
+        } else {
+            hasLogo = false;
+            printf("Failed to load logo from: %s\n", logoPath.c_str());
+        }
+    } catch (...) {
+        hasLogo = false;
+        printf("Error loading logo from: %s\n", logoPath.c_str());
+    }
+}
+
+// Draw the logo in the top right corner
+void Cluster10::drawLogo()
+{
+    if (!hasLogo || logoImage.getWidth() == 0 || logoImage.getHeight() == 0) {
+        return;  // No logo to draw
+    }
+    
+    // Define position for the logo (top right corner)
+    int logoWidth = logoImage.getWidth();
+    int logoHeight = logoImage.getHeight();
+    
+    // Limit logo size to a reasonable maximum (e.g., 200x200)
+    const int maxLogoSize = 200;
+    if (logoWidth > maxLogoSize || logoHeight > maxLogoSize) {
+        // Scale down while maintaining aspect ratio
+        float scale = maxLogoSize / static_cast<float>(std::max(logoWidth, logoHeight));
+        logoWidth = static_cast<int>(logoWidth * scale);
+        logoHeight = static_cast<int>(logoHeight * scale);
+    }
+    
+    // Calculate position in top right with padding
+    int padX = 20;  // Padding from right edge
+    int padY = 20;  // Padding from top edge
+    int logoX = width - logoWidth - padX;
+    int logoY = padY;
+    
+    // Draw the logo with alpha blending
+    for (int y = 0; y < logoHeight; ++y) {
+        for (int x = 0; x < logoWidth; ++x) {
+            // Get pixel from the logo
+            int srcX = static_cast<int>(x * (logoImage.getWidth() / static_cast<float>(logoWidth)));
+            int srcY = static_cast<int>(y * (logoImage.getHeight() / static_cast<float>(logoHeight)));
+            RGBA logoPixel = logoImage.GetPixel(srcX, srcY);
+            
+            // Skip fully transparent pixels
+            if (logoPixel.a == 0) {
+                continue;
+            }
+            
+            // Calculate destination position
+            int dstX = logoX + x;
+            int dstY = logoY + y;
+            
+            // Ensure we're within bounds
+            if (dstX >= 0 && dstX < static_cast<int>(width) && 
+                dstY >= 0 && dstY < static_cast<int>(height)) {
+                // Use alpha blending for proper transparency
+                float alpha = logoPixel.a / 255.0f;
+                blendPixel(dstX, dstY, logoPixel, alpha);
+            }
+        }
+    }
 }
 
 // End of Cluster10.cpp

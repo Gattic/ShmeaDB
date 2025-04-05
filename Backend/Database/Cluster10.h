@@ -101,6 +101,9 @@ public:
 
     // Set the Y-axis label
     void setYAxisLabel(const std::string& label);
+    
+    // Load and draw a logo in the top right corner
+    void loadLogo(const std::string& logoPath);
 
 private:
     //==================== MEMBER VARIABLES ====================//
@@ -130,6 +133,10 @@ private:
     // Axis label storage
     std::string yAxisLabel;
     
+    // Logo image
+    Image logoImage;
+    bool hasLogo;
+    
     //==================== INITIALIZATION METHODS ====================//
     
     // Common initialization for constructor
@@ -154,6 +161,9 @@ private:
     
     // Initialize a chart with background, grid, title, etc.
     void initializeChart(const std::string& title = "", unsigned int titleFontSize = 36);
+    
+    // Draw a logo in the top right corner
+    void drawLogo();
     
     //==================== TEXT RENDERING METHODS ====================//
     

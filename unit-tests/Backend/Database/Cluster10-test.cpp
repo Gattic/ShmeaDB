@@ -22,6 +22,9 @@ void shmea::testCluster10() {
     plotter.setShowAxes(false);
     plotter.setCornerRadius(15);
     
+    // Load the logo
+    plotter.loadLogo("logo.png");
+    
     // Create 3 well-defined clusters that match the image
     std::vector<std::vector<double> > clusterData;
     std::vector<int> clusterLabels;
@@ -97,6 +100,9 @@ void shmea::testHistogram() {
     plotter.setShowAxes(false);
     plotter.setCornerRadius(15);
     
+    // Load the logo
+    plotter.loadLogo("logo.png");
+    
     // Add title
     plotter.addTitle("Enhanced Histogram Visualization", 42);
     
@@ -129,6 +135,9 @@ void shmea::testHistogram() {
     plotter2.setShowGrid(true);
     plotter2.setShowAxes(false);
     plotter2.setCornerRadius(15);
+    
+    // Load the logo
+    plotter2.loadLogo("logo.png");
     
     // Add title
     plotter2.addTitle("Skewed Distribution Histogram", 42);
@@ -165,6 +174,9 @@ void shmea::testCandlestickChart() {
     plotter.setShowGrid(true);
     plotter.setShowAxes(false);
     plotter.setCornerRadius(15);
+    
+    // Load the logo
+    plotter.loadLogo("logo.png");
     
     // Add title
     plotter.addTitle("Stock Price Candlestick Chart", 42);
@@ -260,6 +272,9 @@ void shmea::testLineScatter() {
     plotter.setShowGrid(true);
     plotter.setShowAxes(true);
     plotter.setCornerRadius(15);
+    
+    // Load the logo
+    plotter.loadLogo("logo.png");
     
     // Add title
     plotter.addTitle("Line & Scatter Plot Visualization", 36);
