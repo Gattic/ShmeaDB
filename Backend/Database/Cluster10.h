@@ -82,6 +82,9 @@ public:
     void setCornerRadius(int radius);
     void setSuperSamplingFactor(unsigned int factor);
     
+    // Initialize the chart with background and grid, but without a title
+    void prepareCanvas();
+    
     // Chart visualization methods
     void plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize = 8);
     void plotLine(const std::vector<Point>& points, const RGBA& color, int lineWidth = 2);

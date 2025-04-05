@@ -981,8 +981,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Create a chart configuration
     ChartConfig config("Cluster Analysis", 36, "Feature X", "Feature Y");
     
-    // Initialize chart with background, grid, etc.
-    initializeChart(config.title, config.titleFontSize);
+    // Initialize chart with background, grid, etc. but no title yet
+    prepareCanvas();
     
     // Find number of unique clusters
     int maxCluster = -1;
@@ -1086,6 +1086,9 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     
     // Add the legend
     createClusterLegend(clusterColors, numClusters, width - margin_right - 150, margin_top + 15);
+    
+    // Add title at the end to prevent duplication
+    addTitle(config.title, config.titleFontSize);
 }
 
 // Helper method to calculate cluster bounds
@@ -2118,15 +2121,10 @@ void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, i
 // Helper for common chart initialization steps
 void Cluster10::initializeChart(const std::string& title, unsigned int titleFontSize) {
     // Draw the complete background first to ensure proper layering
-    image.drawVerticalGradient(
-        0, 0, 
-        elementColors["bgGradientTop"], 
-        elementColors["bgGradientBottom"], 
-        cornerRadius
-    );
+    drawBackground();
     
-    // Add title if provided
-    if (!title.empty()) {
+    // Add title if provided and fontSize > 0
+    if (!title.empty() && titleFontSize > 0) {
         addTitle(title, titleFontSize);
     }
     
@@ -2156,8 +2154,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Create a chart configuration with histogram styling
     ChartConfig config("Data Distribution", 42, "Value", "Frequency");
     
-    // Initialize chart with background, grid, etc.
-    initializeChart(config.title, config.titleFontSize);
+    // Initialize chart with background, grid, etc. but no title yet
+    prepareCanvas();
     
     // Calculate the effective plotting area
     int plotWidth = getPlotWidth();
@@ -2205,6 +2203,9 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     
     // Position the legend in the top-right corner
     addLegend(legendLabels, legendColors, width - margin_right - 180, margin_top + 20, 18);
+    
+    // Now add the title separately - after all other elements are drawn
+    addTitle(config.title, config.titleFontSize);
 }
 
 void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles, 
@@ -2230,8 +2231,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Create a chart configuration
     ChartConfig config("Financial Data Analysis", 36, "Date", "Price");
     
-    // Initialize chart with background, grid, etc.
-    initializeChart(config.title, config.titleFontSize);
+    // Initialize chart with background, grid, etc. but no title yet
+    prepareCanvas();
     
     // Calculate the effective plotting area
     int plotWidth = getPlotWidth();
@@ -2342,6 +2343,9 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     
     // Position the legend in the top-right corner
     addLegend(legendLabels, legendColors, width - margin_right - 180, margin_top + 15, 16);
+    
+    // Now add the title separately - after all other elements are drawn
+    addTitle(config.title, config.titleFontSize);
 }
 
 void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks)
@@ -2928,6 +2932,22 @@ void Cluster10::drawLogo()
                 blendPixel(dstX, dstY, logoPixel, alpha);
             }
         }
+    }
+}
+
+// Public method to initialize the chart with background and grid, but without a title
+void Cluster10::prepareCanvas() {
+    // Draw the background
+    drawBackground();
+    
+    // Draw grid if enabled
+    if (showGrid) {
+        drawGrid();
+    }
+    
+    // Draw axes if enabled
+    if (showAxes) {
+        drawAxes();
     }
 }
 

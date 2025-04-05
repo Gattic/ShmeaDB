@@ -280,8 +280,8 @@ void shmea::testLineScatter() {
     // Load the logo
     plotter.loadLogo("logo.png");
     
-    // Add title
-    plotter.addTitle("Line & Scatter Plot Visualization", 36);
+    // Initialize canvas with background and grid but no title
+    plotter.prepareCanvas();
     
     // Create a sine wave line
     std::vector<Cluster10::Point> lineData;
@@ -320,6 +320,9 @@ void shmea::testLineScatter() {
     
     // Position the legend
     plotter.addLegend(legendLabels, legendColors, 1600, 100, 18);
+    
+    // Add title at the end to avoid duplicates
+    plotter.addTitle("Line & Scatter Plot Visualization", 36);
     
     // Save the result
     plotter.saveAsPNG("line_scatter_test_output.png", ".");
