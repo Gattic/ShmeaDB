@@ -205,15 +205,21 @@ void Cluster10::drawGrid()
     
     // Get colors for the grid lines with exact opacity from CSS
     RGBA gridColor = elementColors["majorGrid"];
-    gridColor.a = 0x33; // 20% opacity as in CSS design
+    gridColor.a = 0x66; // Increased to 40% opacity for better visibility
     
     // Draw X-axis grid lines (vertical lines)
     for (int i = 1; i < gridDivisionsX; i++) {
         float percentage = static_cast<float>(i) / gridDivisionsX;
         int x = margin_left + static_cast<int>(percentage * effectiveWidth);
         
-        // Draw grid line with exact 1px width
-        drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        // Draw grid line with exact 1px width - ensure it's visible
+        for (int y = margin_top; y <= height - margin_bottom; y++) {
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                RGBA currentPixel = image.GetPixel(x, y);
+                RGBA blendedColor = blendRGBA(currentPixel, gridColor);
+                image.SetPixel(x, y, blendedColor);
+            }
+        }
     }
     
     // Draw Y-axis grid lines (horizontal lines)
@@ -221,13 +227,19 @@ void Cluster10::drawGrid()
         float percentage = static_cast<float>(i) / gridDivisionsY;
         int y = height - margin_bottom - static_cast<int>(percentage * effectiveHeight);
         
-        // Draw grid line with exact 1px width
-        drawLine(margin_left, y, width - margin_right, y, gridColor, 1);
+        // Draw grid line with exact 1px width - ensure it's visible
+        for (int x = margin_left; x <= width - margin_right; x++) {
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                RGBA currentPixel = image.GetPixel(x, y);
+                RGBA blendedColor = blendRGBA(currentPixel, gridColor);
+                image.SetPixel(x, y, blendedColor);
+            }
+        }
     }
     
     // Draw outer border with exact styling from CSS
     RGBA borderColor = elementColors["border"];
-    borderColor.a = 0x33; // 20% opacity for border
+    borderColor.a = 0x66; // Increased to 40% opacity to match grid lines
     int borderWidth = 1;  // 1px border as in design
     
     // Draw border with proper rounded corners
@@ -328,7 +340,16 @@ void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, 
                 
                 if (drawX >= 0 && drawX < static_cast<int>(width) && 
                     drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, lineColor);
+                    
+                    // For semi-transparent colors, blend with background
+                    if (lineColor.a < 255) {
+                        RGBA currentPixel = image.GetPixel(drawX, drawY);
+                        RGBA blendedColor = blendRGBA(currentPixel, lineColor);
+                        image.SetPixel(drawX, drawY, blendedColor);
+                    } else {
+                        // Fully opaque - just set the pixel
+                        image.SetPixel(drawX, drawY, lineColor);
+                    }
                 }
             }
         }
@@ -1780,7 +1801,7 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
     
     // Use the same color as grid lines for consistency with CSS design
     RGBA gridColor = elementColors["majorGrid"];
-    gridColor.a = 0x33; // 20% opacity as in CSS
+    gridColor.a = 0x66; // Increased to 40% opacity to match grid lines
     
     // Get text color from CSS design
     RGBA textColor = elementColors["axisLabel"];
@@ -1792,9 +1813,12 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
         int y = height - margin_bottom - static_cast<int>(percentage * plotHeight);
         double value = minValue + percentage * (maxValue - minValue);
         
-        // Draw horizontal grid line (only for non-zero index to avoid duplicate at bottom)
-        if (i > 0) {
-            drawLine(margin_left, y, width - margin_right, y, gridColor, 1);
+        // Draw horizontal tick line with consistent styling
+        if (i > 0) { // Skip duplicate line at bottom
+            // Draw short tick mark with fine-tuned transparency
+            drawLine(margin_left - 6, y, margin_left, y, textColor, 1);
+            
+            // Grid lines are drawn in drawGrid() to ensure visual consistency
         }
         
         // Format the value based on type with CSS-matching precision
@@ -1818,7 +1842,7 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
     
     // Use the same colors as other grid elements for CSS consistency
     RGBA gridColor = elementColors["majorGrid"];
-    gridColor.a = 0x33; // 20% opacity from CSS
+    gridColor.a = 0x66; // Increased to 40% opacity to match grid lines
     
     // Get text color from CSS design
     RGBA textColor = elementColors["axisLabel"];
@@ -1831,8 +1855,8 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
         float percentage = static_cast<float>(i) / totalLabels;
         int x = margin_left + static_cast<int>(percentage * plotWidth);
         
-        // Draw vertical grid line with CSS styling
-        drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        // Draw tick mark with consistent styling (grid lines drawn in drawGrid)
+        drawLine(x, height - margin_bottom, x, height - margin_bottom + 6, textColor, 1);
         
         // Draw label with proper spacing and alignment from CSS
         int labelY = height - margin_bottom + 25; // More spacing as in CSS
@@ -1846,7 +1870,7 @@ void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, i
     
     // Use the same colors as other grid elements for CSS consistency
     RGBA gridColor = elementColors["majorGrid"];
-    gridColor.a = 0x33; // 20% opacity from CSS
+    gridColor.a = 0x66; // Increased to 40% opacity to match grid lines
     
     // Get text color from CSS design
     RGBA textColor = elementColors["axisLabel"];
@@ -1857,8 +1881,8 @@ void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, i
         int x = margin_left + static_cast<int>(percentage * plotWidth);
         double value = minValue + percentage * (maxValue - minValue);
         
-        // Draw vertical grid line with consistent CSS styling
-        drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        // Draw tick mark with consistent styling (grid lines are drawn in drawGrid)
+        drawLine(x, height - margin_bottom, x, height - margin_bottom + 6, textColor, 1);
         
         // Format the value with consistent precision from CSS
         char valueText[32];
@@ -2401,15 +2425,18 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
 // Helper method to draw rounded corners for the grid border with anti-aliasing
 void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color)
 {
-    // Generate arc points for a quarter circle
+    // Generate arc points for a quarter circle with high precision
     std::vector<std::pair<float, float> > arcPoints;
     
-    // Use higher precision for smoother corners - generate at 0.25 pixel steps
+    // Use higher precision for smoother corners - generate at 0.01 radian steps
     for (float angle = 0.0f; angle <= M_PI/2; angle += 0.01f) {
         float x = radius * std::cos(angle);
         float y = radius * std::sin(angle);
         arcPoints.push_back(std::make_pair(x, y));
     }
+    
+    // Pre-compute the full alpha value to ensure consistent transparency
+    float fullAlpha = color.a / 255.0f;
     
     // Draw top-left corner arc with anti-aliasing
     for (size_t i = 0; i < arcPoints.size(); i++) {
@@ -2420,14 +2447,11 @@ void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int
         int ix = static_cast<int>(fx);
         int iy = static_cast<int>(fy);
         
-        // Calculate alpha blend factor for anti-aliasing
-        float dx = fx - ix;
-        float dy = fy - iy;
-        
         // Only if within plot area
-        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
+            // Use consistent alpha with original color alpha channel
             RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+            blendPixel(ix, iy, pixelColor, fullAlpha);
         }
     }
     
@@ -2436,15 +2460,12 @@ void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int
         float fx = right - radius + arcPoints[i].first;
         float fy = top + radius - arcPoints[i].second;
         
-        // Anti-aliasing
         int ix = static_cast<int>(fx);
         int iy = static_cast<int>(fy);
-        float dx = fx - ix;
-        float dy = fy - iy;
         
-        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
             RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+            blendPixel(ix, iy, pixelColor, fullAlpha);
         }
     }
     
@@ -2453,15 +2474,12 @@ void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int
         float fx = left + radius - arcPoints[i].first;
         float fy = bottom - radius + arcPoints[i].second;
         
-        // Anti-aliasing
         int ix = static_cast<int>(fx);
         int iy = static_cast<int>(fy);
-        float dx = fx - ix;
-        float dy = fy - iy;
         
-        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
             RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+            blendPixel(ix, iy, pixelColor, fullAlpha);
         }
     }
     
@@ -2470,15 +2488,12 @@ void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int
         float fx = right - radius + arcPoints[i].first;
         float fy = bottom - radius + arcPoints[i].second;
         
-        // Anti-aliasing
         int ix = static_cast<int>(fx);
         int iy = static_cast<int>(fy);
-        float dx = fx - ix;
-        float dy = fy - iy;
         
-        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
             RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, 1.0f - dx * dy);
+            blendPixel(ix, iy, pixelColor, fullAlpha);
         }
     }
 }
