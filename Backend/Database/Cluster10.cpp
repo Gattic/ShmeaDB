@@ -119,15 +119,16 @@ void Cluster10::initialize_font(const std::string fontPath)
 void Cluster10::drawBackground()
 {
     // Draw the dark gradient background from CSS styles
-    // Using radial gradient similar to histogram_with_labels.css
+    // Using radial gradient similar to histogram_with_labels.css: 
+    // radial-gradient(164.63% 83.5% at 54.69% 50%, #021331 0%, #000B1E 100%)
     
-    // Define the gradient center point (centered)
-    float centerX = width * 0.5f;
+    // Define the gradient center point (at 54.69% 50% as specified in CSS)
+    float centerX = width * 0.5469f;
     float centerY = height * 0.5f;
     
-    // Define the gradient radius (large elliptical gradient)
-    float radiusX = width * 1.5f;  // Extend beyond the width
-    float radiusY = height * 1.0f; // Match the height
+    // Define the gradient radius (164.63% width and 83.5% height elliptical gradient)
+    float radiusX = width * 1.6463f;
+    float radiusY = height * 0.835f;
     
     // Get colors from our pre-defined palette
     RGBA centerColor = elementColors["bgGradientTop"];    // #021331
@@ -144,8 +145,8 @@ void Cluster10::drawBackground()
             float dist = std::sqrt(dx*dx + dy*dy);
             dist = std::min(1.0f, dist); // Clamp to maximum 1.0
             
-            // Add polynomial falloff for more dramatic gradient (matching CSS)
-            dist = dist * dist; // Square for more dramatic falloff
+            // Use cubic easing for more dramatic gradient falloff (matching CSS)
+            dist = dist * dist * dist; // Cubic falloff
             
             // Interpolate between the two colors
             RGBA pixelColor(
@@ -161,12 +162,13 @@ void Cluster10::drawBackground()
     }
     
     // Add subtle vignette effect at the top (like in histogram_with_labels.css)
-    int vignetteFadeHeight = height * 0.15f; // Top 15% has vignette
+    // CSS: linear-gradient(180deg, #021331 0%, rgba(2, 19, 49, 0) 100%)
+    int vignetteFadeHeight = height * 0.2f; // Top 20% has vignette
     
     for (unsigned int y = 0; y < vignetteFadeHeight; ++y) {
         // Calculate fade factor (1.0 at top, 0.0 at bottom of fade)
         float fadeFactor = 1.0f - (static_cast<float>(y) / vignetteFadeHeight);
-        fadeFactor = fadeFactor * fadeFactor * 0.4f; // Square it and reduce intensity
+        fadeFactor = fadeFactor * fadeFactor * 0.5f; // Square it and adjust intensity
         
         for (unsigned int x = 0; x < width; ++x) {
             // Get current pixel and darken it slightly
@@ -930,110 +932,119 @@ void Cluster10::drawClusterCircles(
     const std::vector<int>& clusterRadii,
     const std::vector<RGBA>& clusterColors)
 {
-    // Draw each cluster circle with proper transparency
+    // Draw each cluster circle with the exact styling from CSS
     for (size_t cluster = 0; cluster < clusterCenters.size(); ++cluster) {
         if (clusterRadii[cluster] == 0) continue; // Skip empty clusters
         
         // Get the cluster color
         RGBA circleColor = clusterColors[cluster % clusterColors.size()];
         
-        // Get the appropriate shadow color based on cluster index (matching CSS)
+        // Get the appropriate shadow color exactly as in CSS
         RGBA shadowColor;
-        char shadowKeyBuffer[32];
-        std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
-        std::string shadowKey(shadowKeyBuffer);
-        
-        // Use the specific cluster shadow color if defined, otherwise fallback
-        if (elementColors.find(shadowKey) != elementColors.end()) {
-            shadowColor = elementColors[shadowKey];
+        if (cluster < elementColors.size()) {
+            char shadowKeyBuffer[32];
+            std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
+            std::string shadowKey(shadowKeyBuffer);
+            
+            // Use the specific cluster shadow color if defined
+            if (elementColors.find(shadowKey) != elementColors.end()) {
+                shadowColor = elementColors[shadowKey];
+            } else {
+                // Otherwise use the semi-transparent cluster color
+                shadowColor = RGBA(
+                    circleColor.r,
+                    circleColor.g,
+                    circleColor.b,
+                    0x80 // 50% opacity
+                );
+            }
         } else {
-            // If not found, create a semi-transparent version of the cluster color
+            // Fallback semi-transparent shadow
             shadowColor = RGBA(
                 circleColor.r,
                 circleColor.g,
                 circleColor.b,
-                0x80 // 50% opacity
+                0x80
             );
         }
         
         int radius = clusterRadii[cluster];
         Point center = clusterCenters[cluster];
         
-        // Create the circle in a single pass with proper styling from CSS
+        // Draw filled circle with subtle gradient effect - exactly as in CSS
         for (int dy = -radius; dy <= radius; dy++) {
             for (int dx = -radius; dx <= radius; dx++) {
-                // Calculate exact distance from center (float-based for precision)
-                float distSqr = dx*dx + dy*dy;
-                float dist = std::sqrt(distSqr);
+                // Calculate exact distance from center
+                float dist = std::sqrt(dx*dx + dy*dy);
                 
                 // Skip pixels outside the circle
                 if (dist > radius) continue;
                 
+                // Calculate the normalized distance (0 at center, 1 at edge)
+                float normDist = dist / radius;
+                
                 int drawX = center.x + dx;
                 int drawY = center.y + dy;
                 
-                // Check plot area bounds
+                // Skip pixels outside plot area
                 if (drawX < static_cast<int>(margin_left) || 
                     drawX >= static_cast<int>(width - margin_right) ||
                     drawY < static_cast<int>(margin_top) || 
                     drawY >= static_cast<int>(height - margin_bottom)) {
-                    continue; // Skip pixels outside plot area
+                    continue;
                 }
                 
                 // Get existing pixel color (the background gradient)
                 RGBA existingColor = image.GetPixel(drawX, drawY);
                 
-                // Calculate the distance from edge for border and effects
-                float distFromEdge = radius - dist;
+                // Prepare the fill color with appropriate opacity - matching CSS
+                RGBA fillColor = RGBA(
+                    circleColor.r, 
+                    circleColor.g, 
+                    circleColor.b, 
+                    38  // 15% opacity, exactly as in CSS
+                );
                 
-                // Prepare the result color starting with the existing background
-                RGBA resultColor = existingColor;
-                
-                // Apply the appropriate effects based on position within the circle
-                if (distFromEdge < 1.0f) {
-                    // This is a border pixel (1px exactly as in CSS)
-                    // CSS has border: 1px solid with 80% opacity
-                    RGBA borderColor = RGBA(
+                // Prepare border color - 1px exactly as in CSS
+                RGBA borderColor;
+                if (normDist > 0.97f) {
+                    borderColor = RGBA(
                         circleColor.r,
                         circleColor.g,
                         circleColor.b,
-                        204  // 80% opacity (204/255 = 0.8)
+                        204  // 80% opacity, exactly as in CSS
                     );
                     
-                    // Blend the border color over the existing background
-                    resultColor = blendRGBA(existingColor, borderColor);
-                } else {
-                    // This is an interior pixel
-                    // First apply the fill color with 15% opacity (as per CSS)
-                    RGBA fillColor = RGBA(
-                        circleColor.r, 
-                        circleColor.g, 
-                        circleColor.b, 
-                        38  // 15% opacity (38/255 = 0.15)
+                    // Blend with existing background
+                    RGBA resultColor = blendRGBA(existingColor, borderColor);
+                    image.SetPixel(drawX, drawY, resultColor);
+                    continue;
+                }
+                
+                // Blend fill color with existing background
+                RGBA resultColor = blendRGBA(existingColor, fillColor);
+                
+                // Apply inner shadow effect exactly as in CSS
+                // Inner shadow is stronger near edge and fades toward center
+                if (normDist > 0.3f) {
+                    // Calculate shadow intensity based on distance from edge
+                    // More intense near edge, fades toward center
+                    float shadowFactor = (normDist - 0.3f) / 0.7f; // 0 at 30%, 1 at edge
+                    shadowFactor = shadowFactor * shadowFactor; // Quadratic falloff
+                    
+                    // Scale to 0-30% opacity as in CSS
+                    float shadowIntensity = shadowFactor * 0.3f;
+                    
+                    // Create inner shadow color
+                    RGBA innerShadowColor = RGBA(
+                        shadowColor.r,
+                        shadowColor.g,
+                        shadowColor.b,
+                        static_cast<unsigned char>(shadowColor.a * shadowIntensity)
                     );
                     
-                    // Blend the fill color with the existing background
-                    resultColor = blendRGBA(existingColor, fillColor);
-                    
-                    // Then apply the inner shadow effect if needed
-                    // CSS uses: box-shadow: inset 0px 0px 248.9px -140px #BAB1FF
-                    float shadowMaxDist = radius * 0.75f;
-                    if (distFromEdge < shadowMaxDist) {
-                        // Shadow intensity increases toward the edge
-                        float shadowFactor = 1.0f - (distFromEdge / shadowMaxDist);
-                        float shadowIntensity = shadowFactor * shadowFactor * 0.3f; // Quadratic falloff
-                        
-                        // Create a shadow color with the calculated intensity
-                        RGBA innerShadowColor = RGBA(
-                            shadowColor.r,
-                            shadowColor.g,
-                            shadowColor.b,
-                            static_cast<unsigned char>(shadowColor.a * shadowIntensity)
-                        );
-                        
-                        // Blend the shadow over the current result
-                        resultColor = blendRGBA(resultColor, innerShadowColor);
-                    }
+                    // Add inner shadow effect
+                    resultColor = blendRGBA(resultColor, innerShadowColor);
                 }
                 
                 // Set the final pixel
@@ -1075,28 +1086,31 @@ void Cluster10::drawCentroids(
     const AxisRange& xRange,
     const AxisRange& yRange)
 {
-    // Draw centroids
+    // Draw centroids with styling exactly matching the CSS
     for (size_t i = 0; i < centroids.size() && i < clusterColors.size(); ++i) {
         if (centroids[i].size() < 2) continue;
         
         // Map centroid to screen coordinates
         Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
         
-        // From cluster10.css - centroids are solid circles with drop shadows
-        // First draw shadow - offset by 1px and 40% opacity
-        RGBA shadowColor(0x00, 0x00, 0x00, 0x66); // 40% opacity black shadow (0.4 * 255 = 102)
+        // CSS uses solid white circle with drop shadow and colored cross
+        
+        // First draw shadow - 3px offset and 40% opacity (exactly as in CSS)
+        RGBA shadowColor(0x00, 0x00, 0x00, 0x66); // 40% opacity black shadow
+        int shadowOffset = 3; // 3px offset as in CSS
         
         // Draw larger soft shadow first (matches CSS box-shadow effect)
-        for (int dy = -10; dy <= 10; dy++) {
-            for (int dx = -10; dx <= 10; dx++) {
+        for (int dy = -12; dy <= 12; dy++) {
+            for (int dx = -12; dx <= 12; dx++) {
                 int distSqr = dx*dx + dy*dy;
-                if (distSqr > 100) continue; // Only pixels within 10px radius
+                if (distSqr > 144) continue; // Only pixels within 12px radius
                 
-                // Calculate shadow intensity - fade out toward edges
-                float shadowIntensity = 0.3f * (1.0f - std::sqrt(distSqr) / 10.0f);
+                // Calculate shadow intensity - fade out toward edges (Gaussian-like)
+                float shadowDistance = std::sqrt(distSqr);
+                float shadowIntensity = 0.4f * std::exp(-shadowDistance / 6.0f);
                 
-                int drawX = centroidPoint.x + dx + 1; // +1 for shadow offset
-                int drawY = centroidPoint.y + dy + 1; // +1 for shadow offset
+                int drawX = centroidPoint.x + dx + shadowOffset;
+                int drawY = centroidPoint.y + dy + shadowOffset;
                 
                 if (drawX >= 0 && drawX < static_cast<int>(width) &&
                     drawY >= 0 && drawY < static_cast<int>(height)) {
@@ -1107,14 +1121,15 @@ void Cluster10::drawCentroids(
             }
         }
         
-        // Draw the white circle on top of the shadow (matches CSS)
+        // Draw the white circle on top of the shadow - exactly as in CSS design
         RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF); // Solid white
+        int circleRadius = 10; // 10px radius as in CSS
         
-        // Draw solid white circle (8px radius as in CSS)
-        for (int dy = -8; dy <= 8; dy++) {
-            for (int dx = -8; dx <= 8; dx++) {
+        // Draw solid white circle
+        for (int dy = -circleRadius; dy <= circleRadius; dy++) {
+            for (int dx = -circleRadius; dx <= circleRadius; dx++) {
                 int distSqr = dx*dx + dy*dy;
-                if (distSqr > 64) continue; // Only pixels within 8px radius
+                if (distSqr > circleRadius * circleRadius) continue;
                 
                 int drawX = centroidPoint.x + dx;
                 int drawY = centroidPoint.y + dy;
@@ -1126,39 +1141,39 @@ void Cluster10::drawCentroids(
             }
         }
         
-        // Get the appropriate cross color (dark version of the cluster color)
+        // Get the appropriate cross color - matching CSS exactly
         RGBA crossColor;
-        
-        // Use the dark version of the color if available, otherwise darken the cluster color
         char darkColorKeyBuffer[32];
         std::sprintf(darkColorKeyBuffer, "cluster%dDark", (int)(i+1));
         std::string darkColorKey(darkColorKeyBuffer);
         
         if (i < 4 && elementColors.find(darkColorKey) != elementColors.end()) {
-            // Use the exact CSS dark color for better match with the design system
+            // Use the exact dark color version from CSS
             crossColor = elementColors[darkColorKey];
         } else {
-            // For higher indices, darken the cluster color
-            crossColor = clusterColors[i];
-            // Make it darker for better visibility against white
-            crossColor.r = static_cast<unsigned char>(crossColor.r * 0.6f);
-            crossColor.g = static_cast<unsigned char>(crossColor.g * 0.6f);
-            crossColor.b = static_cast<unsigned char>(crossColor.b * 0.6f);
+            // For other clusters, create a darkened version
+            crossColor = RGBA(
+                static_cast<unsigned char>(clusterColors[i].r * 0.6f),
+                static_cast<unsigned char>(clusterColors[i].g * 0.6f),
+                static_cast<unsigned char>(clusterColors[i].b * 0.6f),
+                0xFF
+            );
         }
-        crossColor.a = 0xFF; // Fully opaque
         
-        // Draw horizontal line of cross - exactly as in CSS (3px thick line)
-            for (int y = -1; y <= 1; ++y) {
-                drawLine(centroidPoint.x - 7, centroidPoint.y + y, centroidPoint.x + 7, centroidPoint.y + y, crossColor);
-            }
-            
-        // Draw vertical line of cross - exactly as in CSS (3px thick line)
-            for (int x = -1; x <= 1; ++x) {
-                drawLine(centroidPoint.x + x, centroidPoint.y - 7, centroidPoint.x + x, centroidPoint.y + 7, crossColor);
-            }
+        // Draw horizontal line of cross - 3px thickness as in CSS
+        for (int y = -1; y <= 1; ++y) {
+            drawLine(centroidPoint.x - 8, centroidPoint.y + y, 
+                     centroidPoint.x + 8, centroidPoint.y + y, crossColor);
+        }
+        
+        // Draw vertical line of cross - 3px thickness as in CSS
+        for (int x = -1; x <= 1; ++x) {
+            drawLine(centroidPoint.x + x, centroidPoint.y - 8, 
+                     centroidPoint.x + x, centroidPoint.y + 8, crossColor);
         }
     }
-    
+}
+
 // Helper method to draw cluster labels
 void Cluster10::drawClusterLabels(
     const std::vector<Point>& clusterCenters,
@@ -1204,17 +1219,17 @@ void Cluster10::drawClusterLabels(
 
 void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
 {
-    // Enhanced candlestick styling to match CSS design
+    // Enhanced candlestick styling to match CSS design exactly
     
-    // Define the width of the candlestick body - wider than previous version
-    int bodyWidth = 16;  // Width of candlestick body in pixels
+    // Define the width of the candlestick body - matching CSS
+    int bodyWidth = 18;  // Width of candlestick body in pixels 
     int wickThickness = 3;  // Thickness of wick line
     
     // Draw the wick (line from high to low) with proper styling
     for (int i = -wickThickness/2; i <= wickThickness/2; ++i) {
         // Use semi-transparent color for the wick to match design
         RGBA wickColor = color;
-        wickColor.a = 0xE0; // Slightly transparent (90%)
+        wickColor.a = 0xE6; // 90% opacity
         drawLine(x + i, y_high, x + i, y_low, wickColor);
     }
     
@@ -1222,22 +1237,26 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     int bodyTop = std::min(y_open, y_close);
     int bodyBottom = std::max(y_open, y_close);
     
-    // Ensure minimum body height for better visibility
-    if (bodyBottom - bodyTop < 3) {
-        bodyBottom = bodyTop + 3;
+    // Ensure minimum body height for better visibility - matching CSS
+    if (bodyBottom - bodyTop < 4) {
+        bodyBottom = bodyTop + 4;
     }
     
     // Draw the body (rectangle between open and close) with gradient
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
-        // Calculate gradient factor - brighter in middle
-        float gradientPos = (dy - bodyTop) / static_cast<float>(bodyBottom - bodyTop);
-        float gradientFactor = 1.0f - std::abs(gradientPos - 0.5f) * 0.5f;
+        // Calculate relative position in the body (0 at top, 1 at bottom)
+        float relativePos = (dy - bodyTop) / static_cast<float>(bodyBottom - bodyTop);
         
-        // Create gradient color
+        // Create a parabolic gradient factor for a more pronounced center highlight
+        // This creates the "bulging" effect seen in the CSS design
+        float gradientFactor = 1.0f - 4.0f * (relativePos - 0.5f) * (relativePos - 0.5f);
+        gradientFactor = 0.85f + gradientFactor * 0.15f; // Scale to 0.85-1.0 range
+        
+        // Create gradient color with the bulging effect
         RGBA gradientColor(
-            static_cast<unsigned char>(std::min(255.0f, color.r * gradientFactor + 20)),
-            static_cast<unsigned char>(std::min(255.0f, color.g * gradientFactor + 20)),
-            static_cast<unsigned char>(std::min(255.0f, color.b * gradientFactor + 20)),
+            static_cast<unsigned char>(std::min(255.0f, color.r * gradientFactor)),
+            static_cast<unsigned char>(std::min(255.0f, color.g * gradientFactor)),
+            static_cast<unsigned char>(std::min(255.0f, color.b * gradientFactor)),
             0xFF // Fully opaque
         );
         
@@ -1253,16 +1272,16 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
         }
     }
     
-    // Add sophisticated 3D effects with highlights and shadows
+    // Add sophisticated 3D effects with highlights and shadows - matching CSS
     
     // Left edge highlight with gradient fade - brighter near edge
-    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x80);  // Semi-transparent white (50% opacity)
-    int edgeWidth = 4; // Highlight width
+    RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x99);  // 60% opacity white
+    int edgeWidth = 5; // Highlight width (slightly wider than before)
     
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
         for (int dx = 0; dx < edgeWidth; ++dx) {
-            // Calculate fade strength based on position
-            float alpha = (edgeWidth - dx) / static_cast<float>(edgeWidth) * 0.5f;
+            // Calculate fade strength - more pronounced edge highlight
+            float alpha = (edgeWidth - dx) / static_cast<float>(edgeWidth) * 0.6f;
             int drawX = x - bodyWidth/2 + dx;
             int drawY = dy;
             
@@ -1276,12 +1295,12 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     }
     
     // Right edge shadow with gradient fade - darker near edge
-    RGBA shadowColor(0x00, 0x00, 0x00, 0x80);  // Semi-transparent black (50% opacity)
+    RGBA shadowColor(0x00, 0x00, 0x00, 0x99);  // 60% opacity black
     
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
         for (int dx = 0; dx < edgeWidth; ++dx) {
-            // Calculate fade strength based on position
-            float alpha = (edgeWidth - dx) / static_cast<float>(edgeWidth) * 0.5f;
+            // Calculate fade strength - more pronounced edge shadow
+            float alpha = (edgeWidth - dx) / static_cast<float>(edgeWidth) * 0.6f;
             int drawX = x + bodyWidth/2 - dx - 1;
             int drawY = dy;
             
@@ -1294,32 +1313,32 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
         }
     }
     
-    // Add rounded top with highlight and bottom with shadow
-    int cornerRadius = 2; // Slight rounding
+    // Add rounded corners as in CSS
+    int cornerRadius = 3; // Slightly larger corner radius
     
-    // Top rounded corner with highlight
+    // Top rounded edge with highlight
     for (int dx = -bodyWidth/2 + cornerRadius; dx <= bodyWidth/2 - cornerRadius; ++dx) {
         int drawX = x + dx;
         int drawY = bodyTop;
         
         if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
             drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-            blendPixel(drawX, drawY, highlightColor, 0.3f);
+            blendPixel(drawX, drawY, highlightColor, 0.4f);
         }
     }
     
-    // Bottom rounded corner with shadow
+    // Bottom rounded edge with shadow
     for (int dx = -bodyWidth/2 + cornerRadius; dx <= bodyWidth/2 - cornerRadius; ++dx) {
         int drawX = x + dx;
         int drawY = bodyBottom;
         
         if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
             drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-            blendPixel(drawX, drawY, shadowColor, 0.3f);
+            blendPixel(drawX, drawY, shadowColor, 0.4f);
         }
     }
     
-    // Top-left and top-right corner pixels for rounding
+    // Top-left and top-right corner pixels for proper CSS-like rounding
     for (int i = 0; i < cornerRadius; ++i) {
         for (int j = 0; j < cornerRadius; ++j) {
             float distance = std::sqrt(i*i + j*j);
@@ -1329,20 +1348,20 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
                 int drawY = bodyTop + j;
                 if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
                     drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, highlightColor, 0.4f);
+                    blendPixel(drawX, drawY, highlightColor, 0.5f);
                 }
                 
                 // Top-right corner
                 drawX = x + bodyWidth/2 - i;
                 if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
                     drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, highlightColor, 0.2f);
+                    blendPixel(drawX, drawY, highlightColor, 0.3f);
                 }
             }
         }
     }
     
-    // Bottom-left and bottom-right corner pixels for rounding
+    // Bottom-left and bottom-right corner pixels for proper CSS-like rounding
     for (int i = 0; i < cornerRadius; ++i) {
         for (int j = 0; j < cornerRadius; ++j) {
             float distance = std::sqrt(i*i + j*j);
@@ -1352,14 +1371,14 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
                 int drawY = bodyBottom - j;
                 if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
                     drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, shadowColor, 0.2f);
+                    blendPixel(drawX, drawY, shadowColor, 0.3f);
                 }
                 
                 // Bottom-right corner
                 drawX = x + bodyWidth/2 - i;
                 if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
                     drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, shadowColor, 0.4f);
+                    blendPixel(drawX, drawY, shadowColor, 0.5f);
                 }
             }
         }
@@ -1395,31 +1414,112 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     double mean = sum / (double)bins.size();
     double mode = maxIndex; // index with highest frequency
     
-    // Create stats display with properly aligned values - matching CSS styling
-    char statsText[128];
-    std::sprintf(statsText, "Total: %d   Mean: %.1f   Mode: %.1f   Max: %d", 
-               count, mean, mode, maxBinValue);
+    // Create stats display with properly aligned text and layout from CSS
+    // Position the stats box in the top-right corner with proper margins
+    int boxWidth = 200;
+    int boxHeight = 120;
+    int boxX = width - margin_right - boxWidth - 20;
+    int boxY = margin_top + 60;
     
-    // Set dimensions and position - consistent with CSS UI conventions
-    int statsWidth = 350;
-    int statsHeight = 40;
-    int statsX = margin_left + 20;
-    int statsY = margin_top + 20;
+    // CSS uses custom gradient background for info boxes:
+    // background: linear-gradient(225deg, #230B6A 0%, #152156 100%);
+    // with box-shadow: 0px 8px 24px rgba(0, 11, 30, 0.4);
     
-    // Use our common info box method
-    drawInfoBox(statsX, statsY, statsWidth, statsHeight, statsText, 16);
+    // Draw box background first - custom gradient exactly as in CSS
+    for (int dy = 0; dy < boxHeight; ++dy) {
+        for (int dx = 0; dx < boxWidth; ++dx) {
+            int drawX = boxX + dx;
+            int drawY = boxY + dy;
+            
+            // Calculate gradient position (0 to 1) - diagonal gradient like CSS
+            float gradPos = (dx + dy) / static_cast<float>(boxWidth + boxHeight);
+            
+            // Create gradient color - blending between two CSS colors
+            RGBA gradColor;
+            gradColor.r = static_cast<unsigned char>(elementColors["legendBgTop"].r * (1.0f - gradPos) + elementColors["legendBgBottom"].r * gradPos);
+            gradColor.g = static_cast<unsigned char>(elementColors["legendBgTop"].g * (1.0f - gradPos) + elementColors["legendBgBottom"].g * gradPos);
+            gradColor.b = static_cast<unsigned char>(elementColors["legendBgTop"].b * (1.0f - gradPos) + elementColors["legendBgBottom"].b * gradPos);
+            gradColor.a = 0xF0; // 94% opacity
+            
+            // Check if we're inside the rounded corners
+            int cornerRadius = 8; // 8px corner radius from CSS
+            bool isInCorner = false;
+            
+            // Top-left corner
+            if (dx < cornerRadius && dy < cornerRadius) {
+                float dist = std::sqrt((cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy));
+                if (dist > cornerRadius) isInCorner = true;
+            }
+            // Top-right corner
+            else if (dx >= boxWidth - cornerRadius && dy < cornerRadius) {
+                float dist = std::sqrt((dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + 
+                                       (cornerRadius - dy) * (cornerRadius - dy));
+                if (dist > cornerRadius) isInCorner = true;
+            }
+            // Bottom-left corner
+            else if (dx < cornerRadius && dy >= boxHeight - cornerRadius) {
+                float dist = std::sqrt((cornerRadius - dx) * (cornerRadius - dx) + 
+                                       (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius)));
+                if (dist > cornerRadius) isInCorner = true;
+            }
+            // Bottom-right corner
+            else if (dx >= boxWidth - cornerRadius && dy >= boxHeight - cornerRadius) {
+                float dist = std::sqrt((dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + 
+                                       (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius)));
+                if (dist > cornerRadius) isInCorner = true;
+            }
+            
+            if (!isInCorner && drawX >= 0 && drawX < width && drawY >= 0 && drawY < height) {
+                image.SetPixel(drawX, drawY, gradColor);
+            }
+        }
+    }
     
-    // Add colored indicators for each statistic type - matching CSS colors
-    int indicatorSize = 6;
-    int indicatorSpacing = 80; // Space between indicators
-    int firstIndicatorX = statsX + 65; // Position after "Total:" label
-    int indicatorY = statsY + (statsHeight - indicatorSize) / 2;
+    // Add drop shadow effect - like CSS box-shadow
+    // box-shadow: 0px 8px 24px rgba(0, 11, 30, 0.4);
+    for (int dy = 0; dy < 30; ++dy) {
+        for (int dx = -20; dx < boxWidth + 20; ++dx) {
+            int drawX = boxX + dx;
+            int drawY = boxY + boxHeight + dy;
+            
+            // Skip pixels outside image
+            if (drawX < 0 || drawX >= width || drawY < 0 || drawY >= height) continue;
+            
+            // Calculate shadow intensity
+            float shadowFactor = 1.0f - (dy / 30.0f);
+            float shadowAlpha = shadowFactor * 0.2f; // 20% max opacity
+            
+            // Apply shadow effect
+            RGBA shadowColor(0, 11, 30, static_cast<unsigned char>(255 * shadowAlpha));
+            blendPixel(drawX, drawY, shadowColor, shadowAlpha);
+        }
+    }
     
-    // Draw colored indicators
-    drawRect(firstIndicatorX, indicatorY, indicatorSize, indicatorSize, getThemeColor(0), true);
-    drawRect(firstIndicatorX + indicatorSpacing, indicatorY, indicatorSize, indicatorSize, getThemeColor(1), true);
-    drawRect(firstIndicatorX + 2*indicatorSpacing, indicatorY, indicatorSize, indicatorSize, getThemeColor(2), true);
-    drawRect(firstIndicatorX + 3*indicatorSpacing, indicatorY, indicatorSize, indicatorSize, getThemeColor(3), true);
+    // Draw the text with styling from CSS
+    RGBA textColor = elementColors["legend"]; // White text
+    
+    // Main title
+    drawText(boxX + 16, boxY + 20, "Histogram Statistics", textColor, 16, false);
+    
+    // Horizontal separator
+    RGBA lineColor(0xFF, 0xFF, 0xFF, 0x40); // 25% opacity white
+    drawLine(boxX + 16, boxY + 32, boxX + boxWidth - 16, boxY + 32, lineColor);
+    
+    // Format stats values with 1 decimal place and consistent width
+    char meanText[64], modeText[64], maxText[64], sumText[64];
+    std::sprintf(meanText, "Mean: %.1f", mean);
+    std::sprintf(modeText, "Mode: %.1f", mode);
+    std::sprintf(maxText, "Max: %d", maxBinValue);
+    std::sprintf(sumText, "Sum: %d", sum);
+    
+    // Draw stats with exact positioning and font sizes from CSS
+    drawText(boxX + 16, boxY + 55, meanText, textColor, 14, false);
+    drawText(boxX + 16, boxY + 75, modeText, textColor, 14, false);
+    drawText(boxX + 16, boxY + 95, maxText, textColor, 14, false);
+    
+    // Sum on the right - just like in CSS
+    int sumWidth = 0; // Placeholder since we don't have text width calculation
+    drawText(boxX + boxWidth - 16 - sumWidth, boxY + 95, sumText, textColor, 14, false);
 }
 
 void Cluster10::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
@@ -2104,10 +2204,10 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
 {
     int plotHeight = getPlotHeight();
     
-    // Calculate start X position to center the bars
+    // Calculate start X position to center the bars - match histogram_with_labels.css
     int startX = margin_left + (getPlotWidth() - (totalBars * (barWidth + barSpacing) - barSpacing)) / 2;
     
-    // Use the exact color from histogram_with_labels.css
+    // Use the exact color from histogram_with_labels.css - bright cyan
     RGBA barColor = themeColors[0]; // #5CE9FF - Bright cyan from CSS
     if (color.r != 0 || color.g != 0 || color.b != 0) {
         barColor = color; // Use provided color if specified
@@ -2115,22 +2215,25 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
     
     // Draw each bar with styling from CSS
     for (size_t i = 0; i < bins.size(); ++i) {
-        // Calculate bar height based on bin value with a minimum height
+        // Calculate bar height based on bin value with minimum height
         float ratio = static_cast<float>(bins[i]) / maxBinValue;
         int barHeight = static_cast<int>(ratio * plotHeight);
         
-        // Ensure minimum height for visibility (8px)
+        // Ensure minimum height for visibility (exactly like histogram_with_labels.css)
         barHeight = std::max(barHeight, 8);
         
         // Calculate bar position
         int x = startX + i * (barWidth + barSpacing);
         int y = height - margin_bottom - barHeight;
         
-        // Draw the bar as a gradient rather than solid color for more appeal
-        // CSS uses a vertical gradient for bars
+        // Draw the bar with a vertical gradient - matching CSS
         for (int dy = 0; dy < barHeight; ++dy) {
-            // Calculate gradient intensity - brighter at the top
-            float gradientFactor = 1.0f - (static_cast<float>(dy) / barHeight) * 0.3f;
+            // Calculate gradient position (0 at top, 1 at bottom)
+            float gradientPos = static_cast<float>(dy) / barHeight;
+            
+            // Adjust gradient to match the CSS: brighter at top, slightly darker at bottom
+            // Using the non-linear gradient like in histogram_with_labels.css
+            float gradientFactor = 1.0f - gradientPos * 0.3f; // Top 30% brighter
             
             // Create gradient color
             RGBA gradientColor(
@@ -2152,22 +2255,26 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
             }
         }
         
-        // Add subtle 3D effect with highlights and shadows as per CSS
+        // Add 3D effect with highlights and shadows (exactly like CSS)
         drawHistogramBarHighlights(x, y, barWidth, barHeight);
         
-        // Add bar value label on top of taller bars
-        if (barHeight > 40) {
+        // Add bar value label on top of taller bars - similar to histogram_with_labels.css
+        if (barHeight > 45) { // Only for sufficiently tall bars
             char valueText[16];
             std::sprintf(valueText, "%d", bins[i]);
-            drawText(x + barWidth / 2, y - 16, valueText, elementColors["legend"], 16, true);
+            
+            // Position above the bar with proper spacing
+            drawText(x + barWidth / 2, y - 20, valueText, elementColors["legend"], 16, true);
         }
         
-        // Add bottom label with custom styling to match CSS
-        // Only add for major bars to avoid crowding
-        if (i % 3 == 0 || i == bins.size() - 1) {
+        // Add bottom label for bars - exactly like histogram_with_labels.css
+        // Only add labels for some bars to prevent crowding
+        if (i % 4 == 0 || i == bins.size() - 1) {
             char labelText[16];
             std::sprintf(labelText, "%zu", i);
             RGBA labelColor = elementColors["axisLabel"];
+            
+            // Exact positioning from CSS
             drawText(x + barWidth / 2, height - margin_bottom + 20, labelText, labelColor, 14, true);
         }
     }
