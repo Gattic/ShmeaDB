@@ -576,7 +576,7 @@ void Cluster10::addTitle(const std::string& text, unsigned int fontSize)
     drawText(x, y, text, elementColors["title"], fontSize, true);
 }
 
-void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize) 
+void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize)
 {
     // Get text color from CSS design
     RGBA textColor = elementColors["axisLabel"];
@@ -671,7 +671,7 @@ void Cluster10::plotLine(const std::vector<Point>& points, const RGBA& color, in
     }
 }
 
-void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder) 
+void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder)
 {
     // Draw any additional elements that should be rendered last
     
@@ -1442,7 +1442,7 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
             gradColor.r = static_cast<unsigned char>(elementColors["legendBgTop"].r * (1.0f - gradPos) + elementColors["legendBgBottom"].r * gradPos);
             gradColor.g = static_cast<unsigned char>(elementColors["legendBgTop"].g * (1.0f - gradPos) + elementColors["legendBgBottom"].g * gradPos);
             gradColor.b = static_cast<unsigned char>(elementColors["legendBgTop"].b * (1.0f - gradPos) + elementColors["legendBgBottom"].b * gradPos);
-            gradColor.a = 0xF0; // 94% opacity
+            gradColor.a = 0xE6; // 90% opacity (0.9 * 255 = 230 ≈ 0xE6)
             
             // Check if we're inside the rounded corners
             int cornerRadius = 8; // 8px corner radius from CSS
@@ -1473,7 +1473,8 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
             }
             
             if (!isInCorner && drawX >= 0 && drawX < width && drawY >= 0 && drawY < height) {
-                image.SetPixel(drawX, drawY, gradColor);
+                // Use blendPixel instead of SetPixel for proper alpha blending
+                blendPixel(drawX, drawY, gradColor, gradColor.a / 255.0f);
             }
         }
     }
@@ -1767,22 +1768,18 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
     RGBA bgTopColor = elementColors["legendBgTop"];
     RGBA bgBottomColor = elementColors["legendBgBottom"];
     
-    // Create a temporary buffer for the background
-    Image tempBg;
-    tempBg.Allocate(boxWidth, boxHeight);
-    
-    // Draw gradient background
+    // Draw gradient background with proper alpha blending
     for (int dy = 0; dy < boxHeight; dy++) {
-        // Calculate gradient interpolation
-        float ratio = static_cast<float>(dy) / boxHeight;
-        RGBA currentBgColor(
-            static_cast<unsigned char>(bgTopColor.r * (1.0f - ratio) + bgBottomColor.r * ratio),
-            static_cast<unsigned char>(bgTopColor.g * (1.0f - ratio) + bgBottomColor.g * ratio),
-            static_cast<unsigned char>(bgTopColor.b * (1.0f - ratio) + bgBottomColor.b * ratio),
-            0xFF
-        );
-        
+        // Calculate gradient interpolation - diagonal gradient to match the histogram stats box
         for (int dx = 0; dx < boxWidth; dx++) {
+            float gradPos = (dx + dy) / static_cast<float>(boxWidth + boxHeight);
+            RGBA currentBgColor(
+                static_cast<unsigned char>(bgTopColor.r * (1.0f - gradPos) + bgBottomColor.r * gradPos),
+                static_cast<unsigned char>(bgTopColor.g * (1.0f - gradPos) + bgBottomColor.g * gradPos),
+                static_cast<unsigned char>(bgTopColor.b * (1.0f - gradPos) + bgBottomColor.b * gradPos),
+                0xE6  // 90% opacity like the histogram stats box
+            );
+            
             // Check if this pixel is in the rounded corner region
             bool inCorner = false;
             
@@ -1807,30 +1804,13 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
                 inCorner = distSquared > cornerRadius * cornerRadius;
             }
             
-            if (!inCorner) {
-                tempBg.SetPixel(dx, dy, currentBgColor);
-            }
-        }
-    }
-    
-    // Apply the box with transparency (95% opacity for better visibility)
-    // CSS often uses rgba with 0.95 opacity for overlays
-    float boxAlpha = 0.95f;
-    for (int dy = 0; dy < boxHeight; dy++) {
-        for (int dx = 0; dx < boxWidth; dx++) {
             int drawX = x + dx;
             int drawY = y + dy;
             
-            if (drawX >= 0 && drawX < static_cast<int>(width) &&
+            if (!inCorner && drawX >= 0 && drawX < static_cast<int>(width) &&
                 drawY >= 0 && drawY < static_cast<int>(height)) {
-                
-                // Only blend if pixel exists in temp buffer (handles rounded corners)
-                if (tempBg.GetPixel(dx, dy).a != 0) {
-                    RGBA bgColor = tempBg.GetPixel(dx, dy);
-                    RGBA destColor = image.GetPixel(drawX, drawY);
-                    RGBA blendedColor = blendColors(destColor, bgColor, boxAlpha);
-                    image.SetPixel(drawX, drawY, blendedColor);
-                }
+                // Use blendPixel for proper alpha blending
+                blendPixel(drawX, drawY, currentBgColor, currentBgColor.a / 255.0f);
             }
         }
     }
