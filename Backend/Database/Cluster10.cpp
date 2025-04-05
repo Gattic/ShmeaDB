@@ -39,6 +39,9 @@ void Cluster10::initialize()
     
     // Draw the background with the dark theme
     drawBackground();
+    
+    // Initialize yAxisLabel to empty
+    yAxisLabel = "";
 }
 
 Cluster10::~Cluster10()
@@ -348,7 +351,7 @@ void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, 
                         image.SetPixel(drawX, drawY, blendedColor);
                     } else {
                         // Fully opaque - just set the pixel
-                        image.SetPixel(drawX, drawY, lineColor);
+                    image.SetPixel(drawX, drawY, lineColor);
                     }
                 }
             }
@@ -573,28 +576,19 @@ void Cluster10::addTitle(const std::string& text, unsigned int fontSize)
     drawText(x, y, text, elementColors["title"], fontSize, true);
 }
 
-void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize)
+void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize) 
 {
-    // Position x-axis label at the bottom center
-    int xLabelX = margin_left + (width - margin_left - margin_right) / 2;
+    // Get text color from CSS design
+    RGBA textColor = elementColors["axisLabel"];
+    textColor.a = 0xCC; // 80% opacity for readability
+    
+    // Set and draw Y-axis label using proper rotation
+    setYAxisLabel(yLabel);
+    
+    // Draw X-axis label centered below the X-axis
+    int xLabelX = margin_left + getPlotWidth() / 2;
     int xLabelY = height - margin_bottom / 2;
-    
-    drawText(xLabelX, xLabelY, xLabel, elementColors["axisLabel"], fontSize, true);
-    
-    // Position y-axis label at the left center, rotated 90 degrees
-    // (For simplicity, we're not implementing text rotation here)
-    int yLabelX = margin_left / 3;
-    int yLabelY = margin_top + (height - margin_top - margin_bottom) / 2;
-    
-    // Draw each character of the y-label vertically
-    int charSpacing = fontSize / 2;
-    int totalHeight = yLabel.length() * (fontSize + charSpacing);
-    int startY = yLabelY - totalHeight / 2;
-    
-    for (size_t i = 0; i < yLabel.length(); ++i) {
-        std::string charStr(1, yLabel[i]);
-        drawText(yLabelX, startY + i * (fontSize + charSpacing), charStr, elementColors["axisLabel"], fontSize, true);
-    }
+    drawText(xLabelX, xLabelY, xLabel, textColor, fontSize, true);
 }
 
 void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, int x, int y, unsigned int fontSize)
@@ -677,16 +671,33 @@ void Cluster10::plotLine(const std::vector<Point>& points, const RGBA& color, in
     }
 }
 
-void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder)
+void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder) 
 {
-    std::string fullPath = folder;
-    if (!folder.empty() && folder[folder.length() - 1] != '/') {
-        fullPath += "/";
-    }
-    fullPath += filename;
+    // Draw any additional elements that should be rendered last
     
-    // Save the image
-    image.SavePNG(fullPath.c_str());
+    // Draw axis ticks (placeholder example)
+    if (showAxes) {
+        // Draw Y-axis label if it's not empty
+        if (!yAxisLabel.empty()) {
+            // Get text color from CSS design
+            RGBA textColor = elementColors["axisLabel"];
+            textColor.a = 0xCC; // 80% opacity for readability
+            
+            // Position for the Y-axis label - adjusted for rotated text
+            int labelX = margin_left / 3; // Positioned closer to the left edge
+            int labelY = margin_top + getPlotHeight() / 2; // Center vertically
+            
+            // Draw rotated label
+            drawVerticalText(yAxisLabel, labelX, labelY, 16, textColor);
+        }
+    }
+    
+    // Make sure the directory exists
+    std::string filenameWithPath = folder + "/" + filename;
+    
+    // Save PNG file - SavePNG is a void method, not a bool
+    image.SavePNG(filenameWithPath.c_str());
+    printf("Saved chart as: %s\n", filenameWithPath.c_str());
 }
 
 void Cluster10::setShowGrid(bool show)
@@ -934,20 +945,20 @@ void Cluster10::drawClusterCircles(
         // Get the appropriate shadow color exactly as in CSS
         RGBA shadowColor;
         if (cluster < elementColors.size()) {
-            char shadowKeyBuffer[32];
-            std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
-            std::string shadowKey(shadowKeyBuffer);
-            
+        char shadowKeyBuffer[32];
+        std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
+        std::string shadowKey(shadowKeyBuffer);
+        
             // Use the specific cluster shadow color if defined
-            if (elementColors.find(shadowKey) != elementColors.end()) {
-                shadowColor = elementColors[shadowKey];
-            } else {
+        if (elementColors.find(shadowKey) != elementColors.end()) {
+            shadowColor = elementColors[shadowKey];
+        } else {
                 // Otherwise use the semi-transparent cluster color
-                shadowColor = RGBA(
-                    circleColor.r,
-                    circleColor.g,
-                    circleColor.b,
-                    0x80 // 50% opacity
+            shadowColor = RGBA(
+                circleColor.r,
+                circleColor.g,
+                circleColor.b,
+                0x80 // 50% opacity
                 );
             }
         } else {
@@ -991,9 +1002,9 @@ void Cluster10::drawClusterCircles(
                 
                 // Prepare the fill color with appropriate opacity - matching CSS
                 RGBA fillColor = RGBA(
-                    circleColor.r, 
-                    circleColor.g, 
-                    circleColor.b, 
+                        circleColor.r,
+                        circleColor.g,
+                        circleColor.b,
                     38  // 15% opacity, exactly as in CSS
                 );
                 
@@ -1001,9 +1012,9 @@ void Cluster10::drawClusterCircles(
                 RGBA borderColor;
                 if (normDist > 0.985f) { // Increased from 0.97f for thinner border
                     borderColor = RGBA(
-                        circleColor.r,
-                        circleColor.g,
-                        circleColor.b,
+                        circleColor.r, 
+                        circleColor.g, 
+                        circleColor.b, 
                         184  // 72% opacity (reduced from 80%)
                     );
                     
@@ -1028,15 +1039,15 @@ void Cluster10::drawClusterCircles(
                     float shadowIntensity = shadowFactor * 0.3f;
                     
                     // Create inner shadow color
-                    RGBA innerShadowColor = RGBA(
-                        shadowColor.r,
-                        shadowColor.g,
-                        shadowColor.b,
-                        static_cast<unsigned char>(shadowColor.a * shadowIntensity)
-                    );
-                    
+                        RGBA innerShadowColor = RGBA(
+                            shadowColor.r,
+                            shadowColor.g,
+                            shadowColor.b,
+                            static_cast<unsigned char>(shadowColor.a * shadowIntensity)
+                        );
+                        
                     // Add inner shadow effect
-                    resultColor = blendRGBA(resultColor, innerShadowColor);
+                        resultColor = blendRGBA(resultColor, innerShadowColor);
                 }
                 
                 // Set the final pixel
@@ -1153,19 +1164,19 @@ void Cluster10::drawCentroids(
         }
         
         // Draw horizontal line of cross - 3px thickness as in CSS
-        for (int y = -1; y <= 1; ++y) {
+            for (int y = -1; y <= 1; ++y) {
             drawLine(centroidPoint.x - 8, centroidPoint.y + y, 
                      centroidPoint.x + 8, centroidPoint.y + y, crossColor);
-        }
-        
+            }
+            
         // Draw vertical line of cross - 3px thickness as in CSS
-        for (int x = -1; x <= 1; ++x) {
+            for (int x = -1; x <= 1; ++x) {
             drawLine(centroidPoint.x + x, centroidPoint.y - 8, 
                      centroidPoint.x + x, centroidPoint.y + 8, crossColor);
+            }
         }
     }
-}
-
+    
 // Helper method to draw cluster labels
 void Cluster10::drawClusterLabels(
     const std::vector<Point>& clusterCenters,
@@ -1522,20 +1533,72 @@ void Cluster10::drawVerticalText(const std::string& text, int x, int y, int font
         return;
     }
     
-    // Calculate line height for vertical spacing
-    int lineHeight = fontSize + fontSize / 4; // Add some extra spacing
+    // For properly rotated text, we first need to measure the total width
+    int textWidth = 0;
     
-    // Start at center and go up and down to center the text
-    int totalHeight = text.length() * lineHeight;
-    int startY = y - totalHeight / 2;
-    
-    // Draw each character vertically
+    // Calculate the total width of the text
     for (size_t i = 0; i < text.length(); ++i) {
-        std::string charStr(1, text[i]);
-        int charY = startY + i * lineHeight;
+        char c = text[i];
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+            continue;
+        }
         
-        // Draw character centered horizontally
-        drawText(x, charY, charStr, color, fontSize, true);
+        FT_GlyphSlot glyph = face->glyph;
+        textWidth += (glyph->advance.x >> 6);
+    }
+    
+    // We'll rotate the text 270 degrees (or -90 degrees) so the bottom faces left (toward the graph)
+    // This means the characters will be drawn upside down compared to the previous rotation
+    
+    // Start position (center of rotation)
+    int drawX = x;
+    int drawY = y + textWidth/2; // Center vertically based on text width
+    
+    // Draw each character rotated
+    for (size_t i = 0; i < text.length(); ++i) {
+        char c = text[i];
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+            printf("Warning: Could not load character %c\n", c);
+            continue;
+        }
+        
+        FT_GlyphSlot glyph = face->glyph;
+        
+        unsigned int glyphWidth = glyph->bitmap.width;
+        unsigned int glyphHeight = glyph->bitmap.rows;
+        
+        // Calculate the rotated position for the glyph
+        // For 270° rotation (or -90°):
+        // x' = -y and y' = x
+        for (unsigned int row = 0; row < glyphHeight; ++row) {
+            for (unsigned int col = 0; col < glyphWidth; ++col) {
+                // Get pixel value from glyph bitmap
+                unsigned char value = glyph->bitmap.buffer[row * glyphWidth + col];
+                
+                if (value > 0) { // Only draw if the glyph pixel is not empty
+                    // Apply the rotation transformation
+                    // For 270° rotation with bottom facing left:
+                    int rotatedX = drawX - glyph->bitmap_top + row;
+                    int rotatedY = drawY - col - glyph->bitmap_left;
+                    
+                    if (rotatedX >= 0 && rotatedX < static_cast<int>(width) &&
+                        rotatedY >= 0 && rotatedY < static_cast<int>(height)) {
+                        // Calculate alpha-blended color
+                        float alpha = value / 255.0f;
+                        RGBA blendedColor;
+                        blendedColor.r = static_cast<unsigned char>(color.r * alpha);
+                        blendedColor.g = static_cast<unsigned char>(color.g * alpha);
+                        blendedColor.b = static_cast<unsigned char>(color.b * alpha);
+                        blendedColor.a = static_cast<unsigned char>(color.a * alpha);
+                        
+                        image.SetPixel(rotatedX, rotatedY, blendedColor);
+                    }
+                }
+            }
+        }
+        
+        // Move "down" for next character (which is actually moving left in rotated space)
+        drawY -= (glyph->advance.x >> 6);
     }
 }
 
@@ -2496,6 +2559,22 @@ void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int
             blendPixel(ix, iy, pixelColor, fullAlpha);
         }
     }
+}
+
+void Cluster10::setYAxisLabel(const std::string& label)
+{
+    yAxisLabel = label;
+    
+    // Get text color from CSS design
+    RGBA textColor = elementColors["axisLabel"];
+    textColor.a = 0xCC; // 80% opacity for readability
+    
+    // Position for the Y-axis label - adjusted for rotated text
+    int labelX = margin_left / 3; // Positioned closer to the left edge
+    int labelY = margin_top + getPlotHeight() / 2; // Center vertically
+    
+    // Draw rotated label
+    drawVerticalText(yAxisLabel, labelX, labelY, 16, textColor);
 }
 
 // End of Cluster10.cpp

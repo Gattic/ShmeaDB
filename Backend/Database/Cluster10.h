@@ -99,6 +99,9 @@ public:
     // Save methods
     void saveAsPNG(const std::string& filename, const std::string& folder = ".");
 
+    // Set the Y-axis label
+    void setYAxisLabel(const std::string& label);
+
 private:
     //==================== MEMBER VARIABLES ====================//
     
@@ -123,6 +126,9 @@ private:
     bool showGrid;
     bool showAxes;
     int cornerRadius;
+    
+    // Axis label storage
+    std::string yAxisLabel;
     
     //==================== INITIALIZATION METHODS ====================//
     
