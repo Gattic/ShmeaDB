@@ -1005,14 +1005,14 @@ void Cluster10::drawClusterCircles(
                     38  // 15% opacity, exactly as in CSS
                 );
                 
-                // Prepare border color - 1px exactly as in CSS
+                // Prepare border color - smaller border (thinner than 1px)
                 RGBA borderColor;
-                if (normDist > 0.97f) {
+                if (normDist > 0.985f) { // Increased from 0.97f for thinner border
                     borderColor = RGBA(
                         circleColor.r,
                         circleColor.g,
                         circleColor.b,
-                        204  // 80% opacity, exactly as in CSS
+                        184  // 72% opacity (reduced from 80%)
                     );
                     
                     // Blend with existing background
