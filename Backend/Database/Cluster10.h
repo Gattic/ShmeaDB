@@ -183,6 +183,9 @@ private:
     // Blend two colors with alpha
     RGBA blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha);
     
+    // Proper alpha blending that preserves the background
+    RGBA blendRGBA(const RGBA& base, const RGBA& over);
+    
     // Blend a pixel with bounds checking
     void blendPixel(int x, int y, const RGBA& color, float alpha);
     
