@@ -10,18 +10,24 @@ using namespace shmea;
 
 Cluster10::Cluster10(unsigned int width, unsigned int height, 
                     unsigned int margin_top, unsigned int margin_right, 
-                    unsigned int margin_bottom, unsigned int margin_left)
+                    unsigned int margin_bottom, unsigned int margin_left,
+                    unsigned int ssaa_factor)
     : width(width),
       height(height),
       margin_top(margin_top),
       margin_right(margin_right),
       margin_bottom(margin_bottom),
       margin_left(margin_left),
+      ssaaFactor(ssaa_factor),
       showGrid(true),
       showAxes(true),
       cornerRadius(12),
       hasLogo(false)
 {
+    // Calculate supersampled dimensions
+    ssaaWidth = width * ssaaFactor;
+    ssaaHeight = height * ssaaFactor;
+    
     // Initialize the visualization
     initialize();
 }
@@ -29,7 +35,10 @@ Cluster10::Cluster10(unsigned int width, unsigned int height,
 // Helper method for constructor initialization
 void Cluster10::initialize()
 {
-    // Allocate image
+    // Allocate the supersampled image first
+    initializeSuperSampling();
+    
+    // Initialize final output image
     image.Allocate(width, height);
     
     // Initialize colors
@@ -43,6 +52,97 @@ void Cluster10::initialize()
     
     // Initialize yAxisLabel to empty
     yAxisLabel = "";
+}
+
+// Initialize supersampling buffer
+void Cluster10::initializeSuperSampling()
+{
+    // Allocate larger buffer for supersampled rendering
+    ssaaImage.Allocate(ssaaWidth, ssaaHeight);
+    
+    // Fill with black to start
+    for (unsigned int y = 0; y < ssaaHeight; ++y) {
+        for (unsigned int x = 0; x < ssaaWidth; ++x) {
+            ssaaImage.SetPixel(x, y, RGBA(0, 0, 0, 0xFF));
+        }
+    }
+}
+
+// Downsample the supersampled image to the final output resolution
+void Cluster10::downsampleToOutput()
+{
+    // For each pixel in the output image
+    for (unsigned int y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x) {
+            // Accumulate color values from the supersampled region
+            unsigned int r = 0, g = 0, b = 0, a = 0;
+            
+            // Sample the NxN region from the supersampled image
+            for (unsigned int sy = 0; sy < ssaaFactor; ++sy) {
+                for (unsigned int sx = 0; sx < ssaaFactor; ++sx) {
+                    unsigned int ssaaX = x * ssaaFactor + sx;
+                    unsigned int ssaaY = y * ssaaFactor + sy;
+                    
+                    // Ensure we're within bounds of the supersampled image
+                    if (ssaaX < ssaaWidth && ssaaY < ssaaHeight) {
+                        RGBA pixel = ssaaImage.GetPixel(ssaaX, ssaaY);
+                        
+                        // Pre-multiply alpha for more accurate blending
+                        float alphaFactor = pixel.a / 255.0f;
+                        r += static_cast<unsigned int>(pixel.r * alphaFactor);
+                        g += static_cast<unsigned int>(pixel.g * alphaFactor);
+                        b += static_cast<unsigned int>(pixel.b * alphaFactor);
+                        a += pixel.a;
+                    }
+                }
+            }
+            
+            // Calculate average color
+            unsigned int totalSamples = ssaaFactor * ssaaFactor;
+            
+            // Handle case where alpha is zero to avoid division by zero
+            if (a == 0) {
+                image.SetPixel(x, y, RGBA(0, 0, 0, 0));
+                continue;
+            }
+            
+            // Normalize alpha channel
+            float avgAlpha = a / static_cast<float>(totalSamples);
+            
+            // For better accuracy with very transparent areas, ensure we don't divide by zero
+            float avgAlphaFactor = avgAlpha / 255.0f;
+            if (avgAlphaFactor < 0.001f) {
+                avgAlphaFactor = 0.001f;
+            }
+            
+            // Unpremultiply alpha
+            unsigned char finalR = static_cast<unsigned char>(std::min(255.0f, r / static_cast<float>(totalSamples) / avgAlphaFactor));
+            unsigned char finalG = static_cast<unsigned char>(std::min(255.0f, g / static_cast<float>(totalSamples) / avgAlphaFactor));
+            unsigned char finalB = static_cast<unsigned char>(std::min(255.0f, b / static_cast<float>(totalSamples) / avgAlphaFactor));
+            unsigned char finalA = static_cast<unsigned char>(avgAlpha);
+            
+            // Set the downsampled pixel in the output image
+            image.SetPixel(x, y, RGBA(finalR, finalG, finalB, finalA));
+        }
+    }
+}
+
+void Cluster10::setSuperSamplingFactor(unsigned int factor)
+{
+    if (factor < 1) factor = 1; // Ensure factor is at least 1
+    
+    // Only reinitialize if the factor has changed
+    if (factor != ssaaFactor) {
+        ssaaFactor = factor;
+        ssaaWidth = width * ssaaFactor;
+        ssaaHeight = height * ssaaFactor;
+        
+        // Reinitialize supersampling buffer
+        initializeSuperSampling();
+        
+        // Redraw the background
+        drawBackground();
+    }
 }
 
 Cluster10::~Cluster10()
@@ -128,20 +228,20 @@ void Cluster10::drawBackground()
     // radial-gradient(164.63% 83.5% at 54.69% 50%, #021331 0%, #000B1E 100%)
     
     // Define the gradient center point (at 54.69% 50% as specified in CSS)
-    float centerX = width * 0.5469f;
-    float centerY = height * 0.5f;
+    float centerX = ssaaWidth * 0.5469f;
+    float centerY = ssaaHeight * 0.5f;
     
     // Define the gradient radius (164.63% width and 83.5% height elliptical gradient)
-    float radiusX = width * 1.6463f;
-    float radiusY = height * 0.835f;
+    float radiusX = ssaaWidth * 1.6463f;
+    float radiusY = ssaaHeight * 0.835f;
     
     // Get colors from our pre-defined palette
     RGBA centerColor = elementColors["bgGradientTop"];    // #021331
     RGBA edgeColor = elementColors["bgGradientBottom"];   // #000B1E
     
     // Render the radial gradient
-    for (unsigned int y = 0; y < height; ++y) {
-        for (unsigned int x = 0; x < width; ++x) {
+    for (unsigned int y = 0; y < ssaaHeight; ++y) {
+        for (unsigned int x = 0; x < ssaaWidth; ++x) {
             // Calculate distance from center (normalize based on elliptical radiuses)
             float dx = (x - centerX) / radiusX;
             float dy = (y - centerY) / radiusY;
@@ -161,23 +261,23 @@ void Cluster10::drawBackground()
                 0xFF
             );
             
-            // Set the pixel
-            image.SetPixel(x, y, pixelColor);
+            // Set the pixel in the supersampled image
+            ssaaImage.SetPixel(x, y, pixelColor);
         }
     }
     
     // Add subtle vignette effect at the top (like in histogram_with_labels.css)
     // CSS: linear-gradient(180deg, #021331 0%, rgba(2, 19, 49, 0) 100%)
-    int vignetteFadeHeight = height * 0.2f; // Top 20% has vignette
+    int vignetteFadeHeight = ssaaHeight * 0.2f; // Top 20% has vignette
     
     for (unsigned int y = 0; y < vignetteFadeHeight; ++y) {
         // Calculate fade factor (1.0 at top, 0.0 at bottom of fade)
         float fadeFactor = 1.0f - (static_cast<float>(y) / vignetteFadeHeight);
         fadeFactor = fadeFactor * fadeFactor * 0.5f; // Square it and adjust intensity
         
-        for (unsigned int x = 0; x < width; ++x) {
+        for (unsigned int x = 0; x < ssaaWidth; ++x) {
             // Get current pixel and darken it slightly
-            RGBA currentColor = image.GetPixel(x, y);
+            RGBA currentColor = ssaaImage.GetPixel(x, y);
             RGBA fadeColor(
                 static_cast<unsigned char>(currentColor.r * (1.0f - fadeFactor)),
                 static_cast<unsigned char>(currentColor.g * (1.0f - fadeFactor)),
@@ -185,8 +285,8 @@ void Cluster10::drawBackground()
                 0xFF
             );
             
-            // Set the darkened pixel
-            image.SetPixel(x, y, fadeColor);
+            // Set the darkened pixel in the supersampled image
+            ssaaImage.SetPixel(x, y, fadeColor);
         }
     }
     
@@ -199,8 +299,8 @@ void Cluster10::drawBackground()
 void Cluster10::drawGrid()
 {
     // Calculate the effective plotting area considering the margins
-    int effectiveWidth = width - margin_left - margin_right;
-    int effectiveHeight = height - margin_top - margin_bottom;
+    int effectiveWidth = ssaaWidth - scaleX(margin_left) - scaleX(margin_right);
+    int effectiveHeight = ssaaHeight - scaleY(margin_top) - scaleY(margin_bottom);
     
     // Use exact grid pattern from CSS files in concepts/
     // Matching the fig and pdf files' grid styling
@@ -214,14 +314,18 @@ void Cluster10::drawGrid()
     // Draw X-axis grid lines (vertical lines)
     for (int i = 1; i < gridDivisionsX; i++) {
         float percentage = static_cast<float>(i) / gridDivisionsX;
-        int x = margin_left + static_cast<int>(percentage * effectiveWidth);
+        int x = scaleX(margin_left) + static_cast<int>(percentage * effectiveWidth);
         
-        // Draw grid line with exact 1px width - ensure it's visible
-        for (int y = margin_top; y <= height - margin_bottom; y++) {
-            if (x >= 0 && x < width && y >= 0 && y < height) {
-                RGBA currentPixel = image.GetPixel(x, y);
-                RGBA blendedColor = blendRGBA(currentPixel, gridColor);
-                image.SetPixel(x, y, blendedColor);
+        // Draw grid line with exact 1px width (scaled for supersampling)
+        int lineWidth = ssaaFactor; // Scale line width with supersampling
+        for (int y = scaleY(margin_top); y <= ssaaHeight - scaleY(margin_bottom); y++) {
+            for (int dx = 0; dx < lineWidth; dx++) {
+                int drawX = x + dx;
+                if (drawX >= 0 && drawX < ssaaWidth && y >= 0 && y < ssaaHeight) {
+                    RGBA currentPixel = ssaaImage.GetPixel(drawX, y);
+                    RGBA blendedColor = blendRGBA(currentPixel, gridColor);
+                    ssaaImage.SetPixel(drawX, y, blendedColor);
+                }
             }
         }
     }
@@ -229,14 +333,18 @@ void Cluster10::drawGrid()
     // Draw Y-axis grid lines (horizontal lines)
     for (int i = 1; i < gridDivisionsY; i++) {
         float percentage = static_cast<float>(i) / gridDivisionsY;
-        int y = height - margin_bottom - static_cast<int>(percentage * effectiveHeight);
+        int y = ssaaHeight - scaleY(margin_bottom) - static_cast<int>(percentage * effectiveHeight);
         
-        // Draw grid line with exact 1px width - ensure it's visible
-        for (int x = margin_left; x <= width - margin_right; x++) {
-            if (x >= 0 && x < width && y >= 0 && y < height) {
-                RGBA currentPixel = image.GetPixel(x, y);
-                RGBA blendedColor = blendRGBA(currentPixel, gridColor);
-                image.SetPixel(x, y, blendedColor);
+        // Draw grid line with exact 1px width (scaled for supersampling)
+        int lineWidth = ssaaFactor; // Scale line width with supersampling
+        for (int x = scaleX(margin_left); x <= ssaaWidth - scaleX(margin_right); x++) {
+            for (int dy = 0; dy < lineWidth; dy++) {
+                int drawY = y + dy;
+                if (x >= 0 && x < ssaaWidth && drawY >= 0 && drawY < ssaaHeight) {
+                    RGBA currentPixel = ssaaImage.GetPixel(x, drawY);
+                    RGBA blendedColor = blendRGBA(currentPixel, gridColor);
+                    ssaaImage.SetPixel(x, drawY, blendedColor);
+                }
             }
         }
     }
@@ -244,39 +352,48 @@ void Cluster10::drawGrid()
     // Draw outer border with exact styling from CSS
     RGBA borderColor = elementColors["border"];
     borderColor.a = 0x66; // Increased to 40% opacity to match grid lines
-    int borderWidth = 1;  // 1px border as in design
+    int borderWidth = ssaaFactor;  // Scale border width with supersampling
     
-    // Draw border with proper rounded corners
-    // Top border
-    drawLine(margin_left + cornerRadius, margin_top, 
-             width - margin_right - cornerRadius, margin_top, 
+    // Calculate border bounds with proper rounded corners
+    int scaledCornerRadius = scaleSize(cornerRadius);
+    int leftX = scaleX(margin_left);
+    int topY = scaleY(margin_top);
+    int rightX = ssaaWidth - scaleX(margin_right);
+    int bottomY = ssaaHeight - scaleY(margin_bottom);
+    
+    // Draw straight border segments (avoiding the corner regions)
+    
+    // Top border (from left corner to right corner)
+    drawLine(leftX + scaledCornerRadius, topY, 
+             rightX - scaledCornerRadius, topY, 
              borderColor, borderWidth);
              
-    // Bottom border
-    drawLine(margin_left + cornerRadius, height - margin_bottom, 
-             width - margin_right - cornerRadius, height - margin_bottom, 
+    // Bottom border (from left corner to right corner)
+    drawLine(leftX + scaledCornerRadius, bottomY, 
+             rightX - scaledCornerRadius, bottomY, 
              borderColor, borderWidth);
              
-    // Left border
-    drawLine(margin_left, margin_top + cornerRadius, 
-             margin_left, height - margin_bottom - cornerRadius, 
+    // Left border (from top corner to bottom corner)
+    drawLine(leftX, topY + scaledCornerRadius, 
+             leftX, bottomY - scaledCornerRadius, 
              borderColor, borderWidth);
              
-    // Right border
-    drawLine(width - margin_right, margin_top + cornerRadius, 
-             width - margin_right, height - margin_bottom - cornerRadius, 
+    // Right border (from top corner to bottom corner)
+    drawLine(rightX, topY + scaledCornerRadius, 
+             rightX, bottomY - scaledCornerRadius, 
              borderColor, borderWidth);
     
-    // Add subtle rounded corners for the border - exactly matching CSS
-    drawRoundedCorners(margin_left, margin_top, width - margin_right, height - margin_bottom, 
-                      cornerRadius, borderColor);
+    // Add rounded corners with proper supersampling and anti-aliasing
+    drawRoundedCorners(leftX, topY, 
+                       rightX, bottomY, 
+                       scaledCornerRadius, borderColor);
 }
 
 void Cluster10::drawAxes()
 {
     // Calculate the center (origin) of the plot
-    int centerX = margin_left + (width - margin_left - margin_right) / 2;
-    int centerY = margin_top + (height - margin_top - margin_bottom) / 2;
+    int centerX = scaleX(margin_left + (width - margin_left - margin_right) / 2);
+    int centerY = scaleY(margin_top + (height - margin_top - margin_bottom) / 2);
     
     // We will NOT draw any default axis labels here
     // Each visualization method will handle its own specific labels
@@ -286,10 +403,10 @@ void Cluster10::drawAxes()
         RGBA axisColor = elementColors["axes"];
         
         // Draw X-axis (if needed)
-        drawLine(margin_left, centerY, width - margin_right, centerY, axisColor, 2);
+        drawLine(scaleX(margin_left), centerY, ssaaWidth - scaleX(margin_right), centerY, axisColor, 2);
         
         // Draw Y-axis (if needed)
-        drawLine(centerX, margin_top, centerX, height - margin_bottom, axisColor, 2);
+        drawLine(centerX, scaleY(margin_top), centerX, ssaaHeight - scaleY(margin_bottom), axisColor, 2);
     }
 }
 
@@ -303,11 +420,11 @@ inline int Cluster10::clamp(int value, int min, int max)
 
 void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, int lineWidth)
 {
-    // Clamp coordinates to stay within margins
-    x1 = clamp(x1, 0, width - 1);
-    x2 = clamp(x2, 0, width - 1);
-    y1 = clamp(y1, 0, height - 1);
-    y2 = clamp(y2, 0, height - 1);
+    // Clamp coordinates to stay within image bounds
+    x1 = clamp(x1, 0, ssaaWidth - 1);
+    x2 = clamp(x2, 0, ssaaWidth - 1);
+    y1 = clamp(y1, 0, ssaaHeight - 1);
+    y2 = clamp(y2, 0, ssaaHeight - 1);
     
     // Bresenham's Line algorithm for drawing a line
     int dx = std::abs(x2 - x1);
@@ -342,17 +459,17 @@ void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, 
                 int drawX = steep ? y + w : x + w;
                 int drawY = steep ? x + h : y + h;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) && 
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                     
                     // For semi-transparent colors, blend with background
                     if (lineColor.a < 255) {
-                        RGBA currentPixel = image.GetPixel(drawX, drawY);
+                        RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
                         RGBA blendedColor = blendRGBA(currentPixel, lineColor);
-                        image.SetPixel(drawX, drawY, blendedColor);
+                        ssaaImage.SetPixel(drawX, drawY, blendedColor);
                     } else {
                         // Fully opaque - just set the pixel
-                    image.SetPixel(drawX, drawY, lineColor);
+                        ssaaImage.SetPixel(drawX, drawY, lineColor);
                     }
                 }
             }
@@ -368,53 +485,88 @@ void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, 
 
 void Cluster10::drawPoint(int x, int y, int size, const RGBA& color)
 {
-    // Draw a filled circle for the point
-    for (int dy = -size; dy <= size; dy++) {
-        for (int dx = -size; dx <= size; dx++) {
-            // Check if the pixel falls within the circle
-            if (dx * dx + dy * dy <= size * size) {
-                int drawX = x + dx;
-                int drawY = y + dy;
-                
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, color);
-                }
-            }
-        }
-    }
+    // Draw a filled circle for the point with anti-aliasing
+    drawCircle(x, y, size, color, true, 0);
 }
 
 void Cluster10::drawCircle(int x, int y, int radius, const RGBA& color, bool filled, int borderWidth)
 {
-    for (int dy = -radius; dy <= radius; dy++) {
-        for (int dx = -radius; dx <= radius; dx++) {
-            int distSquared = dx * dx + dy * dy;
+    // Note: x, y, radius are already in supersampled space
+    // To improve quality, use anti-aliasing for circles
+    float radiusSquared = radius * radius;
+    float outerRadiusSquared = (radius + 0.5f) * (radius + 0.5f);
+    float innerRadiusSquared = (filled) ? 0 : (radius - borderWidth) * (radius - borderWidth);
+    
+    for (int dy = -radius - 1; dy <= radius + 1; dy++) {
+        for (int dx = -radius - 1; dx <= radius + 1; dx++) {
+            // Calculate exact distance squared from center
+            float distSquared = dx * dx + dy * dy;
+            
+            // Skip pixels definitely outside the circle
+            if (distSquared > outerRadiusSquared) {
+                continue;
+            }
+            
+            // Skip pixels definitely inside the inner border for non-filled circles
+            if (!filled && distSquared < innerRadiusSquared) {
+                continue;
+            }
+            
+            int drawX = x + dx;
+            int drawY = y + dy;
+            
+            // Skip pixels outside the image
+            if (drawX < 0 || drawX >= static_cast<int>(ssaaWidth) ||
+                drawY < 0 || drawY >= static_cast<int>(ssaaHeight)) {
+                continue;
+            }
+            
+            // Apply anti-aliasing at the edges
+            float alpha = 1.0f;
             
             if (filled) {
-                // For filled circle, draw all pixels inside the radius
-                if (distSquared <= radius * radius) {
-                    int drawX = x + dx;
-                    int drawY = y + dy;
-                    
-                    if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                        drawY >= 0 && drawY < static_cast<int>(height)) {
-                        image.SetPixel(drawX, drawY, color);
-                    }
+                // For filled circle, apply anti-aliasing only at the outer edge
+                if (distSquared > radiusSquared) {
+                    // Calculate alpha based on distance from the edge
+                    alpha = 1.0f - (std::sqrt(distSquared) - radius);
+                    alpha = std::max(0.0f, std::min(1.0f, alpha));
                 }
             } else {
-                // For outline only, draw pixels at the border
-                int outerRadiusSquared = radius * radius;
-                int innerRadiusSquared = (radius - borderWidth) * (radius - borderWidth);
+                // For outline circle, apply anti-aliasing at both inner and outer edges
+                float innerRadius = radius - borderWidth;
+                float outerRadius = radius;
+                float distance = std::sqrt(distSquared);
                 
-                if (distSquared <= outerRadiusSquared && distSquared >= innerRadiusSquared) {
-                    int drawX = x + dx;
-                    int drawY = y + dy;
-                    
-                    if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                        drawY >= 0 && drawY < static_cast<int>(height)) {
-                        image.SetPixel(drawX, drawY, color);
-                    }
+                if (distance > outerRadius) {
+                    // Outer edge
+                    alpha = 1.0f - (distance - outerRadius);
+                    alpha = std::max(0.0f, std::min(1.0f, alpha));
+                } else if (distance < innerRadius) {
+                    // Inner edge
+                    alpha = 1.0f - (innerRadius - distance);
+                    alpha = std::max(0.0f, std::min(1.0f, alpha));
+                }
+            }
+            
+            // Apply alpha to the color
+            if (alpha < 1.0f) {
+                RGBA adjustedColor = color;
+                adjustedColor.a = static_cast<unsigned char>(color.a * alpha);
+                
+                // Blend with existing pixel
+                RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                RGBA blendedColor = blendRGBA(currentPixel, adjustedColor);
+                ssaaImage.SetPixel(drawX, drawY, blendedColor);
+            } else {
+                // Full opacity or middle of the circle
+                if (color.a < 255) {
+                    // If original color is semi-transparent, still need to blend
+                    RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                    RGBA blendedColor = blendRGBA(currentPixel, color);
+                    ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                } else {
+                    // Fully opaque
+                    ssaaImage.SetPixel(drawX, drawY, color);
                 }
             }
         }
@@ -423,6 +575,7 @@ void Cluster10::drawCircle(int x, int y, int radius, const RGBA& color, bool fil
 
 void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA& color, bool filled, int borderWidth)
 {
+    // Note: x, y, rectWidth, rectHeight are already in supersampled space
     if (filled) {
         // Draw filled rectangle
         for (int dy = 0; dy < rectHeight; dy++) {
@@ -430,9 +583,17 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
                 int drawX = x + dx;
                 int drawY = y + dy;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, color);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    // Handle alpha blending for semi-transparent rectangles
+                    if (color.a < 255) {
+                        RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                        RGBA blendedColor = blendRGBA(currentPixel, color);
+                        ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                    } else {
+                        // Fully opaque - just set the pixel
+                        ssaaImage.SetPixel(drawX, drawY, color);
+                    }
                 }
             }
         }
@@ -443,9 +604,16 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
                 int drawX = x + dx;
                 int drawY = y + b;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, color);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    // Handle alpha blending
+                    if (color.a < 255) {
+                        RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                        RGBA blendedColor = blendRGBA(currentPixel, color);
+                        ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                    } else {
+                        ssaaImage.SetPixel(drawX, drawY, color);
+                    }
                 }
             }
         }
@@ -456,9 +624,16 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
                 int drawX = x + dx;
                 int drawY = y + rectHeight - b - 1;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, color);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    // Handle alpha blending
+                    if (color.a < 255) {
+                        RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                        RGBA blendedColor = blendRGBA(currentPixel, color);
+                        ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                    } else {
+                        ssaaImage.SetPixel(drawX, drawY, color);
+                    }
                 }
             }
         }
@@ -469,9 +644,16 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
                 int drawX = x + b;
                 int drawY = y + dy;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, color);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    // Handle alpha blending
+                    if (color.a < 255) {
+                        RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                        RGBA blendedColor = blendRGBA(currentPixel, color);
+                        ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                    } else {
+                        ssaaImage.SetPixel(drawX, drawY, color);
+                    }
                 }
             }
         }
@@ -482,9 +664,16 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
                 int drawX = x + rectWidth - b - 1;
                 int drawY = y + dy;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, color);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    // Handle alpha blending
+                    if (color.a < 255) {
+                        RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                        RGBA blendedColor = blendRGBA(currentPixel, color);
+                        ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                    } else {
+                        ssaaImage.SetPixel(drawX, drawY, color);
+                    }
                 }
             }
         }
@@ -493,8 +682,13 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
 
 void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& color, unsigned int fontSize, bool centerAligned)
 {
+    // Scale coordinates and font size for supersampling
+    int ssaaX = scaleX(x);
+    int ssaaY = scaleY(y);
+    unsigned int ssaaFontSize = fontSize * ssaaFactor;
+    
     // Set the font size
-    if (FT_Set_Pixel_Sizes(face, 0, fontSize)) {
+    if (FT_Set_Pixel_Sizes(face, 0, ssaaFontSize)) {
         printf("Error: Could not set pixel sizes\n");
         return;
     }
@@ -512,17 +706,17 @@ void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& colo
             textWidth += (glyph->advance.x >> 6);
         }
         // Adjust x position for center alignment
-        x -= textWidth / 2;
+        ssaaX -= textWidth / 2;
     }
     
     // Compute baseline using font metrics
     int baseline = face->size->metrics.ascender / 64; // Convert from 26.6 fixed-point to pixels
     
     // Adjusted spacing for better readability
-    unsigned int extraSpacing = fontSize / 10; // Spacing between characters
+    unsigned int extraSpacing = ssaaFontSize / 10; // Spacing between characters
     
     // Draw each character
-    unsigned int penX = x;
+    unsigned int penX = ssaaX;
     for (size_t i = 0; i < text.length(); ++i) {
         char c = text[i];
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
@@ -536,7 +730,7 @@ void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& colo
         unsigned int glyphHeight = glyph->bitmap.rows;
         
         unsigned int drawX = penX + glyph->bitmap_left;
-        unsigned int drawY = y - glyph->bitmap_top;
+        unsigned int drawY = ssaaY - glyph->bitmap_top;
         
         // Draw the glyph bitmap
         for (unsigned int row = 0; row < glyphHeight; ++row) {
@@ -548,7 +742,7 @@ void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& colo
                     unsigned int imgX = drawX + col;
                     unsigned int imgY = drawY + row;
                     
-                    if (imgX < width && imgY < height) {
+                    if (imgX < ssaaWidth && imgY < ssaaHeight) {
                         // Calculate alpha-blended color
                         float alpha = value / 255.0f;
                         RGBA blendedColor;
@@ -557,7 +751,10 @@ void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& colo
                         blendedColor.b = static_cast<unsigned char>(color.b * alpha);
                         blendedColor.a = static_cast<unsigned char>(color.a * alpha);
                         
-                        image.SetPixel(imgX, imgY, blendedColor);
+                        // Get current pixel and blend with the glyph
+                        RGBA currentPixel = ssaaImage.GetPixel(imgX, imgY);
+                        RGBA finalColor = blendRGBA(currentPixel, blendedColor);
+                        ssaaImage.SetPixel(imgX, imgY, finalColor);
                     }
                 }
             }
@@ -614,17 +811,19 @@ void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vec
     int legendWidth = maxTextWidth + colorIndicatorSize + colorTextPadding + 36;
     int legendHeight = labels.size() * itemHeight + (labels.size() - 1) * itemSpacing + 24;
     
-    // Draw the box using our common method (no text initially)
+    // Draw the info box with gradient background - directly using our common method
     drawInfoBox(x, y, legendWidth, legendHeight, "", fontSize);
     
     // Draw each legend item with exact positioning
     for (size_t i = 0; i < labels.size(); ++i) {
         int itemY = y + 10 + i * (itemHeight + itemSpacing);
         
-        // Draw color indicator dot
+        // Draw color indicator dot - convert coordinates to supersampled space inside the function
         int dotX = x + 15;
         int dotY = itemY + itemHeight/2;
-        drawCircle(dotX, dotY, colorIndicatorSize/2, colors[i], true);
+        
+        // Scale dot size and use supersampling for the dot
+        drawCircle(scaleX(dotX), scaleY(dotY), scaleSize(colorIndicatorSize/2), colors[i], true);
         
         // Draw label text
         drawText(dotX + colorTextPadding, dotY, labels[i], elementColors["legend"], fontSize, false);
@@ -646,8 +845,13 @@ void Cluster10::plotPoints(const std::vector<Point>& points, const RGBA& color, 
         // Map point to screen coordinates
         Point p = mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
         
-        // Draw the point
-        drawPoint(p.x, p.y, pointSize, color);
+        // Convert to supersampled coordinates
+        int ssX = scaleX(p.x);
+        int ssY = scaleY(p.y);
+        int ssPointSize = scaleSize(pointSize);
+        
+        // Draw the point in supersampled space
+        drawPoint(ssX, ssY, ssPointSize, color);
     }
 }
 
@@ -667,8 +871,15 @@ void Cluster10::plotLine(const std::vector<Point>& points, const RGBA& color, in
         Point p1 = mapDataToScreen(points[i-1].x, points[i-1].y, xRange, yRange);
         Point p2 = mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
         
-        // Draw the line segment
-        drawLine(p1.x, p1.y, p2.x, p2.y, color, lineWidth);
+        // Convert to supersampled coordinates for drawing
+        int ssX1 = scaleX(p1.x);
+        int ssY1 = scaleY(p1.y);
+        int ssX2 = scaleX(p2.x);
+        int ssY2 = scaleY(p2.y);
+        int ssLineWidth = scaleSize(lineWidth);
+        
+        // Draw the line segment in supersampled space
+        drawLine(ssX1, ssY1, ssX2, ssY2, color, ssLineWidth);
     }
 }
 
@@ -697,6 +908,9 @@ void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder
     if (hasLogo) {
         drawLogo();
     }
+    
+    // Downsample the supersampled image to the final output image
+    downsampleToOutput();
     
     // Make sure the directory exists
     std::string filenameWithPath = folder + "/" + filename;
@@ -752,7 +966,7 @@ void Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int 
     legendLabels.push_back("Centroid");
     legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // Fully opaque
     
-    // Add the legend to the visualization
+    // Add the legend to the visualization using our fixed method
     addLegend(legendLabels, legendColors, x, y, 16);
 }
 
@@ -856,11 +1070,12 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         // Map data point to screen coordinates
         Point screenPoint = mapDataToScreen(data[i][0], data[i][1], xRange, yRange);
         
-        // Store point coordinates for later use
+        // Store point coordinates in output space for later use
         clusterPoints[cluster].push_back(std::make_pair(screenPoint.x, screenPoint.y));
         
-        // Draw the point with the cluster color
-        drawPoint(screenPoint.x, screenPoint.y, pointSize, clusterColors[cluster]);
+        // Draw the point with the cluster color - scaled for supersampling
+        drawPoint(scaleX(screenPoint.x), scaleY(screenPoint.y), 
+                  scaleSize(pointSize), clusterColors[cluster]);
     }
     
     // Draw centroids as white circles with colored crosses
@@ -883,58 +1098,60 @@ void Cluster10::calculateClusterBounds(
     const AxisRange& xRange,
     const AxisRange& yRange)
 {
-        // Calculate cluster bounds
-        double minX = std::numeric_limits<double>::max();
-        double maxX = -std::numeric_limits<double>::max();
-        double minY = std::numeric_limits<double>::max();
-        double maxY = -std::numeric_limits<double>::max();
-        double sumX = 0.0, sumY = 0.0;
-        int pointCount = 0;
-        
-        // Calculate cluster centroid and bounds from all points
-        for (size_t i = 0; i < data.size(); ++i) {
-            if (labels[i] == cluster && data[i].size() >= 2) {
-                pointCount++;
-                sumX += data[i][0];
-                sumY += data[i][1];
-                minX = std::min(minX, data[i][0]);
-                maxX = std::max(maxX, data[i][0]);
-                minY = std::min(minY, data[i][1]);
-                maxY = std::max(maxY, data[i][1]);
-            }
+    // Calculate cluster bounds
+    double minX = std::numeric_limits<double>::max();
+    double maxX = -std::numeric_limits<double>::max();
+    double minY = std::numeric_limits<double>::max();
+    double maxY = -std::numeric_limits<double>::max();
+    double sumX = 0.0, sumY = 0.0;
+    int pointCount = 0;
+    
+    // Calculate cluster centroid and bounds from all points
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (labels[i] == cluster && data[i].size() >= 2) {
+            pointCount++;
+            sumX += data[i][0];
+            sumY += data[i][1];
+            minX = std::min(minX, data[i][0]);
+            maxX = std::max(maxX, data[i][0]);
+            minY = std::min(minY, data[i][1]);
+            maxY = std::max(maxY, data[i][1]);
         }
-        
-        if (pointCount == 0) {
-            // Add placeholder values for empty clusters
-            clusterCenters.push_back(Point(0, 0));
-            clusterRadii.push_back(0);
-        return;
-        }
-        
-        // Calculate true centroid (average of all points)
-        double centerX = sumX / pointCount;
-        double centerY = sumY / pointCount;
-        
-        // Find the maximum distance from any point to the centroid
-        double maxDist = 0.0;
-        for (size_t i = 0; i < data.size(); ++i) {
-            if (labels[i] == cluster && data[i].size() >= 2) {
-                double dx = data[i][0] - centerX;
-                double dy = data[i][1] - centerY;
-                double dist = std::sqrt(dx*dx + dy*dy);
-                maxDist = std::max(maxDist, dist);
-            }
-        }
-        
-        // Map to screen coordinates
-        Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
-        Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
-    int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding for better visibility
-        
-        clusterCenters.push_back(screenCenter);
-        clusterRadii.push_back(radius);
     }
     
+    if (pointCount == 0) {
+        // Add placeholder values for empty clusters
+        clusterCenters.push_back(Point(0, 0));
+        clusterRadii.push_back(0);
+        return;
+    }
+    
+    // Calculate true centroid (average of all points)
+    double centerX = sumX / pointCount;
+    double centerY = sumY / pointCount;
+    
+    // Find the maximum distance from any point to the centroid
+    double maxDist = 0.0;
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (labels[i] == cluster && data[i].size() >= 2) {
+            double dx = data[i][0] - centerX;
+            double dy = data[i][1] - centerY;
+            double dist = std::sqrt(dx*dx + dy*dy);
+            maxDist = std::max(maxDist, dist);
+        }
+    }
+    
+    // Map to screen coordinates - use unscaled coordinates as these will be scaled later
+    Point screenCenter = mapDataToScreen(centerX, centerY, xRange, yRange);
+    Point edgePoint = mapDataToScreen(centerX + maxDist, centerY, xRange, yRange);
+    
+    // Calculate radius in output space (not supersampled yet)
+    int radius = std::abs(edgePoint.x - screenCenter.x) + 15; // Add padding for better visibility
+    
+    clusterCenters.push_back(screenCenter);
+    clusterRadii.push_back(radius);
+}
+
 // Helper method to draw cluster circles with transparency
 void Cluster10::drawClusterCircles(
     const std::vector<Point>& clusterCenters,
@@ -951,20 +1168,20 @@ void Cluster10::drawClusterCircles(
         // Get the appropriate shadow color exactly as in CSS
         RGBA shadowColor;
         if (cluster < elementColors.size()) {
-        char shadowKeyBuffer[32];
-        std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
-        std::string shadowKey(shadowKeyBuffer);
+            char shadowKeyBuffer[32];
+            std::sprintf(shadowKeyBuffer, "cluster%dShadow", (int)(cluster+1));
+            std::string shadowKey(shadowKeyBuffer);
         
             // Use the specific cluster shadow color if defined
-        if (elementColors.find(shadowKey) != elementColors.end()) {
-            shadowColor = elementColors[shadowKey];
-        } else {
+            if (elementColors.find(shadowKey) != elementColors.end()) {
+                shadowColor = elementColors[shadowKey];
+            } else {
                 // Otherwise use the semi-transparent cluster color
-            shadowColor = RGBA(
-                circleColor.r,
-                circleColor.g,
-                circleColor.b,
-                0x80 // 50% opacity
+                shadowColor = RGBA(
+                    circleColor.r,
+                    circleColor.g,
+                    circleColor.b,
+                    0x80 // 50% opacity
                 );
             }
         } else {
@@ -977,8 +1194,11 @@ void Cluster10::drawClusterCircles(
             );
         }
         
-        int radius = clusterRadii[cluster];
-        Point center = clusterCenters[cluster];
+        // Scale the coordinates and dimensions for supersampling
+        int radius = scaleSize(clusterRadii[cluster]);
+        Point center;
+        center.x = scaleX(clusterCenters[cluster].x);
+        center.y = scaleY(clusterCenters[cluster].y);
         
         // Draw filled circle with subtle gradient effect - exactly as in CSS
         for (int dy = -radius; dy <= radius; dy++) {
@@ -995,23 +1215,21 @@ void Cluster10::drawClusterCircles(
                 int drawX = center.x + dx;
                 int drawY = center.y + dy;
                 
-                // Skip pixels outside plot area
-                if (drawX < static_cast<int>(margin_left) || 
-                    drawX >= static_cast<int>(width - margin_right) ||
-                    drawY < static_cast<int>(margin_top) || 
-                    drawY >= static_cast<int>(height - margin_bottom)) {
+                // Skip pixels outside supersampled image bounds
+                if (drawX < 0 || drawX >= static_cast<int>(ssaaWidth) ||
+                    drawY < 0 || drawY >= static_cast<int>(ssaaHeight)) {
                     continue;
                 }
                 
                 // Get existing pixel color (the background gradient)
-                RGBA existingColor = image.GetPixel(drawX, drawY);
+                RGBA existingColor = ssaaImage.GetPixel(drawX, drawY);
                 
                 // Prepare the fill color with appropriate opacity - matching CSS
                 RGBA fillColor = RGBA(
                         circleColor.r,
                         circleColor.g,
                         circleColor.b,
-                    38  // 15% opacity, exactly as in CSS
+                        38  // 15% opacity, exactly as in CSS
                 );
                 
                 // Prepare border color - smaller border (thinner than 1px)
@@ -1026,7 +1244,7 @@ void Cluster10::drawClusterCircles(
                     
                     // Blend with existing background
                     RGBA resultColor = blendRGBA(existingColor, borderColor);
-                    image.SetPixel(drawX, drawY, resultColor);
+                    ssaaImage.SetPixel(drawX, drawY, resultColor);
                     continue;
                 }
                 
@@ -1057,7 +1275,7 @@ void Cluster10::drawClusterCircles(
                 }
                 
                 // Set the final pixel
-                image.SetPixel(drawX, drawY, resultColor);
+                ssaaImage.SetPixel(drawX, drawY, resultColor);
             }
         }
     }
@@ -1102,27 +1320,32 @@ void Cluster10::drawCentroids(
         // Map centroid to screen coordinates
         Point centroidPoint = mapDataToScreen(centroids[i][0], centroids[i][1], xRange, yRange);
         
+        // Scale for supersampling
+        int ssaaX = scaleX(centroidPoint.x);
+        int ssaaY = scaleY(centroidPoint.y);
+        
         // CSS uses solid white circle with drop shadow and colored cross
         
         // First draw shadow - 3px offset and 40% opacity (exactly as in CSS)
         RGBA shadowColor(0x00, 0x00, 0x00, 0x66); // 40% opacity black shadow
-        int shadowOffset = 3; // 3px offset as in CSS
+        int shadowOffset = scaleSize(3); // 3px offset as in CSS, scaled
         
         // Draw larger soft shadow first (matches CSS box-shadow effect)
-        for (int dy = -12; dy <= 12; dy++) {
-            for (int dx = -12; dx <= 12; dx++) {
+        int shadowRadius = scaleSize(12);
+        for (int dy = -shadowRadius; dy <= shadowRadius; dy++) {
+            for (int dx = -shadowRadius; dx <= shadowRadius; dx++) {
                 int distSqr = dx*dx + dy*dy;
-                if (distSqr > 144) continue; // Only pixels within 12px radius
+                if (distSqr > shadowRadius*shadowRadius) continue; // Only pixels within 12px radius
                 
                 // Calculate shadow intensity - fade out toward edges (Gaussian-like)
                 float shadowDistance = std::sqrt(distSqr);
-                float shadowIntensity = 0.4f * std::exp(-shadowDistance / 6.0f);
+                float shadowIntensity = 0.4f * std::exp(-shadowDistance / (shadowRadius / 2.0f));
                 
-                int drawX = centroidPoint.x + dx + shadowOffset;
-                int drawY = centroidPoint.y + dy + shadowOffset;
+                int drawX = ssaaX + dx + shadowOffset;
+                int drawY = ssaaY + dy + shadowOffset;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                     RGBA pixelShadow = shadowColor;
                     pixelShadow.a = static_cast<unsigned char>(shadowColor.a * shadowIntensity);
                     blendPixel(drawX, drawY, pixelShadow, shadowIntensity);
@@ -1132,7 +1355,7 @@ void Cluster10::drawCentroids(
         
         // Draw the white circle on top of the shadow - exactly as in CSS design
         RGBA whiteFill(0xFF, 0xFF, 0xFF, 0xFF); // Solid white
-        int circleRadius = 10; // 10px radius as in CSS
+        int circleRadius = scaleSize(10); // 10px radius as in CSS, scaled
         
         // Draw solid white circle
         for (int dy = -circleRadius; dy <= circleRadius; dy++) {
@@ -1140,12 +1363,12 @@ void Cluster10::drawCentroids(
                 int distSqr = dx*dx + dy*dy;
                 if (distSqr > circleRadius * circleRadius) continue;
                 
-                int drawX = centroidPoint.x + dx;
-                int drawY = centroidPoint.y + dy;
+                int drawX = ssaaX + dx;
+                int drawY = ssaaY + dy;
                 
-                if (drawX >= 0 && drawX < static_cast<int>(width) &&
-                    drawY >= 0 && drawY < static_cast<int>(height)) {
-                    image.SetPixel(drawX, drawY, whiteFill);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    ssaaImage.SetPixel(drawX, drawY, whiteFill);
                 }
             }
         }
@@ -1169,20 +1392,22 @@ void Cluster10::drawCentroids(
             );
         }
         
-        // Draw horizontal line of cross - 3px thickness as in CSS
-            for (int y = -1; y <= 1; ++y) {
-            drawLine(centroidPoint.x - 8, centroidPoint.y + y, 
-                     centroidPoint.x + 8, centroidPoint.y + y, crossColor);
-            }
-            
-        // Draw vertical line of cross - 3px thickness as in CSS
-            for (int x = -1; x <= 1; ++x) {
-            drawLine(centroidPoint.x + x, centroidPoint.y - 8, 
-                     centroidPoint.x + x, centroidPoint.y + 8, crossColor);
-            }
+        // Draw horizontal line of cross - 3px thickness as in CSS (scaled)
+        int crossThickness = scaleSize(1);
+        int crossLength = scaleSize(8);
+        for (int y = -crossThickness; y <= crossThickness; ++y) {
+            drawLine(ssaaX - crossLength, ssaaY + y, 
+                     ssaaX + crossLength, ssaaY + y, crossColor);
+        }
+        
+        // Draw vertical line of cross - 3px thickness as in CSS (scaled)
+        for (int x = -crossThickness; x <= crossThickness; ++x) {
+            drawLine(ssaaX + x, ssaaY - crossLength, 
+                     ssaaX + x, ssaaY + crossLength, crossColor);
         }
     }
-    
+}
+
 // Helper method to draw cluster labels
 void Cluster10::drawClusterLabels(
     const std::vector<Point>& clusterCenters,
@@ -1221,8 +1446,10 @@ void Cluster10::drawClusterLabels(
         
         // Draw label at calculated position
         RGBA labelColor = clusterColors[cluster % clusterColors.size()];
-        drawText(clusterCenters[cluster].x + offsetX, clusterCenters[cluster].y + offsetY, 
-                label, labelColor, 22, true);
+        // Use the original clusterCenter coords (not scaled) since drawText will scale
+        drawText(clusterCenters[cluster].x + offsetX, 
+                 clusterCenters[cluster].y + offsetY, 
+                 label, labelColor, 22, true);
     }
 }
 
@@ -1230,25 +1457,32 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
 {
     // Enhanced candlestick styling to match CSS design exactly
     
+    // Apply supersampling scaling to coordinates
+    int ssaaX = scaleX(x);
+    int ssaaYOpen = scaleY(y_open);
+    int ssaaYClose = scaleY(y_close);
+    int ssaaYHigh = scaleY(y_high);
+    int ssaaYLow = scaleY(y_low);
+    
     // Define the width of the candlestick body - matching CSS
-    int bodyWidth = 18;  // Width of candlestick body in pixels 
-    int wickThickness = 3;  // Thickness of wick line
+    int bodyWidth = scaleSize(18);  // Width of candlestick body in pixels, scaled
+    int wickThickness = scaleSize(3);  // Thickness of wick line, scaled
     
     // Draw the wick (line from high to low) with proper styling
     for (int i = -wickThickness/2; i <= wickThickness/2; ++i) {
         // Use semi-transparent color for the wick to match design
         RGBA wickColor = color;
         wickColor.a = 0xE6; // 90% opacity
-        drawLine(x + i, y_high, x + i, y_low, wickColor);
+        drawLine(ssaaX + i, ssaaYHigh, ssaaX + i, ssaaYLow, wickColor);
     }
     
     // Determine the top and bottom of the body
-    int bodyTop = std::min(y_open, y_close);
-    int bodyBottom = std::max(y_open, y_close);
+    int bodyTop = std::min(ssaaYOpen, ssaaYClose);
+    int bodyBottom = std::max(ssaaYOpen, ssaaYClose);
     
     // Ensure minimum body height for better visibility - matching CSS
-    if (bodyBottom - bodyTop < 4) {
-        bodyBottom = bodyTop + 4;
+    if (bodyBottom - bodyTop < scaleSize(4)) {
+        bodyBottom = bodyTop + scaleSize(4);
     }
     
     // Draw the body (rectangle between open and close) with gradient
@@ -1271,12 +1505,12 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
         
         for (int dx = -bodyWidth/2; dx <= bodyWidth/2; ++dx) {
             // Set the pixel directly with full opacity
-            int drawX = x + dx;
+            int drawX = ssaaX + dx;
             int drawY = dy;
             
-            if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                image.SetPixel(drawX, drawY, gradientColor);
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                ssaaImage.SetPixel(drawX, drawY, gradientColor);
             }
         }
     }
@@ -1285,17 +1519,17 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
     
     // Left edge highlight with gradient fade - brighter near edge
     RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x99);  // 60% opacity white
-    int edgeWidth = 5; // Highlight width (slightly wider than before)
+    int edgeWidth = scaleSize(5); // Highlight width (slightly wider than before), scaled
     
     for (int dy = bodyTop; dy <= bodyBottom; ++dy) {
         for (int dx = 0; dx < edgeWidth; ++dx) {
             // Calculate fade strength - more pronounced edge highlight
             float alpha = (edgeWidth - dx) / static_cast<float>(edgeWidth) * 0.6f;
-            int drawX = x - bodyWidth/2 + dx;
+            int drawX = ssaaX - bodyWidth/2 + dx;
             int drawY = dy;
             
-            if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelHighlight = highlightColor;
                 pixelHighlight.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelHighlight, alpha);
@@ -1310,11 +1544,11 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
         for (int dx = 0; dx < edgeWidth; ++dx) {
             // Calculate fade strength - more pronounced edge shadow
             float alpha = (edgeWidth - dx) / static_cast<float>(edgeWidth) * 0.6f;
-            int drawX = x + bodyWidth/2 - dx - 1;
+            int drawX = ssaaX + bodyWidth/2 - dx - 1;
             int drawY = dy;
             
-            if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelShadow = shadowColor;
                 pixelShadow.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelShadow, alpha);
@@ -1322,72 +1556,62 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
         }
     }
     
-    // Add rounded corners as in CSS
-    int cornerRadius = 3; // Slightly larger corner radius
+    // Top edge highlight for 3D effect - subtle rounded top
+    float topHighlightAlpha = 0.5f;
+    int topEdgeHeight = std::max(scaleSize(2), (bodyBottom - bodyTop) / 20);
+    int cornerRadius = scaleSize(3); // Corner radius matching CSS, scaled
     
-    // Top rounded edge with highlight
     for (int dx = -bodyWidth/2 + cornerRadius; dx <= bodyWidth/2 - cornerRadius; ++dx) {
-        int drawX = x + dx;
+        int drawX = ssaaX + dx;
         int drawY = bodyTop;
         
-        if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-            drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-            blendPixel(drawX, drawY, highlightColor, 0.4f);
+        if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+            drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+            blendPixel(drawX, drawY, highlightColor, topHighlightAlpha);
         }
     }
     
-    // Bottom rounded edge with shadow
+    // Bottom edge shadow for 3D effect - subtle rounded bottom
+    float bottomShadowAlpha = 0.5f;
+    
     for (int dx = -bodyWidth/2 + cornerRadius; dx <= bodyWidth/2 - cornerRadius; ++dx) {
-        int drawX = x + dx;
+        int drawX = ssaaX + dx;
         int drawY = bodyBottom;
         
-        if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-            drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-            blendPixel(drawX, drawY, shadowColor, 0.4f);
+        if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+            drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+            blendPixel(drawX, drawY, shadowColor, bottomShadowAlpha);
         }
     }
     
-    // Top-left and top-right corner pixels for proper CSS-like rounding
+    // Add subtle highlight to corners for rounded appearance
+    // Top-left corner extra highlight
     for (int i = 0; i < cornerRadius; ++i) {
         for (int j = 0; j < cornerRadius; ++j) {
             float distance = std::sqrt(i*i + j*j);
             if (distance <= cornerRadius) {
-                // Top-left corner
-                int drawX = x - bodyWidth/2 + i;
+                int drawX = ssaaX - bodyWidth/2 + i;
                 int drawY = bodyTop + j;
-                if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                    drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, highlightColor, 0.5f);
-                }
                 
-                // Top-right corner
-                drawX = x + bodyWidth/2 - i;
-                if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                    drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, highlightColor, 0.3f);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    blendPixel(drawX, drawY, highlightColor, topHighlightAlpha * 0.7f);
                 }
             }
         }
     }
     
-    // Bottom-left and bottom-right corner pixels for proper CSS-like rounding
+    // Bottom-right corner extra shadow
     for (int i = 0; i < cornerRadius; ++i) {
         for (int j = 0; j < cornerRadius; ++j) {
             float distance = std::sqrt(i*i + j*j);
             if (distance <= cornerRadius) {
-                // Bottom-left corner
-                int drawX = x - bodyWidth/2 + i;
+                int drawX = ssaaX + bodyWidth/2 - i - 1;
                 int drawY = bodyBottom - j;
-                if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                    drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, shadowColor, 0.3f);
-                }
                 
-                // Bottom-right corner
-                drawX = x + bodyWidth/2 - i;
-                if (drawX >= margin_left && drawX < static_cast<int>(width - margin_right) && 
-                    drawY >= margin_top && drawY < static_cast<int>(height - margin_bottom)) {
-                    blendPixel(drawX, drawY, shadowColor, 0.5f);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    blendPixel(drawX, drawY, shadowColor, bottomShadowAlpha * 0.7f);
                 }
             }
         }
@@ -1430,80 +1654,8 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     int boxX = width - margin_right - boxWidth - 20;
     int boxY = margin_top + 60;
     
-    // CSS uses custom gradient background for info boxes:
-    // background: linear-gradient(225deg, #230B6A 0%, #152156 100%);
-    // with box-shadow: 0px 8px 24px rgba(0, 11, 30, 0.4);
-    
-    // Draw box background first - custom gradient exactly as in CSS
-    for (int dy = 0; dy < boxHeight; ++dy) {
-        for (int dx = 0; dx < boxWidth; ++dx) {
-            int drawX = boxX + dx;
-            int drawY = boxY + dy;
-            
-            // Calculate gradient position (0 to 1) - diagonal gradient like CSS
-            float gradPos = (dx + dy) / static_cast<float>(boxWidth + boxHeight);
-            
-            // Create gradient color - blending between two CSS colors
-            RGBA gradColor;
-            gradColor.r = static_cast<unsigned char>(elementColors["legendBgTop"].r * (1.0f - gradPos) + elementColors["legendBgBottom"].r * gradPos);
-            gradColor.g = static_cast<unsigned char>(elementColors["legendBgTop"].g * (1.0f - gradPos) + elementColors["legendBgBottom"].g * gradPos);
-            gradColor.b = static_cast<unsigned char>(elementColors["legendBgTop"].b * (1.0f - gradPos) + elementColors["legendBgBottom"].b * gradPos);
-            gradColor.a = 0xE6; // 90% opacity (0.9 * 255 = 230 ≈ 0xE6)
-            
-            // Check if we're inside the rounded corners
-            int cornerRadius = 8; // 8px corner radius from CSS
-            bool isInCorner = false;
-            
-            // Top-left corner
-            if (dx < cornerRadius && dy < cornerRadius) {
-                float dist = std::sqrt((cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy));
-                if (dist > cornerRadius) isInCorner = true;
-            }
-            // Top-right corner
-            else if (dx >= boxWidth - cornerRadius && dy < cornerRadius) {
-                float dist = std::sqrt((dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + 
-                                       (cornerRadius - dy) * (cornerRadius - dy));
-                if (dist > cornerRadius) isInCorner = true;
-            }
-            // Bottom-left corner
-            else if (dx < cornerRadius && dy >= boxHeight - cornerRadius) {
-                float dist = std::sqrt((cornerRadius - dx) * (cornerRadius - dx) + 
-                                       (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius)));
-                if (dist > cornerRadius) isInCorner = true;
-            }
-            // Bottom-right corner
-            else if (dx >= boxWidth - cornerRadius && dy >= boxHeight - cornerRadius) {
-                float dist = std::sqrt((dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + 
-                                       (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius)));
-                if (dist > cornerRadius) isInCorner = true;
-            }
-            
-            if (!isInCorner && drawX >= 0 && drawX < width && drawY >= 0 && drawY < height) {
-                // Use blendPixel instead of SetPixel for proper alpha blending
-                blendPixel(drawX, drawY, gradColor, gradColor.a / 255.0f);
-            }
-        }
-    }
-    
-    // Add drop shadow effect - like CSS box-shadow
-    // box-shadow: 0px 8px 24px rgba(0, 11, 30, 0.4);
-    for (int dy = 0; dy < 30; ++dy) {
-        for (int dx = -20; dx < boxWidth + 20; ++dx) {
-            int drawX = boxX + dx;
-            int drawY = boxY + boxHeight + dy;
-            
-            // Skip pixels outside image
-            if (drawX < 0 || drawX >= width || drawY < 0 || drawY >= height) continue;
-            
-            // Calculate shadow intensity
-            float shadowFactor = 1.0f - (dy / 30.0f);
-            float shadowAlpha = shadowFactor * 0.2f; // 20% max opacity
-            
-            // Apply shadow effect
-            RGBA shadowColor(0, 11, 30, static_cast<unsigned char>(255 * shadowAlpha));
-            blendPixel(drawX, drawY, shadowColor, shadowAlpha);
-        }
-    }
+    // Use our common info box method for consistent styling
+    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", 16);
     
     // Draw the text with styling from CSS
     RGBA textColor = elementColors["legend"]; // White text
@@ -1513,7 +1665,7 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     
     // Horizontal separator
     RGBA lineColor(0xFF, 0xFF, 0xFF, 0x40); // 25% opacity white
-    drawLine(boxX + 16, boxY + 32, boxX + boxWidth - 16, boxY + 32, lineColor);
+    drawLine(scaleX(boxX + 16), scaleY(boxY + 32), scaleX(boxX + boxWidth - 16), scaleY(boxY + 32), lineColor, ssaaFactor);
     
     // Format stats values with 1 decimal place and consistent width
     char meanText[64], modeText[64], maxText[64], sumText[64];
@@ -1532,10 +1684,16 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     drawText(boxX + boxWidth - 16 - sumWidth, boxY + 95, sumText, textColor, 14, false);
 }
 
+// Modify vertical text rendering method for supersampling
 void Cluster10::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
 {
+    // Scale coordinates and font size for supersampling
+    int ssaaX = scaleX(x);
+    int ssaaY = scaleY(y);
+    int ssaaFontSize = fontSize * ssaaFactor;
+    
     // Set the font size
-    if (FT_Set_Pixel_Sizes(face, 0, fontSize)) {
+    if (FT_Set_Pixel_Sizes(face, 0, ssaaFontSize)) {
         printf("Error: Could not set pixel sizes for vertical text\n");
         return;
     }
@@ -1558,8 +1716,8 @@ void Cluster10::drawVerticalText(const std::string& text, int x, int y, int font
     // This means the characters will be drawn upside down compared to the previous rotation
     
     // Start position (center of rotation)
-    int drawX = x;
-    int drawY = y + textWidth/2; // Center vertically based on text width
+    int drawX = ssaaX;
+    int drawY = ssaaY + textWidth/2; // Center vertically based on text width
     
     // Draw each character rotated
     for (size_t i = 0; i < text.length(); ++i) {
@@ -1588,8 +1746,8 @@ void Cluster10::drawVerticalText(const std::string& text, int x, int y, int font
                     int rotatedX = drawX - glyph->bitmap_top + row;
                     int rotatedY = drawY - col - glyph->bitmap_left;
                     
-                    if (rotatedX >= 0 && rotatedX < static_cast<int>(width) &&
-                        rotatedY >= 0 && rotatedY < static_cast<int>(height)) {
+                    if (rotatedX >= 0 && rotatedX < static_cast<int>(ssaaWidth) &&
+                        rotatedY >= 0 && rotatedY < static_cast<int>(ssaaHeight)) {
                         // Calculate alpha-blended color
                         float alpha = value / 255.0f;
                         RGBA blendedColor;
@@ -1598,7 +1756,10 @@ void Cluster10::drawVerticalText(const std::string& text, int x, int y, int font
                         blendedColor.b = static_cast<unsigned char>(color.b * alpha);
                         blendedColor.a = static_cast<unsigned char>(color.a * alpha);
                         
-                        image.SetPixel(rotatedX, rotatedY, blendedColor);
+                        // Get current pixel and blend with the glyph
+                        RGBA currentPixel = ssaaImage.GetPixel(rotatedX, rotatedY);
+                        RGBA finalColor = blendRGBA(currentPixel, blendedColor);
+                        ssaaImage.SetPixel(rotatedX, rotatedY, finalColor);
                     }
                 }
             }
@@ -1739,7 +1900,7 @@ Cluster10::Point Cluster10::mapDataToScreen(double x, double y, const AxisRange&
     double yRatio = (y - yRange.min) / (yRange.max - yRange.min);
     int screenY = height - margin_bottom - static_cast<int>(yRatio * plotHeight);
     
-    // Ensure the point is within the plot bounds
+    // Ensure the point is within the plot bounds in output space (not supersampled)
     screenX = clamp(screenX, margin_left, width - margin_right);
     screenY = clamp(screenY, margin_top, height - margin_bottom);
     
@@ -1758,28 +1919,32 @@ RGBA Cluster10::blendColors(const RGBA& baseColor, const RGBA& overlayColor, flo
 
 // Helper for blending a pixel with bounds checking
 void Cluster10::blendPixel(int x, int y, const RGBA& color, float alpha) {
-    if (x >= 0 && x < static_cast<int>(width) && y >= 0 && y < static_cast<int>(height)) {
-        RGBA baseColor = image.GetPixel(x, y);
+    if (x >= 0 && x < static_cast<int>(ssaaWidth) && y >= 0 && y < static_cast<int>(ssaaHeight)) {
+        RGBA baseColor = ssaaImage.GetPixel(x, y);
         RGBA blendedColor = blendColors(baseColor, color, alpha);
-        image.SetPixel(x, y, blendedColor);
+        ssaaImage.SetPixel(x, y, blendedColor);
     }
 }
 
 // Common method for drawing info boxes (legend, stats, price info)
 void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
-    // Common corner radius for all info boxes - matching CSS border-radius
-    int cornerRadius = 8; 
+    // Scale coordinates and dimensions for supersampling
+    int ssaaX = scaleX(x);
+    int ssaaY = scaleY(y);
+    int ssaaBoxWidth = scaleSize(boxWidth);
+    int ssaaBoxHeight = scaleSize(boxHeight);
+    int ssaaCornerRadius = scaleSize(8); // Common corner radius for all info boxes, scaled 
     
     // Get gradient colors from element colors - exact colors from CSS
     RGBA bgTopColor = elementColors["legendBgTop"];
     RGBA bgBottomColor = elementColors["legendBgBottom"];
     
     // Draw gradient background with proper alpha blending
-    for (int dy = 0; dy < boxHeight; dy++) {
+    for (int dy = 0; dy < ssaaBoxHeight; dy++) {
         // Calculate gradient interpolation - diagonal gradient to match the histogram stats box
-        for (int dx = 0; dx < boxWidth; dx++) {
-            float gradPos = (dx + dy) / static_cast<float>(boxWidth + boxHeight);
-        RGBA currentBgColor(
+        for (int dx = 0; dx < ssaaBoxWidth; dx++) {
+            float gradPos = (dx + dy) / static_cast<float>(ssaaBoxWidth + ssaaBoxHeight);
+            RGBA currentBgColor(
                 static_cast<unsigned char>(bgTopColor.r * (1.0f - gradPos) + bgBottomColor.r * gradPos),
                 static_cast<unsigned char>(bgTopColor.g * (1.0f - gradPos) + bgBottomColor.g * gradPos),
                 static_cast<unsigned char>(bgTopColor.b * (1.0f - gradPos) + bgBottomColor.b * gradPos),
@@ -1790,31 +1955,31 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
             bool inCorner = false;
             
             // Check top-left corner
-            if (dx < cornerRadius && dy < cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
+            if (dx < ssaaCornerRadius && dy < ssaaCornerRadius) {
+                float distSquared = std::pow(ssaaCornerRadius - dx, 2) + std::pow(ssaaCornerRadius - dy, 2);
+                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
             }
             // Check top-right corner
-            else if (dx >= boxWidth - cornerRadius && dy < cornerRadius) {
-                int distSquared = (dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + (cornerRadius - dy) * (cornerRadius - dy);
-                inCorner = distSquared > cornerRadius * cornerRadius;
+            else if (dx >= ssaaBoxWidth - ssaaCornerRadius && dy < ssaaCornerRadius) {
+                float distSquared = std::pow(dx - (ssaaBoxWidth - ssaaCornerRadius), 2) + std::pow(ssaaCornerRadius - dy, 2);
+                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
             }
             // Check bottom-left corner
-            else if (dx < cornerRadius && dy >= boxHeight - cornerRadius) {
-                int distSquared = (cornerRadius - dx) * (cornerRadius - dx) + (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
+            else if (dx < ssaaCornerRadius && dy >= ssaaBoxHeight - ssaaCornerRadius) {
+                float distSquared = std::pow(ssaaCornerRadius - dx, 2) + std::pow(dy - (ssaaBoxHeight - ssaaCornerRadius), 2);
+                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
             }
             // Check bottom-right corner
-            else if (dx >= boxWidth - cornerRadius && dy >= boxHeight - cornerRadius) {
-                int distSquared = (dx - (boxWidth - cornerRadius)) * (dx - (boxWidth - cornerRadius)) + (dy - (boxHeight - cornerRadius)) * (dy - (boxHeight - cornerRadius));
-                inCorner = distSquared > cornerRadius * cornerRadius;
+            else if (dx >= ssaaBoxWidth - ssaaCornerRadius && dy >= ssaaBoxHeight - ssaaCornerRadius) {
+                float distSquared = std::pow(dx - (ssaaBoxWidth - ssaaCornerRadius), 2) + std::pow(dy - (ssaaBoxHeight - ssaaCornerRadius), 2);
+                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
             }
             
-            int drawX = x + dx;
-            int drawY = y + dy;
+            int drawX = ssaaX + dx;
+            int drawY = ssaaY + dy;
             
-            if (!inCorner && drawX >= 0 && drawX < static_cast<int>(width) &&
-                drawY >= 0 && drawY < static_cast<int>(height)) {
+            if (!inCorner && drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 // Use blendPixel for proper alpha blending
                 blendPixel(drawX, drawY, currentBgColor, currentBgColor.a / 255.0f);
             }
@@ -1823,22 +1988,23 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
     
     // Add subtle inner highlight to top edge - exact 10% opacity from CSS
     RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x1A); // 10% white (0.1 * 255 = 26 ≈ 0x1A)
-    for (int dx = cornerRadius; dx < boxWidth - cornerRadius; dx++) {
-        int pixelX = x + dx;
-        int pixelY = y;
+    for (int dx = ssaaCornerRadius; dx < ssaaBoxWidth - ssaaCornerRadius; dx++) {
+        int pixelX = ssaaX + dx;
+        int pixelY = ssaaY;
         blendPixel(pixelX, pixelY, highlightColor, highlightColor.a / 255.0f);
     }
     
     // Add subtle drop shadow to bottom edge - exact 15% opacity from CSS
     RGBA shadowColor(0x00, 0x00, 0x00, 0x26); // 15% black (0.15 * 255 = 38 ≈ 0x26)
-    for (int dx = cornerRadius; dx < boxWidth - cornerRadius; dx++) {
-        int pixelX = x + dx;
-        int pixelY = y + boxHeight - 1;
+    for (int dx = ssaaCornerRadius; dx < ssaaBoxWidth - ssaaCornerRadius; dx++) {
+        int pixelX = ssaaX + dx;
+        int pixelY = ssaaY + ssaaBoxHeight - 1;
         blendPixel(pixelX, pixelY, shadowColor, shadowColor.a / 255.0f);
     }
     
     // Draw the text if provided
     if (!text.empty()) {
+        // Text position using original (non-supersampled) coordinates
         drawText(x + 15, y + boxHeight/2, text, elementColors["legend"], fontSize, false);
     }
 }
@@ -1865,7 +2031,7 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
         // Draw horizontal tick line with consistent styling
         if (i > 0) { // Skip duplicate line at bottom
             // Draw short tick mark with fine-tuned transparency
-            drawLine(margin_left - 6, y, margin_left, y, textColor, 1);
+            drawLine(scaleX(margin_left - 6), scaleY(y), scaleX(margin_left), scaleY(y), textColor, ssaaFactor);
             
             // Grid lines are drawn in drawGrid() to ensure visual consistency
         }
@@ -1905,7 +2071,9 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
         int x = margin_left + static_cast<int>(percentage * plotWidth);
         
         // Draw tick mark with consistent styling (grid lines drawn in drawGrid)
-        drawLine(x, height - margin_bottom, x, height - margin_bottom + 6, textColor, 1);
+        drawLine(scaleX(x), scaleY(height - margin_bottom), 
+                 scaleX(x), scaleY(height - margin_bottom + 6), 
+                 textColor, ssaaFactor);
         
         // Draw label with proper spacing and alignment from CSS
         int labelY = height - margin_bottom + 25; // More spacing as in CSS
@@ -1931,7 +2099,9 @@ void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, i
         double value = minValue + percentage * (maxValue - minValue);
         
         // Draw tick mark with consistent styling (grid lines are drawn in drawGrid)
-        drawLine(x, height - margin_bottom, x, height - margin_bottom + 6, textColor, 1);
+        drawLine(scaleX(x), scaleY(height - margin_bottom), 
+                 scaleX(x), scaleY(height - margin_bottom + 6), 
+                 textColor, ssaaFactor);
         
         // Format the value with consistent precision from CSS
         char valueText[32];
@@ -2205,7 +2375,9 @@ void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int
         // Draw vertical grid line at each major tick
         RGBA gridColor = elementColors["majorGrid"];
         gridColor.a = 0x70; // Semi-transparent
-        drawLine(x, margin_top, x, height - margin_bottom, gridColor, 1);
+        drawLine(scaleX(x), scaleY(margin_top), 
+                scaleX(x), scaleY(height - margin_bottom), 
+                gridColor, ssaaFactor);
         
         // Format timestamp into readable date
         char dateText[32];
@@ -2255,8 +2427,10 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
     int indicatorX = infoX + infoWidth - 30;
     int indicatorY = infoY + (infoHeight - indicatorSize) / 2;
     
-    // Draw filled rectangle with the appropriate color
-    drawRect(indicatorX, indicatorY, indicatorSize, indicatorSize, trendColor, true);
+    // Draw filled rectangle with the appropriate color - scale for supersampling
+    drawRect(scaleX(indicatorX), scaleY(indicatorY), 
+             scaleSize(indicatorSize), scaleSize(indicatorSize), 
+             trendColor, true);
 }
 
 void Cluster10::drawHistogramYAxis(int maxValue, int numTicks)
@@ -2273,6 +2447,11 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
     // Calculate start X position to center the bars - match histogram_with_labels.css
     int startX = margin_left + (getPlotWidth() - (totalBars * (barWidth + barSpacing) - barSpacing)) / 2;
     
+    // Scale dimensions for supersampling
+    int ssaaBarWidth = scaleSize(barWidth);
+    int ssaaBarSpacing = scaleSize(barSpacing);
+    int ssaaStartX = scaleX(startX);
+    
     // Use the exact color from histogram_with_labels.css - bright cyan
     RGBA barColor = themeColors[0]; // #5CE9FF - Bright cyan from CSS
     if (color.r != 0 || color.g != 0 || color.b != 0) {
@@ -2288,14 +2467,17 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
         // Ensure minimum height for visibility (exactly like histogram_with_labels.css)
         barHeight = std::max(barHeight, 8);
         
-        // Calculate bar position
-        int x = startX + i * (barWidth + barSpacing);
-        int y = height - margin_bottom - barHeight;
+        // Scale bar height for supersampling
+        int ssaaBarHeight = scaleSize(barHeight);
+        
+        // Calculate bar position (in supersampled coordinates)
+        int x = ssaaStartX + i * (ssaaBarWidth + ssaaBarSpacing);
+        int y = ssaaHeight - scaleY(margin_bottom) - ssaaBarHeight;
         
         // Draw the bar with a vertical gradient - matching CSS
-        for (int dy = 0; dy < barHeight; ++dy) {
+        for (int dy = 0; dy < ssaaBarHeight; ++dy) {
             // Calculate gradient position (0 at top, 1 at bottom)
-            float gradientPos = static_cast<float>(dy) / barHeight;
+            float gradientPos = static_cast<float>(dy) / ssaaBarHeight;
             
             // Adjust gradient to match the CSS: brighter at top, slightly darker at bottom
             // Using the non-linear gradient like in histogram_with_labels.css
@@ -2310,27 +2492,29 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
             );
             
             // Draw this row of the bar
-            for (int dx = 0; dx < barWidth; ++dx) {
+            for (int dx = 0; dx < ssaaBarWidth; ++dx) {
                 int drawX = x + dx;
                 int drawY = y + dy;
                 
-                if (drawX >= margin_left && drawX < width - margin_right &&
-                    drawY >= margin_top && drawY < height - margin_bottom) {
-                    image.SetPixel(drawX, drawY, gradientColor);
+                if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                    drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                    ssaaImage.SetPixel(drawX, drawY, gradientColor);
                 }
             }
         }
         
         // Add 3D effect with highlights and shadows (exactly like CSS)
-        drawHistogramBarHighlights(x, y, barWidth, barHeight);
+        drawHistogramBarHighlights(x, y, ssaaBarWidth, ssaaBarHeight);
         
         // Add bar value label on top of taller bars - similar to histogram_with_labels.css
         if (barHeight > 45) { // Only for sufficiently tall bars
             char valueText[16];
             std::sprintf(valueText, "%d", bins[i]);
             
-            // Position above the bar with proper spacing
-            drawText(x + barWidth / 2, y - 20, valueText, elementColors["legend"], 16, true);
+            // Position above the bar with proper spacing (use unscaled coordinates as drawText will scale)
+            drawText(startX + i * (barWidth + barSpacing) + barWidth / 2, 
+                    height - margin_bottom - barHeight - 20, 
+                    valueText, elementColors["legend"], 16, true);
         }
         
         // Add bottom label for bars - exactly like histogram_with_labels.css
@@ -2340,8 +2524,10 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
             std::sprintf(labelText, "%zu", i);
             RGBA labelColor = elementColors["axisLabel"];
             
-            // Exact positioning from CSS
-            drawText(x + barWidth / 2, height - margin_bottom + 20, labelText, labelColor, 14, true);
+            // Exact positioning from CSS (use unscaled coordinates as drawText will scale)
+            drawText(startX + i * (barWidth + barSpacing) + barWidth / 2, 
+                    height - margin_bottom + 20, 
+                    labelText, labelColor, 14, true);
         }
     }
 }
@@ -2349,13 +2535,14 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
 void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight)
 {
     // Enhanced styling for histogram bars to match CSS
+    // Note: x, y, barWidth, barHeight are already scaled for supersampling at this point
     
     // Colors for highlights and shadows - more pronounced
     RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x60); // Semi-transparent white (38% opacity)
     RGBA shadowColor(0x00, 0x00, 0x00, 0x60);    // Semi-transparent black (38% opacity)
     
     // Calculate highlight/shadow widths proportional to bar width
-    int edgeWidth = std::max(3, barWidth / 10);
+    int edgeWidth = std::max(3 * static_cast<int>(ssaaFactor), barWidth / 10);
     
     // Left edge highlight with gradient fade - brighter near edge
     for (int dy = 0; dy < barHeight; ++dy) {
@@ -2365,8 +2552,8 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + dx;
             int drawY = y + dy;
             
-            if (drawX >= margin_left && drawX < width - margin_right &&
-                drawY >= margin_top && drawY < height - margin_bottom) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelHighlight = highlightColor;
                 pixelHighlight.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelHighlight, alpha);
@@ -2382,8 +2569,8 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + barWidth - dx - 1;
             int drawY = y + dy;
             
-            if (drawX >= margin_left && drawX < width - margin_right &&
-                drawY >= margin_top && drawY < height - margin_bottom) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelShadow = shadowColor;
                 pixelShadow.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelShadow, alpha);
@@ -2393,7 +2580,7 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
     
     // Top edge highlight for 3D effect - subtle rounded top
     float topHighlightAlpha = 0.5f;
-    int topEdgeHeight = std::max(2, barHeight / 20);
+    int topEdgeHeight = std::max(2 * static_cast<int>(ssaaFactor), barHeight / 20);
     
     for (int dx = edgeWidth; dx < barWidth - edgeWidth; ++dx) {
         for (int dy = 0; dy < topEdgeHeight; ++dy) {
@@ -2402,8 +2589,8 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + dx;
             int drawY = y + dy;
             
-            if (drawX >= margin_left && drawX < width - margin_right &&
-                drawY >= margin_top && drawY < height - margin_bottom) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelHighlight = highlightColor;
                 pixelHighlight.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelHighlight, alpha);
@@ -2413,7 +2600,7 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
     
     // Bottom edge shadow for 3D effect - subtle rounded bottom
     float bottomShadowAlpha = 0.5f;
-    int bottomEdgeHeight = std::max(2, barHeight / 20);
+    int bottomEdgeHeight = std::max(2 * static_cast<int>(ssaaFactor), barHeight / 20);
     
     for (int dx = edgeWidth; dx < barWidth - edgeWidth; ++dx) {
         for (int dy = 0; dy < bottomEdgeHeight; ++dy) {
@@ -2422,8 +2609,8 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + dx;
             int drawY = y + barHeight - dy - 1;
             
-            if (drawX >= margin_left && drawX < width - margin_right &&
-                drawY >= margin_top && drawY < height - margin_bottom) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelShadow = shadowColor;
                 pixelShadow.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelShadow, alpha);
@@ -2442,8 +2629,8 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + i;
             int drawY = y + j;
             
-            if (drawX >= margin_left && drawX < width - margin_right &&
-                drawY >= margin_top && drawY < height - margin_bottom) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelHighlight = highlightColor;
                 pixelHighlight.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelHighlight, alpha);
@@ -2461,8 +2648,8 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
             int drawX = x + barWidth - i - 1;
             int drawY = y + barHeight - j - 1;
             
-            if (drawX >= margin_left && drawX < width - margin_right &&
-                drawY >= margin_top && drawY < height - margin_bottom) {
+            if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) &&
+                drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
                 RGBA pixelShadow = shadowColor;
                 pixelShadow.a = static_cast<unsigned char>(255 * alpha);
                 blendPixel(drawX, drawY, pixelShadow, alpha);
@@ -2474,75 +2661,147 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
 // Helper method to draw rounded corners for the grid border with anti-aliasing
 void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color)
 {
-    // Generate arc points for a quarter circle with high precision
-    std::vector<std::pair<float, float> > arcPoints;
+    // Note: input coordinates are already scaled for supersampling
     
-    // Use higher precision for smoother corners - generate at 0.01 radian steps
-    for (float angle = 0.0f; angle <= M_PI/2; angle += 0.01f) {
-        float x = radius * std::cos(angle);
-        float y = radius * std::sin(angle);
-        arcPoints.push_back(std::make_pair(x, y));
-    }
+    // Pre-calculate alpha value for consistent transparency
+    float baseAlpha = color.a / 255.0f;
     
-    // Pre-compute the full alpha value to ensure consistent transparency
-    float fullAlpha = color.a / 255.0f;
+    // Draw the four corners with sub-pixel precision for better quality
+    const float stepSize = 0.2f; // 0.2 pixel steps for accurate anti-aliasing
     
-    // Draw top-left corner arc with anti-aliasing
-    for (size_t i = 0; i < arcPoints.size(); i++) {
-        float fx = left + radius - arcPoints[i].first;
-        float fy = top + radius - arcPoints[i].second;
-        
-        // Draw with anti-aliasing - blend pixels at the borders
-        int ix = static_cast<int>(fx);
-        int iy = static_cast<int>(fy);
-        
-        // Only if within plot area
-        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
-            // Use consistent alpha with original color alpha channel
-            RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, fullAlpha);
+    // Top-left corner
+    for (float dy = 0; dy <= radius; dy += stepSize) {
+        for (float dx = 0; dx <= radius; dx += stepSize) {
+            // Calculate precise distance from corner
+            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
+            
+            // Apply anti-aliasing at the edge: 1.0 at border, fading over 1 pixel
+            float alpha = 0.0f;
+            if (dist <= radius + 1) {
+                if (dist > radius) {
+                    // Fade out over a 1-pixel border for anti-aliasing
+                    alpha = 1.0f - (dist - radius);
+                } else {
+                    // Full opacity inside the border
+                    alpha = 1.0f;
+                }
+                alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
+                
+                // Only draw if we have some opacity
+                if (alpha > 0.01f) {
+                    int px = static_cast<int>(left + radius - dx);
+                    int py = static_cast<int>(top + radius - dy);
+                    
+                    if (px >= 0 && px < static_cast<int>(ssaaWidth) && 
+                        py >= 0 && py < static_cast<int>(ssaaHeight)) {
+                        
+                        // Create color with calculated alpha
+                        RGBA pixelColor = color;
+                        pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
+                        
+                        // Blend with existing pixel
+                        RGBA existingColor = ssaaImage.GetPixel(px, py);
+                        RGBA blendedColor = blendRGBA(existingColor, pixelColor);
+                        ssaaImage.SetPixel(px, py, blendedColor);
+                    }
+                }
+            }
         }
     }
     
-    // Draw top-right corner arc with anti-aliasing
-    for (size_t i = 0; i < arcPoints.size(); i++) {
-        float fx = right - radius + arcPoints[i].first;
-        float fy = top + radius - arcPoints[i].second;
-        
-        int ix = static_cast<int>(fx);
-        int iy = static_cast<int>(fy);
-        
-        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
-            RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, fullAlpha);
+    // Top-right corner
+    for (float dy = 0; dy <= radius; dy += stepSize) {
+        for (float dx = 0; dx <= radius; dx += stepSize) {
+            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
+            
+            float alpha = 0.0f;
+            if (dist <= radius + 1) {
+                if (dist > radius) {
+                    alpha = 1.0f - (dist - radius);
+                } else {
+                    alpha = 1.0f;
+                }
+                alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
+                
+                if (alpha > 0.01f) {
+                    int px = static_cast<int>(right - radius + dx);
+                    int py = static_cast<int>(top + radius - dy);
+                    
+                    if (px >= 0 && px < static_cast<int>(ssaaWidth) && 
+                        py >= 0 && py < static_cast<int>(ssaaHeight)) {
+                        
+                        RGBA pixelColor = color;
+                        pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
+                        RGBA existingColor = ssaaImage.GetPixel(px, py);
+                        RGBA blendedColor = blendRGBA(existingColor, pixelColor);
+                        ssaaImage.SetPixel(px, py, blendedColor);
+                    }
+                }
+            }
         }
     }
     
-    // Draw bottom-left corner arc with anti-aliasing
-    for (size_t i = 0; i < arcPoints.size(); i++) {
-        float fx = left + radius - arcPoints[i].first;
-        float fy = bottom - radius + arcPoints[i].second;
-        
-        int ix = static_cast<int>(fx);
-        int iy = static_cast<int>(fy);
-        
-        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
-            RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, fullAlpha);
+    // Bottom-left corner
+    for (float dy = 0; dy <= radius; dy += stepSize) {
+        for (float dx = 0; dx <= radius; dx += stepSize) {
+            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
+            
+            float alpha = 0.0f;
+            if (dist <= radius + 1) {
+                if (dist > radius) {
+                    alpha = 1.0f - (dist - radius);
+                } else {
+                    alpha = 1.0f;
+                }
+                alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
+                
+                if (alpha > 0.01f) {
+                    int px = static_cast<int>(left + radius - dx);
+                    int py = static_cast<int>(bottom - radius + dy);
+                    
+                    if (px >= 0 && px < static_cast<int>(ssaaWidth) && 
+                        py >= 0 && py < static_cast<int>(ssaaHeight)) {
+                        
+                        RGBA pixelColor = color;
+                        pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
+                        RGBA existingColor = ssaaImage.GetPixel(px, py);
+                        RGBA blendedColor = blendRGBA(existingColor, pixelColor);
+                        ssaaImage.SetPixel(px, py, blendedColor);
+                    }
+                }
+            }
         }
     }
     
-    // Draw bottom-right corner arc with anti-aliasing
-    for (size_t i = 0; i < arcPoints.size(); i++) {
-        float fx = right - radius + arcPoints[i].first;
-        float fy = bottom - radius + arcPoints[i].second;
-        
-        int ix = static_cast<int>(fx);
-        int iy = static_cast<int>(fy);
-        
-        if (ix >= 0 && ix < static_cast<int>(width) && iy >= 0 && iy < static_cast<int>(height)) {
-            RGBA pixelColor = color;
-            blendPixel(ix, iy, pixelColor, fullAlpha);
+    // Bottom-right corner
+    for (float dy = 0; dy <= radius; dy += stepSize) {
+        for (float dx = 0; dx <= radius; dx += stepSize) {
+            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
+            
+            float alpha = 0.0f;
+            if (dist <= radius + 1) {
+                if (dist > radius) {
+                    alpha = 1.0f - (dist - radius);
+                } else {
+                    alpha = 1.0f;
+                }
+                alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
+                
+                if (alpha > 0.01f) {
+                    int px = static_cast<int>(right - radius + dx);
+                    int py = static_cast<int>(bottom - radius + dy);
+                    
+                    if (px >= 0 && px < static_cast<int>(ssaaWidth) && 
+                        py >= 0 && py < static_cast<int>(ssaaHeight)) {
+                        
+                        RGBA pixelColor = color;
+                        pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
+                        RGBA existingColor = ssaaImage.GetPixel(px, py);
+                        RGBA blendedColor = blendRGBA(existingColor, pixelColor);
+                        ssaaImage.SetPixel(px, py, blendedColor);
+                    }
+                }
+            }
         }
     }
 }
@@ -2599,24 +2858,58 @@ void Cluster10::drawLogo()
     const int maxLogoSize = 200;
     if (logoWidth > maxLogoSize || logoHeight > maxLogoSize) {
         // Scale down while maintaining aspect ratio
-        float scale = maxLogoSize / static_cast<float>(std::max(logoWidth, logoHeight));
+        float scale = maxLogoSize / static_cast<float>(std::max(static_cast<int>(logoWidth), static_cast<int>(logoHeight)));
         logoWidth = static_cast<int>(logoWidth * scale);
         logoHeight = static_cast<int>(logoHeight * scale);
     }
     
+    // Scale logo dimensions for supersampling
+    int ssaaLogoWidth = logoWidth * ssaaFactor;
+    int ssaaLogoHeight = logoHeight * ssaaFactor;
+    
     // Calculate position in top right with padding
-    int padX = 20;  // Padding from right edge
-    int padY = 20;  // Padding from top edge
-    int logoX = width - logoWidth - padX;
+    int padX = 20 * ssaaFactor;  // Scale padding for supersampling
+    int padY = 20 * ssaaFactor;
+    int logoX = ssaaWidth - ssaaLogoWidth - padX;
     int logoY = padY;
     
     // Draw the logo with alpha blending
-    for (int y = 0; y < logoHeight; ++y) {
-        for (int x = 0; x < logoWidth; ++x) {
-            // Get pixel from the logo
-            int srcX = static_cast<int>(x * (logoImage.getWidth() / static_cast<float>(logoWidth)));
-            int srcY = static_cast<int>(y * (logoImage.getHeight() / static_cast<float>(logoHeight)));
-            RGBA logoPixel = logoImage.GetPixel(srcX, srcY);
+    for (int y = 0; y < ssaaLogoHeight; ++y) {
+        for (int x = 0; x < ssaaLogoWidth; ++x) {
+            // Get pixel from the logo - use bilinear interpolation for smoother scaling
+            float srcX = x * (logoImage.getWidth() / static_cast<float>(ssaaLogoWidth));
+            float srcY = y * (logoImage.getHeight() / static_cast<float>(ssaaLogoHeight));
+            
+            // Bilinear interpolation
+            int x1 = static_cast<int>(srcX);
+            int y1 = static_cast<int>(srcY);
+            int x2 = x1 + 1;
+            int y2 = y1 + 1;
+            float xFrac = srcX - x1;
+            float yFrac = srcY - y1;
+            
+            // Clamp source coordinates - handle type mismatch with explicit casting
+            x1 = std::min(x1, static_cast<int>(logoImage.getWidth() - 1));
+            y1 = std::min(y1, static_cast<int>(logoImage.getHeight() - 1));
+            x2 = std::min(x2, static_cast<int>(logoImage.getWidth() - 1));
+            y2 = std::min(y2, static_cast<int>(logoImage.getHeight() - 1));
+            
+            // Get the four surrounding pixels
+            RGBA p11 = logoImage.GetPixel(x1, y1);
+            RGBA p21 = logoImage.GetPixel(x2, y1);
+            RGBA p12 = logoImage.GetPixel(x1, y2);
+            RGBA p22 = logoImage.GetPixel(x2, y2);
+            
+            // Interpolate to get the final color
+            RGBA logoPixel;
+            logoPixel.r = static_cast<unsigned char>((1-xFrac)*(1-yFrac)*p11.r + xFrac*(1-yFrac)*p21.r + 
+                                                    (1-xFrac)*yFrac*p12.r + xFrac*yFrac*p22.r);
+            logoPixel.g = static_cast<unsigned char>((1-xFrac)*(1-yFrac)*p11.g + xFrac*(1-yFrac)*p21.g + 
+                                                    (1-xFrac)*yFrac*p12.g + xFrac*yFrac*p22.g);
+            logoPixel.b = static_cast<unsigned char>((1-xFrac)*(1-yFrac)*p11.b + xFrac*(1-yFrac)*p21.b + 
+                                                    (1-xFrac)*yFrac*p12.b + xFrac*yFrac*p22.b);
+            logoPixel.a = static_cast<unsigned char>((1-xFrac)*(1-yFrac)*p11.a + xFrac*(1-yFrac)*p21.a + 
+                                                    (1-xFrac)*yFrac*p12.a + xFrac*yFrac*p22.a);
             
             // Skip fully transparent pixels
             if (logoPixel.a == 0) {
@@ -2628,8 +2921,8 @@ void Cluster10::drawLogo()
             int dstY = logoY + y;
             
             // Ensure we're within bounds
-            if (dstX >= 0 && dstX < static_cast<int>(width) && 
-                dstY >= 0 && dstY < static_cast<int>(height)) {
+            if (dstX >= 0 && dstX < static_cast<int>(ssaaWidth) && 
+                dstY >= 0 && dstY < static_cast<int>(ssaaHeight)) {
                 // Use alpha blending for proper transparency
                 float alpha = logoPixel.a / 255.0f;
                 blendPixel(dstX, dstY, logoPixel, alpha);

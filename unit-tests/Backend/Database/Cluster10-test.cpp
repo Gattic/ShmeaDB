@@ -9,13 +9,14 @@
 using namespace shmea;
 
 void shmea::testCluster10() {
-    printf("Testing Cluster10 visualization...\n");
+    printf("Testing Cluster10 visualization with supersampling...\n");
     
     // Seed random number generator with a fixed value for consistent output
     std::srand(42);
     
     // Create a Cluster10 instance specifically for cluster visualization
-    Cluster10 plotter(1800, 1000, 80, 80, 80, 80);
+    // Use 4x supersampling for high quality output
+    Cluster10 plotter(1800, 1000, 80, 80, 80, 80, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -90,10 +91,11 @@ void shmea::testCluster10() {
 }
 
 void shmea::testHistogram() {
-    printf("Testing enhanced histogram visualization from histogram.fig...\n");
+    printf("Testing enhanced histogram visualization from histogram.fig with supersampling...\n");
     
     // Create a Cluster10 instance optimized for histogram display
-    Cluster10 plotter(1800, 1000, 120, 100, 150, 120);
+    // Use 4x supersampling for high quality output
+    Cluster10 plotter(1800, 1000, 120, 100, 150, 120, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -129,7 +131,7 @@ void shmea::testHistogram() {
     printf("Histogram test completed. Output saved as 'histogram_test_output.png'.\n");
     
     // Create a second test with skewed distribution
-    Cluster10 plotter2(1800, 1000, 120, 100, 150, 120);
+    Cluster10 plotter2(1800, 1000, 120, 100, 150, 120, 4);
     
     // Set parameters
     plotter2.setShowGrid(true);
@@ -165,10 +167,11 @@ void shmea::testHistogram() {
 }
 
 void shmea::testCandlestickChart() {
-    printf("Testing candlestick chart visualization from candechart.fig...\n");
+    printf("Testing candlestick chart visualization from candechart.fig with supersampling...\n");
     
     // Create a Cluster10 instance optimized for candlestick chart display
-    Cluster10 plotter(1800, 1000, 120, 150, 150, 150);
+    // Use 4x supersampling for high quality output
+    Cluster10 plotter(1800, 1000, 120, 150, 150, 150, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -260,13 +263,14 @@ void shmea::testCandlestickChart() {
 
 // New function to test the line and scatter plots separately
 void shmea::testLineScatter() {
-    printf("Testing line and scatter plots...\n");
+    printf("Testing line and scatter plots with supersampling...\n");
     
     // Seed random number generator
     std::srand(43);  // Different seed than other tests
     
     // Create a Cluster10 instance for line and scatter plots
-    Cluster10 plotter(1800, 1000, 80, 80, 80, 80);
+    // Use 4x supersampling for high quality output
+    Cluster10 plotter(1800, 1000, 80, 80, 80, 80, 4);
     
     // Set parameters
     plotter.setShowGrid(true);

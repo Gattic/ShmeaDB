@@ -72,13 +72,15 @@ public:
     // Constructor/Destructor
     Cluster10(unsigned int width = DEFAULT_WIDTH, unsigned int height = DEFAULT_HEIGHT, 
               unsigned int margin_top = 60, unsigned int margin_right = 60, 
-              unsigned int margin_bottom = 60, unsigned int margin_left = 60);
+              unsigned int margin_bottom = 60, unsigned int margin_left = 60,
+              unsigned int ssaa_factor = 2);
     ~Cluster10();
     
     // Basic controls
     void setShowGrid(bool show);
     void setShowAxes(bool show);
     void setCornerRadius(int radius);
+    void setSuperSamplingFactor(unsigned int factor);
     
     // Chart visualization methods
     void plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize = 8);
@@ -109,9 +111,13 @@ private:
     //==================== MEMBER VARIABLES ====================//
     
     // Image and dimensions
-    Image image;
-    unsigned int width;
-    unsigned int height;
+    Image image;                // Final output image
+    Image ssaaImage;            // Supersampled working image for anti-aliasing
+    unsigned int width;         // Final output width
+    unsigned int height;        // Final output height
+    unsigned int ssaaWidth;     // Width of supersampled image
+    unsigned int ssaaHeight;    // Height of supersampled image
+    unsigned int ssaaFactor;    // Supersampling factor (2x, 4x, etc.)
     unsigned int margin_top;
     unsigned int margin_right;
     unsigned int margin_bottom;
@@ -147,6 +153,12 @@ private:
     
     // Initialize font system
     void initialize_font(const std::string fontPath = "fonts/font.ttf");
+    
+    // Initialize supersampling buffers
+    void initializeSuperSampling();
+    
+    // Downsample supersampled image to final resolution
+    void downsampleToOutput();
     
     //==================== BASIC DRAWING METHODS ====================//
     
@@ -313,6 +325,13 @@ private:
     
     // Get the height of the plotting area
     int getPlotHeight() const { return height - margin_top - margin_bottom; }
+    
+    // Convert coordinates from output space to supersampled space
+    inline int scaleX(int x) const { return x * ssaaFactor; }
+    inline int scaleY(int y) const { return y * ssaaFactor; }
+    
+    // Convert dimensions from output space to supersampled space
+    inline int scaleSize(int size) const { return size * ssaaFactor; }
 };
 
 } // namespace shmea
