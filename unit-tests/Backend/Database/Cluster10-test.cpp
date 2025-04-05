@@ -19,7 +19,7 @@ void shmea::testCluster10() {
     
     // Set parameters
     plotter.setShowGrid(true);
-    plotter.setShowAxes(true);
+    plotter.setShowAxes(false);
     plotter.setCornerRadius(15);
     
     // Create 3 well-defined clusters that match the image
@@ -94,7 +94,7 @@ void shmea::testHistogram() {
     
     // Set parameters
     plotter.setShowGrid(true);
-    plotter.setShowAxes(true);
+    plotter.setShowAxes(false);
     plotter.setCornerRadius(15);
     
     // Add title
@@ -127,7 +127,7 @@ void shmea::testHistogram() {
     
     // Set parameters
     plotter2.setShowGrid(true);
-    plotter2.setShowAxes(true);
+    plotter2.setShowAxes(false);
     plotter2.setCornerRadius(15);
     
     // Add title
@@ -163,7 +163,7 @@ void shmea::testCandlestickChart() {
     
     // Set parameters
     plotter.setShowGrid(true);
-    plotter.setShowAxes(true);
+    plotter.setShowAxes(false);
     plotter.setCornerRadius(15);
     
     // Add title
