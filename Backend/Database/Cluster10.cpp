@@ -785,9 +785,10 @@ void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLab
     setYAxisLabel(yLabel);
     
     // Draw X-axis label centered below the X-axis
+    // Increase fontSize by 30% for better mobile visibility
     int xLabelX = margin_left + getPlotWidth() / 2;
     int xLabelY = height - margin_bottom / 2;
-    drawText(xLabelX, xLabelY, xLabel, textColor, fontSize, true);
+    drawText(xLabelX, xLabelY, xLabel, textColor, fontSize * 1.3, true);
 }
 
 void Cluster10::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, int x, int y, unsigned int fontSize)
@@ -979,8 +980,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         return;
     }
     
-    // Create a chart configuration
-    ChartConfig config("Cluster Analysis", 36, "Feature X", "Feature Y");
+    // Create a chart configuration with increased font size for mobile
+    ChartConfig config("Cluster Analysis", 36, "Feature X", "Feature Y", 32);
     
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
@@ -1023,7 +1024,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         }
     }
     
-    // Add axis labels
+    // Add axis labels with increased font size
     drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
     drawVerticalText(config.yAxisLabel, margin_left/4, height/2 - 70, config.axisFontSize, elementColors["axisLabel"]);
     
@@ -1041,9 +1042,11 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Calculate optimal point size based on data density
     int pointSize = 6;  // Default size
     if (data.size() < 50) {
-        pointSize = 8;  // Larger points for small datasets
+        pointSize = 10;  // Larger points for small datasets and better mobile visibility
     } else if (data.size() > 200) {
-        pointSize = 4;  // Smaller points for large datasets
+        pointSize = 5;  // Smaller points for large datasets
+    } else {
+        pointSize = 8;  // Medium datasets get slightly larger points for mobile
     }
     
     // First, prepare cluster boundaries using data coordinates
@@ -2051,7 +2054,8 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
         }
         
         // Draw value label with proper spacing from CSS
-        drawText(margin_left - labelOffset, y, valueText, textColor, 16, true);
+        // Increased font size from 16 to 24 for better mobile readability
+        drawText(margin_left - labelOffset, y, valueText, textColor, 24, true);
     }
 }
 
@@ -2081,7 +2085,8 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
         
         // Draw label with proper spacing and alignment from CSS
         int labelY = height - margin_bottom + 25; // More spacing as in CSS
-        drawText(x, labelY, labels[i], textColor, 14, true);
+        // Increased font size from 14 to 22 for better mobile readability
+        drawText(x, labelY, labels[i], textColor, 22, true);
     }
 }
 
@@ -2115,7 +2120,8 @@ void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, i
         
         // Draw value label with proper spacing and alignment from CSS
         int labelY = height - margin_bottom + 25; // More spacing as in CSS
-        drawText(x, labelY, valueText, textColor, 14, true);
+        // Increased font size from 14 to 22 for better mobile readability
+        drawText(x, labelY, valueText, textColor, 22, true);
     }
 }
 
@@ -2153,7 +2159,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     }
     
     // Create a chart configuration with histogram styling
-    ChartConfig config("Data Distribution", 42, "Value", "Frequency");
+    // Increase axis font size for better mobile readability
+    ChartConfig config("Data Distribution", 42, "Value", "Frequency", 32);
     
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
@@ -2229,8 +2236,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
         useBearishColor = elementColors["bearish"];
     }
     
-    // Create a chart configuration
-    ChartConfig config("Financial Data Analysis", 36, "Date", "Price");
+    // Create a chart configuration with increased font size for mobile
+    ChartConfig config("Financial Data Analysis", 36, "Date", "Price", 32);
     
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
@@ -2425,7 +2432,7 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
     int infoY = margin_top + 20;
     
     // Draw the info box
-    drawInfoBox(infoX, infoY, infoWidth, infoHeight, priceInfo, 16);
+    drawInfoBox(infoX, infoY, infoWidth, infoHeight, priceInfo, 22); // Increased font size from 16 to 22
     
     // Add a small colored indicator box to show trend
     int indicatorSize = 8;
@@ -2823,8 +2830,8 @@ void Cluster10::setYAxisLabel(const std::string& label)
     int labelX = margin_left / 3; // Positioned closer to the left edge
     int labelY = margin_top + getPlotHeight() / 2; // Center vertically
     
-    // Draw rotated label
-    drawVerticalText(yAxisLabel, labelX, labelY, 16, textColor);
+    // Draw rotated label with increased font size for mobile readability
+    drawVerticalText(yAxisLabel, labelX, labelY, 24, textColor); // Increased from 16 to 24
 }
 
 // Load logo image from a file

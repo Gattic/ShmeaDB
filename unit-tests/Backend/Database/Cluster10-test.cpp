@@ -105,8 +105,8 @@ void shmea::testHistogram() {
     // Load the logo
     plotter.loadLogo("logo.png");
     
-    // Add title
-    plotter.addTitle("Enhanced Histogram Visualization", 42);
+    // Add title with increased font size
+    plotter.addTitle("Enhanced Histogram Visualization", 48);
     
     // Create a bell curve-like distribution
     std::vector<int> bellCurve;
@@ -141,8 +141,8 @@ void shmea::testHistogram() {
     // Load the logo
     plotter2.loadLogo("logo.png");
     
-    // Add title
-    plotter2.addTitle("Skewed Distribution Histogram", 42);
+    // Add title with increased font size
+    plotter2.addTitle("Skewed Distribution Histogram", 48);
     
     // Create a right-skewed distribution
     std::vector<int> skewedDist;
@@ -181,8 +181,8 @@ void shmea::testCandlestickChart() {
     // Load the logo
     plotter.loadLogo("logo.png");
     
-    // Add title
-    plotter.addTitle("Stock Price Candlestick Chart", 42);
+    // Add title with increased font size
+    plotter.addTitle("Stock Price Candlestick Chart", 48);
     
     // Create sample candlestick data with a realistic price pattern
     std::vector<Cluster10::CandleData> candleData;
@@ -306,8 +306,8 @@ void shmea::testLineScatter() {
         scatterData.push_back(p);
     }
     
-    // Plot scatter points with orange color for contrast
-    plotter.plotPoints(scatterData, RGBA(0xFF, 0x6B, 0x00, 0xFF), 7);
+    // Plot scatter points with orange color for contrast - increase point size for mobile
+    plotter.plotPoints(scatterData, RGBA(0xFF, 0x6B, 0x00, 0xFF), 10);
     
     // Add a legend
     std::vector<std::string> legendLabels;
@@ -318,11 +318,11 @@ void shmea::testLineScatter() {
     legendColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));
     legendColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));
     
-    // Position the legend
-    plotter.addLegend(legendLabels, legendColors, 1600, 100, 18);
+    // Position the legend with increased font size
+    plotter.addLegend(legendLabels, legendColors, 1600, 100, 24);
     
-    // Add title at the end to avoid duplicates
-    plotter.addTitle("Line & Scatter Plot Visualization", 36);
+    // Add title at the end to avoid duplicates - larger font size for better readability
+    plotter.addTitle("Line & Scatter Plot Visualization", 46);
     
     // Save the result
     plotter.saveAsPNG("line_scatter_test_output.png", ".");
