@@ -990,6 +990,32 @@ void Cluster10::setCornerRadius(int radius)
     drawBackground();
 }
 
+// Helper for creating cluster legends
+void Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y)
+{
+    std::vector<std::string> legendLabels;
+    std::vector<RGBA> legendColors;
+    
+    // Add cluster entries
+    for (int i = 0; i < numClusters; ++i) {
+        char label[32];
+        std::sprintf(label, "Cluster %d", i);
+        legendLabels.push_back(label);
+        
+        // Use fully opaque colors for the legend dots
+        RGBA legendColor = clusterColors[i];
+        legendColor.a = 0xFF; // Full opacity for legend dots
+        legendColors.push_back(legendColor);
+    }
+    
+    // Add the centroid legend item
+    legendLabels.push_back("Centroid");
+    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // Fully opaque
+    
+    // Add the legend to the visualization using our fixed method
+    addLegend(legendLabels, legendColors, x, y, 16);
+}
+
 // Plot clusters with centroids
 void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, const std::vector<int>& labels, 
                            const std::vector<std::vector<double> >& centroids)
@@ -1011,8 +1037,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
     
-    // Add title at the very top after prepareCanvas, but move it down slightly
-    int titleY = 30; // Increased from 20 to 30 to move it down
+    // Add title at the very top after prepareCanvas
+    int titleY = 20;
     drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
     
     // Find number of unique clusters
@@ -1037,11 +1063,11 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         clusterColors.push_back(themeColors[i % themeColors.size()]);
     }
     
-    // Calculate space for extremely tight layout - boxes almost touch the title
-    int titleHeight = config.titleFontSize - 10; // Even larger negative adjustment
+    // Calculate space needed for the title
+    int titleHeight = config.titleFontSize + 10;
     
-    // Position legend with extreme overlap - almost on top of the title
-    int legendY = titleY + titleHeight - 20; // More aggressive negative offset
+    // Position the legend right below the title with minimal spacing
+    int legendY = titleY + titleHeight + 5;
     
     // Estimate legend height before drawing it
     std::vector<std::string> tempLegendLabels;
@@ -2251,15 +2277,15 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
     
-    // Add title at the very top after prepareCanvas, but moved slightly down
-    int titleY = 30; // Increased from 20 to 30 to move it down
+    // Add title at the very top after prepareCanvas
+    int titleY = 20;
     drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
     
-    // Calculate space for extremely tight layout - boxes almost touch the title
-    int titleHeight = config.titleFontSize - 10; // Even larger negative adjustment
+    // Calculate space needed for the title
+    int titleHeight = config.titleFontSize + 10;
     
-    // Position legend with extreme overlap - almost on top of the title
-    int legendY = titleY + titleHeight - 20; // More aggressive negative offset
+    // Position the legend right below the title with minimal spacing
+    int legendY = titleY + titleHeight + 5;
     
     // Create our legend labels
     std::vector<std::string> legendLabels;
@@ -2354,8 +2380,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
     
-    // Add title at the very top after prepareCanvas, but moved slightly down
-    int titleY = 30; // Increased from 20 to 30 to move it down
+    // Add title at the very top after prepareCanvas
+    int titleY = 20;
     drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
     
     // Create legend labels and colors
@@ -2373,11 +2399,11 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     legendColors.push_back(bullishLegendColor);
     legendColors.push_back(bearishLegendColor);
     
-    // Calculate space for extremely tight layout - boxes almost touch the title
-    int titleHeight = config.titleFontSize - 10; // Even larger negative adjustment
+    // Calculate space needed for the title
+    int titleHeight = config.titleFontSize + 10;
     
-    // Position legend with extreme overlap - almost on top of the title
-    int legendY = titleY + titleHeight - 20; // More aggressive negative offset
+    // Position the legend right below the title with minimal spacing
+    int legendY = titleY + titleHeight + 5;
     
     // Estimate legend height
     int estimatedLegendHeight = calculateInfoBoxHeight(legendLabels, 16);

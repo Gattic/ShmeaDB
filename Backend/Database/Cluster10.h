@@ -98,7 +98,7 @@ public:
     // Text and label methods
     void addTitle(const std::string& text, unsigned int fontSize = 36);
     void addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize = 24);
-    void addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, 
+    int addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, 
                   int x, int y, unsigned int fontSize = 18);
     
     // Save methods
@@ -260,6 +260,7 @@ private:
     
     // Draw statistics box for histogram
     void drawHistogramStats(const std::vector<int>& bins, int maxBinValue);
+    void drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int originalTopMargin);
     
     // Draw candlestick chart X-axis with dates
     void drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
@@ -271,9 +272,12 @@ private:
     // Draw price info box for candlestick chart
     void drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
                                 const RGBA& bullishColor, const RGBA& bearishColor);
+    void drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
+                                const RGBA& bullishColor, const RGBA& bearishColor,
+                                int originalTopMargin);
     
     // Create cluster visualization legend
-    void createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y);
+    int createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y);
     
     // Calculate cluster boundaries for visualization
     void calculateClusterBounds(
@@ -335,6 +339,9 @@ private:
     
     // Convert dimensions from output space to supersampled space
     inline int scaleSize(int size) const { return size * ssaaFactor; }
+
+    // Calculate height needed for info boxes
+    int calculateInfoBoxHeight(const std::vector<std::string>& labels, unsigned int fontSize);
 };
 
 } // namespace shmea
