@@ -983,6 +983,10 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Create a chart configuration with increased font size for mobile
     ChartConfig config("Cluster Analysis", 36, "Feature X", "Feature Y", 32);
     
+    // Temporarily increase right margin to accommodate Y-axis labels
+    unsigned int originalRightMargin = margin_right;
+    margin_right = 180; // Increased from 120 to 180 for even more space
+    
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
     
@@ -1030,7 +1034,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     
     // Draw axis ticks using our helper methods
     drawXAxisTicks(xRange.min, xRange.max, 4, 1);
-    drawYAxisTicks(yRange.min, yRange.max, 3, false, 1, 25);
+    drawYAxisTicks(yRange.min, yRange.max, 3, false, 1, 50);
     
     // Structure to store points for each cluster
     std::vector<std::vector<std::pair<int, int> > > clusterPoints;
@@ -1088,11 +1092,14 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Draw cluster labels
     drawClusterLabels(clusterCenters, clusterPoints, clusterColors);
     
-    // Add the legend
-    createClusterLegend(clusterColors, numClusters, width - margin_right - 150, margin_top + 15);
+    // Add the legend - adjusted for wider right margin
+    createClusterLegend(clusterColors, numClusters, width - margin_right - 80, margin_top + 15);
     
     // Add title at the end to prevent duplication
     addTitle(config.title, config.titleFontSize);
+    
+    // Restore original margin
+    margin_right = originalRightMargin;
 }
 
 // Helper method to calculate cluster bounds
@@ -2037,8 +2044,10 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
         
         // Draw horizontal tick line with consistent styling
         if (i > 0) { // Skip duplicate line at bottom
-            // Draw short tick mark with fine-tuned transparency
-            drawLine(scaleX(margin_left - 6), scaleY(y), scaleX(margin_left), scaleY(y), textColor, ssaaFactor);
+            // Draw tick mark at right side of the graph
+            drawLine(scaleX(width - margin_right), scaleY(y), 
+                     scaleX(width - margin_right + 6), scaleY(y), 
+                     textColor, ssaaFactor);
             
             // Grid lines are drawn in drawGrid() to ensure visual consistency
         }
@@ -2053,9 +2062,9 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
             std::sprintf(valueText, formatStr, value);
         }
         
-        // Draw value label with proper spacing from CSS
-        // Increased font size from 16 to 24 for better mobile readability
-        drawText(margin_left - labelOffset, y, valueText, textColor, 24, true);
+        // Draw value label on the right side of the graph
+        // Increased font size for better mobile readability
+        drawText(width - margin_right + labelOffset, y, valueText, textColor, 24, false);
     }
 }
 
@@ -2162,6 +2171,10 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Increase axis font size for better mobile readability
     ChartConfig config("Data Distribution", 42, "Value", "Frequency", 32);
     
+    // Temporarily increase right margin to accommodate Y-axis labels
+    unsigned int originalRightMargin = margin_right;
+    margin_right = 180; // Increased from 120 to 180 for even more space
+    
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
     
@@ -2188,7 +2201,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     barSpacing = std::max(barSpacing, 30); // Generous spacing as in CSS
     
     // Draw Y-axis with value labels - more ticks for better scale
-    drawYAxisTicks(0, maxBinValue, 5, true, 0, 25);
+    drawYAxisTicks(0, maxBinValue, 5, true, 0, 50);
     
     // Draw histogram bars
     drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, useColor);
@@ -2214,6 +2227,9 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     
     // Now add the title separately - after all other elements are drawn
     addTitle(config.title, config.titleFontSize);
+    
+    // Restore original margin
+    margin_right = originalRightMargin;
 }
 
 void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles, 
@@ -2238,6 +2254,10 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     
     // Create a chart configuration with increased font size for mobile
     ChartConfig config("Financial Data Analysis", 36, "Date", "Price", 32);
+    
+    // Temporarily increase right margin to accommodate Y-axis labels
+    unsigned int originalRightMargin = margin_right;
+    margin_right = 220; // Increased from 120 to 220 for candlestick charts which have longer decimal values
     
     // Initialize chart with background, grid, etc. but no title yet
     prepareCanvas();
@@ -2288,7 +2308,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     candleSpacing = std::max(candleSpacing, 6);
     
     // Draw Y-axis with price labels
-    drawCandlestickYAxis(minPrice, maxPrice, 3);
+    drawCandlestickYAxis(minPrice, maxPrice, 5); // Increased from 3 to 5 ticks
     
     // Draw X-axis with date labels
     drawCandlestickXAxis(candles, maxVisibleCandles, totalCandles, firstTimestamp, lastTimestamp);
@@ -2349,20 +2369,23 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     legendColors.push_back(bullishLegendColor);
     legendColors.push_back(bearishLegendColor);
     
-    // Position the legend in the top-right corner
-    addLegend(legendLabels, legendColors, width - margin_right - 180, margin_top + 15, 16);
+    // Position the legend in the top-right corner - adjusted for wider right margin
+    addLegend(legendLabels, legendColors, width - margin_right - 80, margin_top + 15, 16);
     
     // Now add the title separately - after all other elements are drawn
     addTitle(config.title, config.titleFontSize);
+    
+    // Restore original margin
+    margin_right = originalRightMargin;
 }
 
 void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks)
 {
-    // Use exactly 3 ticks with consistent spacing
-    numTicks = 3;
+    // Use exactly 5 ticks with consistent spacing for better distribution 
+    numTicks = 5;
     
-    // Use our common Y-axis method with 2 decimal places and increased font size
-    drawYAxisTicks(minPrice, maxPrice, numTicks, false, 2, 35);
+    // Use our common Y-axis method with 2 decimal places and increased font size and offset
+    drawYAxisTicks(minPrice, maxPrice, numTicks, false, 2, 70);
 }
 
 void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
@@ -2829,6 +2852,7 @@ void Cluster10::setYAxisLabel(const std::string& label)
     textColor.a = 0xCC; // 80% opacity for readability
     
     // Position for the Y-axis label - adjusted for rotated text
+    // Keep the Y-axis label on the left side
     int labelX = margin_left / 3; // Positioned closer to the left edge
     int labelY = margin_top + getPlotHeight() / 2; // Center vertically
     
