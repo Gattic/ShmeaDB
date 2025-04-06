@@ -2361,8 +2361,8 @@ void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTi
     // Use exactly 3 ticks with consistent spacing
     numTicks = 3;
     
-    // Use our common Y-axis method with 2 decimal places
-    drawYAxisTicks(minPrice, maxPrice, numTicks, false, 2, 30);
+    // Use our common Y-axis method with 2 decimal places and increased font size
+    drawYAxisTicks(minPrice, maxPrice, numTicks, false, 2, 35);
 }
 
 void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
@@ -2397,8 +2397,8 @@ void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int
         struct tm* timeinfo = std::localtime(&time);
         std::strftime(dateText, sizeof(dateText), "%m/%d", timeinfo);
         
-        // Draw date label
-        drawText(x, height - margin_bottom + 20, dateText, elementColors["axisLabel"], 14, true);
+        // Draw date label with increased font size for mobile readability
+        drawText(x, height - margin_bottom + 20, dateText, elementColors["axisLabel"], 24, true);
     }
 }
 
@@ -2447,8 +2447,8 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
 
 void Cluster10::drawHistogramYAxis(int maxValue, int numTicks)
 {
-    // Use our common Y-axis method with integer values
-    drawYAxisTicks(0, maxValue, numTicks, true, 0, 25);
+    // Use our common Y-axis method with integer values and increased font size
+    drawYAxisTicks(0, maxValue, numTicks, true, 0, 35);
 }
 
 void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue, int totalBars, 
@@ -2524,9 +2524,10 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
             std::sprintf(valueText, "%d", bins[i]);
             
             // Position above the bar with proper spacing (use unscaled coordinates as drawText will scale)
+            // Increased font size from 16 to 22 for better mobile readability
             drawText(startX + i * (barWidth + barSpacing) + barWidth / 2, 
                     height - margin_bottom - barHeight - 20, 
-                    valueText, elementColors["legend"], 16, true);
+                    valueText, elementColors["legend"], 22, true);
         }
         
         // Add bottom label for bars - exactly like histogram_with_labels.css
@@ -2537,9 +2538,10 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
             RGBA labelColor = elementColors["axisLabel"];
             
             // Exact positioning from CSS (use unscaled coordinates as drawText will scale)
+            // Increased font size from 14 to 24 for better mobile readability
             drawText(startX + i * (barWidth + barSpacing) + barWidth / 2, 
                     height - margin_bottom + 20, 
-                    labelText, labelColor, 14, true);
+                    labelText, labelColor, 24, true);
         }
     }
 }
