@@ -767,11 +767,12 @@ void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& colo
 
 void Cluster10::addTitle(const std::string& text, unsigned int fontSize)
 {
-    // Position title at the top center of the image
-    int x = width / 2;
+    // Position title at the top left of the image with some padding
+    int x = margin_left;
     int y = margin_top / 2;
     
-    drawText(x, y, text, elementColors["title"], fontSize, true);
+    // Use left alignment (false for centerAligned parameter)
+    drawText(x, y, text, elementColors["title"], fontSize, false);
 }
 
 void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize)
