@@ -15,7 +15,7 @@
 #include "Backend/Networking/crypt-test.h"
 #include "Backend/Database/GVector-test.h"
 #include "Backend/Database/image-test.h"
-#include "Backend/Database/Cluster10-test.h"
+#include "Backend/Plotter/plotter-test.h"
 
 int main(int argc, char* argv[])
 {
@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	//GObjectsUnitTest();
 	CryptUnitTest();
 	ImageUnitTest();
-	shmea::testCluster10();
+	shmea::testCluster();
 	shmea::testHistogram();
 	shmea::testCandlestickChart();
 	shmea::testLineScatter();

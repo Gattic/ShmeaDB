@@ -1,5 +1,5 @@
-#include "Cluster10-test.h"
-#include "../../../Backend/Database/Cluster10.h"
+#include "plotter-test.h"
+#include "../../../Backend/Plotter/plotter.h"
 #include <vector>
 #include <cstdlib>
 #include <ctime>
@@ -8,15 +8,15 @@
 
 using namespace shmea;
 
-void shmea::testCluster10() {
-    printf("Testing Cluster10 visualization with supersampling...\n");
+void shmea::testCluster() {
+    printf("Testing Cluster visualization with supersampling...\n");
     
     // Seed random number generator with a fixed value for consistent output
     std::srand(42);
     
-    // Create a Cluster10 instance specifically for cluster visualization
+    // Create a Plotter instance specifically for cluster visualization
     // Use 4x supersampling for high quality output
-    Cluster10 plotter(1800, 1000, 80, 80, 80, 80, 4);
+    Plotter plotter(1800, 1000, 80, 80, 80, 80, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -85,17 +85,17 @@ void shmea::testCluster10() {
     plotter.plotClusters(clusterData, clusterLabels, centroids);
     
     // Save the result
-    plotter.saveAsPNG("cluster10_test_output.png", ".");
+    plotter.saveAsPNG("cluster_test_output.png", ".");
     
-    printf("Cluster10 test completed. Output saved as 'cluster10_test_output.png'.\n");
+    printf("Cluster test completed. Output saved as 'cluster_test_output.png'.\n");
 }
 
 void shmea::testHistogram() {
     printf("Testing enhanced histogram visualization from histogram.fig with supersampling...\n");
     
-    // Create a Cluster10 instance optimized for histogram display
+    // Create a Plotter instance optimized for histogram display
     // Use 4x supersampling for high quality output
-    Cluster10 plotter(1800, 1000, 120, 100, 150, 120, 4);
+    Plotter plotter(1800, 1000, 120, 100, 150, 120, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -131,7 +131,7 @@ void shmea::testHistogram() {
     printf("Histogram test completed. Output saved as 'histogram_test_output.png'.\n");
     
     // Create a second test with skewed distribution
-    Cluster10 plotter2(1800, 1000, 120, 100, 150, 120, 4);
+    Plotter plotter2(1800, 1000, 120, 100, 150, 120, 4);
     
     // Set parameters
     plotter2.setShowGrid(true);
@@ -169,9 +169,9 @@ void shmea::testHistogram() {
 void shmea::testCandlestickChart() {
     printf("Testing candlestick chart visualization from candechart.fig with supersampling...\n");
     
-    // Create a Cluster10 instance optimized for candlestick chart display
+    // Create a Plotter instance optimized for candlestick chart display
     // Use 4x supersampling for high quality output
-    Cluster10 plotter(1800, 1000, 120, 150, 150, 150, 4);
+    Plotter plotter(1800, 1000, 120, 150, 150, 150, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -185,7 +185,7 @@ void shmea::testCandlestickChart() {
     plotter.addTitle("Stock Price Candlestick Chart", 48);
     
     // Create sample candlestick data with a realistic price pattern
-    std::vector<Cluster10::CandleData> candleData;
+    std::vector<Plotter::CandleData> candleData;
     
     // Starting price and timestamp
     double basePrice = 142.50;
@@ -193,63 +193,63 @@ void shmea::testCandlestickChart() {
     
     // Create a series of candles with realistic price movements
     // Day 1
-    candleData.push_back(Cluster10::CandleData(timestamp, 142.50, 143.80, 144.20, 142.10));
+    candleData.push_back(Plotter::CandleData(timestamp, 142.50, 143.80, 144.20, 142.10));
     timestamp += 86400; // add a day
     
     // Day 2 - uptrend
-    candleData.push_back(Cluster10::CandleData(timestamp, 143.90, 145.20, 145.60, 143.70));
+    candleData.push_back(Plotter::CandleData(timestamp, 143.90, 145.20, 145.60, 143.70));
     timestamp += 86400;
     
     // Day 3 - continued uptrend
-    candleData.push_back(Cluster10::CandleData(timestamp, 145.30, 147.80, 148.10, 144.90));
+    candleData.push_back(Plotter::CandleData(timestamp, 145.30, 147.80, 148.10, 144.90));
     timestamp += 86400;
     
     // Day 4 - reversal day (bearish)
-    candleData.push_back(Cluster10::CandleData(timestamp, 148.00, 146.30, 149.20, 146.00));
+    candleData.push_back(Plotter::CandleData(timestamp, 148.00, 146.30, 149.20, 146.00));
     timestamp += 86400;
     
     // Day 5 - continued downtrend
-    candleData.push_back(Cluster10::CandleData(timestamp, 146.20, 144.50, 146.40, 144.30));
+    candleData.push_back(Plotter::CandleData(timestamp, 146.20, 144.50, 146.40, 144.30));
     timestamp += 86400;
     
     // Day 6 - stabilizing
-    candleData.push_back(Cluster10::CandleData(timestamp, 144.60, 145.10, 145.70, 144.10));
+    candleData.push_back(Plotter::CandleData(timestamp, 144.60, 145.10, 145.70, 144.10));
     timestamp += 86400;
     
     // Day 7 - small bullish candle
-    candleData.push_back(Cluster10::CandleData(timestamp, 145.20, 146.40, 146.70, 144.90));
+    candleData.push_back(Plotter::CandleData(timestamp, 145.20, 146.40, 146.70, 144.90));
     timestamp += 86400;
     
     // Day 8 - gap up
-    candleData.push_back(Cluster10::CandleData(timestamp, 147.10, 149.30, 149.80, 146.80));
+    candleData.push_back(Plotter::CandleData(timestamp, 147.10, 149.30, 149.80, 146.80));
     timestamp += 86400;
     
     // Day 9 - high volume bullish candle
-    candleData.push_back(Cluster10::CandleData(timestamp, 149.40, 153.20, 153.80, 149.00));
+    candleData.push_back(Plotter::CandleData(timestamp, 149.40, 153.20, 153.80, 149.00));
     timestamp += 86400;
     
     // Day 10 - profit taking (bearish)
-    candleData.push_back(Cluster10::CandleData(timestamp, 153.30, 151.80, 154.00, 151.20));
+    candleData.push_back(Plotter::CandleData(timestamp, 153.30, 151.80, 154.00, 151.20));
     timestamp += 86400;
     
     // Day 11 - consolidation (small candle)
-    candleData.push_back(Cluster10::CandleData(timestamp, 151.90, 152.20, 152.90, 151.40));
+    candleData.push_back(Plotter::CandleData(timestamp, 151.90, 152.20, 152.90, 151.40));
     timestamp += 86400;
     
     // Day 12 - breakdown (large bearish)
-    candleData.push_back(Cluster10::CandleData(timestamp, 152.10, 148.70, 152.30, 148.20));
+    candleData.push_back(Plotter::CandleData(timestamp, 152.10, 148.70, 152.30, 148.20));
     timestamp += 86400;
     
     // Day 13 - continued selling
-    candleData.push_back(Cluster10::CandleData(timestamp, 148.60, 146.90, 149.10, 146.50));
+    candleData.push_back(Plotter::CandleData(timestamp, 148.60, 146.90, 149.10, 146.50));
     timestamp += 86400;
     
     // Day 14 - bottoming (hammer candle)
-    candleData.push_back(Cluster10::CandleData(timestamp, 146.80, 147.50, 147.70, 144.30));
+    candleData.push_back(Plotter::CandleData(timestamp, 146.80, 147.50, 147.70, 144.30));
     timestamp += 86400;
     
     // Day 15 - reversal confirmation
-    candleData.push_back(Cluster10::CandleData(timestamp, 147.60, 149.80, 150.20, 147.30));
+    candleData.push_back(Plotter::CandleData(timestamp, 147.60, 149.80, 150.20, 147.30));
     
     // Plot the candlestick chart
     // Use modern green for bullish and red for bearish
@@ -268,9 +268,9 @@ void shmea::testLineScatter() {
     // Seed random number generator
     std::srand(43);  // Different seed than other tests
     
-    // Create a Cluster10 instance for line and scatter plots
+    // Create a Plotter instance for line and scatter plots
     // Use 4x supersampling for high quality output
-    Cluster10 plotter(1800, 1000, 80, 80, 80, 80, 4);
+    Plotter plotter(1800, 1000, 80, 80, 80, 80, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -284,9 +284,9 @@ void shmea::testLineScatter() {
     plotter.prepareCanvas();
     
     // Create a sine wave line
-    std::vector<Cluster10::Point> lineData;
+    std::vector<Plotter::Point> lineData;
     for (int i = 0; i < 50; ++i) {
-        Cluster10::Point p;
+        Plotter::Point p;
         p.x = i * 0.2;  // X values from 0 to 10
         p.y = std::sin(i * 0.2) * 4 + 8;  // Sine wave oscillating around y=8
         lineData.push_back(p);
@@ -296,9 +296,9 @@ void shmea::testLineScatter() {
     plotter.plotLine(lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3);
     
     // Create scatter points with some random variation around the line
-    std::vector<Cluster10::Point> scatterData;
+    std::vector<Plotter::Point> scatterData;
     for (int i = 0; i < 30; ++i) {
-        Cluster10::Point p;
+        Plotter::Point p;
         // Sample random points from the line with variation
         int idx = (std::rand() % lineData.size());
         p.x = lineData[idx].x + ((std::rand() % 100) - 50) / 100.0;  // Add random variation ±0.5

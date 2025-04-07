@@ -1,8 +1,7 @@
-// Cluster10.h
-#ifndef CLUSTER10_H
-#define CLUSTER10_H
+#ifndef GPLOTTER_H
+#define GPLOTTER_H
 
-#include "image.h"
+#include "../Database/image.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <string>
@@ -17,7 +16,7 @@ class ThemeManager;
 class GridRenderer;
 class TextRenderer;
 
-class Cluster10 {
+class Plotter {
 public:
     // Data structures
     struct Point {
@@ -70,11 +69,11 @@ public:
     static const int DEFAULT_HEIGHT = 1200;
     
     // Constructor/Destructor
-    Cluster10(unsigned int width = DEFAULT_WIDTH, unsigned int height = DEFAULT_HEIGHT, 
+    Plotter(unsigned int width = DEFAULT_WIDTH, unsigned int height = DEFAULT_HEIGHT, 
               unsigned int margin_top = 60, unsigned int margin_right = 60, 
               unsigned int margin_bottom = 60, unsigned int margin_left = 60,
               unsigned int ssaa_factor = 2);
-    ~Cluster10();
+    ~Plotter();
     
     // Basic controls
     void setShowGrid(bool show);

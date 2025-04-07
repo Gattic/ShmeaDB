@@ -14,19 +14,12 @@ set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(DBTests_src_files
-GType-test.cpp
-GString-test.cpp
-GPointer-test.cpp
-GList-test.cpp
-GTable-test.cpp
-GObjects-test.cpp
-GVector-test.cpp
-image-test.cpp
+set(PlotterTests_src_files
+plotter-test.cpp
 )
-add_library(DBTests ${DBTests_src_files})
+add_library(PlotterTests ${PlotterTests_src_files})
 
 # Link against FreeType
 if(NOT EMSCRIPTEN)
-    target_link_libraries(DBTests ${FREETYPE_LIBRARIES})
+    target_link_libraries(PlotterTests ${FREETYPE_LIBRARIES})
 endif()

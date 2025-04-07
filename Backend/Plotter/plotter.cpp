@@ -1,6 +1,5 @@
-// Cluster10.cpp
-#include "Cluster10.h"
-#include "png-helper.h"
+#include "plotter.h"
+#include "../Database/png-helper.h"
 #include <algorithm>
 #include <vector>
 #include <limits>
@@ -9,7 +8,7 @@
 
 using namespace shmea;
 
-Cluster10::Cluster10(unsigned int width, unsigned int height, 
+Plotter::Plotter(unsigned int width, unsigned int height, 
                     unsigned int margin_top, unsigned int margin_right, 
                     unsigned int margin_bottom, unsigned int margin_left,
                     unsigned int ssaa_factor)
@@ -34,7 +33,7 @@ Cluster10::Cluster10(unsigned int width, unsigned int height,
 }
 
 // Helper method for constructor initialization
-void Cluster10::initialize()
+void Plotter::initialize()
 {
     // Allocate the supersampled image first
     initializeSuperSampling();
@@ -56,7 +55,7 @@ void Cluster10::initialize()
 }
 
 // Initialize supersampling buffer
-void Cluster10::initializeSuperSampling()
+void Plotter::initializeSuperSampling()
 {
     // Allocate larger buffer for supersampled rendering
     ssaaImage.Allocate(ssaaWidth, ssaaHeight);
@@ -70,7 +69,7 @@ void Cluster10::initializeSuperSampling()
 }
 
 // Downsample the supersampled image to the final output resolution
-void Cluster10::downsampleToOutput()
+void Plotter::downsampleToOutput()
 {
     // For each pixel in the output image
     for (unsigned int y = 0; y < height; ++y) {
@@ -128,7 +127,7 @@ void Cluster10::downsampleToOutput()
     }
 }
 
-void Cluster10::setSuperSamplingFactor(unsigned int factor)
+void Plotter::setSuperSamplingFactor(unsigned int factor)
 {
     if (factor < 1) factor = 1; // Ensure factor is at least 1
     
@@ -146,14 +145,14 @@ void Cluster10::setSuperSamplingFactor(unsigned int factor)
     }
 }
 
-Cluster10::~Cluster10()
+Plotter::~Plotter()
 {
     // Clean up FreeType resources
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
 }
 
-void Cluster10::initialize_colors()
+void Plotter::initialize_colors()
 {
     // Initialize the color palette based on exact values from the CSS file
     
@@ -209,7 +208,7 @@ void Cluster10::initialize_colors()
     elementColors["cluster4Shadow"] = RGBA(0xD6, 0xFF, 0xC7, 0x80);   // Green shadow
 }
 
-void Cluster10::initialize_font(const std::string fontPath)
+void Plotter::initialize_font(const std::string fontPath)
 {
     // Initialize FreeType
     if (FT_Init_FreeType(&ft)) {
@@ -222,7 +221,7 @@ void Cluster10::initialize_font(const std::string fontPath)
     }
 }
 
-void Cluster10::drawBackground()
+void Plotter::drawBackground()
 {
     // Draw the dark gradient background from CSS styles
     // Using radial gradient similar to histogram_with_labels.css: 
@@ -297,7 +296,7 @@ void Cluster10::drawBackground()
     }
 }
 
-void Cluster10::drawGrid()
+void Plotter::drawGrid()
 {
     // Calculate the effective plotting area considering the margins
     int effectiveWidth = ssaaWidth - scaleX(margin_left) - scaleX(margin_right);
@@ -390,7 +389,7 @@ void Cluster10::drawGrid()
                        scaledCornerRadius, borderColor);
 }
 
-void Cluster10::drawAxes()
+void Plotter::drawAxes()
 {
     // Calculate the center (origin) of the plot
     int centerX = scaleX(margin_left + (width - margin_left - margin_right) / 2);
@@ -412,14 +411,14 @@ void Cluster10::drawAxes()
 }
 
 // Helper function to clamp a value between min and max
-inline int Cluster10::clamp(int value, int min, int max)
+inline int Plotter::clamp(int value, int min, int max)
 {
     if (value < min) return min;
     if (value > max) return max;
     return value;
 }
 
-void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, int lineWidth)
+void Plotter::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, int lineWidth)
 {
     // Clamp coordinates to stay within image bounds
     x1 = clamp(x1, 0, ssaaWidth - 1);
@@ -484,13 +483,13 @@ void Cluster10::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, 
     }
 }
 
-void Cluster10::drawPoint(int x, int y, int size, const RGBA& color)
+void Plotter::drawPoint(int x, int y, int size, const RGBA& color)
 {
     // Draw a filled circle for the point with anti-aliasing
     drawCircle(x, y, size, color, true, 0);
 }
 
-void Cluster10::drawCircle(int x, int y, int radius, const RGBA& color, bool filled, int borderWidth)
+void Plotter::drawCircle(int x, int y, int radius, const RGBA& color, bool filled, int borderWidth)
 {
     // Note: x, y, radius are already in supersampled space
     // To improve quality, use anti-aliasing for circles
@@ -574,7 +573,7 @@ void Cluster10::drawCircle(int x, int y, int radius, const RGBA& color, bool fil
     }
 }
 
-void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA& color, bool filled, int borderWidth)
+void Plotter::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA& color, bool filled, int borderWidth)
 {
     // Note: x, y, rectWidth, rectHeight are already in supersampled space
     if (filled) {
@@ -681,7 +680,7 @@ void Cluster10::drawRect(int x, int y, int rectWidth, int rectHeight, const RGBA
     }
 }
 
-void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& color, unsigned int fontSize, bool centerAligned)
+void Plotter::drawText(int x, int y, const std::string& text, const RGBA& color, unsigned int fontSize, bool centerAligned)
 {
     // Scale coordinates and font size for supersampling
     int ssaaX = scaleX(x);
@@ -766,7 +765,7 @@ void Cluster10::drawText(int x, int y, const std::string& text, const RGBA& colo
     }
 }
 
-void Cluster10::addTitle(const std::string& text, unsigned int fontSize)
+void Plotter::addTitle(const std::string& text, unsigned int fontSize)
 {
     // Position title at the top left of the image with some padding
     int x = margin_left;
@@ -777,7 +776,7 @@ void Cluster10::addTitle(const std::string& text, unsigned int fontSize)
 }
 
 // Common method for drawing axis labels with consistent positioning
-void Cluster10::drawAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize, bool centerX) {
+void Plotter::drawAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize, bool centerX) {
     // Get text color from CSS design
     RGBA textColor = elementColors["axisLabel"];
     textColor.a = 0xCC; // 80% opacity for readability
@@ -793,7 +792,7 @@ void Cluster10::drawAxisLabels(const std::string& xLabel, const std::string& yLa
 }
 
 // Add this helper method after drawInfoBox to calculate heights of elements
-int Cluster10::calculateInfoBoxHeight(const std::vector<std::string>& labels, unsigned int fontSize) {
+int Plotter::calculateInfoBoxHeight(const std::vector<std::string>& labels, unsigned int fontSize) {
     // For horizontal layout, height is always the same regardless of number of items
     int itemHeight = fontSize + 6;
     
@@ -802,14 +801,14 @@ int Cluster10::calculateInfoBoxHeight(const std::vector<std::string>& labels, un
 }
 
 // Helper function to estimate text width based on string length and font size
-int Cluster10::estimateTextWidth(const std::string& text, unsigned int fontSize) {
+int Plotter::estimateTextWidth(const std::string& text, unsigned int fontSize) {
     // Use a more accurate character width estimation
     // Different characters have different widths, so we'll use an average factor
     return static_cast<int>(text.length() * fontSize * 0.75) + 10; // Add padding for safety
 }
 
 // Update addLegend method to use dynamic spacing calculation
-int Cluster10::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, int x, int y, unsigned int fontSize)
+int Plotter::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, int x, int y, unsigned int fontSize)
 {
     if (labels.size() != colors.size() || labels.empty()) {
         return 0;
@@ -865,7 +864,7 @@ int Cluster10::addLegend(const std::vector<std::string>& labels, const std::vect
 }
 
 // Helper method to prepare legend labels and colors
-void Cluster10::prepareLegendColors(const std::vector<std::string>& labels, const std::vector<RGBA>& colors,
+void Plotter::prepareLegendColors(const std::vector<std::string>& labels, const std::vector<RGBA>& colors,
                                  std::vector<std::string>& outLabels, std::vector<RGBA>& outColors) {
     outLabels.clear();
     outColors.clear();
@@ -886,7 +885,7 @@ void Cluster10::prepareLegendColors(const std::vector<std::string>& labels, cons
     }
 }
 
-void Cluster10::plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize)
+void Plotter::plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize)
 {
     if (points.empty()) {
         return;
@@ -911,7 +910,7 @@ void Cluster10::plotPoints(const std::vector<Point>& points, const RGBA& color, 
     }
 }
 
-void Cluster10::plotLine(const std::vector<Point>& points, const RGBA& color, int lineWidth)
+void Plotter::plotLine(const std::vector<Point>& points, const RGBA& color, int lineWidth)
 {
     if (points.size() < 2) {
         return;
@@ -939,7 +938,7 @@ void Cluster10::plotLine(const std::vector<Point>& points, const RGBA& color, in
     }
 }
 
-void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder)
+void Plotter::saveAsPNG(const std::string& filename, const std::string& folder)
 {
     // Draw any additional elements that should be rendered last
     
@@ -976,7 +975,7 @@ void Cluster10::saveAsPNG(const std::string& filename, const std::string& folder
     printf("Saved chart as: %s\n", filenameWithPath.c_str());
 }
 
-void Cluster10::setShowGrid(bool show)
+void Plotter::setShowGrid(bool show)
 {
     showGrid = show;
     
@@ -984,7 +983,7 @@ void Cluster10::setShowGrid(bool show)
     drawBackground();
 }
 
-void Cluster10::setShowAxes(bool show)
+void Plotter::setShowAxes(bool show)
 {
     showAxes = show;
     
@@ -992,7 +991,7 @@ void Cluster10::setShowAxes(bool show)
     drawBackground();
 }
 
-void Cluster10::setCornerRadius(int radius)
+void Plotter::setCornerRadius(int radius)
 {
     cornerRadius = radius;
     
@@ -1001,7 +1000,7 @@ void Cluster10::setCornerRadius(int radius)
 }
 
 // Plot clusters with centroids
-void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, const std::vector<int>& labels, 
+void Plotter::plotClusters(const std::vector<std::vector<double> >& data, const std::vector<int>& labels, 
                            const std::vector<std::vector<double> >& centroids)
 {
     if (data.empty() || data[0].size() < 2 || data.size() != labels.size()) {
@@ -1151,7 +1150,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
 }
 
 // Helper method to calculate cluster bounds
-void Cluster10::calculateClusterBounds(
+void Plotter::calculateClusterBounds(
     const std::vector<std::vector<double> >& data,
     const std::vector<int>& labels,
     int cluster,
@@ -1215,7 +1214,7 @@ void Cluster10::calculateClusterBounds(
 }
 
 // Helper method to draw cluster circles with transparency
-void Cluster10::drawClusterCircles(
+void Plotter::drawClusterCircles(
     const std::vector<Point>& clusterCenters,
     const std::vector<int>& clusterRadii,
     const std::vector<RGBA>& clusterColors)
@@ -1344,7 +1343,7 @@ void Cluster10::drawClusterCircles(
 }
 
 // Helper function for proper alpha blending that preserves the background
-RGBA Cluster10::blendRGBA(const RGBA& base, const RGBA& over) {
+RGBA Plotter::blendRGBA(const RGBA& base, const RGBA& over) {
     // If the overlay is fully transparent, return the base unchanged
     if (over.a == 0) return base;
     
@@ -1369,7 +1368,7 @@ RGBA Cluster10::blendRGBA(const RGBA& base, const RGBA& over) {
 }
 
 // Helper method to draw centroids
-void Cluster10::drawCentroids(
+void Plotter::drawCentroids(
     const std::vector<std::vector<double> >& centroids,
     const std::vector<RGBA>& clusterColors,
     const AxisRange& xRange,
@@ -1471,7 +1470,7 @@ void Cluster10::drawCentroids(
 }
 
 // Helper method to draw cluster labels
-void Cluster10::drawClusterLabels(
+void Plotter::drawClusterLabels(
     const std::vector<Point>& clusterCenters,
     const std::vector<int>& clusterRadii,
     const std::vector<std::vector<std::pair<int, int> > >& clusterPoints,
@@ -1685,7 +1684,7 @@ void Cluster10::drawClusterLabels(
     }
 }
 
-void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
+void Plotter::drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color)
 {
     // Enhanced candlestick styling to match CSS design exactly
     
@@ -1851,7 +1850,7 @@ void Cluster10::drawCandlestick(int x, int y_open, int y_close, int y_high, int 
 }
 
 // Helper method to get theme color by index with proper bounds checking
-RGBA Cluster10::getThemeColor(int index) {
+RGBA Plotter::getThemeColor(int index) {
     if (themeColors.empty()) {
         // Return default color if theme colors are empty
         return RGBA(0xFF, 0xFF, 0xFF, 0xFF);
@@ -1862,7 +1861,7 @@ RGBA Cluster10::getThemeColor(int index) {
 }
 
 // Update drawHistogramStats to use dynamic spacing
-void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize)
+void Plotter::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize)
 {
     // Calculate statistics
     int sum = 0;
@@ -1942,13 +1941,13 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
 }
 
 // Overload for backward compatibility
-void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, unsigned int fontSize)
+void Plotter::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, unsigned int fontSize)
 {
     drawHistogramStats(bins, maxBinValue, margin_top, fontSize);
 }
 
 // Modify vertical text rendering method for supersampling
-void Cluster10::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
+void Plotter::drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color)
 {
     // Scale coordinates and font size for supersampling
     int ssaaX = scaleX(x);
@@ -2035,7 +2034,7 @@ void Cluster10::drawVerticalText(const std::string& text, int x, int y, int font
 
 // Generic range calculation template
 template<typename DataType, typename ValueFunction>
-Cluster10::AxisRange Cluster10::calculateRange(const DataType& data, ValueFunction valueFunc)
+Plotter::AxisRange Plotter::calculateRange(const DataType& data, ValueFunction valueFunc)
 {
     AxisRange range;
     
@@ -2069,102 +2068,102 @@ Cluster10::AxisRange Cluster10::calculateRange(const DataType& data, ValueFuncti
 }
 
 // Implement the functor methods for Point X values
-bool Cluster10::PointXValueFunctor::isEmptyData(const std::vector<Point>& data) const {
+bool Plotter::PointXValueFunctor::isEmptyData(const std::vector<Point>& data) const {
     return data.empty();
 }
 
-size_t Cluster10::PointXValueFunctor::getSize(const std::vector<Point>& data) const {
+size_t Plotter::PointXValueFunctor::getSize(const std::vector<Point>& data) const {
     return data.size();
 }
 
-bool Cluster10::PointXValueFunctor::isValidIndex(const std::vector<Point>& data, size_t i) const {
+bool Plotter::PointXValueFunctor::isValidIndex(const std::vector<Point>& data, size_t i) const {
     return i < data.size(); // Always true for vector
 }
 
-double Cluster10::PointXValueFunctor::getValue(const std::vector<Point>& data, size_t i) const {
+double Plotter::PointXValueFunctor::getValue(const std::vector<Point>& data, size_t i) const {
     return data[i].x;
 }
 
 // Implement the functor methods for Point Y values
-bool Cluster10::PointYValueFunctor::isEmptyData(const std::vector<Point>& data) const {
+bool Plotter::PointYValueFunctor::isEmptyData(const std::vector<Point>& data) const {
     return data.empty();
 }
 
-size_t Cluster10::PointYValueFunctor::getSize(const std::vector<Point>& data) const {
+size_t Plotter::PointYValueFunctor::getSize(const std::vector<Point>& data) const {
     return data.size();
 }
 
-bool Cluster10::PointYValueFunctor::isValidIndex(const std::vector<Point>& data, size_t i) const {
+bool Plotter::PointYValueFunctor::isValidIndex(const std::vector<Point>& data, size_t i) const {
     return i < data.size(); // Always true for vector
 }
 
-double Cluster10::PointYValueFunctor::getValue(const std::vector<Point>& data, size_t i) const {
+double Plotter::PointYValueFunctor::getValue(const std::vector<Point>& data, size_t i) const {
     return data[i].y;
 }
 
 // Implement the functor methods for Matrix X values
-bool Cluster10::MatrixXValueFunctor::isEmptyData(const std::vector<std::vector<double> >& data) const {
+bool Plotter::MatrixXValueFunctor::isEmptyData(const std::vector<std::vector<double> >& data) const {
     return data.empty() || data[0].empty();
 }
 
-size_t Cluster10::MatrixXValueFunctor::getSize(const std::vector<std::vector<double> >& data) const {
+size_t Plotter::MatrixXValueFunctor::getSize(const std::vector<std::vector<double> >& data) const {
     return data.size();
 }
 
-bool Cluster10::MatrixXValueFunctor::isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const {
+bool Plotter::MatrixXValueFunctor::isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const {
     return i < data.size() && !data[i].empty();
 }
 
-double Cluster10::MatrixXValueFunctor::getValue(const std::vector<std::vector<double> >& data, size_t i) const {
+double Plotter::MatrixXValueFunctor::getValue(const std::vector<std::vector<double> >& data, size_t i) const {
     return data[i][0];
 }
 
 // Implement the functor methods for Matrix Y values
-bool Cluster10::MatrixYValueFunctor::isEmptyData(const std::vector<std::vector<double> >& data) const {
+bool Plotter::MatrixYValueFunctor::isEmptyData(const std::vector<std::vector<double> >& data) const {
     return data.empty() || data[0].size() < 2;
 }
 
-size_t Cluster10::MatrixYValueFunctor::getSize(const std::vector<std::vector<double> >& data) const {
+size_t Plotter::MatrixYValueFunctor::getSize(const std::vector<std::vector<double> >& data) const {
     return data.size();
 }
 
-bool Cluster10::MatrixYValueFunctor::isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const {
+bool Plotter::MatrixYValueFunctor::isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const {
     return i < data.size() && data[i].size() > 1;
 }
 
-double Cluster10::MatrixYValueFunctor::getValue(const std::vector<std::vector<double> >& data, size_t i) const {
+double Plotter::MatrixYValueFunctor::getValue(const std::vector<std::vector<double> >& data, size_t i) const {
     return data[i][1];
 }
 
-Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<Point>& points)
+Plotter::AxisRange Plotter::calculateXRange(const std::vector<Point>& points)
 {
     // Use the class-level functor
     PointXValueFunctor func;
     return calculateRange(points, func);
 }
 
-Cluster10::AxisRange Cluster10::calculateYRange(const std::vector<Point>& points)
+Plotter::AxisRange Plotter::calculateYRange(const std::vector<Point>& points)
 {
     // Use the class-level functor
     PointYValueFunctor func;
     return calculateRange(points, func);
 }
 
-Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<std::vector<double> >& data)
+Plotter::AxisRange Plotter::calculateXRange(const std::vector<std::vector<double> >& data)
 {
     // Use the class-level functor
     MatrixXValueFunctor func;
     return calculateRange(data, func);
 }
 
-Cluster10::AxisRange Cluster10::calculateYRange(const std::vector<std::vector<double> >& data)
+Plotter::AxisRange Plotter::calculateYRange(const std::vector<std::vector<double> >& data)
 {
     // Use the class-level functor
     MatrixYValueFunctor func;
     return calculateRange(data, func);
 }
 
-Cluster10::Point Cluster10::mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange)
+Plotter::Point Plotter::mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange)
 {
     // Calculate the effective plotting area
     int plotWidth = width - margin_left - margin_right;
@@ -2186,7 +2185,7 @@ Cluster10::Point Cluster10::mapDataToScreen(double x, double y, const AxisRange&
 }
 
 // Helper for blending colors with alpha
-RGBA Cluster10::blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha) {
+RGBA Plotter::blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha) {
     return RGBA(
         static_cast<unsigned char>(baseColor.r * (1.0f - alpha) + overlayColor.r * alpha),
         static_cast<unsigned char>(baseColor.g * (1.0f - alpha) + overlayColor.g * alpha),
@@ -2196,7 +2195,7 @@ RGBA Cluster10::blendColors(const RGBA& baseColor, const RGBA& overlayColor, flo
 }
 
 // Helper for blending a pixel with bounds checking
-void Cluster10::blendPixel(int x, int y, const RGBA& color, float alpha) {
+void Plotter::blendPixel(int x, int y, const RGBA& color, float alpha) {
     if (x >= 0 && x < static_cast<int>(ssaaWidth) && y >= 0 && y < static_cast<int>(ssaaHeight)) {
         RGBA baseColor = ssaaImage.GetPixel(x, y);
         RGBA blendedColor = blendColors(baseColor, color, alpha);
@@ -2205,7 +2204,7 @@ void Cluster10::blendPixel(int x, int y, const RGBA& color, float alpha) {
 }
 
 // Common method for drawing info boxes (legend, stats, price info)
-void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
+void Plotter::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
     // Scale coordinates and dimensions for supersampling
     int ssaaX = scaleX(x);
     int ssaaY = scaleY(y);
@@ -2288,7 +2287,7 @@ void Cluster10::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std
 }
 
 // Common method for drawing Y-axis ticks and labels
-void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, bool isInteger, 
+void Plotter::drawYAxisTicks(double minValue, double maxValue, int numTicks, bool isInteger, 
                              int precision, int labelOffset) {
     int plotHeight = getPlotHeight();
     
@@ -2333,7 +2332,7 @@ void Cluster10::drawYAxisTicks(double minValue, double maxValue, int numTicks, b
 }
 
 // Draw X-axis ticks with text labels
-void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTicks) {
+void Plotter::drawXAxisTicks(const std::vector<std::string>& labels, int numTicks) {
     int plotWidth = getPlotWidth();
     
     // Use the same colors as other grid elements for CSS consistency
@@ -2364,7 +2363,7 @@ void Cluster10::drawXAxisTicks(const std::vector<std::string>& labels, int numTi
 }
 
 // Draw X-axis ticks with numeric values
-void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision) {
+void Plotter::drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision) {
     int plotWidth = getPlotWidth();
     
     // Use the same colors as other grid elements for CSS consistency
@@ -2399,7 +2398,7 @@ void Cluster10::drawXAxisTicks(double minValue, double maxValue, int numTicks, i
 }
 
 // Helper for common chart initialization steps
-void Cluster10::initializeChart(const std::string& title, unsigned int titleFontSize) {
+void Plotter::initializeChart(const std::string& title, unsigned int titleFontSize) {
     // Draw the complete background first to ensure proper layering
     drawBackground();
     
@@ -2420,7 +2419,7 @@ void Cluster10::initializeChart(const std::string& title, unsigned int titleFont
 }
 
 // Common setup for all chart types - reduces redundancy in plotting functions
-void Cluster10::setupChart(const ChartConfig& config, unsigned int* originalTopMargin, unsigned int* originalRightMargin, 
+void Plotter::setupChart(const ChartConfig& config, unsigned int* originalTopMargin, unsigned int* originalRightMargin, 
                          unsigned int newRightMargin, int* titleY, int* legendY) {
     // Store original margins
     if (originalTopMargin)
@@ -2449,7 +2448,7 @@ void Cluster10::setupChart(const ChartConfig& config, unsigned int* originalTopM
     }
 }
 
-void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
+void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color)
 {
     if (bins.empty()) {
         return;
@@ -2537,7 +2536,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     margin_top = originalTopMargin;
 }
 
-void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles, 
+void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles, 
                                    const RGBA& bullishColor, 
                                    const RGBA& bearishColor)
 {
@@ -2696,7 +2695,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     margin_top = originalTopMargin;
 }
 
-void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks)
+void Plotter::drawCandlestickYAxis(double minPrice, double maxPrice, int numTicks)
 {
     // Use exactly 5 ticks with consistent spacing for better distribution 
     numTicks = 5;
@@ -2705,7 +2704,7 @@ void Cluster10::drawCandlestickYAxis(double minPrice, double maxPrice, int numTi
     drawYAxisTicks(minPrice, maxPrice, numTicks, false, 2, 70);
 }
 
-void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
+void Plotter::drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 
                                    int totalCandles, double firstTimestamp, double lastTimestamp)
 {
     int plotWidth = getPlotWidth();
@@ -2743,7 +2742,7 @@ void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int
 }
 
 // Update candlestick price info to use dynamic spacing
-void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
+void Plotter::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
                                        const RGBA& bullishColor, const RGBA& bearishColor,
                                        int legendY)
 {
@@ -2818,19 +2817,19 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
 }
 
 // Overload for backward compatibility
-void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
+void Plotter::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
                                         const RGBA& bullishColor, const RGBA& bearishColor)
 {
     drawCandlestickPriceInfo(candles, bullishColor, bearishColor, margin_top);
 }
 
-void Cluster10::drawHistogramYAxis(int maxValue, int numTicks)
+void Plotter::drawHistogramYAxis(int maxValue, int numTicks)
 {
     // Use our common Y-axis method with integer values and increased font size
     drawYAxisTicks(0, maxValue, numTicks, true, 0, 35);
 }
 
-void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue, int totalBars, 
+void Plotter::drawHistogramBars(const std::vector<int>& bins, int maxBinValue, int totalBars, 
                                int barWidth, int barSpacing, const RGBA& color)
 {
     int plotHeight = getPlotHeight();
@@ -2925,7 +2924,7 @@ void Cluster10::drawHistogramBars(const std::vector<int>& bins, int maxBinValue,
     }
 }
 
-void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight)
+void Plotter::drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight)
 {
     // Enhanced styling for histogram bars to match CSS
     // Note: x, y, barWidth, barHeight are already scaled for supersampling at this point
@@ -3052,7 +3051,7 @@ void Cluster10::drawHistogramBarHighlights(int x, int y, int barWidth, int barHe
 }
 
 // Helper method to draw rounded corners for the grid border with anti-aliasing
-void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color)
+void Plotter::drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color)
 {
     // Note: input coordinates are already scaled for supersampling
     
@@ -3199,7 +3198,7 @@ void Cluster10::drawRoundedCorners(int left, int top, int right, int bottom, int
     }
 }
 
-void Cluster10::setYAxisLabel(const std::string& label)
+void Plotter::setYAxisLabel(const std::string& label)
 {
     yAxisLabel = label;
     
@@ -3217,7 +3216,7 @@ void Cluster10::setYAxisLabel(const std::string& label)
 }
 
 // Load logo image from a file
-void Cluster10::loadLogo(const std::string& logoPath)
+void Plotter::loadLogo(const std::string& logoPath)
 {
     // Try to load the logo image from the file
     try {
@@ -3238,7 +3237,7 @@ void Cluster10::loadLogo(const std::string& logoPath)
 }
 
 // Draw the logo in the top right corner
-void Cluster10::drawLogo()
+void Plotter::drawLogo()
 {
     if (!hasLogo || logoImage.getWidth() == 0 || logoImage.getHeight() == 0) {
         return;  // No logo to draw
@@ -3326,7 +3325,7 @@ void Cluster10::drawLogo()
 }
 
 // Public method to initialize the chart with background and grid, but without a title
-void Cluster10::prepareCanvas() {
+void Plotter::prepareCanvas() {
     // Draw the background
     drawBackground();
     
@@ -3342,7 +3341,7 @@ void Cluster10::prepareCanvas() {
 }
 
 // Helper method to create a cluster legend
-int Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y)
+int Plotter::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y)
 {
     std::vector<std::string> legendLabels;
     std::vector<RGBA> legendColors;
@@ -3369,9 +3368,7 @@ int Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int n
 }
 
 // Explicit template instantiations required for C++03
-template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<shmea::Cluster10::Point>&, shmea::Cluster10::PointXValueFunctor);
-template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<shmea::Cluster10::Point>&, shmea::Cluster10::PointYValueFunctor);
-template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<std::vector<double> >&, shmea::Cluster10::MatrixXValueFunctor);
-template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<std::vector<double> >&, shmea::Cluster10::MatrixYValueFunctor);
-
-// End of Cluster10.cpp
+template shmea::Plotter::AxisRange shmea::Plotter::calculateRange(const std::vector<shmea::Plotter::Point>&, shmea::Plotter::PointXValueFunctor);
+template shmea::Plotter::AxisRange shmea::Plotter::calculateRange(const std::vector<shmea::Plotter::Point>&, shmea::Plotter::PointYValueFunctor);
+template shmea::Plotter::AxisRange shmea::Plotter::calculateRange(const std::vector<std::vector<double> >&, shmea::Plotter::MatrixXValueFunctor);
+template shmea::Plotter::AxisRange shmea::Plotter::calculateRange(const std::vector<std::vector<double> >&, shmea::Plotter::MatrixYValueFunctor);
