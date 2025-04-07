@@ -1595,12 +1595,77 @@ void Cluster10::drawClusterLabels(
         // Get the cluster color for the background
         RGBA bgColor = clusterColors[cluster % clusterColors.size()];
         
-        // Draw background with rounded corners
-        int cornerRadius = 6; // Small corner radius for the label background
+        // Define corner radius for the label background
+        int cornerRadius = 8; // Increased from 6 to 8 for more visible rounded corners
         
-        // Draw the background rectangle with some opacity
+        // Draw background with rounded corners using scaled coordinates
         bgColor.a = 0xE6; // 90% opacity
-        drawRect(scaleX(bgX), scaleY(bgY), scaleSize(bgWidth), scaleSize(bgHeight), bgColor, true);
+        
+        // New approach: Draw the rounded rectangle manually with proper clipping
+        // Convert all coordinates to supersampled space
+        int ssX = scaleX(bgX);
+        int ssY = scaleY(bgY);
+        int ssWidth = scaleSize(bgWidth);
+        int ssHeight = scaleSize(bgHeight);
+        int ssCornerRadius = scaleSize(cornerRadius);
+        
+        // For each pixel in the rounded rectangle
+        for (int y = 0; y < ssHeight; y++) {
+            for (int x = 0; x < ssWidth; x++) {
+                // Determine which region of the rounded rectangle this pixel falls in
+                bool inCorner = false;
+                bool drawPixel = true;
+                
+                // Check if we're in a corner region
+                if (x < ssCornerRadius && y < ssCornerRadius) {
+                    // Top-left corner
+                    float dist = std::sqrt(std::pow(ssCornerRadius - x, 2) + std::pow(ssCornerRadius - y, 2));
+                    if (dist > ssCornerRadius) {
+                        drawPixel = false; // Outside rounded corner
+                    }
+                }
+                else if (x >= ssWidth - ssCornerRadius && y < ssCornerRadius) {
+                    // Top-right corner
+                    float dist = std::sqrt(std::pow(x - (ssWidth - ssCornerRadius), 2) + std::pow(ssCornerRadius - y, 2));
+                    if (dist > ssCornerRadius) {
+                        drawPixel = false; // Outside rounded corner
+                    }
+                }
+                else if (x < ssCornerRadius && y >= ssHeight - ssCornerRadius) {
+                    // Bottom-left corner
+                    float dist = std::sqrt(std::pow(ssCornerRadius - x, 2) + std::pow(y - (ssHeight - ssCornerRadius), 2));
+                    if (dist > ssCornerRadius) {
+                        drawPixel = false; // Outside rounded corner
+                    }
+                }
+                else if (x >= ssWidth - ssCornerRadius && y >= ssHeight - ssCornerRadius) {
+                    // Bottom-right corner
+                    float dist = std::sqrt(std::pow(x - (ssWidth - ssCornerRadius), 2) + std::pow(y - (ssHeight - ssCornerRadius), 2));
+                    if (dist > ssCornerRadius) {
+                        drawPixel = false; // Outside rounded corner
+                    }
+                }
+                
+                // Draw the pixel if it's inside the rounded rectangle
+                if (drawPixel) {
+                    int drawX = ssX + x;
+                    int drawY = ssY + y;
+                    
+                    if (drawX >= 0 && drawX < static_cast<int>(ssaaWidth) && 
+                        drawY >= 0 && drawY < static_cast<int>(ssaaHeight)) {
+                        // For semi-transparent colors, blend with background
+                        if (bgColor.a < 255) {
+                            RGBA currentPixel = ssaaImage.GetPixel(drawX, drawY);
+                            RGBA blendedColor = blendRGBA(currentPixel, bgColor);
+                            ssaaImage.SetPixel(drawX, drawY, blendedColor);
+                        } else {
+                            // Fully opaque - just set the pixel
+                            ssaaImage.SetPixel(drawX, drawY, bgColor);
+                        }
+                    }
+                }
+            }
+        }
         
         // Create a dark text color for better contrast
         RGBA textColor = RGBA(
