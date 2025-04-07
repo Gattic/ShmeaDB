@@ -2,6 +2,7 @@
 #include "Cluster10.h"
 #include "png-helper.h"
 #include <algorithm>
+#include <vector>
 #include <limits>
 #include <string>  // for std::to_string
 #include <cmath>   // for M_PI
@@ -1142,7 +1143,7 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     drawCentroids(centroids, clusterColors, xRange, yRange);
     
     // Draw cluster labels
-    drawClusterLabels(clusterCenters, clusterPoints, clusterColors);
+    drawClusterLabels(clusterCenters, clusterRadii, clusterPoints, clusterColors);
     
     // Restore original margins
     margin_right = originalRightMargin;
@@ -1472,45 +1473,150 @@ void Cluster10::drawCentroids(
 // Helper method to draw cluster labels
 void Cluster10::drawClusterLabels(
     const std::vector<Point>& clusterCenters,
+    const std::vector<int>& clusterRadii,
     const std::vector<std::vector<std::pair<int, int> > >& clusterPoints,
     const std::vector<RGBA>& clusterColors)
 {
     // Draw cluster labels
     for (size_t cluster = 0; cluster < clusterPoints.size(); ++cluster) {
-        if (clusterPoints[cluster].empty()) continue;
+        if (clusterPoints[cluster].empty() || cluster >= clusterCenters.size() || cluster >= clusterRadii.size()) continue;
         
-        // Calculate optimal label position based on cluster layout
-        int offsetX = 0, offsetY = 0;
-        
-        // Position based on cluster position in reference image
-        switch (cluster) {
-            case 0: // Orange cluster (bottom left)
-                offsetX = 5;
-                offsetY = 40;
-                break;
-            case 1: // Blue cluster (top right)
-                offsetX = -5;
-                offsetY = -30;
-                break;
-            case 2: // Green cluster (bottom right)
-                offsetX = -30;
-                offsetY = 30;
-                break;
-            default:
-                offsetX = (cluster % 2 == 0) ? 30 : -30;
-                offsetY = (cluster % 2 == 0) ? 30 : -30;
-        }
+        // Get the center and radius of this cluster
+        Point center = clusterCenters[cluster];
+        int radius = clusterRadii[cluster];
         
         // Format label
         char label[32];
         std::sprintf(label, "Cluster %d", (int)cluster);
         
-        // Draw label at calculated position
-        RGBA labelColor = clusterColors[cluster % clusterColors.size()];
-        // Use the original clusterCenter coords (not scaled) since drawText will scale
-        drawText(clusterCenters[cluster].x + offsetX, 
-                 clusterCenters[cluster].y + offsetY, 
-                 label, labelColor, 22, true);
+        // Get text dimensions
+        int labelWidth = estimateTextWidth(label, 22);
+        int labelHeight = 30; // Approximate height for 22px font
+        
+        // Background padding
+        int padX = 12;
+        int padY = 8;
+        int bgWidth = labelWidth + padX*2;
+        int bgHeight = labelHeight + padY*2;
+        
+        // Setup for label placement
+        int plotCenterX = margin_left + getPlotWidth() / 2;
+        int plotCenterY = margin_top + getPlotHeight() / 2;
+        
+        // Variables for final label position
+        int posX, posY;
+        
+        // Calculate safe boundaries for label placement
+        int safeLeftBound = static_cast<int>(margin_left) + bgWidth/2 + 10;
+        int safeRightBound = static_cast<int>(width - margin_right) - bgWidth/2 - 10;
+        int safeTopBound = static_cast<int>(margin_top) + bgHeight/2 + 10;
+        int safeBottomBound = static_cast<int>(height - margin_bottom) - bgHeight/2 - 10;
+        
+        // Special handling for cluster 1
+        if (cluster == 1) {
+            // For cluster 1, place label to the bottom-left of the cluster
+            // This is a fixed position relative to the cluster that we know works well
+            double fixedAngle = 3.0 * M_PI / 4.0; // 135 degrees - towards bottom-left
+            
+            // Reduced offset to bring the label closer to the cluster circle
+            // Use just 1.2x the radius plus a small fixed margin
+            int fixedOffset = static_cast<int>(radius * 1.2) + 15;
+            
+            posX = center.x + static_cast<int>(fixedOffset * std::cos(fixedAngle));
+            posY = center.y + static_cast<int>(fixedOffset * std::sin(fixedAngle));
+            
+            // Ensure the label stays within boundaries
+            posX = std::max(safeLeftBound, std::min(safeRightBound, posX));
+            posY = std::max(safeTopBound, std::min(safeBottomBound, posY));
+        }
+        // Different approach for clusters 0 and 2 (and any others)
+        else {
+            // Calculate angle from plot center to cluster center
+            double dx = center.x - plotCenterX;
+            double dy = center.y - plotCenterY;
+            double angle = std::atan2(dy, dx);
+            
+            // For non-cluster-1 labels, calculate diagonal of label for proper offset
+            double labelDiagonal = std::sqrt(bgWidth * bgWidth + bgHeight * bgHeight) / 2.0;
+            int offsetDistance = static_cast<int>(labelDiagonal) + 10; // Extra margin
+            
+            // Calculate initial position at the edge of the circle plus offset
+            posX = center.x + static_cast<int>((radius + offsetDistance) * std::cos(angle));
+            posY = center.y + static_cast<int>((radius + offsetDistance) * std::sin(angle));
+            
+            // Check if the label would be outside chart boundaries
+            int leftEdge = posX - bgWidth/2;
+            int rightEdge = posX + bgWidth/2;
+            int topEdge = posY - bgHeight/2;
+            int bottomEdge = posY + bgHeight/2;
+            
+            // If outside boundaries, adjust position
+            if (leftEdge < margin_left || rightEdge > width - margin_right || 
+                topEdge < margin_top || bottomEdge > height - margin_bottom) {
+                
+                // Try a few simple angles to find a good position
+                bool found = false;
+                double testAngles[4] = {0, M_PI/2, M_PI, -M_PI/2}; // 0°, 90°, 180°, 270°
+                
+                for (int i = 0; i < 4 && !found; i++) {
+                    int testX = center.x + static_cast<int>((radius + offsetDistance) * std::cos(testAngles[i]));
+                    int testY = center.y + static_cast<int>((radius + offsetDistance) * std::sin(testAngles[i]));
+                    
+                    // Check if this position would be within boundaries
+                    int testLeftEdge = testX - bgWidth/2;
+                    int testRightEdge = testX + bgWidth/2;
+                    int testTopEdge = testY - bgHeight/2;
+                    int testBottomEdge = testY + bgHeight/2;
+                    
+                    if (testLeftEdge >= margin_left && testRightEdge <= width - margin_right && 
+                        testTopEdge >= margin_top && testBottomEdge <= height - margin_bottom) {
+                        posX = testX;
+                        posY = testY;
+                        found = true;
+                    }
+                }
+                
+                // If still not found, force within boundaries
+                if (!found) {
+                    posX = std::max(safeLeftBound, std::min(safeRightBound, posX));
+                    posY = std::max(safeTopBound, std::min(safeBottomBound, posY));
+                }
+            }
+        }
+        
+        // Calculate background rectangle position
+        int bgX = posX - bgWidth/2;
+        int bgY = posY - bgHeight/2;
+        
+        // Position for text centered in the background
+        int textX = bgX + padX;
+        int textY = bgY + padY + labelHeight/2;
+        
+        // Get the cluster color for the background
+        RGBA bgColor = clusterColors[cluster % clusterColors.size()];
+        
+        // Draw background with rounded corners
+        int cornerRadius = 6; // Small corner radius for the label background
+        
+        // Draw the background rectangle with some opacity
+        bgColor.a = 0xE6; // 90% opacity
+        drawRect(scaleX(bgX), scaleY(bgY), scaleSize(bgWidth), scaleSize(bgHeight), bgColor, true);
+        
+        // Create a dark text color for better contrast
+        RGBA textColor = RGBA(
+            static_cast<unsigned char>(bgColor.r * 0.2f),  // Very dark version of the cluster color
+            static_cast<unsigned char>(bgColor.g * 0.2f),
+            static_cast<unsigned char>(bgColor.b * 0.2f),
+            0xFF // Fully opaque
+        );
+        
+        // Ensure minimum darkness for readability
+        if ((textColor.r + textColor.g + textColor.b) / 3 > 60) {
+            textColor = RGBA(0x20, 0x20, 0x20, 0xFF); // Default to very dark gray if too light
+        }
+        
+        // Draw the label text
+        drawText(textX, textY, label, textColor, 22, false);
     }
 }
 

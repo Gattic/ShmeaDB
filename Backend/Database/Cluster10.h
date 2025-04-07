@@ -319,6 +319,7 @@ private:
     // Draw cluster labels
     void drawClusterLabels(
         const std::vector<Point>& clusterCenters,
+        const std::vector<int>& clusterRadii,
         const std::vector<std::vector<std::pair<int, int> > >& clusterPoints,
         const std::vector<RGBA>& clusterColors);
     
