@@ -177,6 +177,10 @@ private:
     // Initialize a chart with background, grid, title, etc.
     void initializeChart(const std::string& title = "", unsigned int titleFontSize = 36);
     
+    // Common setup for all chart types - reduces redundancy in plotting functions
+    void setupChart(const ChartConfig& config, unsigned int* originalTopMargin, unsigned int* originalRightMargin, 
+                   unsigned int newRightMargin = 180, int* titleY = NULL, int* legendY = NULL);
+    
     // Draw a logo in the top right corner
     void drawLogo();
     
@@ -259,8 +263,8 @@ private:
     void drawHistogramBarHighlights(int x, int y, int barWidth, int barHeight);
     
     // Draw statistics box for histogram
-    void drawHistogramStats(const std::vector<int>& bins, int maxBinValue);
-    void drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int originalTopMargin);
+    void drawHistogramStats(const std::vector<int>& bins, int maxBinValue, unsigned int fontSize = 16);
+    void drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize = 16);
     
     // Draw candlestick chart X-axis with dates
     void drawCandlestickXAxis(const std::vector<CandleData>& candles, int maxVisibleCandles, 

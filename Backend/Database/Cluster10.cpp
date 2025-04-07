@@ -1001,19 +1001,12 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     // Create a chart configuration with increased font size for mobile
     ChartConfig config("Cluster Analysis", 36, "Feature X", "Feature Y", 32);
     
-    // Temporarily store original margins
-    unsigned int originalTopMargin = margin_top;
-    unsigned int originalRightMargin = margin_right;
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
     
-    // Increase right margin to accommodate Y-axis labels
-    margin_right = 180; // Increased from 120 to 180 for even more space
-    
-    // Initialize chart with background, grid, etc. but no title yet
-    prepareCanvas();
-    
-    // Add title at the very top after prepareCanvas, but move it down slightly
-    int titleY = 30; // Increased from 20 to 30 to move it down
-    drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
+    // Use common setup for chart initialization
+    setupChart(config, &originalTopMargin, &originalRightMargin, 180, &titleY, &legendY);
     
     // Find number of unique clusters
     int maxCluster = -1;
@@ -1036,12 +1029,6 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     for (int i = themeColors.size(); i < numClusters; ++i) {
         clusterColors.push_back(themeColors[i % themeColors.size()]);
     }
-    
-    // Calculate space for extremely tight layout - boxes almost touch the title
-    int titleHeight = config.titleFontSize - 10; // Even larger negative adjustment
-    
-    // Position legend with extreme overlap - almost on top of the title
-    int legendY = titleY + titleHeight - 20; // More aggressive negative offset
     
     // Estimate legend height before drawing it
     std::vector<std::string> tempLegendLabels;
@@ -1700,7 +1687,7 @@ RGBA Cluster10::getThemeColor(int index) {
     return themeColors[index % themeColors.size()];
 }
 
-void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY)
+void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize)
 {
     // Calculate statistics
     int sum = 0;
@@ -1728,7 +1715,7 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     int boxY = legendY; // Same position as legend
     
     // Use our common info box method for consistent styling
-    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", 16); // Use a fixed font size of 16
+    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", fontSize);
     
     // Draw the text with styling from CSS
     RGBA textColor = elementColors["legend"]; // White text
@@ -1759,9 +1746,9 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
 }
 
 // Overload for backward compatibility
-void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue)
+void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, unsigned int fontSize)
 {
-    drawHistogramStats(bins, maxBinValue, margin_top);
+    drawHistogramStats(bins, maxBinValue, margin_top, fontSize);
 }
 
 // Modify vertical text rendering method for supersampling
@@ -2221,6 +2208,36 @@ void Cluster10::initializeChart(const std::string& title, unsigned int titleFont
     }
 }
 
+// Common setup for all chart types - reduces redundancy in plotting functions
+void Cluster10::setupChart(const ChartConfig& config, unsigned int* originalTopMargin, unsigned int* originalRightMargin, 
+                         unsigned int newRightMargin, int* titleY, int* legendY) {
+    // Store original margins
+    if (originalTopMargin)
+        *originalTopMargin = margin_top;
+    if (originalRightMargin)
+        *originalRightMargin = margin_right;
+    
+    // Adjust right margin for axis labels
+    margin_right = newRightMargin;
+    
+    // Initialize the canvas
+    prepareCanvas();
+    
+    // Set default titleY if needed and provided
+    if (titleY) {
+        *titleY = 30; // Standard position below top margin
+        
+        // Add title
+        drawText(margin_left, *titleY, config.title, elementColors["title"], config.titleFontSize, false);
+        
+        // Calculate legendY position if requested
+        if (legendY) {
+            int titleHeight = config.titleFontSize - 10;
+            *legendY = *titleY + titleHeight - 20; // Position legend closely below title
+        }
+    }
+}
+
 void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
 {
     if (bins.empty()) {
@@ -2236,33 +2253,16 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Create a chart configuration with histogram styling
     ChartConfig config("Data Distribution", 42, "Value", "Frequency", 32);
     
-    // Calculate the effective plotting area
-    int plotWidth = getPlotWidth();
-    int plotHeight = getPlotHeight();
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
+    
+    // Use common setup for chart initialization
+    setupChart(config, &originalTopMargin, &originalRightMargin, 180, &titleY, &legendY);
     
     // Find the maximum value in bins for scaling
     int maxBinValue = *std::max_element(bins.begin(), bins.end());
     if (maxBinValue == 0) maxBinValue = 1; // Avoid division by zero
-    
-    // Temporarily store original margins
-    unsigned int originalTopMargin = margin_top;
-    unsigned int originalRightMargin = margin_right;
-    
-    // Increase right margin to accommodate Y-axis labels
-    margin_right = 180; // Increased from 120 to 180 for even more space
-    
-    // Initialize chart with background, grid, etc. but no title yet
-    prepareCanvas();
-    
-    // Add title at the very top after prepareCanvas, but moved slightly down
-    int titleY = 30; // Increased from 20 to 30 to move it down
-    drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
-    
-    // Calculate space for extremely tight layout - boxes almost touch the title
-    int titleHeight = config.titleFontSize - 10; // Even larger negative adjustment
-    
-    // Position legend with extreme overlap - almost on top of the title
-    int legendY = titleY + titleHeight - 20; // More aggressive negative offset
     
     // Create our legend labels
     std::vector<std::string> legendLabels;
@@ -2291,7 +2291,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     int actualLegendHeight = addLegend(legendLabels, legendColors, margin_left, legendY, 18);
     
     // Draw statistics info box with matching CSS styling - positioned right of the legend
-    drawHistogramStats(bins, maxBinValue, legendY);
+    drawHistogramStats(bins, maxBinValue, legendY, 16);
     
     // Calculate optimal bar width and spacing based on the CSS design
     // Bars are narrower with more spacing than default
@@ -2299,7 +2299,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     float barWidthPercentage = 0.6f; // Bar takes 60% of available space
     float spacingPercentage = 0.4f; // 40% for spacing
     
-    int totalBarSpace = plotWidth / totalBars;
+    int totalBarSpace = getPlotWidth() / totalBars;
     int barWidth = static_cast<int>(totalBarSpace * barWidthPercentage);
     int barSpacing = static_cast<int>(totalBarSpace * spacingPercentage);
     
@@ -2317,7 +2317,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
     
     // Draw Y-axis label (vertical text) with proper styling
-    drawVerticalText(config.yAxisLabel, margin_left / 4, height / 2, config.axisFontSize, elementColors["axisLabel"]);
+    drawVerticalText(config.yAxisLabel, margin_left / 2, height / 2, config.axisFontSize, elementColors["axisLabel"]);
     
     // Restore original margins
     margin_right = originalRightMargin;
@@ -2347,19 +2347,12 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Create a chart configuration with increased font size for mobile
     ChartConfig config("Financial Data Analysis", 36, "Date", "Price", 32);
     
-    // Temporarily store original margins
-    unsigned int originalTopMargin = margin_top;
-    unsigned int originalRightMargin = margin_right;
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
     
-    // Increase right margin to accommodate Y-axis labels
-    margin_right = 220; // Increased for candlestick charts which have longer decimal values
-    
-    // Initialize chart with background, grid, etc. but no title yet
-    prepareCanvas();
-    
-    // Add title at the very top after prepareCanvas, but moved slightly down
-    int titleY = 30; // Increased from 20 to 30 to move it down
-    drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
+    // Use common setup for chart initialization
+    setupChart(config, &originalTopMargin, &originalRightMargin, 220, &titleY, &legendY);
     
     // Create legend labels and colors
     std::vector<std::string> legendLabels;
@@ -2375,12 +2368,6 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     
     legendColors.push_back(bullishLegendColor);
     legendColors.push_back(bearishLegendColor);
-    
-    // Calculate space for extremely tight layout - boxes almost touch the title
-    int titleHeight = config.titleFontSize - 10; // Even larger negative adjustment
-    
-    // Position legend with extreme overlap - almost on top of the title
-    int legendY = titleY + titleHeight - 20; // More aggressive negative offset
     
     // Estimate legend height
     int estimatedLegendHeight = calculateInfoBoxHeight(legendLabels, 16);
@@ -2457,7 +2444,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     
     // Label axes
     drawText(width/2, height - margin_bottom/3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
-    drawVerticalText(config.yAxisLabel, margin_left/3, height/2, config.axisFontSize, elementColors["axisLabel"]);
+    drawVerticalText(config.yAxisLabel, margin_left/2, height/2, config.axisFontSize, elementColors["axisLabel"]);
     
     // Calculate optimal starting position to center the candles
     int totalRequiredWidth = maxVisibleCandles * (candleWidth + candleSpacing);
