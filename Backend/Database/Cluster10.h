@@ -237,6 +237,9 @@ private:
     
     //==================== AXIS RENDERING METHODS ====================//
     
+    // Common method for drawing axis labels with consistent positioning
+    void drawAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize, bool centerX = true);
+    
     // Draw Y-axis ticks and labels
     void drawYAxisTicks(double minValue, double maxValue, int numTicks, bool isInteger = false, 
                        int precision = 1, int labelOffset = 25);
@@ -248,6 +251,10 @@ private:
     void drawXAxisTicks(double minValue, double maxValue, int numTicks, int precision = 1);
     
     //==================== CHART-SPECIFIC COMPONENTS ====================//
+    
+    // Helper method to prepare legend labels and colors
+    void prepareLegendColors(const std::vector<std::string>& labels, const std::vector<RGBA>& colors,
+                          std::vector<std::string>& outLabels, std::vector<RGBA>& outColors);
     
     // Draw a candlestick for financial charts
     void drawCandlestick(int x, int y_open, int y_close, int y_high, int y_low, const RGBA& color);
@@ -313,6 +320,39 @@ private:
         const std::vector<RGBA>& clusterColors);
     
     //==================== DATA SCALING METHODS ====================//
+    
+    // Functor classes for extracting values from different data types
+    struct PointXValueFunctor {
+        bool isEmptyData(const std::vector<Point>& data) const;
+        size_t getSize(const std::vector<Point>& data) const;
+        bool isValidIndex(const std::vector<Point>& data, size_t i) const;
+        double getValue(const std::vector<Point>& data, size_t i) const;
+    };
+    
+    struct PointYValueFunctor {
+        bool isEmptyData(const std::vector<Point>& data) const;
+        size_t getSize(const std::vector<Point>& data) const;
+        bool isValidIndex(const std::vector<Point>& data, size_t i) const;
+        double getValue(const std::vector<Point>& data, size_t i) const;
+    };
+    
+    struct MatrixXValueFunctor {
+        bool isEmptyData(const std::vector<std::vector<double> >& data) const;
+        size_t getSize(const std::vector<std::vector<double> >& data) const;
+        bool isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const;
+        double getValue(const std::vector<std::vector<double> >& data, size_t i) const;
+    };
+    
+    struct MatrixYValueFunctor {
+        bool isEmptyData(const std::vector<std::vector<double> >& data) const;
+        size_t getSize(const std::vector<std::vector<double> >& data) const;
+        bool isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const;
+        double getValue(const std::vector<std::vector<double> >& data, size_t i) const;
+    };
+    
+    // Generic range calculation template
+    template<typename DataType, typename ValueFunction>
+    AxisRange calculateRange(const DataType& data, ValueFunction valueFunc);
     
     // Calculate X range for points
     AxisRange calculateXRange(const std::vector<Point>& points);

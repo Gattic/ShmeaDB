@@ -775,20 +775,20 @@ void Cluster10::addTitle(const std::string& text, unsigned int fontSize)
     drawText(x, y, text, elementColors["title"], fontSize, false);
 }
 
-void Cluster10::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize)
-{
+// Common method for drawing axis labels with consistent positioning
+void Cluster10::drawAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize, bool centerX) {
     // Get text color from CSS design
     RGBA textColor = elementColors["axisLabel"];
     textColor.a = 0xCC; // 80% opacity for readability
     
-    // Set and draw Y-axis label using proper rotation
-    setYAxisLabel(yLabel);
+    // Draw X-axis label with proper styling
+    int xLabelX = centerX ? width / 2 : margin_left;
+    int xLabelY = height - margin_bottom / 3;
+    drawText(xLabelX, xLabelY, xLabel, textColor, fontSize, centerX);
     
-    // Draw X-axis label centered below the X-axis
-    // Increase fontSize by 30% for better mobile visibility
-    int xLabelX = margin_left + getPlotWidth() / 2;
-    int xLabelY = height - margin_bottom / 2;
-    drawText(xLabelX, xLabelY, xLabel, textColor, fontSize * 1.3, true);
+    // Draw Y-axis label (vertical text) with proper styling
+    // Use consistent position at margin_left/2 to prevent cutoff
+    drawVerticalText(yLabel, margin_left / 2, height / 2, fontSize, textColor);
 }
 
 // Add this helper method after drawInfoBox to calculate heights of elements
@@ -850,30 +850,26 @@ int Cluster10::addLegend(const std::vector<std::string>& labels, const std::vect
     return legendHeight;
 }
 
-// Modify createClusterLegend to return the height
-int Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y)
-{
-    std::vector<std::string> legendLabels;
-    std::vector<RGBA> legendColors;
+// Helper method to prepare legend labels and colors
+void Cluster10::prepareLegendColors(const std::vector<std::string>& labels, const std::vector<RGBA>& colors,
+                                 std::vector<std::string>& outLabels, std::vector<RGBA>& outColors) {
+    outLabels.clear();
+    outColors.clear();
     
-    // Add cluster entries
-    for (int i = 0; i < numClusters; ++i) {
-        char label[32];
-        std::sprintf(label, "Cluster %d", i);
-        legendLabels.push_back(label);
-        
-        // Use fully opaque colors for the legend dots
-        RGBA legendColor = clusterColors[i];
-        legendColor.a = 0xFF; // Full opacity for legend dots
-        legendColors.push_back(legendColor);
+    // Make sure both vectors have the same size
+    if (labels.size() != colors.size() || labels.empty()) {
+        return;
     }
     
-    // Add the centroid legend item
-    legendLabels.push_back("Centroid");
-    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // Fully opaque
+    // Copy labels
+    outLabels = labels;
     
-    // Add the legend to the visualization using our fixed method
-    return addLegend(legendLabels, legendColors, x, y, 16);
+    // Make sure colors are fully opaque for legend dots
+    for (size_t i = 0; i < colors.size(); ++i) {
+        RGBA legendColor = colors[i];
+        legendColor.a = 0xFF; // Full opacity for legend dots
+        outColors.push_back(legendColor);
+    }
 }
 
 void Cluster10::plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize)
@@ -1074,14 +1070,8 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
         }
     }
     
-    // Add axis labels with increased font size
-    drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
-    
-    // Position for the Y-axis label - shift right by increasing margin_left/4 to margin_left/2
-    // This fixes the potential cutoff issue
-    drawVerticalText(config.yAxisLabel, margin_left/2, height/2, config.axisFontSize, elementColors["axisLabel"]);
-    
-    // Draw axis ticks using our helper methods
+    // Draw axis labels and ticks
+    drawAxisLabels(config.xAxisLabel, config.yAxisLabel, config.axisFontSize);
     drawXAxisTicks(xRange.min, xRange.max, 4, 1);
     drawYAxisTicks(yRange.min, yRange.max, 3, false, 1, 50);
     
@@ -1837,20 +1827,27 @@ void Cluster10::drawVerticalText(const std::string& text, int x, int y, int font
     }
 }
 
-Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<Point>& points)
+// Generic range calculation template
+template<typename DataType, typename ValueFunction>
+Cluster10::AxisRange Cluster10::calculateRange(const DataType& data, ValueFunction valueFunc)
 {
     AxisRange range;
     
-    if (points.empty()) {
-        return range; // Return default range
+    // Return default range if data is empty or doesn't meet conditions
+    if (valueFunc.isEmptyData(data)) {
+        return range;
     }
     
-    // Find min and max X values
-    range.min = range.max = points[0].x;
+    // Initialize min and max values from first element
+    range.min = range.max = valueFunc.getValue(data, 0);
     
-    for (size_t i = 1; i < points.size(); ++i) {
-        range.min = std::min(range.min, points[i].x);
-        range.max = std::max(range.max, points[i].x);
+    // Find min and max values in the data
+    for (size_t i = 1; i < valueFunc.getSize(data); ++i) {
+        if (valueFunc.isValidIndex(data, i)) {
+            double value = valueFunc.getValue(data, i);
+            range.min = std::min(range.min, value);
+            range.max = std::max(range.max, value);
+        }
     }
     
     // Add padding
@@ -1863,94 +1860,102 @@ Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<Point>& points
     range.max += padding;
     
     return range;
+}
+
+// Implement the functor methods for Point X values
+bool Cluster10::PointXValueFunctor::isEmptyData(const std::vector<Point>& data) const {
+    return data.empty();
+}
+
+size_t Cluster10::PointXValueFunctor::getSize(const std::vector<Point>& data) const {
+    return data.size();
+}
+
+bool Cluster10::PointXValueFunctor::isValidIndex(const std::vector<Point>& data, size_t i) const {
+    return i < data.size(); // Always true for vector
+}
+
+double Cluster10::PointXValueFunctor::getValue(const std::vector<Point>& data, size_t i) const {
+    return data[i].x;
+}
+
+// Implement the functor methods for Point Y values
+bool Cluster10::PointYValueFunctor::isEmptyData(const std::vector<Point>& data) const {
+    return data.empty();
+}
+
+size_t Cluster10::PointYValueFunctor::getSize(const std::vector<Point>& data) const {
+    return data.size();
+}
+
+bool Cluster10::PointYValueFunctor::isValidIndex(const std::vector<Point>& data, size_t i) const {
+    return i < data.size(); // Always true for vector
+}
+
+double Cluster10::PointYValueFunctor::getValue(const std::vector<Point>& data, size_t i) const {
+    return data[i].y;
+}
+
+// Implement the functor methods for Matrix X values
+bool Cluster10::MatrixXValueFunctor::isEmptyData(const std::vector<std::vector<double> >& data) const {
+    return data.empty() || data[0].empty();
+}
+
+size_t Cluster10::MatrixXValueFunctor::getSize(const std::vector<std::vector<double> >& data) const {
+    return data.size();
+}
+
+bool Cluster10::MatrixXValueFunctor::isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const {
+    return i < data.size() && !data[i].empty();
+}
+
+double Cluster10::MatrixXValueFunctor::getValue(const std::vector<std::vector<double> >& data, size_t i) const {
+    return data[i][0];
+}
+
+// Implement the functor methods for Matrix Y values
+bool Cluster10::MatrixYValueFunctor::isEmptyData(const std::vector<std::vector<double> >& data) const {
+    return data.empty() || data[0].size() < 2;
+}
+
+size_t Cluster10::MatrixYValueFunctor::getSize(const std::vector<std::vector<double> >& data) const {
+    return data.size();
+}
+
+bool Cluster10::MatrixYValueFunctor::isValidIndex(const std::vector<std::vector<double> >& data, size_t i) const {
+    return i < data.size() && data[i].size() > 1;
+}
+
+double Cluster10::MatrixYValueFunctor::getValue(const std::vector<std::vector<double> >& data, size_t i) const {
+    return data[i][1];
+}
+
+Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<Point>& points)
+{
+    // Use the class-level functor
+    PointXValueFunctor func;
+    return calculateRange(points, func);
 }
 
 Cluster10::AxisRange Cluster10::calculateYRange(const std::vector<Point>& points)
 {
-    AxisRange range;
-    
-    if (points.empty()) {
-        return range; // Return default range
-    }
-    
-    // Find min and max Y values
-    range.min = range.max = points[0].y;
-    
-    for (size_t i = 1; i < points.size(); ++i) {
-        range.min = std::min(range.min, points[i].y);
-        range.max = std::max(range.max, points[i].y);
-    }
-    
-    // Add padding
-    double padding = (range.max - range.min) * range.padding;
-    if (padding < 1e-10) {
-        padding = 1.0; // Minimum padding to avoid division by zero
-    }
-    
-    range.min -= padding;
-    range.max += padding;
-    
-    return range;
+    // Use the class-level functor
+    PointYValueFunctor func;
+    return calculateRange(points, func);
 }
 
 Cluster10::AxisRange Cluster10::calculateXRange(const std::vector<std::vector<double> >& data)
 {
-    AxisRange range;
-    
-    if (data.empty() || data[0].empty()) {
-        return range; // Return default range
-    }
-    
-    // Find min and max X values (first dimension)
-    range.min = range.max = data[0][0];
-    
-    for (size_t i = 0; i < data.size(); ++i) {
-        if (data[i].size() > 0) {
-            range.min = std::min(range.min, data[i][0]);
-            range.max = std::max(range.max, data[i][0]);
-        }
-    }
-    
-    // Add padding
-    double padding = (range.max - range.min) * range.padding;
-    if (padding < 1e-10) {
-        padding = 1.0; // Minimum padding to avoid division by zero
-    }
-    
-    range.min -= padding;
-    range.max += padding;
-    
-    return range;
+    // Use the class-level functor
+    MatrixXValueFunctor func;
+    return calculateRange(data, func);
 }
 
 Cluster10::AxisRange Cluster10::calculateYRange(const std::vector<std::vector<double> >& data)
 {
-    AxisRange range;
-    
-    if (data.empty() || data[0].size() < 2) {
-        return range; // Return default range
-    }
-    
-    // Find min and max Y values (second dimension)
-    range.min = range.max = data[0][1];
-    
-    for (size_t i = 0; i < data.size(); ++i) {
-        if (data[i].size() > 1) {
-            range.min = std::min(range.min, data[i][1]);
-            range.max = std::max(range.max, data[i][1]);
-        }
-    }
-    
-    // Add padding
-    double padding = (range.max - range.min) * range.padding;
-    if (padding < 1e-10) {
-        padding = 1.0; // Minimum padding to avoid division by zero
-    }
-    
-    range.min -= padding;
-    range.max += padding;
-    
-    return range;
+    // Use the class-level functor
+    MatrixYValueFunctor func;
+    return calculateRange(data, func);
 }
 
 Cluster10::Point Cluster10::mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange)
@@ -2271,8 +2276,13 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     std::vector<RGBA> legendColors;
     legendColors.push_back(useColor);
     
+    // Process legend colors
+    std::vector<std::string> processedLabels;
+    std::vector<RGBA> processedColors;
+    prepareLegendColors(legendLabels, legendColors, processedLabels, processedColors);
+    
     // Estimate legend height
-    int estimatedLegendHeight = calculateInfoBoxHeight(legendLabels, 18);
+    int estimatedLegendHeight = calculateInfoBoxHeight(processedLabels, 18);
     
     // Estimate stats box height (histogram stats has a fixed height of about 120px)
     int statsBoxHeight = 120;
@@ -2288,7 +2298,7 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
     
     // Draw the legend
-    int actualLegendHeight = addLegend(legendLabels, legendColors, margin_left, legendY, 18);
+    int actualLegendHeight = addLegend(processedLabels, processedColors, margin_left, legendY, 18);
     
     // Draw statistics info box with matching CSS styling - positioned right of the legend
     drawHistogramStats(bins, maxBinValue, legendY, 16);
@@ -2313,11 +2323,8 @@ void Cluster10::plotHistogram(const std::vector<int>& bins, const RGBA& color)
     // Draw histogram bars
     drawHistogramBars(bins, maxBinValue, totalBars, barWidth, barSpacing, useColor);
     
-    // Draw X-axis label with proper styling
-    drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
-    
-    // Draw Y-axis label (vertical text) with proper styling
-    drawVerticalText(config.yAxisLabel, margin_left / 2, height / 2, config.axisFontSize, elementColors["axisLabel"]);
+    // Draw axis labels using our common method
+    drawAxisLabels(config.xAxisLabel, config.yAxisLabel, config.axisFontSize);
     
     // Restore original margins
     margin_right = originalRightMargin;
@@ -2360,17 +2367,16 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     legendLabels.push_back("Bearish Candle");
     
     std::vector<RGBA> legendColors;
-    // Ensure colors are fully opaque for the legend dots
-    RGBA bullishLegendColor = useBullishColor;
-    RGBA bearishLegendColor = useBearishColor;
-    bullishLegendColor.a = 0xFF; // Full opacity
-    bearishLegendColor.a = 0xFF; // Full opacity
+    legendColors.push_back(useBullishColor);
+    legendColors.push_back(useBearishColor);
     
-    legendColors.push_back(bullishLegendColor);
-    legendColors.push_back(bearishLegendColor);
+    // Process legend colors
+    std::vector<std::string> processedLabels;
+    std::vector<RGBA> processedColors;
+    prepareLegendColors(legendLabels, legendColors, processedLabels, processedColors);
     
     // Estimate legend height
-    int estimatedLegendHeight = calculateInfoBoxHeight(legendLabels, 16);
+    int estimatedLegendHeight = calculateInfoBoxHeight(processedLabels, 16);
     
     // Estimate price info box height (typically around 40px height)
     int infoBoxHeight = 40;
@@ -2386,7 +2392,7 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     drawText(margin_left, titleY, config.title, elementColors["title"], config.titleFontSize, false);
     
     // Draw the legend
-    int actualLegendHeight = addLegend(legendLabels, legendColors, margin_left, legendY, 16);
+    int actualLegendHeight = addLegend(processedLabels, processedColors, margin_left, legendY, 16);
     
     // Add price movement indicators and current price display - positioned next to legend
     drawCandlestickPriceInfo(candles, useBullishColor, useBearishColor, legendY);
@@ -2442,9 +2448,8 @@ void Cluster10::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Draw X-axis with date labels
     drawCandlestickXAxis(candles, maxVisibleCandles, totalCandles, firstTimestamp, lastTimestamp);
     
-    // Label axes
-    drawText(width/2, height - margin_bottom/3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
-    drawVerticalText(config.yAxisLabel, margin_left/2, height/2, config.axisFontSize, elementColors["axisLabel"]);
+    // Draw axis labels using our common method
+    drawAxisLabels(config.xAxisLabel, config.yAxisLabel, config.axisFontSize);
     
     // Calculate optimal starting position to center the candles
     int totalRequiredWidth = maxVisibleCandles * (candleWidth + candleSpacing);
@@ -3101,5 +3106,37 @@ void Cluster10::prepareCanvas() {
     }
 }
 
-// End of Cluster10.cpp
+// Helper method to create a cluster legend
+int Cluster10::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y)
+{
+    std::vector<std::string> legendLabels;
+    std::vector<RGBA> legendColors;
+    
+    // Add cluster entries
+    for (int i = 0; i < numClusters; ++i) {
+        char label[32];
+        std::sprintf(label, "Cluster %d", i);
+        legendLabels.push_back(label);
+        legendColors.push_back(clusterColors[i]);
+    }
+    
+    // Add the centroid legend item
+    legendLabels.push_back("Centroid");
+    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // White for centroid
+    
+    // Process colors to ensure opacity
+    std::vector<std::string> processedLabels;
+    std::vector<RGBA> processedColors;
+    prepareLegendColors(legendLabels, legendColors, processedLabels, processedColors);
+    
+    // Add the legend to the visualization using our fixed method
+    return addLegend(processedLabels, processedColors, x, y, 16);
+}
+
+// Explicit template instantiations required for C++03
+template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<shmea::Cluster10::Point>&, shmea::Cluster10::PointXValueFunctor);
+template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<shmea::Cluster10::Point>&, shmea::Cluster10::PointYValueFunctor);
+template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<std::vector<double> >&, shmea::Cluster10::MatrixXValueFunctor);
+template shmea::Cluster10::AxisRange shmea::Cluster10::calculateRange(const std::vector<std::vector<double> >&, shmea::Cluster10::MatrixYValueFunctor);
+
 // End of Cluster10.cpp
