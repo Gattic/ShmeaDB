@@ -1089,7 +1089,10 @@ void Cluster10::plotClusters(const std::vector<std::vector<double> >& data, cons
     
     // Add axis labels with increased font size
     drawText(width / 2, height - margin_bottom / 3, config.xAxisLabel, elementColors["axisLabel"], config.axisFontSize, true);
-    drawVerticalText(config.yAxisLabel, margin_left/4, height/2, config.axisFontSize, elementColors["axisLabel"]);
+    
+    // Position for the Y-axis label - shift right by increasing margin_left/4 to margin_left/2
+    // This fixes the potential cutoff issue
+    drawVerticalText(config.yAxisLabel, margin_left/2, height/2, config.axisFontSize, elementColors["axisLabel"]);
     
     // Draw axis ticks using our helper methods
     drawXAxisTicks(xRange.min, xRange.max, 4, 1);
@@ -1725,7 +1728,7 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     int boxY = legendY; // Same position as legend
     
     // Use our common info box method for consistent styling
-    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", 16);
+    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", 16); // Use a fixed font size of 16
     
     // Draw the text with styling from CSS
     RGBA textColor = elementColors["legend"]; // White text
@@ -2978,8 +2981,8 @@ void Cluster10::setYAxisLabel(const std::string& label)
     textColor.a = 0xCC; // 80% opacity for readability
     
     // Position for the Y-axis label - adjusted for rotated text
-    // Keep the Y-axis label on the left side
-    int labelX = margin_left / 3; // Positioned closer to the left edge
+    // Keep the Y-axis label on the left side but shifted right to prevent cutoff
+    int labelX = margin_left / 2; // Positioned at half margin instead of one-third
     int labelY = margin_top + getPlotHeight() / 2; // Center vertically
     
     // Draw rotated label with increased font size for mobile readability
