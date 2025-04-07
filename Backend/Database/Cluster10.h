@@ -193,6 +193,9 @@ private:
     // Draw text vertically (for y-axis labels)
     void drawVerticalText(const std::string& text, int x, int y, int fontSize, const RGBA& color);
     
+    // Estimate text width based on string length and font size
+    int estimateTextWidth(const std::string& text, unsigned int fontSize);
+    
     //==================== PRIMITIVE DRAWING METHODS ====================//
     
     // Draw a point (filled circle)

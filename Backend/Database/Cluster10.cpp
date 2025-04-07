@@ -793,19 +793,21 @@ void Cluster10::drawAxisLabels(const std::string& xLabel, const std::string& yLa
 
 // Add this helper method after drawInfoBox to calculate heights of elements
 int Cluster10::calculateInfoBoxHeight(const std::vector<std::string>& labels, unsigned int fontSize) {
-    // Base padding
-    int verticalPadding = 24;
-    
-    // Calculate item dimensions
+    // For horizontal layout, height is always the same regardless of number of items
     int itemHeight = fontSize + 6;
-    int itemSpacing = 10;
     
-    // Calculate total height including spacing between items
-    return verticalPadding + (labels.size() * itemHeight) + 
-           ((labels.size() > 1) ? (labels.size() - 1) * itemSpacing : 0);
+    // Calculate total height including top and bottom padding
+    return 24 + itemHeight;  // 12px padding top and bottom + single row height
 }
 
-// Modify the existing method to return the height of the legend
+// Helper function to estimate text width based on string length and font size
+int Cluster10::estimateTextWidth(const std::string& text, unsigned int fontSize) {
+    // Use a more accurate character width estimation
+    // Different characters have different widths, so we'll use an average factor
+    return static_cast<int>(text.length() * fontSize * 0.75) + 10; // Add padding for safety
+}
+
+// Update addLegend method to use dynamic spacing calculation
 int Cluster10::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, int x, int y, unsigned int fontSize)
 {
     if (labels.size() != colors.size() || labels.empty()) {
@@ -814,36 +816,47 @@ int Cluster10::addLegend(const std::vector<std::string>& labels, const std::vect
     
     // Calculate dimensions based on content
     int itemHeight = fontSize + 6;
-    int itemSpacing = 10;
     int colorIndicatorSize = fontSize - 2;
     int colorTextPadding = 12;
+    int minItemSpacing = 30; // Minimum spacing between items
     
-    // Calculate legend width based on text length
-    int maxTextWidth = 0;
+    // Calculate legend width based on text length and horizontal layout
+    int totalWidth = 0;
+    std::vector<int> textWidths; // Store individual text widths for later use
+    
     for (size_t i = 0; i < labels.size(); ++i) {
-        int textWidth = static_cast<int>(labels[i].length() * fontSize * 0.6);
-        maxTextWidth = std::max(maxTextWidth, textWidth);
+        int textWidth = estimateTextWidth(labels[i], fontSize);
+        textWidths.push_back(textWidth);
+        totalWidth += colorIndicatorSize + colorTextPadding + textWidth;
+        if (i < labels.size() - 1) {
+            totalWidth += minItemSpacing;
+        }
     }
     
-    int legendWidth = maxTextWidth + colorIndicatorSize + colorTextPadding + 36;
-    int legendHeight = labels.size() * itemHeight + (labels.size() - 1) * itemSpacing + 24;
+    // Add padding to total width
+    int sidePadding = 30; // 15px padding on each side
+    int legendWidth = totalWidth + sidePadding * 2;
+    int legendHeight = itemHeight + 24; // Single row height + top/bottom padding
     
-    // Draw the info box with gradient background - directly using our common method
+    // Draw the info box with gradient background
     drawInfoBox(x, y, legendWidth, legendHeight, "", fontSize);
     
-    // Draw each legend item with exact positioning
+    // Draw each legend item with exact positioning - now horizontally aligned
+    int currentX = x + sidePadding; // Start with left padding
+    
     for (size_t i = 0; i < labels.size(); ++i) {
-        int itemY = y + 10 + i * (itemHeight + itemSpacing);
-        
-        // Draw color indicator dot - convert coordinates to supersampled space inside the function
-        int dotX = x + 15;
-        int dotY = itemY + itemHeight/2;
+        // Draw color indicator dot
+        int dotX = currentX;
+        int dotY = y + legendHeight/2; // Centered vertically
         
         // Scale dot size and use supersampling for the dot
         drawCircle(scaleX(dotX), scaleY(dotY), scaleSize(colorIndicatorSize/2), colors[i], true);
         
         // Draw label text
         drawText(dotX + colorTextPadding, dotY, labels[i], elementColors["legend"], fontSize, false);
+        
+        // Move to next item position based on actual width
+        currentX += colorIndicatorSize + colorTextPadding + textWidths[i] + minItemSpacing;
     }
     
     // Return the height of the legend box
@@ -1677,6 +1690,7 @@ RGBA Cluster10::getThemeColor(int index) {
     return themeColors[index % themeColors.size()];
 }
 
+// Update drawHistogramStats to use dynamic spacing
 void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize)
 {
     // Calculate statistics
@@ -1695,44 +1709,65 @@ void Cluster10::drawHistogramStats(const std::vector<int>& bins, int maxBinValue
     double mean = sum / (double)bins.size();
     double mode = maxIndex; // index with highest frequency
     
-    // Create stats display with properly aligned text and layout from CSS
-    // Position the stats box below the title and beside the legend
-    int boxWidth = 200;
-    int boxHeight = 120;
-    int boxX = margin_left + 250; // Positioned to the right of the legend but still left-aligned with the chart
-    
-    // Use the same Y position as the legend to align nicely
-    int boxY = legendY; // Same position as legend
-    
-    // Use our common info box method for consistent styling
-    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", fontSize);
-    
-    // Draw the text with styling from CSS
-    RGBA textColor = elementColors["legend"]; // White text
-    
-    // Main title
-    drawText(boxX + 16, boxY + 20, "Histogram Statistics", textColor, 22, false);
-    
-    // Horizontal separator
-    RGBA lineColor(0xFF, 0xFF, 0xFF, 0x40); // 25% opacity white
-    drawLine(scaleX(boxX + 16), scaleY(boxY + 32), scaleX(boxX + boxWidth - 16), scaleY(boxY + 32), lineColor, ssaaFactor);
-    
-    // Format stats values with 1 decimal place and consistent width
+    // Format stats values with 1 decimal place
     char meanText[64], modeText[64], maxText[64], sumText[64];
     std::sprintf(meanText, "Mean: %.1f", mean);
     std::sprintf(modeText, "Mode: %.1f", mode);
     std::sprintf(maxText, "Max: %d", maxBinValue);
     std::sprintf(sumText, "Sum: %d", sum);
     
-    // Draw stats with exact positioning and font sizes from CSS
-    // Increased font sizes from 14 to 20 for better mobile readability
-    drawText(boxX + 16, boxY + 55, meanText, textColor, 20, false);
-    drawText(boxX + 16, boxY + 75, modeText, textColor, 20, false);
-    drawText(boxX + 16, boxY + 95, maxText, textColor, 20, false);
+    // Calculate required widths
+    int titleWidth = estimateTextWidth("Histogram Statistics", 22);
+    int meanWidth = estimateTextWidth(meanText, 20);
+    int modeWidth = estimateTextWidth(modeText, 20);
+    int maxWidth = estimateTextWidth(maxText, 20);
+    int sumWidth = estimateTextWidth(sumText, 20);
     
-    // Sum on the right - just like in CSS
-    int sumWidth = 0; // Placeholder since we don't have text width calculation
-    drawText(boxX + boxWidth - 16 - sumWidth, boxY + 95, sumText, textColor, 20, false);
+    // Calculate minimum spacing between stats
+    int minStatSpacing = 30;
+    
+    // Calculate box dimensions
+    int sidePadding = 20;
+    int boxWidth = sidePadding * 2 + meanWidth + modeWidth + maxWidth + sumWidth + minStatSpacing * 3;
+    boxWidth = std::max(boxWidth, titleWidth + sidePadding * 2); // Ensure box is wide enough for title
+    int boxHeight = 90; // Single row height + padding
+    
+    int boxX = margin_left + 250; // Left-aligned with the chart
+    int boxY = legendY; // Same position as legend
+    
+    // Use our common info box method for consistent styling
+    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", fontSize);
+    
+    // Draw the text with styling
+    RGBA textColor = elementColors["legend"]; // White text
+    
+    // Main title
+    drawText(boxX + sidePadding, boxY + 20, "Histogram Statistics", textColor, 22, false);
+    
+    // Horizontal separator
+    RGBA lineColor(0xFF, 0xFF, 0xFF, 0x40); // 25% opacity white
+    drawLine(scaleX(boxX + sidePadding), scaleY(boxY + 32), 
+             scaleX(boxX + boxWidth - sidePadding), scaleY(boxY + 32), lineColor, ssaaFactor);
+    
+    // Calculate positions for each stat to evenly distribute them
+    int statY = boxY + 55;
+    int contentWidth = boxWidth - (sidePadding * 2);
+    int usedWidth = meanWidth + modeWidth + maxWidth + sumWidth;
+    int extraSpace = contentWidth - usedWidth;
+    int spacing = extraSpace / 3; // Three spaces between four stats
+    
+    // Draw stats with dynamically calculated positions
+    int statX = boxX + sidePadding;
+    drawText(statX, statY, meanText, textColor, 20, false);
+    
+    statX += meanWidth + spacing;
+    drawText(statX, statY, modeText, textColor, 20, false);
+    
+    statX += modeWidth + spacing;
+    drawText(statX, statY, maxText, textColor, 20, false);
+    
+    statX += maxWidth + spacing;
+    drawText(statX, statY, sumText, textColor, 20, false);
 }
 
 // Overload for backward compatibility
@@ -2536,6 +2571,7 @@ void Cluster10::drawCandlestickXAxis(const std::vector<CandleData>& candles, int
     }
 }
 
+// Update candlestick price info to use dynamic spacing
 void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
                                        const RGBA& bullishColor, const RGBA& bearishColor,
                                        int legendY)
@@ -2555,28 +2591,56 @@ void Cluster10::drawCandlestickPriceInfo(const std::vector<CandleData>& candles,
     bool isBullish = priceChange >= 0;
     RGBA trendColor = isBullish ? bullishColor : bearishColor;
     
-    // Format price info with colored price change
-    char priceInfo[128];
-    std::sprintf(priceInfo, "Close: %.2f   Change: %.2f (%.2f%%)", 
-               latestCandle.close, priceChange, percentChange);
+    // Format price info components
+    char closeText[64], changeText[64], percentText[64];
+    std::sprintf(closeText, "Close: %.2f", latestCandle.close);
+    std::sprintf(changeText, "Change: %.2f", priceChange);
+    std::sprintf(percentText, "(%.2f%%)", percentChange);
     
-    // Set dimensions and position to be next to the legend
-    int infoWidth = 350;
-    int infoHeight = 40;
-    int infoX = margin_left + 250; // Positioned to the right of the legend but still left-aligned with the chart
+    // Calculate required widths
+    int closeWidth = estimateTextWidth(closeText, 22);
+    int changeWidth = estimateTextWidth(changeText, 22);
+    int percentWidth = estimateTextWidth(percentText, 22);
     
-    // Use the same Y position as the legend
-    int infoY = legendY; // Same position as legend
+    // Calculate minimum spacing between components
+    int minComponentSpacing = 30;
+    int indicatorSize = 8;
+    int indicatorSpace = 40; // Space for indicator including padding
+    
+    // Calculate box dimensions
+    int sidePadding = 20;
+    int boxWidth = sidePadding * 2 + closeWidth + changeWidth + percentWidth + indicatorSpace + 
+                 minComponentSpacing * 2; // Two spaces between three components plus indicator
+    int boxHeight = 40;
+    
+    int boxX = margin_left + 250; // Left-aligned with the chart
+    int boxY = legendY; // Same position as legend
     
     // Draw the info box
-    drawInfoBox(infoX, infoY, infoWidth, infoHeight, priceInfo, 22); // Increased font size from 16 to 22
+    drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", 22);
+    
+    // Calculate positions for each component to evenly distribute them
+    int textY = boxY + (boxHeight / 2);
+    int contentWidth = boxWidth - (sidePadding * 2) - indicatorSpace;
+    int usedWidth = closeWidth + changeWidth + percentWidth;
+    int extraSpace = contentWidth - usedWidth;
+    int spacing = extraSpace / 2; // Two spaces between three components
+    
+    // Draw components with dynamically calculated positions
+    int textX = boxX + sidePadding;
+    drawText(textX, textY, closeText, elementColors["legend"], 22, false);
+    
+    textX += closeWidth + spacing;
+    drawText(textX, textY, changeText, trendColor, 22, false);
+    
+    textX += changeWidth + spacing;
+    drawText(textX, textY, percentText, trendColor, 22, false);
     
     // Add a small colored indicator box to show trend
-    int indicatorSize = 8;
-    int indicatorX = infoX + infoWidth - 30;
-    int indicatorY = infoY + (infoHeight - indicatorSize) / 2;
+    int indicatorX = boxX + boxWidth - sidePadding - indicatorSize;
+    int indicatorY = boxY + (boxHeight - indicatorSize) / 2;
     
-    // Draw filled rectangle with the appropriate color - scale for supersampling
+    // Draw filled rectangle with the appropriate color
     drawRect(scaleX(indicatorX), scaleY(indicatorY), 
              scaleSize(indicatorSize), scaleSize(indicatorSize), 
              trendColor, true);
