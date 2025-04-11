@@ -1,5 +1,6 @@
 #include "plotter-test.h"
-#include "../../../Backend/Plotter/plotter.h"
+#include "../../../Backend/Plotter/Plotter.h"
+#include "../../../Backend/Plotter/GridRenderer.h"
 #include <vector>
 #include <cstdlib>
 #include <ctime>
@@ -115,20 +116,23 @@ void shmea::testHistogram() {
     bellCurve.push_back(86);
     bellCurve.push_back(142);
     bellCurve.push_back(198);  // Approaching peak
-    bellCurve.push_back(245);  // Peak of distribution
+    bellCurve.push_back(245);  // Peak of distribution - will only reach 80% of plot height
     bellCurve.push_back(215);  // Symmetric decline
     bellCurve.push_back(158);
     bellCurve.push_back(102);
     bellCurve.push_back(65);
     bellCurve.push_back(32);   // End of distribution
     
-    // Plot bell curve histogram with blue color
-    plotter.plotHistogram(bellCurve, RGBA(0x00, 0x9E, 0xFF, 0xFF));
+    // Plot bell curve histogram with blue color and standard X-axis labels
+    // Note: Bars will be drawn at 80% of their original height, while Y-axis values are scaled to 125%
+    // of the maximum bin value to ensure proper alignment between bars and axis labels
+    plotter.plotHistogram(bellCurve, RGBA(0x00, 0x9E, 0xFF, 0xFF), true);
     
     // Save the result
     plotter.saveAsPNG("histogram_test_output.png", ".");
     
     printf("Histogram test completed. Output saved as 'histogram_test_output.png'.\n");
+    printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
     
     // Create a second test with skewed distribution
     Plotter plotter2(1800, 1000, 120, 100, 150, 120, 4);
@@ -148,7 +152,7 @@ void shmea::testHistogram() {
     std::vector<int> skewedDist;
     skewedDist.push_back(180);  // High values at beginning
     skewedDist.push_back(210);
-    skewedDist.push_back(235);  // Peak
+    skewedDist.push_back(235);  // Peak - will only reach 80% of plot height
     skewedDist.push_back(175);
     skewedDist.push_back(120);
     skewedDist.push_back(85);
@@ -157,13 +161,16 @@ void shmea::testHistogram() {
     skewedDist.push_back(30);
     skewedDist.push_back(20);   // Tapering to low values
     
-    // Plot skewed histogram with a different color
-    plotter2.plotHistogram(skewedDist, RGBA(0xFF, 0x6B, 0x00, 0xFF));  // Orange color
+    // Plot skewed histogram with orange color and NO X-axis labels
+    // Note: Bars will be drawn at 80% of their original height, while Y-axis values are scaled to 125%
+    // of the maximum bin value to ensure proper alignment between bars and axis labels
+    plotter2.plotHistogram(skewedDist, RGBA(0xFF, 0x6B, 0x00, 0xFF), false);
     
     // Save the result
     plotter2.saveAsPNG("histogram_skewed_output.png", ".");
     
     printf("Skewed histogram test completed. Output saved as 'histogram_skewed_output.png'.\n");
+    printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
 }
 
 void shmea::testCandlestickChart() {
@@ -268,9 +275,13 @@ void shmea::testLineScatter() {
     // Seed random number generator
     std::srand(43);  // Different seed than other tests
     
-    // Create a Plotter instance for line and scatter plots
+    // Create a Plotter instance for line and scatter plots with better proportions
     // Use 4x supersampling for high quality output
-    Plotter plotter(1800, 1000, 80, 80, 80, 80, 4);
+    // Use a wider right margin (180px) for Y-axis labels
+    // Use a larger top margin (120px) for title and legend
+    // Use a larger bottom margin (100px) for X-axis labels
+    // Overall create a shorter graph height (800px instead of 1000px) to avoid stretching
+    Plotter plotter(1800, 800, 120, 180, 100, 80, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -280,52 +291,184 @@ void shmea::testLineScatter() {
     // Load the logo
     plotter.loadLogo("logo.png");
     
-    // Initialize canvas with background and grid but no title
-    plotter.prepareCanvas();
+    // Create chart configuration with an empty title to avoid duplication
+    // We'll add the title manually later
+    ChartConfig config("", 36, "X Value", "Y Value", 28);
+    
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
+    
+    // Use common setup for chart initialization
+    // No title will be drawn because we set it to empty string
+    plotter.setupChart(config, &originalTopMargin, &originalRightMargin, 180, &titleY, &legendY);
+    
+    // Now manually add the title - position it at y=30 which is standard for other charts
+    titleY = 30;
+    plotter.addTitle("Line & Scatter Plot Visualization", 36);
+    
+    // Create legend labels and colors for the different data series
+    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Sine Wave");
+    legendLabels.push_back("Cosine Wave");
+    legendLabels.push_back("Random Points");
+    
+    std::vector<RGBA> legendColors;
+    legendColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Blue
+    legendColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Orange
+    legendColors.push_back(RGBA(0x33, 0xFF, 0x33, 0xFF)); // Green
+    
+    // Position legend with appropriate spacing below title
+    legendY = titleY + 40;  // Place 40px below the title
+    
+    // Add the legend
+    int legendHeight = plotter.addLegend(legendLabels, legendColors, 80, legendY, 16);
     
     // Create a sine wave line
     std::vector<Plotter::Point> lineData;
     for (int i = 0; i < 50; ++i) {
         Plotter::Point p;
         p.x = i * 0.2;  // X values from 0 to 10
-        p.y = std::sin(i * 0.2) * 4 + 8;  // Sine wave oscillating around y=8
+        p.y = std::sin(i * 0.2) * 3 + 6;  // Sine wave oscillating around y=6
         lineData.push_back(p);
     }
     
-    // Plot line with blue color and increased width for visibility
-    plotter.plotLine(lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3);
-    
-    // Create scatter points with some random variation around the line
-    std::vector<Plotter::Point> scatterData;
-    for (int i = 0; i < 30; ++i) {
+    // Create a second dataset for a cosine wave
+    std::vector<Plotter::Point> cosineData;
+    for (int i = 0; i < 50; ++i) {
         Plotter::Point p;
-        // Sample random points from the line with variation
-        int idx = (std::rand() % lineData.size());
-        p.x = lineData[idx].x + ((std::rand() % 100) - 50) / 100.0;  // Add random variation ±0.5
-        p.y = lineData[idx].y + ((std::rand() % 100) - 50) / 100.0;  // Add random variation ±0.5
+        p.x = i * 0.2;  // X values from 0 to 10
+        p.y = std::cos(i * 0.2) * 3 + 12;  // Cosine wave oscillating around y=12
+        cosineData.push_back(p);
+    }
+    
+    // Create scatter points around the lines
+    std::vector<Plotter::Point> scatterData;
+    for (int i = 0; i < 20; ++i) {
+        Plotter::Point p;
+        
+        // Create random scatter points between the two waves
+        p.x = (std::rand() % 1000) / 100.0;  // X values from 0 to 10
+        p.y = 8 + (std::rand() % 400 - 200) / 100.0;  // Y values around 8 ±2
+        
         scatterData.push_back(p);
     }
     
-    // Plot scatter points with orange color for contrast - increase point size for mobile
-    plotter.plotPoints(scatterData, RGBA(0xFF, 0x6B, 0x00, 0xFF), 10);
+    // Plot the sine wave with blue color but DON'T redraw the background
+    // This preserves the title and legend
+    plotter.plotLine(lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3, false);
     
-    // Add a legend
-    std::vector<std::string> legendLabels;
-    legendLabels.push_back("Line");
-    legendLabels.push_back("Scatter Points");
+    // Plot the cosine wave with orange color, without redrawing the background
+    plotter.plotLine(cosineData, RGBA(0xFF, 0x6B, 0x00, 0xFF), 3, false);
     
-    std::vector<RGBA> legendColors;
-    legendColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF));
-    legendColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF));
+    // Add scatter points with green color, without redrawing background
+    plotter.plotPoints(scatterData, RGBA(0x33, 0xFF, 0x33, 0xFF), 10, false);
     
-    // Position the legend with increased font size
-    plotter.addLegend(legendLabels, legendColors, 1600, 100, 24);
+    // Add axis labels
+    plotter.addAxisLabels(config.xAxisLabel, config.yAxisLabel, config.axisFontSize);
     
-    // Add title at the end to avoid duplicates - larger font size for better readability
-    plotter.addTitle("Line & Scatter Plot Visualization", 46);
+    // Draw Y-axis ticks with 5 divisions, not as integers, 1 decimal place
+    // and label offset of a larger 70px to fit the Y-axis labels on the right side
+    // We use hard-coded ranges here because we know the data
+    // Min Y value is around 3 (sin min -3 + 6), max Y value is around 15 (cos max 3 + 12)
+    double yMin = 2.5;  // Give a little padding below min value
+    double yMax = 15.5; // Give a little padding above max value
+    plotter.getGridRenderer().drawYAxisTicks(yMin, yMax, 5, false, 1, 70);
     
     // Save the result
     plotter.saveAsPNG("line_scatter_test_output.png", ".");
     
+    // Restore original margins
+    plotter.setMarginTop(originalTopMargin);
+    
     printf("Line and scatter plot test completed. Output saved as 'line_scatter_test_output.png'.\n");
+}
+
+// Test function to visualize 10 cluster circles
+void shmea::testMultiCluster() {
+    printf("Testing multi-cluster visualization with 10 clusters...\n");
+    
+    // Seed random number generator with a fixed value for consistent output
+    std::srand(123);
+    
+    // Create a Plotter instance with larger dimensions to handle many clusters
+    // Use 4x supersampling for high quality output
+    Plotter plotter(2400, 1400, 120, 120, 120, 120, 4);
+    
+    // Set parameters
+    plotter.setShowGrid(true);
+    plotter.setShowAxes(false);
+    plotter.setCornerRadius(15);
+    
+    // Initialize the 10-cluster color scheme (uses colors from css-output.css)
+    plotter.use10ClusterColorScheme();
+    
+    // Load the logo
+    plotter.loadLogo("logo.png");
+    
+    // Create data structure for 10 clusters
+    std::vector<std::vector<double> > clusterData;
+    std::vector<int> clusterLabels;
+    std::vector<std::vector<double> > centroids;
+    
+    // Define cluster centers in a grid-like pattern (5x2 grid)
+    // This creates a visually appealing arrangement of clusters
+    std::vector<std::pair<double, double> > clusterCenters;
+    // Initialize cluster centers manually (C++98 compatible)
+    clusterCenters.push_back(std::make_pair(2.0, 2.0));   // Cluster 0: top-left
+    clusterCenters.push_back(std::make_pair(6.0, 2.0));   // Cluster 1: top
+    clusterCenters.push_back(std::make_pair(10.0, 2.0));  // Cluster 2: top
+    clusterCenters.push_back(std::make_pair(14.0, 2.0));  // Cluster 3: top
+    clusterCenters.push_back(std::make_pair(18.0, 2.0));  // Cluster 4: top-right
+    clusterCenters.push_back(std::make_pair(2.0, 6.0));   // Cluster 5: bottom-left
+    clusterCenters.push_back(std::make_pair(6.0, 6.0));   // Cluster 6: bottom
+    clusterCenters.push_back(std::make_pair(10.0, 6.0));  // Cluster 7: bottom
+    clusterCenters.push_back(std::make_pair(14.0, 6.0));  // Cluster 8: bottom
+    clusterCenters.push_back(std::make_pair(18.0, 6.0));  // Cluster 9: bottom-right
+    
+    // Number of points per cluster
+    int pointsPerCluster = 30;
+    
+    // Generate data for each cluster
+    for (int clusterId = 0; clusterId < 10; clusterId++) {
+        // Get center coordinates for this cluster
+        double centerX = clusterCenters[clusterId].first;
+        double centerY = clusterCenters[clusterId].second;
+        
+        // Create centroid vector
+        std::vector<double> centroid;
+        centroid.push_back(centerX);
+        centroid.push_back(centerY);
+        centroids.push_back(centroid);
+        
+        // Create points for this cluster with random variation around the center
+        for (int i = 0; i < pointsPerCluster; i++) {
+            std::vector<double> point;
+            
+            // Create variation radius (different for each cluster to create visual diversity)
+            double spreadFactor = 0.5 + (clusterId % 3) * 0.25; // Values: 0.5, 0.75, 1.0
+            
+            // Generate point with random variation from center
+            double xVar = ((std::rand() % 200) - 100) / 100.0 * spreadFactor;
+            double yVar = ((std::rand() % 200) - 100) / 100.0 * spreadFactor;
+            
+            point.push_back(centerX + xVar);  // x coordinate
+            point.push_back(centerY + yVar);  // y coordinate
+            
+            // Add point to dataset with appropriate label
+            clusterData.push_back(point);
+            clusterLabels.push_back(clusterId);
+        }
+    }
+    
+    // Add title with increased font size
+    plotter.addTitle("Multi-Cluster Analysis - 10 Clusters", 42);
+    
+    // Plot the 10 clusters
+    plotter.plotClusters(clusterData, clusterLabels, centroids);
+    
+    // Save the result
+    plotter.saveAsPNG("multi_cluster_test_output.png", ".");
+    
+    printf("Multi-cluster test completed. Output saved as 'multi_cluster_test_output.png'.\n");
 } 

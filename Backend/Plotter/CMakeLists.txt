@@ -16,14 +16,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(Plotter_src_files
-	plotter.cpp
+	ColorManager.cpp
+	SuperSamplingManager.cpp
+	ChartLayout.cpp
+	ShapeRenderer.cpp
+	TextRenderer.cpp
+	GridRenderer.cpp
+	DataMapper.cpp
+	ChartStyler.cpp
+	Plotter.cpp
 )
 add_library(Plotter ${Plotter_src_files})
 
 #Link libraries
 if(EMSCRIPTEN)
 else()
-    target_link_libraries(Plotter ${FREETYPE_LIBRARIES})
+    target_link_libraries(Plotter ${FREETYPE_LIBRARIES} DB)
 endif()
 
 install(TARGETS Plotter EXPORT shmeaConfig
@@ -35,3 +43,4 @@ install(TARGETS Plotter EXPORT shmeaConfig
 install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
 
 export(TARGETS Plotter FILE shmeaConfig.cmake)
+

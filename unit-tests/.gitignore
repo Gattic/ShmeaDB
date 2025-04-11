@@ -1,6 +1,7 @@
 outputTest.csv
-cluster10_test_output.png
+cluster_test_output.png
 histogram_skewed_output.png
 histogram_test_output.png
 candlestick_chart_output.png
 line_scatter_test_output.png
+multi_cluster_test_output.png

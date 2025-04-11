@@ -15,9 +15,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(PlotterTests_src_files
-plotter-test.cpp
+	plotter-test.cpp
 )
 add_library(PlotterTests ${PlotterTests_src_files})
+
+# Link to main Plotter library which now contains all the refactored components
+target_link_libraries(PlotterTests Plotter)
 
 # Link against FreeType
 if(NOT EMSCRIPTEN)

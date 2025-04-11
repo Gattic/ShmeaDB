@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
 	shmea::testHistogram();
 	shmea::testCandlestickChart();
 	shmea::testLineScatter();
+	shmea::testMultiCluster();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");

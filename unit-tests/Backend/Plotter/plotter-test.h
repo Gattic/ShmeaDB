@@ -22,6 +22,7 @@ void testCluster();
 void testHistogram();
 void testCandlestickChart();
 void testLineScatter();
+void testMultiCluster();
 }
 
 #endif 
