@@ -14,10 +14,21 @@ namespace shmea {
     class ShapeRenderer;
     class TextRenderer;
     class GridRenderer;
+    class DataMapper;
     class ChartStyler;
 }
 
 namespace shmea {
+
+// Chart types for margin calculation
+enum ChartType {
+    CHART_DEFAULT,
+    CHART_HISTOGRAM, 
+    CHART_LINE,
+    CHART_SCATTER,
+    CHART_CANDLESTICK,
+    CHART_CLUSTER
+};
 
 // Struct for chart configuration
 struct ChartConfig {
@@ -62,9 +73,14 @@ public:
     
     // Constructor and destructor
     Plotter(unsigned int width, unsigned int height,
+            unsigned int ssaa_factor = 1);
+    
+    // Backwards compatibility constructor that allows explicit margin specification
+    Plotter(unsigned int width, unsigned int height,
             unsigned int margin_top, unsigned int margin_right,
             unsigned int margin_bottom, unsigned int margin_left,
             unsigned int ssaa_factor = 1);
+    
     ~Plotter();
     
     // Initialization
@@ -76,6 +92,12 @@ public:
     void setCornerRadius(int radius);
     void setSuperSamplingFactor(unsigned int factor);
     void setMarginTop(unsigned int margin);
+    void setMarginRight(unsigned int margin);
+    void setMarginBottom(unsigned int margin);
+    void setMarginLeft(unsigned int margin);
+    
+    // Auto margin calculation
+    void calculateOptimalMargins(ChartType chartType = CHART_DEFAULT);
     
     // Custom color manager
     void setCustomColors(const std::vector<RGBA>& clusterColors);
@@ -132,6 +154,12 @@ private:
     // Logo handling
     bool hasLogo;
     Image logoImage;
+    
+    // Margin calculation helpers
+    unsigned int calculateTopMargin(ChartType chartType, unsigned int width, unsigned int height);
+    unsigned int calculateRightMargin(ChartType chartType, unsigned int width, unsigned int height);
+    unsigned int calculateBottomMargin(ChartType chartType, unsigned int width, unsigned int height);
+    unsigned int calculateLeftMargin(ChartType chartType, unsigned int width, unsigned int height);
     
     // Helper methods - general
     std::vector<DataMapper::Point> convertToDataPoints(const std::vector<Point>& points);

@@ -10,14 +10,15 @@
 using namespace shmea;
 
 void shmea::testCluster() {
-    printf("Testing Cluster visualization with supersampling...\n");
+    printf("Testing Cluster visualization with supersampling and auto margins...\n");
     
     // Seed random number generator with a fixed value for consistent output
     std::srand(42);
     
     // Create a Plotter instance specifically for cluster visualization
     // Use 4x supersampling for high quality output
-    Plotter plotter(1800, 1000, 80, 80, 80, 80, 4);
+    // Use the new constructor with automatic margin calculation
+    Plotter plotter(1800, 1000, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -88,7 +89,7 @@ void shmea::testCluster() {
     // Save the result
     plotter.saveAsPNG("cluster_test_output.png", ".");
     
-    printf("Cluster test completed. Output saved as 'cluster_test_output.png'.\n");
+    printf("Cluster test with auto-calculated margins completed. Output saved as 'cluster_test_output.png'.\n");
 }
 
 void shmea::testHistogram() {
@@ -135,7 +136,9 @@ void shmea::testHistogram() {
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
     
     // Create a second test with skewed distribution
-    Plotter plotter2(1800, 1000, 120, 100, 150, 120, 4);
+    // Use the new constructor with automatic margin calculation
+    printf("Creating second histogram with automatic margin calculation...\n");
+    Plotter plotter2(1800, 1000, 4);
     
     // Set parameters
     plotter2.setShowGrid(true);
@@ -169,16 +172,17 @@ void shmea::testHistogram() {
     // Save the result
     plotter2.saveAsPNG("histogram_skewed_output.png", ".");
     
-    printf("Skewed histogram test completed. Output saved as 'histogram_skewed_output.png'.\n");
+    printf("Skewed histogram test with auto-calculated margins completed. Output saved as 'histogram_skewed_output.png'.\n");
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
 }
 
 void shmea::testCandlestickChart() {
-    printf("Testing candlestick chart visualization from candechart.fig with supersampling...\n");
+    printf("Testing candlestick chart visualization from candechart.fig with supersampling and auto margins...\n");
     
     // Create a Plotter instance optimized for candlestick chart display
     // Use 4x supersampling for high quality output
-    Plotter plotter(1800, 1000, 120, 150, 150, 150, 4);
+    // Use the new constructor with automatic margin calculation
+    Plotter plotter(1800, 1000, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -265,23 +269,20 @@ void shmea::testCandlestickChart() {
     // Save the result
     plotter.saveAsPNG("candlestick_chart_output.png", ".");
     
-    printf("Candlestick chart test completed. Output saved as 'candlestick_chart_output.png'.\n");
+    printf("Candlestick chart test with auto-calculated margins completed. Output saved as 'candlestick_chart_output.png'.\n");
 }
 
 // New function to test the line and scatter plots separately
 void shmea::testLineScatter() {
-    printf("Testing line and scatter plots with supersampling...\n");
+    printf("Testing line and scatter plots with supersampling and auto margins...\n");
     
     // Seed random number generator
     std::srand(43);  // Different seed than other tests
     
     // Create a Plotter instance for line and scatter plots with better proportions
     // Use 4x supersampling for high quality output
-    // Use a wider right margin (180px) for Y-axis labels
-    // Use a larger top margin (120px) for title and legend
-    // Use a larger bottom margin (100px) for X-axis labels
-    // Overall create a shorter graph height (800px instead of 1000px) to avoid stretching
-    Plotter plotter(1800, 800, 120, 180, 100, 80, 4);
+    // Use the new constructor with automatic margin calculation
+    Plotter plotter(1800, 800, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -323,6 +324,18 @@ void shmea::testLineScatter() {
     
     // Add the legend
     int legendHeight = plotter.addLegend(legendLabels, legendColors, 80, legendY, 16);
+    
+    // Calculate and set a sufficient top margin to ensure legend doesn't overlap with the chart
+    // Allow 20px padding below the legend
+    unsigned int newTopMargin = legendY + legendHeight + 20;
+    plotter.setMarginTop(newTopMargin);
+    
+    // Redraw with the new margin
+    plotter.prepareCanvas();
+    
+    // Redraw the title and legend after adjusting margins
+    plotter.addTitle("Line & Scatter Plot Visualization", 36);
+    plotter.addLegend(legendLabels, legendColors, 80, legendY, 16);
     
     // Create a sine wave line
     std::vector<Plotter::Point> lineData;
@@ -378,22 +391,20 @@ void shmea::testLineScatter() {
     // Save the result
     plotter.saveAsPNG("line_scatter_test_output.png", ".");
     
-    // Restore original margins
-    plotter.setMarginTop(originalTopMargin);
-    
-    printf("Line and scatter plot test completed. Output saved as 'line_scatter_test_output.png'.\n");
+    printf("Line and scatter plot test with auto-calculated margins completed. Output saved as 'line_scatter_test_output.png'.\n");
 }
 
 // Test function to visualize 10 cluster circles
 void shmea::testMultiCluster() {
-    printf("Testing multi-cluster visualization with 10 clusters...\n");
+    printf("Testing multi-cluster visualization with 10 clusters and automatic margins...\n");
     
     // Seed random number generator with a fixed value for consistent output
     std::srand(123);
     
     // Create a Plotter instance with larger dimensions to handle many clusters
     // Use 4x supersampling for high quality output
-    Plotter plotter(2400, 1400, 120, 120, 120, 120, 4);
+    // Use the new constructor with auto-margin calculation
+    Plotter plotter(2400, 1400, 4);
     
     // Set parameters
     plotter.setShowGrid(true);
@@ -470,5 +481,5 @@ void shmea::testMultiCluster() {
     // Save the result
     plotter.saveAsPNG("multi_cluster_test_output.png", ".");
     
-    printf("Multi-cluster test completed. Output saved as 'multi_cluster_test_output.png'.\n");
+    printf("Multi-cluster test completed with auto-calculated margins. Output saved as 'multi_cluster_test_output.png'.\n");
 } 

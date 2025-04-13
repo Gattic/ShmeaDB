@@ -46,6 +46,42 @@ Plotter::Plotter(unsigned int width, unsigned int height,
     initialize();
 }
 
+// New constructor that automatically calculates margins
+Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_factor)
+    : hasLogo(false)
+{
+    // Initialize helper components in the correct order
+    colorManager = new ColorManager();
+    
+    // Calculate default margins based on chart dimensions
+    unsigned int margin_top = calculateTopMargin(CHART_DEFAULT, width, height);
+    unsigned int margin_right = calculateRightMargin(CHART_DEFAULT, width, height);
+    unsigned int margin_bottom = calculateBottomMargin(CHART_DEFAULT, width, height);
+    unsigned int margin_left = calculateLeftMargin(CHART_DEFAULT, width, height);
+    
+    chartLayout = new ChartLayout(width, height, margin_top, margin_right, margin_bottom, margin_left, ssaa_factor);
+    
+    ssaaManager = new SuperSamplingManager(width, height, ssaa_factor);
+    
+    shapeRenderer = new ShapeRenderer(*ssaaManager, *colorManager, *chartLayout);
+    
+    textRenderer = new TextRenderer(*ssaaManager, *colorManager, *chartLayout);
+    textRenderer->initialize("fonts/font.ttf");  // Specify font path explicitly
+    
+    gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer);
+    
+    dataMapper = new DataMapper(*chartLayout);
+    
+    chartStyler = new ChartStyler(*colorManager, *chartLayout, *shapeRenderer, 
+                               *textRenderer, *gridRenderer, *dataMapper);
+    
+    // Allocate output image
+    image.Allocate(width, height);
+    
+    // Complete initialization
+    initialize();
+}
+
 Plotter::~Plotter()
 {
     // Clean up components in reverse order
@@ -362,6 +398,9 @@ void Plotter::plotPoints(const std::vector<Point>& points, const RGBA& color, in
         return;
     }
     
+    // Calculate optimal margins for scatter plot
+    calculateOptimalMargins(CHART_SCATTER);
+    
     // Variables for margin storage and positioning
     unsigned int originalTopMargin, originalRightMargin;
     int titleY, legendY;
@@ -434,6 +473,9 @@ void Plotter::plotLine(const std::vector<Point>& points, const RGBA& color, int 
         return;
     }
     
+    // Calculate optimal margins for line chart
+    calculateOptimalMargins(CHART_LINE);
+    
     // Variables for margin storage and positioning
     unsigned int originalTopMargin, originalRightMargin;
     int titleY, legendY;
@@ -496,6 +538,9 @@ void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, boo
     if (color.r == 0 && color.g == 0 && color.b == 0 && color.a == 0) {
         useColor = colorManager->getThemeColor(0); // Use first theme color
     }
+    
+    // Calculate optimal margins for histogram
+    calculateOptimalMargins(CHART_HISTOGRAM);
     
     // Variables for margin storage and positioning
     unsigned int originalTopMargin, originalRightMargin;
@@ -615,12 +660,15 @@ void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, boo
 }
 
 void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
-                                  const RGBA& bullishColor,
-                                  const RGBA& bearishColor)
+                              const RGBA& bullishColor,
+                              const RGBA& bearishColor)
 {
     if (candles.empty()) {
         return;
     }
+    
+    // Calculate optimal margins for candlestick chart
+    calculateOptimalMargins(CHART_CANDLESTICK);
     
     // Use parameter colors or defaults from CSS if none provided
     RGBA useBullishColor = bullishColor;
@@ -791,6 +839,9 @@ void Plotter::plotClusters(const std::vector<std::vector<double> >& data, const 
     if (data.empty() || data[0].size() < 2 || data.size() != labels.size()) {
         return;
     }
+    
+    // Calculate optimal margins for cluster visualization
+    calculateOptimalMargins(CHART_CLUSTER);
     
     // Variables for margin storage and positioning
     unsigned int originalTopMargin, originalRightMargin;
@@ -1079,6 +1130,198 @@ std::vector<std::string> Plotter::createTimeLabels(double minTime, double maxTim
     }
     
     return timeLabels;
+}
+
+void Plotter::setMarginRight(unsigned int margin)
+{
+    chartLayout->setMarginRight(margin);
+}
+
+void Plotter::setMarginBottom(unsigned int margin)
+{
+    chartLayout->setMarginBottom(margin);
+}
+
+void Plotter::setMarginLeft(unsigned int margin)
+{
+    chartLayout->setMarginLeft(margin);
+}
+
+// Calculate optimal margins for a specific chart type
+void Plotter::calculateOptimalMargins(ChartType chartType)
+{
+    unsigned int width = chartLayout->getWidth();
+    unsigned int height = chartLayout->getHeight();
+    
+    unsigned int top = calculateTopMargin(chartType, width, height);
+    unsigned int right = calculateRightMargin(chartType, width, height);
+    unsigned int bottom = calculateBottomMargin(chartType, width, height);
+    unsigned int left = calculateLeftMargin(chartType, width, height);
+    
+    // Special case for line and scatter plots - give them extra vertical space
+    // to ensure legends and info boxes don't overlap with the graph
+    if (chartType == CHART_LINE || chartType == CHART_SCATTER) {
+        // Add an additional buffer to prevent overlap issues
+        top = std::max(top, static_cast<unsigned int>(height * 0.18f)); // At least 18% of height
+        
+        // For shorter graph heights (< 900px), give even more margin
+        if (height < 900) {
+            top = std::max(top, static_cast<unsigned int>(height * 0.22f)); // Up to 22% for small graphs
+        }
+    }
+    
+    chartLayout->setMarginTop(top);
+    chartLayout->setMarginRight(right);
+    chartLayout->setMarginBottom(bottom);
+    chartLayout->setMarginLeft(left);
+    
+    // Redraw with new margins if needed
+    prepareCanvas();
+}
+
+// Calculate top margin based on chart type and dimensions
+unsigned int Plotter::calculateTopMargin(ChartType chartType, unsigned int width, unsigned int height)
+{
+    // Base value for top margin (accommodates title and potential legend)
+    float baseValue = 0.0f;
+    
+    switch (chartType) {
+        case CHART_HISTOGRAM:
+            // Histograms need more space for statistics box at the top
+            baseValue = 0.12f; // 12% of height
+            break;
+        case CHART_CANDLESTICK:
+            // Candlestick charts need space for price information
+            baseValue = 0.12f; // 12% of height
+            break;
+        case CHART_CLUSTER:
+            // Cluster charts need space for legend and cluster information
+            baseValue = 0.09f; // 9% of height 
+            break;
+        case CHART_LINE:
+        case CHART_SCATTER:
+            // Line and scatter plots need more space for title, legend, and info boxes
+            // Increase from 10% to 15% to prevent overlap with graph
+            baseValue = 0.15f; // 15% of height
+            break;
+        case CHART_DEFAULT:
+        default:
+            // Default value for standard charts
+            baseValue = 0.08f; // 8% of height
+            break;
+    }
+    
+    // Calculate top margin as percentage of height with a minimum value
+    unsigned int margin = static_cast<unsigned int>(height * baseValue);
+    return std::max(margin, 60u); // Minimum 60px
+}
+
+// Calculate right margin based on chart type and dimensions
+unsigned int Plotter::calculateRightMargin(ChartType chartType, unsigned int width, unsigned int height)
+{
+    // Base value for right margin (accommodates Y-axis labels and potential legend)
+    float baseValue = 0.0f;
+    
+    switch (chartType) {
+        case CHART_HISTOGRAM:
+            // Histograms need moderate space for Y-axis labels
+            baseValue = 0.06f; // 6% of width
+            break;
+        case CHART_CANDLESTICK:
+            // Candlestick charts need more space for price labels
+            baseValue = 0.08f; // 8% of width
+            break;
+        case CHART_CLUSTER:
+            // Cluster charts need moderate space
+            baseValue = 0.05f; // 5% of width
+            break;
+        case CHART_LINE:
+        case CHART_SCATTER:
+            // Line and scatter plots need more space for precise Y values
+            baseValue = 0.1f; // 10% of width
+            break;
+        case CHART_DEFAULT:
+        default:
+            // Default value for standard charts
+            baseValue = 0.05f; // 5% of width
+            break;
+    }
+    
+    // Calculate right margin as percentage of width with a minimum value
+    unsigned int margin = static_cast<unsigned int>(width * baseValue);
+    return std::max(margin, 80u); // Minimum 80px
+}
+
+// Calculate bottom margin based on chart type and dimensions
+unsigned int Plotter::calculateBottomMargin(ChartType chartType, unsigned int width, unsigned int height)
+{
+    // Base value for bottom margin (accommodates X-axis labels)
+    float baseValue = 0.0f;
+    
+    switch (chartType) {
+        case CHART_HISTOGRAM:
+            // Histograms need more space for bin labels
+            baseValue = 0.12f; // 12% of height
+            break;
+        case CHART_CANDLESTICK:
+            // Candlestick charts need space for date labels
+            baseValue = 0.15f; // 15% of height
+            break;
+        case CHART_CLUSTER:
+            // Cluster charts need moderate space
+            baseValue = 0.08f; // 8% of height
+            break;
+        case CHART_LINE:
+        case CHART_SCATTER:
+            // Line and scatter plots need space for X values
+            baseValue = 0.1f; // 10% of height
+            break;
+        case CHART_DEFAULT:
+        default:
+            // Default value for standard charts
+            baseValue = 0.08f; // 8% of height
+            break;
+    }
+    
+    // Calculate bottom margin as percentage of height with a minimum value
+    unsigned int margin = static_cast<unsigned int>(height * baseValue);
+    return std::max(margin, 60u); // Minimum 60px
+}
+
+// Calculate left margin based on chart type and dimensions
+unsigned int Plotter::calculateLeftMargin(ChartType chartType, unsigned int width, unsigned int height)
+{
+    // Base value for left margin (accommodates Y-axis labels)
+    float baseValue = 0.0f;
+    
+    switch (chartType) {
+        case CHART_HISTOGRAM:
+            // Histograms need more space for frequency labels
+            baseValue = 0.08f; // 8% of width
+            break;
+        case CHART_CANDLESTICK:
+            // Candlestick charts need space for price labels
+            baseValue = 0.08f; // 8% of width
+            break;
+        case CHART_CLUSTER:
+            // Cluster charts need moderate space
+            baseValue = 0.05f; // 5% of width
+            break;
+        case CHART_LINE:
+        case CHART_SCATTER:
+            // Line and scatter plots need space for precise Y values
+            baseValue = 0.04f; // 4% of width
+            break;
+        case CHART_DEFAULT:
+        default:
+            // Default value for standard charts
+            baseValue = 0.05f; // 5% of width
+            break;
+    }
+    
+    // Calculate left margin as percentage of width with a minimum value
+    unsigned int margin = static_cast<unsigned int>(width * baseValue);
+    return std::max(margin, 80u); // Minimum 80px
 }
 
 } // namespace shmea 
