@@ -801,6 +801,129 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     chartLayout->setMarginTop(originalTopMargin);
 }
 
+void Plotter::plotMultiSeries(const std::vector<std::vector<Point> >& seriesData,
+                             const std::vector<std::string>& seriesLabels,
+                             const std::vector<RGBA>& seriesColors,
+                             const std::vector<bool>& isLineStyleSeries,
+                             const std::string& title,
+                             const std::string& xAxisLabel,
+                             const std::string& yAxisLabel)
+{
+    // Validate inputs
+    if (seriesData.empty() || seriesLabels.size() != seriesData.size() || 
+        seriesColors.size() != seriesData.size() || isLineStyleSeries.size() != seriesData.size()) {
+        printf("Error: Invalid inputs to plotMultiSeries. Sizes must match.\n");
+        return;
+    }
+    
+    // Combine all points to calculate global axis ranges
+    std::vector<DataMapper::Point> allDataPoints;
+    for (size_t series = 0; series < seriesData.size(); ++series) {
+        const std::vector<Point>& points = seriesData[series];
+        if (points.empty()) {
+            continue;
+        }
+        
+        // Convert to DataMapper points and add to the combined list
+        std::vector<DataMapper::Point> seriesPoints = convertToDataPoints(points);
+        allDataPoints.insert(allDataPoints.end(), seriesPoints.begin(), seriesPoints.end());
+    }
+    
+    if (allDataPoints.empty()) {
+        printf("Error: No valid data points to plot.\n");
+        return;
+    }
+    
+    // Calculate overall data ranges for X and Y axes
+    DataMapper::AxisRange xRange, yRange;
+    xRange = dataMapper->calculateXRange(allDataPoints);
+    yRange = dataMapper->calculateYRange(allDataPoints);
+    
+    printf("Global X range: [%.2f, %.2f], Y range: [%.2f, %.2f]\n", 
+          xRange.min, xRange.max, yRange.min, yRange.max);
+    
+    // Calculate optimal margins for a mixed line/scatter chart
+    calculateOptimalMargins(CHART_LINE); // Use line chart margins as a base
+    
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
+    
+    // Prepare the chart with standard configuration and custom title
+    prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 28, 180,
+                        &originalTopMargin, &originalRightMargin, &titleY, &legendY);
+    
+    // Draw the legend with all series
+    // Position legend with appropriate spacing below title
+    legendY = titleY + 40;  // Place 40px below the title
+    
+    // Add the legend
+    int legendHeight = addLegend(seriesLabels, seriesColors, 
+                              chartLayout->getMarginLeft(), legendY, 16);
+    
+    // Calculate and set a sufficient top margin to ensure legend doesn't overlap with the chart
+    // Allow 20px padding below the legend
+    unsigned int newTopMargin = legendY + legendHeight + 20;
+    chartLayout->setMarginTop(newTopMargin);
+    
+    // Redraw with the new margin
+    prepareCanvas();
+    
+    // Redraw the title after adjusting margins
+    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, title, 
+                       colorManager->getElementColor("title"), 36, false);
+    
+    // Redraw the legend after adjusting margins
+    addLegend(seriesLabels, seriesColors, chartLayout->getMarginLeft(), legendY, 16);
+    
+    // Set up standard axis ticks with 70px Y-axis label offset
+    setupStandardAxisTicks(xRange, yRange, 70);
+    
+    // Plot each series in order
+    for (size_t series = 0; series < seriesData.size(); ++series) {
+        const std::vector<Point>& points = seriesData[series];
+        if (points.empty()) {
+            continue;
+        }
+        
+        RGBA color = seriesColors[series];
+        bool isLineSeries = isLineStyleSeries[series];
+        
+        if (isLineSeries && points.size() >= 2) {
+            // Draw as a line series
+            // Draw line segments between adjacent points
+            for (size_t i = 1; i < points.size(); ++i) {
+                // Map points to screen coordinates
+                DataMapper::Point p1 = dataMapper->mapDataToScreen(points[i-1].x, points[i-1].y, xRange, yRange);
+                DataMapper::Point p2 = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
+                
+                // Draw the line segment with proper clipping
+                drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, 3, i);
+            }
+        } else {
+            // Draw as scatter points
+            for (size_t i = 0; i < points.size(); ++i) {
+                // Map point to screen coordinates
+                DataMapper::Point p = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
+                
+                // Draw the point with supersampling
+                int ssaaX = ssaaManager->scaleX(p.x);
+                int ssaaY = ssaaManager->scaleY(p.y);
+                int ssaaSize = ssaaManager->scaleSize(10); // Use 10px size for scatter points
+                
+                // Ensure coordinates are valid
+                if (isCoordinateValid(ssaaX, ssaaY)) {
+                    shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
+                }
+            }
+        }
+    }
+    
+    // Restore original margins
+    chartLayout->setMarginRight(originalRightMargin);
+    chartLayout->setMarginTop(originalTopMargin);
+}
+
 // Helper method to prepare cluster colors
 std::vector<RGBA> Plotter::prepareClusterColors(int numClusters) {
     std::vector<RGBA> clusterColors;

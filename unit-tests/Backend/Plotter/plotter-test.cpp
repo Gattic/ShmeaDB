@@ -281,7 +281,6 @@ void shmea::testLineScatter() {
     
     // Create a Plotter instance for line and scatter plots with better proportions
     // Use 4x supersampling for high quality output
-    // Use the new constructor with automatic margin calculation
     Plotter plotter(1800, 800, 4);
     
     // Set parameters
@@ -291,51 +290,6 @@ void shmea::testLineScatter() {
     
     // Load the logo
     plotter.loadLogo("logo.png");
-    
-    // Create chart configuration with an empty title to avoid duplication
-    // We'll add the title manually later
-    ChartConfig config("", 36, "X Value", "Y Value", 28);
-    
-    // Variables for margin storage and positioning
-    unsigned int originalTopMargin, originalRightMargin;
-    int titleY, legendY;
-    
-    // Use common setup for chart initialization
-    // No title will be drawn because we set it to empty string
-    plotter.setupChart(config, &originalTopMargin, &originalRightMargin, 180, &titleY, &legendY);
-    
-    // Now manually add the title - position it at y=30 which is standard for other charts
-    titleY = 30;
-    plotter.addTitle("Line & Scatter Plot Visualization", 36);
-    
-    // Create legend labels and colors for the different data series
-    std::vector<std::string> legendLabels;
-    legendLabels.push_back("Sine Wave");
-    legendLabels.push_back("Cosine Wave");
-    legendLabels.push_back("Random Points");
-    
-    std::vector<RGBA> legendColors;
-    legendColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Blue
-    legendColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Orange
-    legendColors.push_back(RGBA(0x33, 0xFF, 0x33, 0xFF)); // Green
-    
-    // Position legend with appropriate spacing below title
-    legendY = titleY + 40;  // Place 40px below the title
-    
-    // Add the legend
-    int legendHeight = plotter.addLegend(legendLabels, legendColors, 80, legendY, 16);
-    
-    // Calculate and set a sufficient top margin to ensure legend doesn't overlap with the chart
-    // Allow 20px padding below the legend
-    unsigned int newTopMargin = legendY + legendHeight + 20;
-    plotter.setMarginTop(newTopMargin);
-    
-    // Redraw with the new margin
-    plotter.prepareCanvas();
-    
-    // Redraw the title and legend after adjusting margins
-    plotter.addTitle("Line & Scatter Plot Visualization", 36);
-    plotter.addLegend(legendLabels, legendColors, 80, legendY, 16);
     
     // Create a sine wave line
     std::vector<Plotter::Point> lineData;
@@ -367,26 +321,40 @@ void shmea::testLineScatter() {
         scatterData.push_back(p);
     }
     
-    // Plot the sine wave with blue color but DON'T redraw the background
-    // This preserves the title and legend
-    plotter.plotLine(lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3, false);
+    // Set up data series
+    std::vector<std::vector<Plotter::Point> > seriesData;
+    seriesData.push_back(lineData);
+    seriesData.push_back(cosineData);
+    seriesData.push_back(scatterData);
     
-    // Plot the cosine wave with orange color, without redrawing the background
-    plotter.plotLine(cosineData, RGBA(0xFF, 0x6B, 0x00, 0xFF), 3, false);
+    // Create legend labels
+    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Sine Wave");
+    legendLabels.push_back("Cosine Wave");
+    legendLabels.push_back("Random Points");
     
-    // Add scatter points with green color, without redrawing background
-    plotter.plotPoints(scatterData, RGBA(0x33, 0xFF, 0x33, 0xFF), 10, false);
+    // Series colors
+    std::vector<RGBA> seriesColors;
+    seriesColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Blue
+    seriesColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Orange
+    seriesColors.push_back(RGBA(0x33, 0xFF, 0x33, 0xFF)); // Green
     
-    // Add axis labels
-    plotter.addAxisLabels(config.xAxisLabel, config.yAxisLabel, config.axisFontSize);
+    // Define which series should be drawn as lines
+    std::vector<bool> isLineStyleSeries;
+    isLineStyleSeries.push_back(true);  // Sine = line
+    isLineStyleSeries.push_back(true);  // Cosine = line
+    isLineStyleSeries.push_back(false); // Scatter = points
     
-    // Draw Y-axis ticks with 5 divisions, not as integers, 1 decimal place
-    // and label offset of a larger 70px to fit the Y-axis labels on the right side
-    // We use hard-coded ranges here because we know the data
-    // Min Y value is around 3 (sin min -3 + 6), max Y value is around 15 (cos max 3 + 12)
-    double yMin = 2.5;  // Give a little padding below min value
-    double yMax = 15.5; // Give a little padding above max value
-    plotter.getGridRenderer().drawYAxisTicks(yMin, yMax, 5, false, 1, 70);
+    // Plot all series with a single call - no manual setup needed
+    plotter.plotMultiSeries(
+        seriesData,
+        legendLabels,
+        seriesColors,
+        isLineStyleSeries,
+        "Line & Scatter Plot Visualization",
+        "X Value", 
+        "Y Value"
+    );
     
     // Save the result
     plotter.saveAsPNG("line_scatter_test_output.png", ".");

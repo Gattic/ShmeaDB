@@ -134,6 +134,15 @@ public:
                               const RGBA& bullishColor = RGBA(0x03, 0xC0, 0x3C, 0xFF),
                               const RGBA& bearishColor = RGBA(0xFF, 0x47, 0x45, 0xFF));
     
+    // Combines multiple series (lines and scatter points) in a single chart
+    void plotMultiSeries(const std::vector<std::vector<Point> >& seriesData,
+                        const std::vector<std::string>& seriesLabels,
+                        const std::vector<RGBA>& seriesColors,
+                        const std::vector<bool>& isLineStyleSeries,
+                        const std::string& title = "Multi-Series Visualization",
+                        const std::string& xAxisLabel = "X Value",
+                        const std::string& yAxisLabel = "Y Value");
+    
     // Direct access to GridRenderer for Y-axis ticks
     GridRenderer& getGridRenderer() { return *gridRenderer; }
     
