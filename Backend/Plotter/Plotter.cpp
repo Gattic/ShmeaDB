@@ -14,6 +14,161 @@
 
 namespace shmea {
 
+//
+// ChartBuilder Implementation
+//
+
+ChartBuilder::ChartBuilder(Plotter& plotter)
+    : plotter(plotter), 
+      chartType(CHART_DEFAULT),
+      hasHistogramData(false),
+      histogramShowXAxisLabels(true),
+      hasCandlestickData(false),
+      bullishColor(0x03, 0xC0, 0x3C, 0xFF),
+      bearishColor(0xFF, 0x47, 0x45, 0xFF),
+      hasClusterData(false)
+{
+}
+
+ChartBuilder& ChartBuilder::title(const std::string& title, unsigned int fontSize) {
+    plotter.addTitle(title, fontSize);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::size(unsigned int width, unsigned int height, unsigned int ssaaFactor) {
+    // Size can't be changed after Plotter is created, so this is a no-op
+    // Could be implemented if we allocated a new Image and re-initialized components
+    printf("Warning: Cannot change chart size after creation. Use a new Plotter instance instead.\n");
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::margins(unsigned int top, unsigned int right, 
+                                   unsigned int bottom, unsigned int left) {
+    plotter.setMarginTop(top);
+    plotter.setMarginRight(right);
+    plotter.setMarginBottom(bottom);
+    plotter.setMarginLeft(left);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::autoMargins(ChartType chartType) {
+    this->chartType = chartType;
+    plotter.calculateOptimalMargins(chartType);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::axisLabels(const std::string& xLabel, const std::string& yLabel,
+                                      unsigned int fontSize) {
+    plotter.addAxisLabels(xLabel, yLabel, fontSize);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::grid(bool show) {
+    plotter.setShowGrid(show);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::axes(bool show) {
+    plotter.setShowAxes(show);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::cornerRadius(int radius) {
+    plotter.setCornerRadius(radius);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::logo(const std::string& logoPath) {
+    plotter.loadLogo(logoPath);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::colors(const std::vector<RGBA>& colors) {
+    plotter.setCustomColors(colors);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::addSeries(const Series& series) {
+    this->series.push_back(series);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::addSeries(const std::string& name, const std::vector<Point>& data, 
+                                     const RGBA& color, SeriesType type,
+                                     int lineWidth, int pointSize) {
+    Series newSeries(name, data, color, type, lineWidth, pointSize);
+    return addSeries(newSeries);
+}
+
+ChartBuilder& ChartBuilder::addHistogramData(const std::vector<int>& bins, 
+                                           const RGBA& color, 
+                                           bool showXAxisLabels) {
+    this->hasHistogramData = true;
+    this->histogramBins = bins;
+    this->histogramColor = color;
+    this->histogramShowXAxisLabels = showXAxisLabels;
+    this->chartType = CHART_HISTOGRAM;
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::addCandlestickData(const std::vector<CandleData>& candles,
+                                             const RGBA& bullishColor,
+                                             const RGBA& bearishColor) {
+    this->hasCandlestickData = true;
+    this->candlestickData = candles;
+    this->bullishColor = bullishColor;
+    this->bearishColor = bearishColor;
+    this->chartType = CHART_CANDLESTICK;
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::addClusterData(const std::vector<std::vector<double> >& data,
+                                         const std::vector<int>& labels,
+                                         const std::vector<std::vector<double> >& centroids) {
+    this->hasClusterData = true;
+    this->clusterData = data;
+    this->clusterLabels = labels;
+    this->centroids = centroids;
+    this->chartType = CHART_CLUSTER;
+    return *this;
+}
+
+void ChartBuilder::saveAs(const std::string& filename, const std::string& folder) {
+    // Set optimal margins for the chart type
+    plotter.calculateOptimalMargins(chartType);
+    
+    // Prepare the canvas
+    plotter.prepareCanvas();
+    
+    // Render the appropriate chart based on the data provided
+    if (!series.empty()) {
+        // Plot the series data
+        plotter.plotChart(series);
+    }
+    else if (hasHistogramData) {
+        // Plot histogram
+        plotter.plotHistogram(histogramBins, histogramColor, histogramShowXAxisLabels);
+    }
+    else if (hasCandlestickData) {
+        // Plot candlestick chart
+        plotter.plotCandlestickChart(candlestickData, bullishColor, bearishColor);
+    }
+    else if (hasClusterData) {
+        // Plot cluster chart
+        plotter.plotClusters(clusterData, clusterLabels, centroids);
+    }
+    else {
+        printf("Warning: No chart data provided to ChartBuilder. Nothing to render.\n");
+    }
+    
+    // Save the chart
+    plotter.saveAsPNG(filename, folder);
+}
+
+//
+// Plotter Implementation
+//
+
 Plotter::Plotter(unsigned int width, unsigned int height, 
                  unsigned int margin_top, unsigned int margin_right, 
                  unsigned int margin_bottom, unsigned int margin_left,
@@ -527,7 +682,20 @@ void Plotter::calculateHistogramBarDimensions(int totalBars, int& barWidth, int&
             (totalBars * (barWidth + barSpacing) - barSpacing)) / 2;
 }
 
+// Original histogram method for backward compatibility
 void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, bool showXAxisLabels)
+{
+    // Call the enhanced version with default parameters
+    plotHistogram(bins, color, showXAxisLabels, "Data Distribution", "Value", "Frequency");
+}
+
+// Enhanced histogram method with more parameters
+void Plotter::plotHistogram(const std::vector<int>& bins, 
+                          const RGBA& color, 
+                          bool showXAxisLabels,
+                          const std::string& title,
+                          const std::string& xAxisLabel,
+                          const std::string& yAxisLabel)
 {
     if (bins.empty()) {
         return;
@@ -547,7 +715,7 @@ void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, boo
     int titleY, legendY;
     
     // Prepare the chart with standard configuration - use 180px right margin for histograms
-    prepareStandardChart("Data Distribution", "Value", "Frequency", 42, 32, 180,
+    prepareStandardChart(title, xAxisLabel, yAxisLabel, 42, 32, 180,
                         &originalTopMargin, &originalRightMargin, &titleY, &legendY);
     
     // Find the maximum value in bins for scaling
@@ -584,7 +752,7 @@ void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, boo
     prepareCanvas();
     
     // Redraw title after prepareCanvas
-    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, "Data Distribution", 
+    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, title, 
                       colorManager->getElementColor("title"), 42, false);
     
     // Now add the legend
@@ -595,7 +763,7 @@ void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, boo
     chartStyler->drawHistogramStats(bins, maxBinValue, legendY, 16);
     
     // Draw axis labels with larger font size
-    addAxisLabels("Value", "Frequency", 32);
+    addAxisLabels(xAxisLabel, yAxisLabel, 32);
     
     // Draw Y-axis with value labels - use adjustedMaxYValue instead of maxBinValue
     // 5 ticks, values displayed as integers, 0 decimal places, 50px label offset
@@ -659,9 +827,23 @@ void Plotter::plotHistogram(const std::vector<int>& bins, const RGBA& color, boo
     chartLayout->setMarginTop(originalTopMargin);
 }
 
+// Original candlestick method for backward compatibility
 void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
-                              const RGBA& bullishColor,
-                              const RGBA& bearishColor)
+                                 const RGBA& bullishColor,
+                                 const RGBA& bearishColor)
+{
+    // Call the enhanced version with default parameters
+    plotCandlestickChart(candles, bullishColor, bearishColor, 
+                         "Financial Data Analysis", "Date", "Price");
+}
+
+// Enhanced candlestick method with more parameters
+void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
+                                 const RGBA& bullishColor,
+                                 const RGBA& bearishColor,
+                                 const std::string& title,
+                                 const std::string& xAxisLabel,
+                                 const std::string& yAxisLabel)
 {
     if (candles.empty()) {
         return;
@@ -689,7 +871,7 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     int titleY, legendY;
     
     // Prepare the chart with standard configuration - use 220px right margin for candlestick charts
-    prepareStandardChart("Financial Data Analysis", "Date", "Price", 36, 32, 220,
+    prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 32, 220,
                         &originalTopMargin, &originalRightMargin, &titleY, &legendY);
     
     // Convert to DataMapper::CandleData
@@ -719,7 +901,7 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     prepareCanvas();
     
     // Redraw the title since prepareCanvas clears everything
-    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, "Financial Data Analysis", 
+    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, title, 
                        colorManager->getElementColor("title"), 36, false);
     
     // Add the legend again after the canvas redraw
@@ -729,7 +911,7 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     chartStyler->drawCandlestickPriceInfo(mapperCandles, useBullishColor, useBearishColor, legendY);
     
     // Draw axis labels with larger font size
-    addAxisLabels("Date", "Price", 32);
+    addAxisLabels(xAxisLabel, yAxisLabel, 32);
     
     // Calculate time and price ranges
     DataMapper::AxisRange timeRange, priceRange;
@@ -801,163 +983,22 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     chartLayout->setMarginTop(originalTopMargin);
 }
 
-void Plotter::plotMultiSeries(const std::vector<std::vector<Point> >& seriesData,
-                             const std::vector<std::string>& seriesLabels,
-                             const std::vector<RGBA>& seriesColors,
-                             const std::vector<bool>& isLineStyleSeries,
-                             const std::string& title,
-                             const std::string& xAxisLabel,
-                             const std::string& yAxisLabel)
+// Original clusters method for backward compatibility
+void Plotter::plotClusters(const std::vector<std::vector<double> >& data,
+                         const std::vector<int>& labels,
+                         const std::vector<std::vector<double> >& centroids)
 {
-    // Validate inputs
-    if (seriesData.empty() || seriesLabels.size() != seriesData.size() || 
-        seriesColors.size() != seriesData.size() || isLineStyleSeries.size() != seriesData.size()) {
-        printf("Error: Invalid inputs to plotMultiSeries. Sizes must match.\n");
-        return;
-    }
-    
-    // Combine all points to calculate global axis ranges
-    std::vector<DataMapper::Point> allDataPoints;
-    for (size_t series = 0; series < seriesData.size(); ++series) {
-        const std::vector<Point>& points = seriesData[series];
-        if (points.empty()) {
-            continue;
-        }
-        
-        // Convert to DataMapper points and add to the combined list
-        std::vector<DataMapper::Point> seriesPoints = convertToDataPoints(points);
-        allDataPoints.insert(allDataPoints.end(), seriesPoints.begin(), seriesPoints.end());
-    }
-    
-    if (allDataPoints.empty()) {
-        printf("Error: No valid data points to plot.\n");
-        return;
-    }
-    
-    // Calculate overall data ranges for X and Y axes
-    DataMapper::AxisRange xRange, yRange;
-    xRange = dataMapper->calculateXRange(allDataPoints);
-    yRange = dataMapper->calculateYRange(allDataPoints);
-    
-    printf("Global X range: [%.2f, %.2f], Y range: [%.2f, %.2f]\n", 
-          xRange.min, xRange.max, yRange.min, yRange.max);
-    
-    // Calculate optimal margins for a mixed line/scatter chart
-    calculateOptimalMargins(CHART_LINE); // Use line chart margins as a base
-    
-    // Variables for margin storage and positioning
-    unsigned int originalTopMargin, originalRightMargin;
-    int titleY, legendY;
-    
-    // Prepare the chart with standard configuration and custom title
-    prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 28, 180,
-                        &originalTopMargin, &originalRightMargin, &titleY, &legendY);
-    
-    // Draw the legend with all series
-    // Position legend with appropriate spacing below title
-    legendY = titleY + 40;  // Place 40px below the title
-    
-    // Add the legend
-    int legendHeight = addLegend(seriesLabels, seriesColors, 
-                              chartLayout->getMarginLeft(), legendY, 16);
-    
-    // Calculate and set a sufficient top margin to ensure legend doesn't overlap with the chart
-    // Allow 20px padding below the legend
-    unsigned int newTopMargin = legendY + legendHeight + 20;
-    chartLayout->setMarginTop(newTopMargin);
-    
-    // Redraw with the new margin
-    prepareCanvas();
-    
-    // Redraw the title after adjusting margins
-    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, title, 
-                       colorManager->getElementColor("title"), 36, false);
-    
-    // Redraw the legend after adjusting margins
-    addLegend(seriesLabels, seriesColors, chartLayout->getMarginLeft(), legendY, 16);
-    
-    // Set up standard axis ticks with 70px Y-axis label offset
-    setupStandardAxisTicks(xRange, yRange, 70);
-    
-    // Plot each series in order
-    for (size_t series = 0; series < seriesData.size(); ++series) {
-        const std::vector<Point>& points = seriesData[series];
-        if (points.empty()) {
-            continue;
-        }
-        
-        RGBA color = seriesColors[series];
-        bool isLineSeries = isLineStyleSeries[series];
-        
-        if (isLineSeries && points.size() >= 2) {
-            // Draw as a line series
-            // Draw line segments between adjacent points
-            for (size_t i = 1; i < points.size(); ++i) {
-                // Map points to screen coordinates
-                DataMapper::Point p1 = dataMapper->mapDataToScreen(points[i-1].x, points[i-1].y, xRange, yRange);
-                DataMapper::Point p2 = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
-                
-                // Draw the line segment with proper clipping
-                drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, 3, i);
-            }
-        } else {
-            // Draw as scatter points
-            for (size_t i = 0; i < points.size(); ++i) {
-                // Map point to screen coordinates
-                DataMapper::Point p = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
-                
-                // Draw the point with supersampling
-                int ssaaX = ssaaManager->scaleX(p.x);
-                int ssaaY = ssaaManager->scaleY(p.y);
-                int ssaaSize = ssaaManager->scaleSize(10); // Use 10px size for scatter points
-                
-                // Ensure coordinates are valid
-                if (isCoordinateValid(ssaaX, ssaaY)) {
-                    shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
-                }
-            }
-        }
-    }
-    
-    // Restore original margins
-    chartLayout->setMarginRight(originalRightMargin);
-    chartLayout->setMarginTop(originalTopMargin);
+    // Call the enhanced version with default parameters
+    plotClusters(data, labels, centroids, "Cluster Analysis", "Feature X", "Feature Y");
 }
 
-// Helper method to prepare cluster colors
-std::vector<RGBA> Plotter::prepareClusterColors(int numClusters) {
-    std::vector<RGBA> clusterColors;
-    
-    // If we have 10 clusters, use the special 10-cluster color scheme
-    if (numClusters == 10) {
-        colorManager->initialize10ClusterScheme();
-    }
-    
-    // Use colors from themeColors
-    for (int i = 0; i < numClusters; ++i) {
-        clusterColors.push_back(colorManager->getThemeColor(i));
-    }
-    
-    return clusterColors;
-}
-
-// Helper method to create cluster legend labels
-std::vector<std::string> Plotter::createClusterLegendLabels(int numClusters) {
-    std::vector<std::string> legendLabels;
-    
-    for (int i = 0; i < numClusters; ++i) {
-        char labelBuffer[32];
-        std::sprintf(labelBuffer, "Cluster %d", i);
-        legendLabels.push_back(labelBuffer);
-    }
-    
-    legendLabels.push_back("Centroid");
-    
-    return legendLabels;
-}
-
-void Plotter::plotClusters(const std::vector<std::vector<double> >& data, const std::vector<int>& labels, 
-                          const std::vector<std::vector<double> >& centroids)
+// Enhanced clusters method with more parameters
+void Plotter::plotClusters(const std::vector<std::vector<double> >& data,
+                         const std::vector<int>& labels,
+                         const std::vector<std::vector<double> >& centroids,
+                         const std::string& title,
+                         const std::string& xAxisLabel,
+                         const std::string& yAxisLabel)
 {
     if (data.empty() || data[0].size() < 2 || data.size() != labels.size()) {
         return;
@@ -971,7 +1012,7 @@ void Plotter::plotClusters(const std::vector<std::vector<double> >& data, const 
     int titleY, legendY;
     
     // Prepare the chart with standard configuration - use 160px right margin for cluster visualization
-    prepareStandardChart("Cluster Analysis", "Feature X", "Feature Y", 36, 32, 160,
+    prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 32, 160,
                         &originalTopMargin, &originalRightMargin, &titleY, &legendY);
     
     // Find number of unique clusters
@@ -1003,7 +1044,7 @@ void Plotter::plotClusters(const std::vector<std::vector<double> >& data, const 
     prepareCanvas();
     
     // Redraw title after prepareCanvas
-    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, "Cluster Analysis", 
+    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, title, 
                       colorManager->getElementColor("title"), 36, false);
     
     // Now add the cluster legend after margins are adjusted
@@ -1018,7 +1059,7 @@ void Plotter::plotClusters(const std::vector<std::vector<double> >& data, const 
     }
     
     // Draw axis labels with larger font size
-    addAxisLabels("Feature X", "Feature Y", 32);
+    addAxisLabels(xAxisLabel, yAxisLabel, 32);
     
     // Calculate data ranges for X and Y
     DataMapper::AxisRange xRange = dataMapper->calculateXRange(data);
@@ -1445,6 +1486,201 @@ unsigned int Plotter::calculateLeftMargin(ChartType chartType, unsigned int widt
     // Calculate left margin as percentage of width with a minimum value
     unsigned int margin = static_cast<unsigned int>(width * baseValue);
     return std::max(margin, 80u); // Minimum 80px
+}
+
+ChartBuilder Plotter::chart() {
+    return ChartBuilder(*this);
+}
+
+// New plotChart implementation
+void Plotter::plotChart(const std::vector<Series>& seriesList,
+                      const std::string& title,
+                      const std::string& xAxisLabel,
+                      const std::string& yAxisLabel)
+{
+    if (seriesList.empty()) {
+        printf("Error: No series data to plot.\n");
+        return;
+    }
+    
+    // Combine all points to calculate global axis ranges
+    std::vector<DataMapper::Point> allDataPoints;
+    for (size_t i = 0; i < seriesList.size(); ++i) {
+        const Series& series = seriesList[i];
+        if (series.data.empty()) {
+            continue;
+        }
+        
+        // Convert to DataMapper points and add to the combined list
+        std::vector<DataMapper::Point> seriesPoints = convertToDataPoints(series.data);
+        allDataPoints.insert(allDataPoints.end(), seriesPoints.begin(), seriesPoints.end());
+    }
+    
+    if (allDataPoints.empty()) {
+        printf("Error: No valid data points to plot.\n");
+        return;
+    }
+    
+    // Calculate overall data ranges for X and Y axes
+    DataMapper::AxisRange xRange, yRange;
+    xRange = dataMapper->calculateXRange(allDataPoints);
+    yRange = dataMapper->calculateYRange(allDataPoints);
+    
+    printf("Global X range: [%.2f, %.2f], Y range: [%.2f, %.2f]\n", 
+           xRange.min, xRange.max, yRange.min, yRange.max);
+    
+    // Calculate optimal margins for the chart type
+    calculateOptimalMargins(CHART_LINE); // Use line chart margins as a base
+    
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
+    
+    // Prepare the chart with standard configuration and custom title
+    prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 28, 180,
+                       &originalTopMargin, &originalRightMargin, &titleY, &legendY);
+    
+    // Prepare legend data
+    std::vector<std::string> legendLabels;
+    std::vector<RGBA> legendColors;
+    
+    for (size_t i = 0; i < seriesList.size(); ++i) {
+        legendLabels.push_back(seriesList[i].name);
+        legendColors.push_back(seriesList[i].color);
+    }
+    
+    // Draw the legend with all series
+    // Position legend with appropriate spacing below title
+    legendY = titleY + 40;  // Place 40px below the title
+    
+    // Add the legend
+    int legendHeight = addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
+    
+    // Calculate and set a sufficient top margin to ensure legend doesn't overlap with the chart
+    // Allow 20px padding below the legend
+    unsigned int newTopMargin = legendY + legendHeight + 20;
+    chartLayout->setMarginTop(newTopMargin);
+    
+    // Redraw with the new margin
+    prepareCanvas();
+    
+    // Redraw the title after adjusting margins
+    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, title, 
+                         colorManager->getElementColor("title"), 36, false);
+    
+    // Redraw the legend after adjusting margins
+    addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
+    
+    // Set up standard axis ticks with 70px Y-axis label offset
+    setupStandardAxisTicks(xRange, yRange, 70);
+    
+    // Plot each series in order
+    for (size_t i = 0; i < seriesList.size(); ++i) {
+        const Series& series = seriesList[i];
+        if (series.data.empty()) {
+            continue;
+        }
+        
+        RGBA color = series.color;
+        
+        if (series.type == SERIES_LINE && series.data.size() >= 2) {
+            // Draw as a line series
+            // Draw line segments between adjacent points
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                // Map points to screen coordinates
+                DataMapper::Point p1 = dataMapper->mapDataToScreen(
+                    series.data[j-1].x, series.data[j-1].y, xRange, yRange);
+                DataMapper::Point p2 = dataMapper->mapDataToScreen(
+                    series.data[j].x, series.data[j].y, xRange, yRange);
+                
+                // Draw the line segment with proper clipping
+                drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, series.lineWidth, j);
+            }
+        } else if (series.type == SERIES_SCATTER) {
+            // Draw as scatter points
+            for (size_t j = 0; j < series.data.size(); ++j) {
+                // Map point to screen coordinates
+                DataMapper::Point p = dataMapper->mapDataToScreen(
+                    series.data[j].x, series.data[j].y, xRange, yRange);
+                
+                // Draw the point with supersampling
+                int ssaaX = ssaaManager->scaleX(p.x);
+                int ssaaY = ssaaManager->scaleY(p.y);
+                int ssaaSize = ssaaManager->scaleSize(series.pointSize);
+                
+                // Ensure coordinates are valid
+                if (isCoordinateValid(ssaaX, ssaaY)) {
+                    shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
+                }
+            }
+        } else if (series.type == SERIES_AREA) {
+            // TODO: Implement area charts if needed
+            printf("Area charts not yet implemented.\n");
+        }
+    }
+    
+    // Restore original margins
+    chartLayout->setMarginRight(originalRightMargin);
+    chartLayout->setMarginTop(originalTopMargin);
+}
+
+// Helper method to prepare cluster colors
+std::vector<RGBA> Plotter::prepareClusterColors(int numClusters) {
+    std::vector<RGBA> clusterColors;
+    
+    // If we have 10 clusters, use the special 10-cluster color scheme
+    if (numClusters == 10) {
+        colorManager->initialize10ClusterScheme();
+    }
+    
+    // Use colors from themeColors
+    for (int i = 0; i < numClusters; ++i) {
+        clusterColors.push_back(colorManager->getThemeColor(i));
+    }
+    
+    return clusterColors;
+}
+
+// Helper method to create cluster legend labels
+std::vector<std::string> Plotter::createClusterLegendLabels(int numClusters) {
+    std::vector<std::string> legendLabels;
+    
+    for (int i = 0; i < numClusters; ++i) {
+        char labelBuffer[32];
+        std::sprintf(labelBuffer, "Cluster %d", i);
+        legendLabels.push_back(labelBuffer);
+    }
+    
+    legendLabels.push_back("Centroid");
+    
+    return legendLabels;
+}
+
+void Plotter::plotMultiSeries(const std::vector<std::vector<Point> >& seriesData,
+                             const std::vector<std::string>& seriesLabels,
+                             const std::vector<RGBA>& seriesColors,
+                             const std::vector<bool>& isLineStyleSeries,
+                             const std::string& title,
+                             const std::string& xAxisLabel,
+                             const std::string& yAxisLabel)
+{
+    // Validate inputs
+    if (seriesData.empty() || seriesLabels.size() != seriesData.size() || 
+        seriesColors.size() != seriesData.size() || isLineStyleSeries.size() != seriesData.size()) {
+        printf("Error: Invalid inputs to plotMultiSeries. Sizes must match.\n");
+        return;
+    }
+    
+    // Convert to new Series format and call plotChart
+    std::vector<Series> seriesList;
+    for (size_t i = 0; i < seriesData.size(); ++i) {
+        SeriesType type = isLineStyleSeries[i] ? SERIES_LINE : SERIES_SCATTER;
+        Series series(seriesLabels[i], seriesData[i], seriesColors[i], type);
+        seriesList.push_back(series);
+    }
+    
+    // Use the new plotChart method
+    plotChart(seriesList, title, xAxisLabel, yAxisLabel);
 }
 
 } // namespace shmea 

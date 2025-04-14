@@ -10,23 +10,13 @@
 using namespace shmea;
 
 void shmea::testCluster() {
-    printf("Testing Cluster visualization with supersampling and auto margins...\n");
+    printf("Testing Cluster visualization with the new fluent API...\n");
     
     // Seed random number generator with a fixed value for consistent output
     std::srand(42);
     
-    // Create a Plotter instance specifically for cluster visualization
-    // Use 4x supersampling for high quality output
-    // Use the new constructor with automatic margin calculation
+    // Create a Plotter instance
     Plotter plotter(1800, 1000, 4);
-    
-    // Set parameters
-    plotter.setShowGrid(true);
-    plotter.setShowAxes(false);
-    plotter.setCornerRadius(15);
-    
-    // Load the logo
-    plotter.loadLogo("logo.png");
     
     // Create 3 well-defined clusters that match the image
     std::vector<std::vector<double> > clusterData;
@@ -83,13 +73,19 @@ void shmea::testCluster() {
     centroid2.push_back(3.75);
     centroids.push_back(centroid2);
     
-    // Plot clusters
-    plotter.plotClusters(clusterData, clusterLabels, centroids);
+    // Use the new fluent API to create and save the cluster visualization
+    plotter.chart()
+        .title("Cluster Analysis", 36)
+        .grid(true)
+        .axes(false)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("Feature X", "Feature Y", 32)
+        .autoMargins(CHART_CLUSTER)
+        .addClusterData(clusterData, clusterLabels, centroids)
+        .saveAs("cluster_test_output.png", ".");
     
-    // Save the result
-    plotter.saveAsPNG("cluster_test_output.png", ".");
-    
-    printf("Cluster test with auto-calculated margins completed. Output saved as 'cluster_test_output.png'.\n");
+    printf("Cluster test with fluent API completed. Output saved as 'cluster_test_output.png'.\n");
 }
 
 void shmea::testHistogram() {
@@ -137,19 +133,8 @@ void shmea::testHistogram() {
     
     // Create a second test with skewed distribution
     // Use the new constructor with automatic margin calculation
-    printf("Creating second histogram with automatic margin calculation...\n");
+    printf("Creating second histogram with the new fluent API...\n");
     Plotter plotter2(1800, 1000, 4);
-    
-    // Set parameters
-    plotter2.setShowGrid(true);
-    plotter2.setShowAxes(false);
-    plotter2.setCornerRadius(15);
-    
-    // Load the logo
-    plotter2.loadLogo("logo.png");
-    
-    // Add title with increased font size
-    plotter2.addTitle("Skewed Distribution Histogram", 48);
     
     // Create a right-skewed distribution
     std::vector<int> skewedDist;
@@ -164,39 +149,30 @@ void shmea::testHistogram() {
     skewedDist.push_back(30);
     skewedDist.push_back(20);   // Tapering to low values
     
-    // Plot skewed histogram with orange color and NO X-axis labels
-    // Note: Bars will be drawn at 80% of their original height, while Y-axis values are scaled to 125%
-    // of the maximum bin value to ensure proper alignment between bars and axis labels
-    plotter2.plotHistogram(skewedDist, RGBA(0xFF, 0x6B, 0x00, 0xFF), false);
+    // Use the new fluent API to create and save the histogram
+    plotter2.chart()
+        .title("Skewed Distribution Histogram", 48)
+        .grid(true)
+        .axes(false)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("Value", "Frequency", 32)
+        .autoMargins(CHART_HISTOGRAM)
+        .addHistogramData(skewedDist, RGBA(0xFF, 0x6B, 0x00, 0xFF), false)
+        .saveAs("histogram_skewed_output.png", ".");
     
-    // Save the result
-    plotter2.saveAsPNG("histogram_skewed_output.png", ".");
-    
-    printf("Skewed histogram test with auto-calculated margins completed. Output saved as 'histogram_skewed_output.png'.\n");
+    printf("Skewed histogram test with fluent API completed. Output saved as 'histogram_skewed_output.png'.\n");
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
 }
 
 void shmea::testCandlestickChart() {
-    printf("Testing candlestick chart visualization from candechart.fig with supersampling and auto margins...\n");
+    printf("Testing candlestick chart visualization with the new fluent API...\n");
     
-    // Create a Plotter instance optimized for candlestick chart display
-    // Use 4x supersampling for high quality output
-    // Use the new constructor with automatic margin calculation
+    // Create a Plotter instance
     Plotter plotter(1800, 1000, 4);
     
-    // Set parameters
-    plotter.setShowGrid(true);
-    plotter.setShowAxes(false);
-    plotter.setCornerRadius(15);
-    
-    // Load the logo
-    plotter.loadLogo("logo.png");
-    
-    // Add title with increased font size
-    plotter.addTitle("Stock Price Candlestick Chart", 48);
-    
     // Create sample candlestick data with a realistic price pattern
-    std::vector<Plotter::CandleData> candleData;
+    std::vector<CandleData> candleData;
     
     // Starting price and timestamp
     double basePrice = 142.50;
@@ -204,115 +180,111 @@ void shmea::testCandlestickChart() {
     
     // Create a series of candles with realistic price movements
     // Day 1
-    candleData.push_back(Plotter::CandleData(timestamp, 142.50, 143.80, 144.20, 142.10));
+    candleData.push_back(CandleData(timestamp, 142.50, 143.80, 144.20, 142.10));
     timestamp += 86400; // add a day
     
     // Day 2 - uptrend
-    candleData.push_back(Plotter::CandleData(timestamp, 143.90, 145.20, 145.60, 143.70));
+    candleData.push_back(CandleData(timestamp, 143.90, 145.20, 145.60, 143.70));
     timestamp += 86400;
     
     // Day 3 - continued uptrend
-    candleData.push_back(Plotter::CandleData(timestamp, 145.30, 147.80, 148.10, 144.90));
+    candleData.push_back(CandleData(timestamp, 145.30, 147.80, 148.10, 144.90));
     timestamp += 86400;
     
     // Day 4 - reversal day (bearish)
-    candleData.push_back(Plotter::CandleData(timestamp, 148.00, 146.30, 149.20, 146.00));
+    candleData.push_back(CandleData(timestamp, 148.00, 146.30, 149.20, 146.00));
     timestamp += 86400;
     
     // Day 5 - continued downtrend
-    candleData.push_back(Plotter::CandleData(timestamp, 146.20, 144.50, 146.40, 144.30));
+    candleData.push_back(CandleData(timestamp, 146.20, 144.50, 146.40, 144.30));
     timestamp += 86400;
     
     // Day 6 - stabilizing
-    candleData.push_back(Plotter::CandleData(timestamp, 144.60, 145.10, 145.70, 144.10));
+    candleData.push_back(CandleData(timestamp, 144.60, 145.10, 145.70, 144.10));
     timestamp += 86400;
     
     // Day 7 - small bullish candle
-    candleData.push_back(Plotter::CandleData(timestamp, 145.20, 146.40, 146.70, 144.90));
+    candleData.push_back(CandleData(timestamp, 145.20, 146.40, 146.70, 144.90));
     timestamp += 86400;
     
     // Day 8 - gap up
-    candleData.push_back(Plotter::CandleData(timestamp, 147.10, 149.30, 149.80, 146.80));
+    candleData.push_back(CandleData(timestamp, 147.10, 149.30, 149.80, 146.80));
     timestamp += 86400;
     
     // Day 9 - high volume bullish candle
-    candleData.push_back(Plotter::CandleData(timestamp, 149.40, 153.20, 153.80, 149.00));
+    candleData.push_back(CandleData(timestamp, 149.40, 153.20, 153.80, 149.00));
     timestamp += 86400;
     
     // Day 10 - profit taking (bearish)
-    candleData.push_back(Plotter::CandleData(timestamp, 153.30, 151.80, 154.00, 151.20));
+    candleData.push_back(CandleData(timestamp, 153.30, 151.80, 154.00, 151.20));
     timestamp += 86400;
     
     // Day 11 - consolidation (small candle)
-    candleData.push_back(Plotter::CandleData(timestamp, 151.90, 152.20, 152.90, 151.40));
+    candleData.push_back(CandleData(timestamp, 151.90, 152.20, 152.90, 151.40));
     timestamp += 86400;
     
     // Day 12 - breakdown (large bearish)
-    candleData.push_back(Plotter::CandleData(timestamp, 152.10, 148.70, 152.30, 148.20));
+    candleData.push_back(CandleData(timestamp, 152.10, 148.70, 152.30, 148.20));
     timestamp += 86400;
     
     // Day 13 - continued selling
-    candleData.push_back(Plotter::CandleData(timestamp, 148.60, 146.90, 149.10, 146.50));
+    candleData.push_back(CandleData(timestamp, 148.60, 146.90, 149.10, 146.50));
     timestamp += 86400;
     
     // Day 14 - bottoming (hammer candle)
-    candleData.push_back(Plotter::CandleData(timestamp, 146.80, 147.50, 147.70, 144.30));
+    candleData.push_back(CandleData(timestamp, 146.80, 147.50, 147.70, 144.30));
     timestamp += 86400;
     
     // Day 15 - reversal confirmation
-    candleData.push_back(Plotter::CandleData(timestamp, 147.60, 149.80, 150.20, 147.30));
+    candleData.push_back(CandleData(timestamp, 147.60, 149.80, 150.20, 147.30));
     
-    // Plot the candlestick chart
-    // Use modern green for bullish and red for bearish
-    plotter.plotCandlestickChart(candleData, RGBA(0x03, 0xC0, 0x3C, 0xFF), RGBA(0xFF, 0x47, 0x45, 0xFF));
+    // Use the new fluent API to create and save the candlestick chart
+    plotter.chart()
+        .title("Stock Price Candlestick Chart", 48)
+        .grid(true)
+        .axes(false)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("Date", "Price", 32)
+        .autoMargins(CHART_CANDLESTICK)
+        .addCandlestickData(candleData, RGBA(0x03, 0xC0, 0x3C, 0xFF), RGBA(0xFF, 0x47, 0x45, 0xFF))
+        .saveAs("candlestick_chart_output.png", ".");
     
-    // Save the result
-    plotter.saveAsPNG("candlestick_chart_output.png", ".");
-    
-    printf("Candlestick chart test with auto-calculated margins completed. Output saved as 'candlestick_chart_output.png'.\n");
+    printf("Candlestick chart test with fluent API completed. Output saved as 'candlestick_chart_output.png'.\n");
 }
 
 // New function to test the line and scatter plots separately
 void shmea::testLineScatter() {
-    printf("Testing line and scatter plots with supersampling and auto margins...\n");
+    printf("Testing line and scatter plots with the new fluent API...\n");
     
     // Seed random number generator
     std::srand(43);  // Different seed than other tests
     
-    // Create a Plotter instance for line and scatter plots with better proportions
-    // Use 4x supersampling for high quality output
+    // Create a Plotter instance
     Plotter plotter(1800, 800, 4);
     
-    // Set parameters
-    plotter.setShowGrid(true);
-    plotter.setShowAxes(true);
-    plotter.setCornerRadius(15);
-    
-    // Load the logo
-    plotter.loadLogo("logo.png");
-    
     // Create a sine wave line
-    std::vector<Plotter::Point> lineData;
+    std::vector<Point> lineData;
     for (int i = 0; i < 50; ++i) {
-        Plotter::Point p;
+        Point p;
         p.x = i * 0.2;  // X values from 0 to 10
         p.y = std::sin(i * 0.2) * 3 + 6;  // Sine wave oscillating around y=6
         lineData.push_back(p);
     }
     
     // Create a second dataset for a cosine wave
-    std::vector<Plotter::Point> cosineData;
+    std::vector<Point> cosineData;
     for (int i = 0; i < 50; ++i) {
-        Plotter::Point p;
+        Point p;
         p.x = i * 0.2;  // X values from 0 to 10
         p.y = std::cos(i * 0.2) * 3 + 12;  // Cosine wave oscillating around y=12
         cosineData.push_back(p);
     }
     
     // Create scatter points around the lines
-    std::vector<Plotter::Point> scatterData;
+    std::vector<Point> scatterData;
     for (int i = 0; i < 20; ++i) {
-        Plotter::Point p;
+        Point p;
         
         // Create random scatter points between the two waves
         p.x = (std::rand() % 1000) / 100.0;  // X values from 0 to 10
@@ -321,69 +293,35 @@ void shmea::testLineScatter() {
         scatterData.push_back(p);
     }
     
-    // Set up data series
-    std::vector<std::vector<Plotter::Point> > seriesData;
-    seriesData.push_back(lineData);
-    seriesData.push_back(cosineData);
-    seriesData.push_back(scatterData);
+    // Use the new fluent API to create and save the chart
+    plotter.chart()
+        .title("Line & Scatter Plot Visualization", 36)
+        .grid(true)
+        .axes(true)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("X Value", "Y Value", 28)
+        .autoMargins(CHART_LINE)
+        .addSeries("Sine Wave", lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), SERIES_LINE, 3)
+        .addSeries("Cosine Wave", cosineData, RGBA(0xFF, 0x6B, 0x00, 0xFF), SERIES_LINE, 3)
+        .addSeries("Random Points", scatterData, RGBA(0x33, 0xFF, 0x33, 0xFF), SERIES_SCATTER, 2, 10)
+        .saveAs("line_scatter_test_output.png", ".");
     
-    // Create legend labels
-    std::vector<std::string> legendLabels;
-    legendLabels.push_back("Sine Wave");
-    legendLabels.push_back("Cosine Wave");
-    legendLabels.push_back("Random Points");
-    
-    // Series colors
-    std::vector<RGBA> seriesColors;
-    seriesColors.push_back(RGBA(0x00, 0x9E, 0xFF, 0xFF)); // Blue
-    seriesColors.push_back(RGBA(0xFF, 0x6B, 0x00, 0xFF)); // Orange
-    seriesColors.push_back(RGBA(0x33, 0xFF, 0x33, 0xFF)); // Green
-    
-    // Define which series should be drawn as lines
-    std::vector<bool> isLineStyleSeries;
-    isLineStyleSeries.push_back(true);  // Sine = line
-    isLineStyleSeries.push_back(true);  // Cosine = line
-    isLineStyleSeries.push_back(false); // Scatter = points
-    
-    // Plot all series with a single call - no manual setup needed
-    plotter.plotMultiSeries(
-        seriesData,
-        legendLabels,
-        seriesColors,
-        isLineStyleSeries,
-        "Line & Scatter Plot Visualization",
-        "X Value", 
-        "Y Value"
-    );
-    
-    // Save the result
-    plotter.saveAsPNG("line_scatter_test_output.png", ".");
-    
-    printf("Line and scatter plot test with auto-calculated margins completed. Output saved as 'line_scatter_test_output.png'.\n");
+    printf("Line and scatter plot test with fluent API completed. Output saved as 'line_scatter_test_output.png'.\n");
 }
 
 // Test function to visualize 10 cluster circles
 void shmea::testMultiCluster() {
-    printf("Testing multi-cluster visualization with 10 clusters and automatic margins...\n");
+    printf("Testing multi-cluster visualization with the new fluent API...\n");
     
     // Seed random number generator with a fixed value for consistent output
     std::srand(123);
     
-    // Create a Plotter instance with larger dimensions to handle many clusters
-    // Use 4x supersampling for high quality output
-    // Use the new constructor with auto-margin calculation
+    // Create a Plotter instance
     Plotter plotter(2400, 1400, 4);
-    
-    // Set parameters
-    plotter.setShowGrid(true);
-    plotter.setShowAxes(false);
-    plotter.setCornerRadius(15);
     
     // Initialize the 10-cluster color scheme (uses colors from css-output.css)
     plotter.use10ClusterColorScheme();
-    
-    // Load the logo
-    plotter.loadLogo("logo.png");
     
     // Create data structure for 10 clusters
     std::vector<std::vector<double> > clusterData;
@@ -440,14 +378,16 @@ void shmea::testMultiCluster() {
         }
     }
     
-    // Add title with increased font size
-    plotter.addTitle("Multi-Cluster Analysis - 10 Clusters", 42);
+    // Use the new fluent API to create and save the multi-cluster visualization
+    plotter.chart()
+        .title("Multi-Cluster Analysis - 10 Clusters", 42)
+        .grid(true)
+        .axes(false)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .autoMargins(CHART_CLUSTER)
+        .addClusterData(clusterData, clusterLabels, centroids)
+        .saveAs("multi_cluster_test_output.png", ".");
     
-    // Plot the 10 clusters
-    plotter.plotClusters(clusterData, clusterLabels, centroids);
-    
-    // Save the result
-    plotter.saveAsPNG("multi_cluster_test_output.png", ".");
-    
-    printf("Multi-cluster test completed with auto-calculated margins. Output saved as 'multi_cluster_test_output.png'.\n");
+    printf("Multi-cluster test with fluent API completed. Output saved as 'multi_cluster_test_output.png'.\n");
 } 

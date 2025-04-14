@@ -16,6 +16,9 @@ namespace shmea {
     class GridRenderer;
     class DataMapper;
     class ChartStyler;
+    
+    // Forward declare Plotter for ChartBuilder
+    class Plotter;
 }
 
 namespace shmea {
@@ -30,7 +33,36 @@ enum ChartType {
     CHART_CLUSTER
 };
 
-// Struct for chart configuration
+// Series type for multi-series charts
+enum SeriesType {
+    SERIES_LINE,
+    SERIES_SCATTER,
+    SERIES_AREA
+};
+
+// Data point structure for visualizations
+struct Point {
+    double x;
+    double y;
+    
+    Point() : x(0), y(0) {}
+    Point(double x_, double y_) : x(x_), y(y_) {}
+};
+
+// Candlestick data structure
+struct CandleData {
+    double timestamp;
+    double open;
+    double close;
+    double high;
+    double low;
+    
+    CandleData() : timestamp(0), open(0), close(0), high(0), low(0) {}
+    CandleData(double t, double o, double c, double h, double l)
+        : timestamp(t), open(o), close(c), high(h), low(l) {}
+};
+
+// Struct for chart configuration - kept here for backward compatibility
 struct ChartConfig {
     std::string title;
     unsigned int titleFontSize;
@@ -46,34 +78,84 @@ struct ChartConfig {
           axisFontSize(axisFontSize_) {}
 };
 
+// Series data for multi-series charts
+struct Series {
+    std::string name;
+    std::vector<Point> data;
+    RGBA color;
+    SeriesType type;
+    int lineWidth;   // Used for SERIES_LINE
+    int pointSize;   // Used for SERIES_SCATTER
+    
+    Series() : type(SERIES_LINE), lineWidth(2), pointSize(8) {}
+    
+    Series(const std::string& name_, const std::vector<Point>& data_, 
+           const RGBA& color_, SeriesType type_ = SERIES_LINE,
+           int lineWidth_ = 2, int pointSize_ = 8)
+        : name(name_), data(data_), color(color_), type(type_),
+          lineWidth(lineWidth_), pointSize(pointSize_) {}
+};
+
+// ChartBuilder: A fluent API for building charts
+class ChartBuilder {
+public:
+    ChartBuilder(Plotter& plotter);
+    
+    // Common setup methods
+    ChartBuilder& title(const std::string& title, unsigned int fontSize = 36);
+    ChartBuilder& size(unsigned int width, unsigned int height, unsigned int ssaaFactor = 1);
+    ChartBuilder& margins(unsigned int top, unsigned int right, 
+                          unsigned int bottom, unsigned int left);
+    ChartBuilder& autoMargins(ChartType chartType = CHART_DEFAULT);
+    ChartBuilder& axisLabels(const std::string& xLabel, const std::string& yLabel,
+                            unsigned int fontSize = 28);
+    ChartBuilder& grid(bool show);
+    ChartBuilder& axes(bool show);
+    ChartBuilder& cornerRadius(int radius);
+    ChartBuilder& logo(const std::string& logoPath);
+    ChartBuilder& colors(const std::vector<RGBA>& colors);
+    
+    // Data visualization methods
+    ChartBuilder& addSeries(const Series& series);
+    ChartBuilder& addSeries(const std::string& name, const std::vector<Point>& data, 
+                           const RGBA& color, SeriesType type = SERIES_LINE,
+                           int lineWidth = 2, int pointSize = 8);
+    ChartBuilder& addHistogramData(const std::vector<int>& bins, 
+                                  const RGBA& color = RGBA(), 
+                                  bool showXAxisLabels = true);
+    ChartBuilder& addCandlestickData(const std::vector<CandleData>& candles,
+                                    const RGBA& bullishColor = RGBA(0x03, 0xC0, 0x3C, 0xFF),
+                                    const RGBA& bearishColor = RGBA(0xFF, 0x47, 0x45, 0xFF));
+    ChartBuilder& addClusterData(const std::vector<std::vector<double> >& data,
+                                const std::vector<int>& labels,
+                                const std::vector<std::vector<double> >& centroids);
+    
+    // Rendering
+    void saveAs(const std::string& filename, const std::string& folder = ".");
+    
+private:
+    Plotter& plotter;
+    ChartType chartType;
+    std::vector<Series> series;
+    bool hasHistogramData;
+    std::vector<int> histogramBins;
+    RGBA histogramColor;
+    bool histogramShowXAxisLabels;
+    bool hasCandlestickData;
+    std::vector<CandleData> candlestickData;
+    RGBA bullishColor;
+    RGBA bearishColor;
+    bool hasClusterData;
+    std::vector<std::vector<double> > clusterData;
+    std::vector<int> clusterLabels;
+    std::vector<std::vector<double> > centroids;
+};
+
 // Plotter class that handles visualization using the component classes
 class Plotter {
 public:
-    // Data point structure for visualizations
-    struct Point {
-        double x;
-        double y;
-        
-        Point() : x(0), y(0) {}
-        Point(double x_, double y_) : x(x_), y(y_) {}
-    };
-    
-    // Candlestick data structure
-    struct CandleData {
-        double timestamp;
-        double open;
-        double close;
-        double high;
-        double low;
-        
-        CandleData() : timestamp(0), open(0), close(0), high(0), low(0) {}
-        CandleData(double t, double o, double c, double h, double l)
-            : timestamp(t), open(o), close(c), high(h), low(l) {}
-    };
-    
     // Constructor and destructor
-    Plotter(unsigned int width, unsigned int height,
-            unsigned int ssaa_factor = 1);
+    Plotter(unsigned int width = 800, unsigned int height = 600, unsigned int ssaa_factor = 1);
     
     // Backwards compatibility constructor that allows explicit margin specification
     Plotter(unsigned int width, unsigned int height,
@@ -82,6 +164,9 @@ public:
             unsigned int ssaa_factor = 1);
     
     ~Plotter();
+    
+    // Main entry point for fluent chart building API
+    ChartBuilder chart();
     
     // Initialization
     void initialize();
@@ -118,23 +203,53 @@ public:
     // Output methods
     void saveAsPNG(const std::string& filename, const std::string& folder);
     
-    // Chart setup helper
+    // Legacy chart setup helper - consider using chart builder instead
     void setupChart(const ChartConfig& config, unsigned int* originalTopMargin = NULL,
-                    unsigned int* originalRightMargin = NULL, unsigned int newRightMargin = 180,
-                    int* titleY = NULL, int* legendY = NULL);
+                   unsigned int* originalRightMargin = NULL, unsigned int newRightMargin = 180,
+                   int* titleY = NULL, int* legendY = NULL);
     
-    // Visualization methods
+    // Simplified visualization methods
+    void plotChart(const std::vector<Series>& seriesList,
+                  const std::string& title = "Chart Visualization",
+                  const std::string& xAxisLabel = "X Value",
+                  const std::string& yAxisLabel = "Y Value");
+                  
+    // Legacy API support - maintained for backward compatibility
     void plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize = 8, bool redrawBackground = true);
     void plotLine(const std::vector<Point>& points, const RGBA& color, int lineWidth = 2, bool redrawBackground = true);
+    
+    // Original method signatures needed for backward compatibility
     void plotHistogram(const std::vector<int>& bins, const RGBA& color = RGBA(), bool showXAxisLabels = true);
     void plotClusters(const std::vector<std::vector<double> >& data,
-                      const std::vector<int>& labels,
-                      const std::vector<std::vector<double> >& centroids);
+                     const std::vector<int>& labels,
+                     const std::vector<std::vector<double> >& centroids);
     void plotCandlestickChart(const std::vector<CandleData>& candles,
-                              const RGBA& bullishColor = RGBA(0x03, 0xC0, 0x3C, 0xFF),
-                              const RGBA& bearishColor = RGBA(0xFF, 0x47, 0x45, 0xFF));
+                             const RGBA& bullishColor = RGBA(0x03, 0xC0, 0x3C, 0xFF),
+                             const RGBA& bearishColor = RGBA(0xFF, 0x47, 0x45, 0xFF));
     
-    // Combines multiple series (lines and scatter points) in a single chart
+    // Enhanced methods with additional parameters
+    void plotHistogram(const std::vector<int>& bins, 
+                      const RGBA& color, 
+                      bool showXAxisLabels,
+                      const std::string& title,
+                      const std::string& xAxisLabel,
+                      const std::string& yAxisLabel);
+                      
+    void plotCandlestickChart(const std::vector<CandleData>& candles,
+                             const RGBA& bullishColor,
+                             const RGBA& bearishColor,
+                             const std::string& title,
+                             const std::string& xAxisLabel,
+                             const std::string& yAxisLabel);
+                              
+    void plotClusters(const std::vector<std::vector<double> >& data,
+                     const std::vector<int>& labels,
+                     const std::vector<std::vector<double> >& centroids,
+                     const std::string& title,
+                     const std::string& xAxisLabel,
+                     const std::string& yAxisLabel);
+    
+    // Legacy multi-series method - now wrapped by plotChart
     void plotMultiSeries(const std::vector<std::vector<Point> >& seriesData,
                         const std::vector<std::string>& seriesLabels,
                         const std::vector<RGBA>& seriesColors,
@@ -143,10 +258,12 @@ public:
                         const std::string& xAxisLabel = "X Value",
                         const std::string& yAxisLabel = "Y Value");
     
-    // Direct access to GridRenderer for Y-axis ticks
+    // Direct access to GridRenderer for Y-axis ticks - consider using chart builder instead
     GridRenderer& getGridRenderer() { return *gridRenderer; }
     
 private:
+    friend class ChartBuilder;
+    
     // Component pointers
     ColorManager* colorManager;
     SuperSamplingManager* ssaaManager;
