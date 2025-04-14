@@ -1549,10 +1549,6 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
         legendColors.push_back(seriesList[i].color);
     }
     
-    // Draw the legend with all series
-    // Position legend with appropriate spacing below title
-    legendY = titleY + 40;  // Place 40px below the title
-    
     // Add the legend
     int legendHeight = addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
     
