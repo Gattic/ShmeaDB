@@ -5,3 +5,6 @@ histogram_test_output.png
 candlestick_chart_output.png
 line_scatter_test_output.png
 multi_cluster_test_output.png
+arrow_diagram_test.png
+line_chart_with_arrows_test.png
+scatter_with_arrows_test.png

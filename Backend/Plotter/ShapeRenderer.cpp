@@ -978,4 +978,27 @@ void ShapeRenderer::drawSolidRoundedRect(int x, int y, int width, int height, in
     }
 }
 
+void ShapeRenderer::drawArrow(int x1, int y1, int x2, int y2, const RGBA& color, int lineWidth, int arrowheadSize) {
+    // Draw the main line from (x1,y1) to (x2,y2)
+    drawLine(x1, y1, x2, y2, color, lineWidth);
+    
+    // Calculate the angle of the main line
+    float angle = atan2(y2 - y1, x2 - x1);
+    
+    // Calculate arrowhead points - two lines at ±30 degrees from the main line
+    const float arrowAngle = 30.0f * M_PI / 180.0f; // 30 degrees in radians
+    
+    // Calculate offsets for first arrowhead line (-30 degrees)
+    int x3 = x2 - static_cast<int>(arrowheadSize * cos(angle + arrowAngle));
+    int y3 = y2 - static_cast<int>(arrowheadSize * sin(angle + arrowAngle));
+    
+    // Calculate offsets for second arrowhead line (+30 degrees)
+    int x4 = x2 - static_cast<int>(arrowheadSize * cos(angle - arrowAngle));
+    int y4 = y2 - static_cast<int>(arrowheadSize * sin(angle - arrowAngle));
+    
+    // Draw the two arrowhead lines
+    drawLine(x2, y2, x3, y3, color, lineWidth);
+    drawLine(x2, y2, x4, y4, color, lineWidth);
+}
+
 } // namespace shmea 

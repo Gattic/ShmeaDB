@@ -38,6 +38,9 @@ public:
     // Special solid rounded rectangle with perfect corner clipping - use this for UI elements
     void drawSolidRoundedRect(int x, int y, int width, int height, int radius, const RGBA& color);
     
+    // Draw an arrow from (x1,y1) to (x2,y2) with arrowhead at end
+    void drawArrow(int x1, int y1, int x2, int y2, const RGBA& color, int lineWidth = 2, int arrowheadSize = 10);
+    
 private:
     SuperSamplingManager& ssaa;
     ColorManager& colors;

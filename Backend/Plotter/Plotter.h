@@ -49,6 +49,27 @@ struct Point {
     Point(double x_, double y_) : x(x_), y(y_) {}
 };
 
+// Arrow structure for visualization
+struct Arrow {
+    Point start;
+    Point end;
+    RGBA color;
+    int lineWidth;
+    int arrowheadSize;
+    
+    Arrow() : lineWidth(2), arrowheadSize(10) {}
+    
+    Arrow(const Point& start_, const Point& end_, const RGBA& color_ = RGBA(),
+          int lineWidth_ = 2, int arrowheadSize_ = 10)
+        : start(start_), end(end_), color(color_), 
+          lineWidth(lineWidth_), arrowheadSize(arrowheadSize_) {}
+    
+    Arrow(double startX, double startY, double endX, double endY, 
+          const RGBA& color_ = RGBA(), int lineWidth_ = 2, int arrowheadSize_ = 10)
+        : start(startX, startY), end(endX, endY), color(color_), 
+          lineWidth(lineWidth_), arrowheadSize(arrowheadSize_) {}
+};
+
 // Candlestick data structure
 struct CandleData {
     double timestamp;
@@ -130,6 +151,12 @@ public:
                                 const std::vector<int>& labels,
                                 const std::vector<std::vector<double> >& centroids);
     
+    // Arrow visualization
+    ChartBuilder& addArrows(const std::vector<Arrow>& arrows);
+    ChartBuilder& addArrow(const Arrow& arrow);
+    ChartBuilder& addArrow(double startX, double startY, double endX, double endY, 
+                          const RGBA& color = RGBA(), int lineWidth = 2, int arrowheadSize = 10);
+    
     // Rendering
     void saveAs(const std::string& filename, const std::string& folder = ".");
     
@@ -137,6 +164,7 @@ private:
     Plotter& plotter;
     ChartType chartType;
     std::vector<Series> series;
+    std::vector<Arrow> arrows;
     bool hasHistogramData;
     std::vector<int> histogramBins;
     RGBA histogramColor;
@@ -217,6 +245,13 @@ public:
     // Legacy API support - maintained for backward compatibility
     void plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize = 8, bool redrawBackground = true);
     void plotLine(const std::vector<Point>& points, const RGBA& color, int lineWidth = 2, bool redrawBackground = true);
+    
+    // Arrow visualization methods
+    void plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground = false);
+    void plotArrow(const Arrow& arrow, bool redrawBackground = false);
+    void plotArrow(double startX, double startY, double endX, double endY, 
+                  const RGBA& color = RGBA(), int lineWidth = 2, int arrowheadSize = 10,
+                  bool redrawBackground = false);
     
     // Original method signatures needed for backward compatibility
     void plotHistogram(const std::vector<int>& bins, const RGBA& color = RGBA(), bool showXAxisLabels = true);

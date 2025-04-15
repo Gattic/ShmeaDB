@@ -133,6 +133,22 @@ ChartBuilder& ChartBuilder::addClusterData(const std::vector<std::vector<double>
     return *this;
 }
 
+ChartBuilder& ChartBuilder::addArrows(const std::vector<Arrow>& arrows) {
+    this->arrows.insert(this->arrows.end(), arrows.begin(), arrows.end());
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::addArrow(const Arrow& arrow) {
+    this->arrows.push_back(arrow);
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::addArrow(double startX, double startY, double endX, double endY, 
+                                    const RGBA& color, int lineWidth, int arrowheadSize) {
+    Arrow arrow(startX, startY, endX, endY, color, lineWidth, arrowheadSize);
+    return addArrow(arrow);
+}
+
 void ChartBuilder::saveAs(const std::string& filename, const std::string& folder) {
     // Set optimal margins for the chart type
     plotter.calculateOptimalMargins(chartType);
@@ -157,8 +173,14 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         // Plot cluster chart
         plotter.plotClusters(clusterData, clusterLabels, centroids);
     }
-    else {
+    else if (arrows.empty()) {
         printf("Warning: No chart data provided to ChartBuilder. Nothing to render.\n");
+    }
+    
+    // Draw any arrows that have been added
+    if (!arrows.empty()) {
+        // Plot the arrows without redrawing the background
+        plotter.plotArrows(arrows, false);
     }
     
     // Save the chart
@@ -1724,6 +1746,137 @@ void Plotter::plotMultiSeries(const std::vector<std::vector<Point> >& seriesData
     
     // Use the new plotChart method
     plotChart(seriesList, title, xAxisLabel, yAxisLabel);
+}
+
+// After the plotLine method, add the arrow implementations:
+
+void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground) {
+    if (arrows.empty()) {
+        printf("Warning: No arrows to plot in plotArrows\n");
+        return;
+    }
+    
+    printf("Plotting %lu arrows\n", arrows.size());
+    
+    // Convert all arrow endpoints to data points for range calculation
+    std::vector<DataMapper::Point> allDataPoints;
+    for (size_t i = 0; i < arrows.size(); ++i) {
+        allDataPoints.push_back(DataMapper::Point(arrows[i].start.x, arrows[i].start.y));
+        allDataPoints.push_back(DataMapper::Point(arrows[i].end.x, arrows[i].end.y));
+    }
+    
+    // Calculate appropriate ranges to include all arrows
+    DataMapper::AxisRange xRange = dataMapper->calculateXRange(allDataPoints);
+    DataMapper::AxisRange yRange = dataMapper->calculateYRange(allDataPoints);
+    
+    // If we need to prepare a new chart background
+    if (redrawBackground) {
+        // Calculate optimal margins
+        calculateOptimalMargins(CHART_LINE);
+        
+        // Variables for margin storage and positioning
+        unsigned int originalTopMargin, originalRightMargin;
+        int titleY, legendY;
+        
+        // Prepare the chart with standard configuration
+        prepareStandardChart("Arrow Visualization", "X Value", "Y Value", 36, 28, 160,
+                          &originalTopMargin, &originalRightMargin, &titleY, &legendY);
+        
+        // Set up standard axis ticks with 50px Y-axis label offset
+        setupStandardAxisTicks(xRange, yRange, 50);
+    }
+    
+    // Draw each arrow
+    for (size_t i = 0; i < arrows.size(); ++i) {
+        // Map arrow start point to screen coordinates
+        DataMapper::Point startPoint = dataMapper->mapDataToScreen(
+            arrows[i].start.x, arrows[i].start.y, xRange, yRange);
+        
+        // Map arrow end point to screen coordinates
+        DataMapper::Point endPoint = dataMapper->mapDataToScreen(
+            arrows[i].end.x, arrows[i].end.y, xRange, yRange);
+        
+        // Scale coordinates and sizes for supersampling
+        int ssaaStartX = ssaaManager->scaleX(startPoint.x);
+        int ssaaStartY = ssaaManager->scaleY(startPoint.y);
+        int ssaaEndX = ssaaManager->scaleX(endPoint.x);
+        int ssaaEndY = ssaaManager->scaleY(endPoint.y);
+        int ssaaLineWidth = ssaaManager->scaleSize(arrows[i].lineWidth);
+        int ssaaArrowheadSize = ssaaManager->scaleSize(arrows[i].arrowheadSize);
+        
+        // Get appropriate color
+        RGBA useColor = arrows[i].color;
+        if (useColor.r == 0 && useColor.g == 0 && useColor.b == 0 && useColor.a == 0) {
+            useColor = colorManager->getThemeColor(i % 10); // Cycle through theme colors
+        }
+        
+        // Draw the arrow using the ShapeRenderer
+        shapeRenderer->drawArrow(
+            ssaaStartX, ssaaStartY, ssaaEndX, ssaaEndY, useColor, ssaaLineWidth, ssaaArrowheadSize
+        );
+    }
+}
+
+void Plotter::plotArrow(const Arrow& arrow, bool redrawBackground) {
+    // Call the more detailed implementation
+    plotArrow(arrow.start.x, arrow.start.y, arrow.end.x, arrow.end.y, 
+              arrow.color, arrow.lineWidth, arrow.arrowheadSize, redrawBackground);
+}
+
+void Plotter::plotArrow(double startX, double startY, double endX, double endY, 
+                       const RGBA& color, int lineWidth, int arrowheadSize, bool redrawBackground) {
+    // If the color is not specified (all zeros), use the first theme color
+    RGBA useColor = color;
+    if (color.r == 0 && color.g == 0 && color.b == 0 && color.a == 0) {
+        useColor = colorManager->getThemeColor(0);
+    }
+    
+    // Convert data points to a full vector for range determination
+    std::vector<Point> points;
+    points.push_back(Point(startX, startY));
+    points.push_back(Point(endX, endY));
+    
+    // Convert to DataMapper::Point vector
+    std::vector<DataMapper::Point> dataPoints = convertToDataPoints(points);
+    
+    // Calculate axis ranges for scaling
+    DataMapper::AxisRange xRange, yRange;
+    calculateDataRanges(dataPoints, xRange, yRange);
+    
+    if (redrawBackground) {
+        // Calculate optimal margins
+        calculateOptimalMargins(CHART_LINE);
+        
+        // Variables for margin storage and positioning
+        unsigned int originalTopMargin, originalRightMargin;
+        int titleY, legendY;
+        
+        // Prepare the chart with standard configuration
+        prepareStandardChart("Arrow Visualization", "X Value", "Y Value", 36, 28, 160,
+                          &originalTopMargin, &originalRightMargin, &titleY, &legendY);
+        
+        // Set up standard axis ticks with 50px Y-axis label offset
+        setupStandardAxisTicks(xRange, yRange, 50);
+    }
+    
+    // Map arrow start point to screen coordinates
+    DataMapper::Point startPoint = dataMapper->mapDataToScreen(startX, startY, xRange, yRange);
+    
+    // Map arrow end point to screen coordinates
+    DataMapper::Point endPoint = dataMapper->mapDataToScreen(endX, endY, xRange, yRange);
+    
+    // Scale coordinates and sizes for supersampling
+    int ssaaStartX = ssaaManager->scaleX(startPoint.x);
+    int ssaaStartY = ssaaManager->scaleY(startPoint.y);
+    int ssaaEndX = ssaaManager->scaleX(endPoint.x);
+    int ssaaEndY = ssaaManager->scaleY(endPoint.y);
+    int ssaaLineWidth = ssaaManager->scaleSize(lineWidth);
+    int ssaaArrowheadSize = ssaaManager->scaleSize(arrowheadSize);
+    
+    // Draw the arrow using the ShapeRenderer
+    shapeRenderer->drawArrow(
+        ssaaStartX, ssaaStartY, ssaaEndX, ssaaEndY, useColor, ssaaLineWidth, ssaaArrowheadSize
+    );
 }
 
 } // namespace shmea 

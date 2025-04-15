@@ -390,4 +390,136 @@ void shmea::testMultiCluster() {
         .saveAs("multi_cluster_test_output.png", ".");
     
     printf("Multi-cluster test with fluent API completed. Output saved as 'multi_cluster_test_output.png'.\n");
+}
+
+// Test function to visualize arrows on charts
+void shmea::testArrows() {
+    printf("Testing arrow visualization with the new fluent API...\n");
+    
+    // Test 1: Arrows on a scatter plot
+    // ===============================
+    
+    printf("Test 1: Adding arrows to a scatter plot...\n");
+    
+    // Seed random number generator
+    std::srand(42);
+    
+    // Create a Plotter instance
+    Plotter plotter(1800, 1000, 4);
+    
+    // Create random scatter points
+    std::vector<Point> scatterPoints;
+    for (int i = 0; i < 30; ++i) {
+        Point p;
+        p.x = (std::rand() % 1000) / 100.0; // X values from 0 to 10
+        p.y = (std::rand() % 1000) / 100.0; // Y values from 0 to 10
+        scatterPoints.push_back(p);
+    }
+    
+    // Create arrows that highlight specific points or trends
+    std::vector<Arrow> arrows;
+    
+    // Arrow 1: Pointing to an interesting point (in red)
+    arrows.push_back(Arrow(5.0, 9.0, 3.0, 5.0, RGBA(0xFF, 0x47, 0x45, 0xFF), 3, 12));
+    
+    // Arrow 2: Showing direction of trend (in green)
+    arrows.push_back(Arrow(2.0, 2.0, 8.0, 8.0, RGBA(0x03, 0xC0, 0x3C, 0xFF), 3, 15));
+    
+    // Arrow 3: Horizontal arrow (in blue)
+    arrows.push_back(Arrow(1.0, 7.0, 9.0, 7.0, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3, 12));
+    
+    // Use the new fluent API to create a scatter plot with arrows
+    plotter.chart()
+        .title("Scatter Plot with Arrows", 36)
+        .grid(true)
+        .axes(true)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("X Value", "Y Value", 28)
+        .autoMargins(CHART_SCATTER)
+        .addSeries("Data Points", scatterPoints, RGBA(0x99, 0x99, 0x99, 0xFF), SERIES_SCATTER, 2, 8)
+        .addArrows(arrows)
+        .saveAs("scatter_with_arrows_test.png", ".");
+    
+    printf("Scatter plot with arrows test completed. Output saved as 'scatter_with_arrows_test.png'.\n");
+    
+    // Test 2: Arrows on a line chart
+    // ==============================
+    
+    printf("Test 2: Adding arrows to a line chart...\n");
+    
+    // Create a new Plotter instance
+    Plotter plotter2(1800, 1000, 4);
+    
+    // Create a sine wave line
+    std::vector<Point> lineData;
+    for (int i = 0; i < 50; ++i) {
+        Point p;
+        p.x = i * 0.2;  // X values from 0 to 10
+        p.y = std::sin(i * 0.2) * 3 + 5;  // Sine wave oscillating around y=5
+        lineData.push_back(p);
+    }
+    
+    // Create arrows that highlight features of the sine wave
+    std::vector<Arrow> waveArrows;
+    
+    // Arrow 1: Pointing to a maximum (in red)
+    waveArrows.push_back(Arrow(8.0, 8.5, 7.9, 8.0, RGBA(0xFF, 0x47, 0x45, 0xFF), 2, 10));
+    
+    // Arrow 2: Pointing to a minimum (in blue)
+    waveArrows.push_back(Arrow(3.0, 1.5, 3.8, 2.0, RGBA(0x00, 0x9E, 0xFF, 0xFF), 2, 10));
+    
+    // Arrow 3: Showing overall wave direction (in green)
+    waveArrows.push_back(Arrow(1.0, 3.0, 3.0, 5.0, RGBA(0x03, 0xC0, 0x3C, 0xFF), 2, 12));
+    
+    // Arrow 4: Annotation arrow (in purple)
+    waveArrows.push_back(Arrow(9.0, 3.0, 6.0, 2.5, RGBA(0xA0, 0x20, 0xF0, 0xFF), 2, 12));
+    
+    // Use the new fluent API to create a line chart with arrows
+    plotter2.chart()
+        .title("Sine Wave with Annotation Arrows", 36)
+        .grid(true)
+        .axes(true)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("X Value", "Y Value", 28)
+        .autoMargins(CHART_LINE)
+        .addSeries("Sine Wave", lineData, RGBA(0x00, 0x00, 0x00, 0xFF), SERIES_LINE, 3)
+        .addArrows(waveArrows)
+        .saveAs("line_chart_with_arrows_test.png", ".");
+    
+    printf("Line chart with arrows test completed. Output saved as 'line_chart_with_arrows_test.png'.\n");
+    
+    // Test 3: Standalone arrows (no other chart elements)
+    // =================================================
+    
+    printf("Test 3: Creating a chart with just arrows...\n");
+    
+    // Create a new Plotter instance
+    Plotter plotter3(1200, 800, 2);
+    
+    // Create a set of arrows forming a simple diagram
+    std::vector<Arrow> diagramArrows;
+    
+    // Arrow 1: Central arrow (in black)
+    diagramArrows.push_back(Arrow(2.0, 5.0, 8.0, 5.0, RGBA(0x00, 0x00, 0x00, 0xFF), 3, 15));
+    
+    // Arrow 2: Top branch (in red)
+    diagramArrows.push_back(Arrow(5.0, 5.0, 7.0, 8.0, RGBA(0xFF, 0x47, 0x45, 0xFF), 3, 12));
+    
+    // Arrow 3: Bottom branch (in blue)
+    diagramArrows.push_back(Arrow(5.0, 5.0, 7.0, 2.0, RGBA(0x00, 0x9E, 0xFF, 0xFF), 3, 12));
+    
+    // Use the new fluent API to create a chart with only arrows
+    plotter3.chart()
+        .title("Arrow Diagram", 36)
+        .grid(false)
+        .axes(false)
+        .cornerRadius(15)
+        .axisLabels("", "")
+        .autoMargins(CHART_DEFAULT)
+        .addArrows(diagramArrows)
+        .saveAs("arrow_diagram_test.png", ".");
+    
+    printf("Arrow diagram test completed. Output saved as 'arrow_diagram_test.png'.\n");
 } 
