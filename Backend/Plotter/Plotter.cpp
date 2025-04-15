@@ -1229,6 +1229,7 @@ void Plotter::prepareStandardChart(const std::string& title,
     
     // Use common setup for chart initialization
     setupChart(config, originalTopMargin, originalRightMargin, rightMargin, titleY, legendY);
+    *legendY += 15; // Add space between title and legend
     
     // Draw axis labels
     addAxisLabels(config.xAxisLabel, config.yAxisLabel, config.axisFontSize);
