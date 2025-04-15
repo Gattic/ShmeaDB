@@ -178,6 +178,9 @@ int ChartStyler::createClusterLegend(const std::vector<RGBA>& clusterColors, int
 }
 
 void ChartStyler::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize) {
+    // Print debug info to track issue
+    printf("Drawing histogram stats box at legendY=%d\n", legendY);
+    
     // Calculate statistics
     int sum = 0;
     int count = 0;
@@ -218,9 +221,44 @@ void ChartStyler::drawHistogramStats(const std::vector<int>& bins, int maxBinVal
     boxWidth = std::max(boxWidth, titleWidth + sidePadding * 2); // Ensure box is wide enough for title
     int boxHeight = 90; // Single row height + padding
     
-    // Position the box to the right of the legend area
-    int boxX = layout.getMarginLeft() + 250; // Left-aligned with the chart
+    // Position the box aligned with the right edge of the chart
+    int boxX = layout.getWidth() - layout.getMarginRight() - boxWidth;
+    
+    // Debug the initial position
+    printf("Initial boxX=%d, width=%d, layout.width=%d, margin_right=%d\n",
+           boxX, boxWidth, layout.getWidth(), layout.getMarginRight());
+    
+    // Check if we need to shift the box left to avoid overlapping with the logo
+    // Logo is typically positioned in the top right with 20px padding
+    int logoWidth = layout.getLogoWidth();
+    int logoHeight = layout.getLogoHeight();
+    
+    printf("Logo dimensions: width=%d, height=%d\n", logoWidth, logoHeight);
+    
+    // Only reposition if the logo actually exists and has positive dimensions
+    if (logoWidth > 0 && logoHeight > 0) {
+        // Logo is present - need to shift the box left if it would overlap
+        // Logo is positioned at: (width - logoWidth - 15, 20)
+        int logoLeft = layout.getWidth() - logoWidth - 15;
+        int logoBottom = 20 + logoHeight;
+        
+        printf("Logo position: left=%d, bottom=%d, legendY=%d\n", logoLeft, logoBottom, legendY);
+        
+        // Check if there would be any overlap - be more conservative
+        if (boxX + boxWidth >= logoLeft && legendY <= logoBottom) {
+            // Shift the box left to avoid the logo
+            // Allow 15px padding between logo and stats box
+            int newBoxX = logoLeft - boxWidth - 15;
+            printf("Moving box from x=%d to x=%d to avoid logo\n", boxX, newBoxX);
+            boxX = newBoxX;
+        }
+    }
+    
     int boxY = legendY; // Same position as legend
+    
+    // Print final box position
+    printf("Final histogram stats box: x=%d, y=%d, width=%d, height=%d\n", 
+           boxX, boxY, boxWidth, boxHeight);
     
     // Draw the info box with gradient background
     grid.drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", fontSize);

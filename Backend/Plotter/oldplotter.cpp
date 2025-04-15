@@ -1863,6 +1863,9 @@ RGBA Plotter::getThemeColor(int index) {
 // Update drawHistogramStats to use dynamic spacing
 void Plotter::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, int legendY, unsigned int fontSize)
 {
+    // Print debug info
+    printf("oldplotter: Drawing histogram stats box at legendY=%d\n", legendY);
+    
     // Calculate statistics
     int sum = 0;
     int count = 0;
@@ -1902,8 +1905,57 @@ void Plotter::drawHistogramStats(const std::vector<int>& bins, int maxBinValue, 
     boxWidth = std::max(boxWidth, titleWidth + sidePadding * 2); // Ensure box is wide enough for title
     int boxHeight = 90; // Single row height + padding
     
-    int boxX = margin_left + 250; // Left-aligned with the chart
+    // Position the box aligned with the right edge of the chart
+    int boxX = width - margin_right - boxWidth;
+    
+    // Debug the initial position
+    printf("oldplotter: Initial boxX=%d, width=%d\n", boxX, boxWidth);
+    
+    // Check if we need to shift the box left to avoid overlapping with the logo
+    if (hasLogo && logoImage.getWidth() > 0 && logoImage.getHeight() > 0) {
+        // Get the scaled logo dimensions
+        int scaledLogoWidth = logoImage.getWidth();
+        int scaledLogoHeight = logoImage.getHeight();
+        
+        // Apply scaling logic as in drawLogo
+        const int maxLogoSize = 200;
+        if (scaledLogoWidth > maxLogoSize || scaledLogoHeight > maxLogoSize) {
+            float scale = maxLogoSize / static_cast<float>(std::max(scaledLogoWidth, scaledLogoHeight));
+            scaledLogoWidth = static_cast<int>(scaledLogoWidth * scale);
+            scaledLogoHeight = static_cast<int>(scaledLogoHeight * scale);
+        }
+        
+        printf("oldplotter: Logo dimensions: %d x %d\n", scaledLogoWidth, scaledLogoHeight);
+        
+        // Logo is positioned at: (width - logoWidth - 20, 20)
+        int logoLeft = width - scaledLogoWidth - 20;
+        int logoBottom = 20 + scaledLogoHeight;
+        
+        printf("oldplotter: Logo position: left=%d, bottom=%d\n", logoLeft, logoBottom);
+        
+        // If the stats box would overlap with the logo, shift it left
+        if (boxX + boxWidth >= logoLeft && legendY <= logoBottom) {
+            // Allow 20px padding between logo and stats box
+            int newBoxX = logoLeft - boxWidth - 20;
+            // Ensure box is not positioned off-screen
+            newBoxX = std::max(newBoxX, margin_left);
+            printf("oldplotter: Moving box from x=%d to x=%d to avoid logo\n", boxX, newBoxX);
+            boxX = newBoxX;
+        }
+    }
+    
+    // Safety check - ensure the box is within the chart area
+    if (boxX < margin_left) {
+        boxX = margin_left;
+    }
+    if (boxX + boxWidth > width - margin_right) {
+        boxX = width - margin_right - boxWidth;
+    }
+    
     int boxY = legendY; // Same position as legend
+    
+    // Final box position
+    printf("oldplotter: Final histogram stats box: x=%d, y=%d\n", boxX, boxY);
     
     // Use our common info box method for consistent styling
     drawInfoBox(boxX, boxY, boxWidth, boxHeight, "", fontSize);

@@ -351,26 +351,64 @@ void Plotter::loadLogo(const std::string& logoPath)
         
         if (logoImage.getWidth() > 0 && logoImage.getHeight() > 0) {
             hasLogo = true;
-            printf("Logo loaded successfully from: %s\n", logoPath.c_str());
+            
+            // Get original dimensions
+            int originalWidth = logoImage.getWidth();
+            int originalHeight = logoImage.getHeight();
+            printf("Logo loaded successfully from: %s (%d x %d)\n", 
+                   logoPath.c_str(), originalWidth, originalHeight);
+            
+            // Calculate scaled dimensions right away
+            int scaledWidth = originalWidth;
+            int scaledHeight = originalHeight;
+            
+            // Apply the same scaling logic as in drawLogo
+            const int maxLogoSize = 200;
+            if (scaledWidth > maxLogoSize || scaledHeight > maxLogoSize) {
+                float scale = maxLogoSize / static_cast<float>(std::max(scaledWidth, scaledHeight));
+                scaledWidth = static_cast<int>(scaledWidth * scale);
+                scaledHeight = static_cast<int>(scaledHeight * scale);
+                printf("Logo will be scaled to: %d x %d\n", scaledWidth, scaledHeight);
+            }
+            
+            // Store scaled logo dimensions in the chartLayout
+            chartLayout->setLogoWidth(scaledWidth);
+            chartLayout->setLogoHeight(scaledHeight);
         } else {
             hasLogo = false;
-            printf("Failed to load logo from: %s\n", logoPath.c_str());
+            
+            // Reset logo dimensions in chartLayout
+            chartLayout->setLogoWidth(0);
+            chartLayout->setLogoHeight(0);
+            
+            printf("Failed to load logo from: %s (invalid dimensions)\n", logoPath.c_str());
         }
     } catch (...) {
         hasLogo = false;
-        printf("Error loading logo from: %s\n", logoPath.c_str());
+        
+        // Reset logo dimensions in chartLayout
+        chartLayout->setLogoWidth(0);
+        chartLayout->setLogoHeight(0);
+        
+        printf("Error loading logo from: %s (exception occurred)\n", logoPath.c_str());
     }
 }
 
 void Plotter::drawLogo()
 {
     if (!hasLogo || logoImage.getWidth() == 0 || logoImage.getHeight() == 0) {
-        return;  // No logo to draw
+        // No logo to draw - make sure dimensions are reset
+        chartLayout->setLogoWidth(0);
+        chartLayout->setLogoHeight(0);
+        printf("Logo not available or has invalid dimensions\n");
+        return;
     }
     
     // Define position for the logo (top right corner)
     int logoWidth = logoImage.getWidth();
     int logoHeight = logoImage.getHeight();
+    
+    printf("Original logo dimensions: %d x %d\n", logoWidth, logoHeight);
     
     // Limit logo size to a reasonable maximum
     const int maxLogoSize = 200;
@@ -379,13 +417,21 @@ void Plotter::drawLogo()
         float scale = maxLogoSize / static_cast<float>(std::max(logoWidth, logoHeight));
         logoWidth = static_cast<int>(logoWidth * scale);
         logoHeight = static_cast<int>(logoHeight * scale);
+        printf("Scaled logo dimensions: %d x %d (scale factor: %.2f)\n", logoWidth, logoHeight, scale);
     }
+    
+    // Always update the chart layout with the actual scaled logo dimensions
+    // This ensures other components can properly position themselves
+    chartLayout->setLogoWidth(logoWidth);
+    chartLayout->setLogoHeight(logoHeight);
     
     // Calculate position in top right with padding
     int padX = 20;
     int padY = 20;
     int logoX = chartLayout->getWidth() - logoWidth - padX;
     int logoY = padY;
+    
+    printf("Logo position: x=%d, y=%d\n", logoX, logoY);
     
     // Scale coordinates for supersampling
     int ssaaLogoX = ssaaManager->scaleX(logoX);

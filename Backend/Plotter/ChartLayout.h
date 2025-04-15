@@ -72,6 +72,12 @@ public:
     Image& getSsaaImage();
     const Image& getSsaaImage() const;
     
+    // Logo dimensions
+    int getLogoWidth() const;
+    int getLogoHeight() const;
+    void setLogoWidth(int width);
+    void setLogoHeight(int height);
+    
     // Helper method for maintaining integer bounds
     static int clamp(int value, int min, int max);
     
@@ -87,6 +93,8 @@ private:
     bool showAxes;
     unsigned int ssaaFactor;
     Image ssaaImage; // Reference to the supersampled image
+    int logoWidth;  // Width of the logo image
+    int logoHeight; // Height of the logo image
 };
 
 } // namespace shmea

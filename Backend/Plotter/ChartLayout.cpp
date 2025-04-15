@@ -17,7 +17,9 @@ ChartLayout::ChartLayout(unsigned int width, unsigned int height,
       cornerRadius(12),
       showGrid(true),
       showAxes(true),
-      ssaaFactor(ssaa_factor)
+      ssaaFactor(ssaa_factor),
+      logoWidth(0),
+      logoHeight(0)
 {
     // Initialize the supersampled image with the correct dimensions
     ssaaImage.Allocate(width * ssaaFactor, height * ssaaFactor);
@@ -147,6 +149,23 @@ Image& ChartLayout::getSsaaImage() {
 
 const Image& ChartLayout::getSsaaImage() const {
     return ssaaImage;
+}
+
+// Logo dimension getters and setters
+int ChartLayout::getLogoWidth() const {
+    return logoWidth;
+}
+
+int ChartLayout::getLogoHeight() const {
+    return logoHeight;
+}
+
+void ChartLayout::setLogoWidth(int width) {
+    logoWidth = width;
+}
+
+void ChartLayout::setLogoHeight(int height) {
+    logoHeight = height;
 }
 
 } // namespace shmea 
