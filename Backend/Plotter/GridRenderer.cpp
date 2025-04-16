@@ -6,11 +6,14 @@
 namespace shmea {
 
 GridRenderer::GridRenderer(SuperSamplingManager& ssaaManager, ColorManager& colorManager, 
-                       ChartLayout& chartLayout, ShapeRenderer& shapeRenderer)
+                       ChartLayout& chartLayout, ShapeRenderer& shapeRenderer,
+			FT_Library& newFT, FT_Face& newFace)
     : ssaa(ssaaManager),
       colors(colorManager),
       layout(chartLayout),
-      shapes(shapeRenderer)
+      shapes(shapeRenderer),
+      ft(newFT),
+      face(newFace)
 {
 }
 
@@ -292,7 +295,7 @@ void GridRenderer::drawOriginAxes(double xMin, double xMax, double yMin, double 
     
     // Create TextRenderer for the axis labels
     TextRenderer textRenderer(ssaa, colors, layout);
-    textRenderer.initialize("fonts/font.ttf");
+    textRenderer.initialize(ft, face);
     
     // Draw quadrant indicators
     RGBA labelColor = colors.getElementColor("axisLabel");
@@ -440,7 +443,7 @@ void GridRenderer::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const 
     if (!text.empty()) {
         // Create a TextRenderer instance for text rendering
         TextRenderer textRenderer(ssaa, colors, layout);
-        textRenderer.initialize("fonts/font.ttf");
+	textRenderer.initialize(ft, face);
         
         // Text position using original (non-supersampled) coordinates
         RGBA textColor = colors.getElementColor("legend"); // White text
@@ -468,7 +471,7 @@ void GridRenderer::drawXAxisTicks(const std::vector<std::string>& labels, int nu
     
     // Create TextRenderer instance for text rendering
     TextRenderer textRenderer(ssaa, colors, layout);
-    textRenderer.initialize("fonts/font.ttf");
+    textRenderer.initialize(ft, face);
     
     // Define labelY here to make it available throughout the function
     int labelY = layout.getHeight() - layout.getMarginBottom() + 25; // Exact position from plotter.cpp
@@ -511,7 +514,7 @@ void GridRenderer::drawXAxisTicks(double minValue, double maxValue, int numTicks
     
     // Create TextRenderer instance for text rendering
     TextRenderer textRenderer(ssaa, colors, layout);
-    textRenderer.initialize("fonts/font.ttf");
+    textRenderer.initialize(ft, face);
     
     // Draw ticks at precise intervals - exactly like plotter.cpp
     for (int i = 0; i < numTicks; ++i) {
@@ -554,7 +557,7 @@ void GridRenderer::drawYAxisTicks(double minValue, double maxValue, int numTicks
     
     // Create TextRenderer instance for text rendering
     TextRenderer textRenderer(ssaa, colors, layout);
-    textRenderer.initialize("fonts/font.ttf");
+    textRenderer.initialize(ft, face);
     
     // Draw each tick mark and label - exactly like in plotter.cpp
     for (int i = 0; i <= numTicks; ++i) {

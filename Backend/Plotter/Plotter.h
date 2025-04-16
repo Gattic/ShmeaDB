@@ -5,6 +5,8 @@
 #include "DataMapper.h"
 #include <string>
 #include <vector>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 // Forward declarations to avoid circular dependencies
 namespace shmea {
@@ -191,6 +193,8 @@ public:
             unsigned int margin_top, unsigned int margin_right,
             unsigned int margin_bottom, unsigned int margin_left,
             unsigned int ssaa_factor = 1);
+
+    void initialize_font(const std::string);
     
     ~Plotter();
     
@@ -311,6 +315,11 @@ private:
     GridRenderer* gridRenderer;
     DataMapper* dataMapper;
     ChartStyler* chartStyler;
+
+    // font handling
+    static FT_Library ft;
+    static FT_Face face;
+    static bool fontLoaded;
     
     // Output image
     Image image;

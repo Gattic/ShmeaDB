@@ -307,6 +307,9 @@ ChartBuilder& ChartBuilder::originAxes(bool show) {
 //
 // Plotter Implementation
 //
+bool Plotter::fontLoaded = false;
+FT_Library Plotter::ft = NULL;
+FT_Face Plotter::face = NULL;
 
 Plotter::Plotter(unsigned int width, unsigned int height, 
                  unsigned int margin_top, unsigned int margin_right, 
@@ -316,6 +319,8 @@ Plotter::Plotter(unsigned int width, unsigned int height,
       currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
       currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
+    initialize_font("fonts/font.ttf");
+
     // Initialize helper components in the correct order
     colorManager = new ColorManager();
     
@@ -326,9 +331,9 @@ Plotter::Plotter(unsigned int width, unsigned int height,
     shapeRenderer = new ShapeRenderer(*ssaaManager, *colorManager, *chartLayout);
     
     textRenderer = new TextRenderer(*ssaaManager, *colorManager, *chartLayout);
-    textRenderer->initialize("fonts/font.ttf");  // Specify font path explicitly
+    textRenderer->initialize(ft, face);
     
-    gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer);
+    gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer, ft, face);
     
     dataMapper = new DataMapper(*chartLayout);
     
@@ -352,6 +357,8 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
       currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
       currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
+    initialize_font("fonts/font.ttf");
+
     // Initialize helper components in the correct order
     colorManager = new ColorManager();
     
@@ -368,9 +375,9 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
     shapeRenderer = new ShapeRenderer(*ssaaManager, *colorManager, *chartLayout);
     
     textRenderer = new TextRenderer(*ssaaManager, *colorManager, *chartLayout);
-    textRenderer->initialize("fonts/font.ttf");  // Specify font path explicitly
+    textRenderer->initialize(ft, face);
     
-    gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer);
+    gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer, ft, face);
     
     dataMapper = new DataMapper(*chartLayout);
     
@@ -387,6 +394,49 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
     // Complete initialization
     initialize();
 }
+
+void Plotter::initialize_font(const std::string fontPath)
+{
+    if(fontLoaded)
+	return;
+    //
+    //Initialize FreeType
+    if(FT_Init_FreeType(&ft))
+    {
+	throw std::runtime_error("Could not initialize FreeType Library.");
+    }
+
+    // Load the font
+    if (FT_New_Face(ft, fontPath.c_str(), 0, &face)) {
+        printf("Warning: Failed to load font: %s\n", fontPath.c_str());
+        printf("Attempting to use a fallback font...\n");
+        
+        // Try some common system font locations
+        const char* fallbackFonts[] = {
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+        };
+        
+        bool fontLoaded = false;
+        for (int i = 0; i < 5 && !fontLoaded; i++) {
+            if (FT_New_Face(ft, fallbackFonts[i], 0, &face) == 0) {
+                printf("Successfully loaded fallback font: %s\n", fallbackFonts[i]);
+                fontLoaded = true;
+            }
+        }
+        
+        if (!fontLoaded) {
+            printf("Error: Could not load any fonts. Text will not be rendered.\n");
+            return;
+        }
+    } else {
+        printf("Successfully loaded font: %s\n", fontPath.c_str());
+    }
+
+    fontLoaded = true;
+}
+
 
 Plotter::~Plotter()
 {

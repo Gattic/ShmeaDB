@@ -6,6 +6,8 @@
 #include "SuperSamplingManager.h"
 #include "ChartLayout.h"
 #include "ShapeRenderer.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 namespace shmea {
 
@@ -13,7 +15,7 @@ class GridRenderer {
 public:
     // Constructor & Destructor
     GridRenderer(SuperSamplingManager& ssaaManager, ColorManager& colorManager, 
-                ChartLayout& layout, ShapeRenderer& shapeRenderer);
+                ChartLayout& layout, ShapeRenderer& shapeRenderer, FT_Library&, FT_Face&);
     ~GridRenderer();
     
     // Draw the background with gradient and effects
@@ -43,6 +45,9 @@ private:
     ColorManager& colors;
     ChartLayout& layout;
     ShapeRenderer& shapes;
+
+    FT_Library ft;
+    FT_Face face;
 };
 
 } // namespace shmea

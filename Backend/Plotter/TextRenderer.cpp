@@ -19,43 +19,13 @@ TextRenderer::TextRenderer(SuperSamplingManager& ssaaManager, ColorManager& colo
 
 TextRenderer::~TextRenderer() {
     // Clean up FreeType resources if initialized
-    if (fontInitialized) {
-        FT_Done_Face(face);
-        FT_Done_FreeType(ft);
-    }
 }
 
-void TextRenderer::initialize(const std::string& fontPath) {
-    // Load the font
-    if (FT_New_Face(ft, fontPath.c_str(), 0, &face)) {
-        printf("Warning: Failed to load font: %s\n", fontPath.c_str());
-        printf("Attempting to use a fallback font...\n");
-        
-        // Try some common system font locations
-        const char* fallbackFonts[] = {
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "C:\\Windows\\Fonts\\arial.ttf"
-        };
-        
-        bool fontLoaded = false;
-        for (int i = 0; i < 5 && !fontLoaded; i++) {
-            if (FT_New_Face(ft, fallbackFonts[i], 0, &face) == 0) {
-                printf("Successfully loaded fallback font: %s\n", fallbackFonts[i]);
-                fontLoaded = true;
-            }
-        }
-        
-        if (!fontLoaded) {
-            printf("Error: Could not load any fonts. Text will not be rendered.\n");
-            return;
-        }
-    } else {
-        printf("Successfully loaded font: %s\n", fontPath.c_str());
-    }
-    
+void TextRenderer::initialize(FT_Library& newFT, FT_Face& newFace)
+{
+    ft = newFT;
+    face = newFace;
+
     fontInitialized = true;
 }
 

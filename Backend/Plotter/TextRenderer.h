@@ -19,7 +19,7 @@ public:
     ~TextRenderer();
     
     // Initialize font
-    void initialize(const std::string& fontPath = "fonts/font.ttf");
+    void initialize(FT_Library&, FT_Face&);
     
     // Draw text at specified position (origin point is left-center of text)
     void drawText(int x, int y, const std::string& text, const RGBA& color, 
