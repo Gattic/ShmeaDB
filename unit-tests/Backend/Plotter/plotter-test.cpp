@@ -475,6 +475,9 @@ void shmea::testArrows() {
     
     // Arrow 4: Annotation arrow (in purple)
     waveArrows.push_back(Arrow(9.0, 3.0, 6.0, 2.5, RGBA(0xA0, 0x20, 0xF0, 0xFF), 2, 12));
+
+    // Arrow 5: Annotation arrow (in yellow)
+    waveArrows.push_back(Arrow(0.0, 0.0, 2.0, 2.0, RGBA(0xFF, 0xD7, 0x00, 0xFF), 2, 12));
     
     // Use the new fluent API to create a line chart with arrows
     plotter2.chart()

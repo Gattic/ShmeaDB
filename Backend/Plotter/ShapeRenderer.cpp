@@ -983,18 +983,23 @@ void ShapeRenderer::drawArrow(int x1, int y1, int x2, int y2, const RGBA& color,
     drawLine(x1, y1, x2, y2, color, lineWidth);
     
     // Calculate the angle of the main line
-    float angle = atan2(y2 - y1, x2 - x1);
+    // Note: Need to flip y-coordinate difference because screen y-axis grows downward
+    float angle = atan2(-(y2 - y1), x2 - x1);
     
     // Calculate arrowhead points - two lines at ±30 degrees from the main line
     const float arrowAngle = 30.0f * M_PI / 180.0f; // 30 degrees in radians
     
-    // Calculate offsets for first arrowhead line (-30 degrees)
-    int x3 = x2 - static_cast<int>(arrowheadSize * cos(angle + arrowAngle));
-    int y3 = y2 - static_cast<int>(arrowheadSize * sin(angle + arrowAngle));
+    // Calculate arrowhead points - going backwards from the arrow tip (x2,y2)
+    // The arrowhead should point in the opposite direction of the line
+    float reverseAngle = angle + M_PI; // Reverse the angle (180 degrees)
     
-    // Calculate offsets for second arrowhead line (+30 degrees)
-    int x4 = x2 - static_cast<int>(arrowheadSize * cos(angle - arrowAngle));
-    int y4 = y2 - static_cast<int>(arrowheadSize * sin(angle - arrowAngle));
+    // Calculate offsets for first arrowhead line, adjusting for screen coordinate system
+    int x3 = x2 + static_cast<int>(arrowheadSize * cos(reverseAngle + arrowAngle));
+    int y3 = y2 - static_cast<int>(arrowheadSize * sin(reverseAngle + arrowAngle));
+    
+    // Calculate offsets for second arrowhead line, adjusting for screen coordinate system
+    int x4 = x2 + static_cast<int>(arrowheadSize * cos(reverseAngle - arrowAngle));
+    int y4 = y2 - static_cast<int>(arrowheadSize * sin(reverseAngle - arrowAngle));
     
     // Draw the two arrowhead lines
     drawLine(x2, y2, x3, y3, color, lineWidth);
