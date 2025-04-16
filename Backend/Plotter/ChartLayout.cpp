@@ -17,6 +17,7 @@ ChartLayout::ChartLayout(unsigned int width, unsigned int height,
       cornerRadius(12),
       showGrid(true),
       showAxes(true),
+      showOriginAxes(false),
       ssaaFactor(ssaa_factor),
       logoWidth(0),
       logoHeight(0)
@@ -166,6 +167,14 @@ void ChartLayout::setLogoWidth(int width) {
 
 void ChartLayout::setLogoHeight(int height) {
     logoHeight = height;
+}
+
+void ChartLayout::setShowOriginAxes(bool show) {
+    showOriginAxes = show;
+}
+
+bool ChartLayout::areOriginAxesVisible() const {
+    return showOriginAxes;
 }
 
 } // namespace shmea 

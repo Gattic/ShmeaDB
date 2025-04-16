@@ -64,6 +64,10 @@ public:
     void setShowAxes(bool show);
     bool areAxesVisible() const;
     
+    // Origin axes (four quadrants) visibility
+    void setShowOriginAxes(bool show);
+    bool areOriginAxesVisible() const;
+    
     // Supersampling factor
     unsigned int getSsaaFactor() const;
     void setSsaaFactor(unsigned int factor);
@@ -91,6 +95,7 @@ private:
     int cornerRadius;
     bool showGrid;
     bool showAxes;
+    bool showOriginAxes;  // Whether to show origin-centered axes (four quadrants)
     unsigned int ssaaFactor;
     Image ssaaImage; // Reference to the supersampled image
     int logoWidth;  // Width of the logo image

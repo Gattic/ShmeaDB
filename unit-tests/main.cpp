@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
 	shmea::testLineScatter();
 	shmea::testMultiCluster();
 	shmea::testArrows();
+	shmea::testOriginAxes();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");

@@ -132,6 +132,7 @@ public:
                             unsigned int fontSize = 28);
     ChartBuilder& grid(bool show);
     ChartBuilder& axes(bool show);
+    ChartBuilder& originAxes(bool show);
     ChartBuilder& cornerRadius(int radius);
     ChartBuilder& logo(const std::string& logoPath);
     ChartBuilder& colors(const std::vector<RGBA>& colors);
@@ -202,6 +203,8 @@ public:
     // Chart configuration methods
     void setShowGrid(bool show);
     void setShowAxes(bool show);
+    void setShowOriginAxes(bool show);
+    void drawOriginAxes(double xMin, double xMax, double yMin, double yMax);
     void setCornerRadius(int radius);
     void setSuperSamplingFactor(unsigned int factor);
     void setMarginTop(unsigned int margin);
@@ -315,6 +318,10 @@ private:
     // Logo handling
     bool hasLogo;
     Image logoImage;
+    
+    // Data axis ranges for origin axes
+    DataMapper::AxisRange currentXAxisRange;
+    DataMapper::AxisRange currentYAxisRange;
     
     // Margin calculation helpers
     unsigned int calculateTopMargin(ChartType chartType, unsigned int width, unsigned int height);

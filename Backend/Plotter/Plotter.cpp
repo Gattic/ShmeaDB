@@ -90,6 +90,41 @@ ChartBuilder& ChartBuilder::colors(const std::vector<RGBA>& colors) {
 
 ChartBuilder& ChartBuilder::addSeries(const Series& series) {
     this->series.push_back(series);
+    
+    // If origin axes are enabled, update the data ranges to include this series
+    if (plotter.chartLayout->areOriginAxesVisible() && !series.data.empty()) {
+        // Calculate min/max values to determine if data spans multiple quadrants
+        double minX = series.data[0].x;
+        double maxX = series.data[0].x;
+        double minY = series.data[0].y;
+        double maxY = series.data[0].y;
+        
+        for (size_t i = 1; i < series.data.size(); i++) {
+            minX = std::min(minX, series.data[i].x);
+            maxX = std::max(maxX, series.data[i].x);
+            minY = std::min(minY, series.data[i].y);
+            maxY = std::max(maxY, series.data[i].y);
+        }
+        
+        // Check if data spans multiple quadrants or includes the origin
+        bool spansQuadrants = (minX < 0 && maxX > 0) || (minY < 0 && maxY > 0);
+        
+        if (spansQuadrants) {
+            // Ensure a good view of all quadrants by making the ranges balanced
+            double xRange = std::max(std::abs(minX), std::abs(maxX)) * 1.2;
+            double yRange = std::max(std::abs(minY), std::abs(maxY)) * 1.2;
+            
+            // Set the origin axes ranges to ensure good visualization
+            double xMin = -xRange;
+            double xMax = xRange;
+            double yMin = -yRange;
+            double yMax = yRange;
+            
+            // Update the data mapper ranges
+            plotter.drawOriginAxes(xMin, xMax, yMin, yMax);
+        }
+    }
+    
     return *this;
 }
 
@@ -187,6 +222,34 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
     plotter.saveAsPNG(filename, folder);
 }
 
+// Add after ChartBuilder::axes
+ChartBuilder& ChartBuilder::originAxes(bool show) {
+    plotter.setShowOriginAxes(show);
+    
+    // If enabling origin axes, make sure we have proper initial ranges set
+    if (show) {
+        // Get current ranges from DataMapper
+        DataMapper::AxisRange xRange = plotter.dataMapper->getCurrentXRange();
+        DataMapper::AxisRange yRange = plotter.dataMapper->getCurrentYRange();
+        
+        // Check if ranges are set appropriately for origin axes
+        bool rangesNeedAdjustment = false;
+        
+        // If ranges don't include zero or are too imbalanced, adjust them
+        if (xRange.min >= 0 || xRange.max <= 0 || yRange.min >= 0 || yRange.max <= 0) {
+            rangesNeedAdjustment = true;
+        }
+        
+        // If we need to adjust ranges for origin axes
+        if (rangesNeedAdjustment) {
+            // If we don't have series data yet, use a balanced default range
+            plotter.drawOriginAxes(-10.0, 10.0, -10.0, 10.0);
+        }
+    }
+    
+    return *this;
+}
+
 //
 // Plotter Implementation
 //
@@ -195,7 +258,9 @@ Plotter::Plotter(unsigned int width, unsigned int height,
                  unsigned int margin_top, unsigned int margin_right, 
                  unsigned int margin_bottom, unsigned int margin_left,
                  unsigned int ssaa_factor)
-    : hasLogo(false)
+    : hasLogo(false),
+      currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
+      currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
     // Initialize helper components in the correct order
     colorManager = new ColorManager();
@@ -213,6 +278,10 @@ Plotter::Plotter(unsigned int width, unsigned int height,
     
     dataMapper = new DataMapper(*chartLayout);
     
+    // Initialize dataMapper with the same default ranges
+    dataMapper->setCurrentXRange(currentXAxisRange);
+    dataMapper->setCurrentYRange(currentYAxisRange);
+    
     chartStyler = new ChartStyler(*colorManager, *chartLayout, *shapeRenderer, 
                                *textRenderer, *gridRenderer, *dataMapper);
     
@@ -225,7 +294,9 @@ Plotter::Plotter(unsigned int width, unsigned int height,
 
 // New constructor that automatically calculates margins
 Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_factor)
-    : hasLogo(false)
+    : hasLogo(false),
+      currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
+      currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
     // Initialize helper components in the correct order
     colorManager = new ColorManager();
@@ -248,6 +319,10 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
     gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer);
     
     dataMapper = new DataMapper(*chartLayout);
+    
+    // Initialize dataMapper with the same default ranges
+    dataMapper->setCurrentXRange(currentXAxisRange);
+    dataMapper->setCurrentYRange(currentYAxisRange);
     
     chartStyler = new ChartStyler(*colorManager, *chartLayout, *shapeRenderer, 
                                *textRenderer, *gridRenderer, *dataMapper);
@@ -320,9 +395,29 @@ void Plotter::prepareCanvas()
         gridRenderer->drawGrid();
     }
     
-    // Draw axes if enabled
-    if (chartLayout->areAxesVisible()) {
+    // Draw regular axes if enabled
+    if (chartLayout->areAxesVisible() && !chartLayout->areOriginAxesVisible()) {
         gridRenderer->drawAxes();
+    }
+    
+    // Draw origin-centered axes if enabled
+    if (chartLayout->areOriginAxesVisible()) {
+        // Use current data ranges from dataMapper if available
+        DataMapper::AxisRange xRange = dataMapper->getCurrentXRange();
+        DataMapper::AxisRange yRange = dataMapper->getCurrentYRange();
+        
+        // If no data range is set yet, use stored ranges or defaults
+        if (xRange.min == xRange.max) {
+            xRange = currentXAxisRange.min != currentXAxisRange.max ? 
+                    currentXAxisRange : DataMapper::AxisRange(-10.0, 10.0);
+        }
+        
+        if (yRange.min == yRange.max) {
+            yRange = currentYAxisRange.min != currentYAxisRange.max ? 
+                    currentYAxisRange : DataMapper::AxisRange(-10.0, 10.0);
+        }
+        
+        gridRenderer->drawOriginAxes(xRange.min, xRange.max, yRange.min, yRange.max);
     }
 }
 
@@ -1563,9 +1658,9 @@ ChartBuilder Plotter::chart() {
 
 // New plotChart implementation
 void Plotter::plotChart(const std::vector<Series>& seriesList,
-                      const std::string& title,
-                      const std::string& xAxisLabel,
-                      const std::string& yAxisLabel)
+                  const std::string& title,
+                  const std::string& xAxisLabel,
+                  const std::string& yAxisLabel)
 {
     if (seriesList.empty()) {
         printf("Error: No series data to plot.\n");
@@ -1594,6 +1689,24 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     DataMapper::AxisRange xRange, yRange;
     xRange = dataMapper->calculateXRange(allDataPoints);
     yRange = dataMapper->calculateYRange(allDataPoints);
+    
+    // Store these ranges for origin axes if enabled
+    if (chartLayout->areOriginAxesVisible()) {
+        // If origin (0,0) is within the ranges, adjust them to ensure it's visible
+        if ((xRange.min < 0 && xRange.max > 0) || (yRange.min < 0 && yRange.max > 0)) {
+            // Ensure X-axis range includes zero if close
+            if (xRange.min > -0.1 * (xRange.max - xRange.min)) xRange.min = -0.1 * (xRange.max - xRange.min);
+            if (xRange.max < 0.1 * (xRange.max - xRange.min)) xRange.max = 0.1 * (xRange.max - xRange.min);
+            
+            // Ensure Y-axis range includes zero if close
+            if (yRange.min > -0.1 * (yRange.max - yRange.min)) yRange.min = -0.1 * (yRange.max - yRange.min);
+            if (yRange.max < 0.1 * (yRange.max - yRange.min)) yRange.max = 0.1 * (yRange.max - yRange.min);
+            
+            // Update the ranges in the DataMapper
+            dataMapper->setCurrentXRange(xRange);
+            dataMapper->setCurrentYRange(yRange);
+        }
+    }
     
     printf("Global X range: [%.2f, %.2f], Y range: [%.2f, %.2f]\n", 
            xRange.min, xRange.max, yRange.min, yRange.max);
@@ -1877,6 +1990,34 @@ void Plotter::plotArrow(double startX, double startY, double endX, double endY,
     shapeRenderer->drawArrow(
         ssaaStartX, ssaaStartY, ssaaEndX, ssaaEndY, useColor, ssaaLineWidth, ssaaArrowheadSize
     );
+}
+
+// Add implementation for setShowOriginAxes method
+void Plotter::setShowOriginAxes(bool show)
+{
+    chartLayout->setShowOriginAxes(show);
+    
+    // Redraw the background when visibility changes
+    prepareCanvas();
+}
+
+// Add implementation for drawOriginAxes method
+void Plotter::drawOriginAxes(double xMin, double xMax, double yMin, double yMax)
+{
+    // Create ranges from the provided values
+    DataMapper::AxisRange xRange(xMin, xMax);
+    DataMapper::AxisRange yRange(yMin, yMax);
+    
+    // Store the ranges both in Plotter and DataMapper
+    currentXAxisRange = xRange;
+    currentYAxisRange = yRange;
+    
+    // Update the DataMapper's current ranges
+    dataMapper->setCurrentXRange(xRange);
+    dataMapper->setCurrentYRange(yRange);
+    
+    // Draw the origin axes with the specified ranges
+    gridRenderer->drawOriginAxes(xMin, xMax, yMin, yMax);
 }
 
 } // namespace shmea 

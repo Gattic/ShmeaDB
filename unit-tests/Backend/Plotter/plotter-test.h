@@ -24,6 +24,7 @@ void testCandlestickChart();
 void testLineScatter();
 void testMultiCluster();
 void testArrows();
+void testOriginAxes();
 }
 
 #endif 

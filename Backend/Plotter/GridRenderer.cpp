@@ -234,6 +234,112 @@ void GridRenderer::drawAxes() {
     );
 }
 
+void GridRenderer::drawOriginAxes(double xMin, double xMax, double yMin, double yMax) {
+    // Get axis color from CSS-like design with increased contrast for four-quadrant view
+    RGBA axisColor = colors.getElementColor("axes");
+    axisColor.a = 0xFF; // 100% opacity for better contrast
+    
+    // Calculate plot area dimensions
+    int width = layout.getWidth();
+    int height = layout.getHeight();
+    int marginLeft = layout.getMarginLeft();
+    int marginRight = layout.getMarginRight();
+    int marginTop = layout.getMarginTop();
+    int marginBottom = layout.getMarginBottom();
+    int plotWidth = layout.getPlotWidth();
+    int plotHeight = layout.getPlotHeight();
+    
+    // Calculate where the origin (0,0) should be in screen coordinates
+    double originXPercent = -xMin / (xMax - xMin);
+    double originYPercent = 1.0 - (-yMin / (yMax - yMin)); // Y-axis is inverted
+    
+    // Make sure origin percentage is within valid range [0,1]
+    originXPercent = std::max(0.0, std::min(1.0, originXPercent));
+    originYPercent = std::max(0.0, std::min(1.0, originYPercent));
+    
+    // Calculate origin coordinates in screen space
+    int originX = marginLeft + static_cast<int>(originXPercent * plotWidth);
+    int originY = marginTop + static_cast<int>(originYPercent * plotHeight);
+    
+    // Draw X-axis line (horizontal line through origin)
+    shapes.drawLine(
+        ssaa.scaleX(marginLeft),
+        ssaa.scaleY(originY),
+        ssaa.scaleX(marginLeft + plotWidth),
+        ssaa.scaleY(originY),
+        axisColor,
+        ssaa.scaleSize(2) // 2px width
+    );
+    
+    // Draw Y-axis line (vertical line through origin)
+    shapes.drawLine(
+        ssaa.scaleX(originX),
+        ssaa.scaleY(marginTop),
+        ssaa.scaleX(originX),
+        ssaa.scaleY(marginTop + plotHeight),
+        axisColor,
+        ssaa.scaleSize(2) // 2px width
+    );
+    
+    // Draw origin indicator (small circle at origin point)
+    shapes.drawCircle(
+        ssaa.scaleX(originX),
+        ssaa.scaleY(originY),
+        ssaa.scaleSize(5), // 5px radius - slightly larger for emphasis
+        axisColor,
+        true // filled
+    );
+    
+    // Create TextRenderer for the axis labels
+    TextRenderer textRenderer(ssaa, colors, layout);
+    textRenderer.initialize("fonts/font.ttf");
+    
+    // Draw quadrant indicators
+    RGBA labelColor = colors.getElementColor("axisLabel");
+    labelColor.a = 0xCC; // 80% opacity
+    
+    // Quadrant I (top-right)
+    if (xMax > 0 && yMax > 0) {
+        int labelX = originX + 20;
+        int labelY = originY - 20;
+        if (labelX < width - marginRight - 30 && labelY > marginTop + 30) {
+            textRenderer.drawText(labelX, labelY, "I", labelColor, 18, true);
+        }
+    }
+    
+    // Quadrant II (top-left)
+    if (xMin < 0 && yMax > 0) {
+        int labelX = originX - 20;
+        int labelY = originY - 20;
+        if (labelX > marginLeft + 30 && labelY > marginTop + 30) {
+            textRenderer.drawText(labelX, labelY, "II", labelColor, 18, true);
+        }
+    }
+    
+    // Quadrant III (bottom-left)
+    if (xMin < 0 && yMin < 0) {
+        int labelX = originX - 20;
+        int labelY = originY + 20;
+        if (labelX > marginLeft + 30 && labelY < height - marginBottom - 30) {
+            textRenderer.drawText(labelX, labelY, "III", labelColor, 18, true);
+        }
+    }
+    
+    // Quadrant IV (bottom-right)
+    if (xMax > 0 && yMin < 0) {
+        int labelX = originX + 20;
+        int labelY = originY + 20;
+        if (labelX < width - marginRight - 30 && labelY < height - marginBottom - 30) {
+            textRenderer.drawText(labelX, labelY, "IV", labelColor, 18, true);
+        }
+    }
+    
+    // If X range spans zero, add "0" label on the y-axis
+    if (xMin < 0 && xMax > 0) {
+        textRenderer.drawText(originX, originY + 15, "0", labelColor, 16, true);
+    }
+}
+
 void GridRenderer::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
     // Scale coordinates and dimensions for supersampling
     int ssaaX = ssaa.scaleX(x);

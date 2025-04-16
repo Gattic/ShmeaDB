@@ -52,6 +52,12 @@ public:
     // Map data coordinates to screen coordinates
     Point mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange);
     
+    // Get/set current axis ranges
+    const AxisRange& getCurrentXRange() const { return currentXRange; }
+    const AxisRange& getCurrentYRange() const { return currentYRange; }
+    void setCurrentXRange(const AxisRange& range) { currentXRange = range; }
+    void setCurrentYRange(const AxisRange& range) { currentYRange = range; }
+    
 private:
     // Functors for extracting values from different data types
     struct PointXValueFunctor {
@@ -88,6 +94,10 @@ private:
     
     // Reference to layout
     ChartLayout& layout;
+    
+    // Current data ranges - used for auto alignment of origin axes
+    AxisRange currentXRange;
+    AxisRange currentYRange;
 };
 
 } // namespace shmea

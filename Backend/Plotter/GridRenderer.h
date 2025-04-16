@@ -25,6 +25,9 @@ public:
     // Draw x and y axes
     void drawAxes();
     
+    // Draw origin-centered axes for four quadrants
+    void drawOriginAxes(double xMin, double xMax, double yMin, double yMax);
+    
     // Draw an info box with gradient background for legends, stats, etc.
     void drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize = 16);
     

@@ -6,6 +6,7 @@
 #include <ctime>
 #include <cstdio>
 #include <cmath>
+#include <iostream>
 
 using namespace shmea;
 
@@ -522,4 +523,93 @@ void shmea::testArrows() {
         .saveAs("arrow_diagram_test.png", ".");
     
     printf("Arrow diagram test completed. Output saved as 'arrow_diagram_test.png'.\n");
+}
+
+// Test function for the origin axes feature
+void shmea::testOriginAxes() {
+    std::cout << "=== Testing Origin Axes (Four Quadrants) ===" << std::endl;
+    
+    // Create data points in all four quadrants
+    std::vector<Point> points;
+    
+    // Add points in all four quadrants (spiral pattern)
+    for (double t = 0; t < 10.0; t += 0.1) {
+        double r = t * 0.5;
+        double x = r * cos(t);
+        double y = r * sin(t);
+        points.push_back(Point(x, y));
+    }
+    
+    // Create a plotter with appropriate dimensions
+    Plotter plotter(800, 600);
+    
+    // Build and save the chart with origin axes enabled
+    plotter.chart()
+        .title("Four Quadrant Chart Demo")
+        .axisLabels("X-Axis", "Y-Axis")
+        .originAxes(true)  // Enable four quadrant origin axes
+        .grid(true)
+        .addSeries("Spiral", points, RGBA(0xFF, 0x47, 0x45, 0xFF), SERIES_LINE, 2, 6)
+        .saveAs("origin_axes_test.png", "test-output");
+    
+    std::cout << "Origin axes test completed. Output image: test-output/origin_axes_test.png" << std::endl;
+    
+    // Test 2: Create asymmetric data that spans across quadrants
+    std::vector<Point> asymmetricPoints;
+    
+    // Create points primarily in quadrants I and IV with some points in quadrants II and III
+    asymmetricPoints.push_back(Point(-2, 5));  // Quadrant II
+    asymmetricPoints.push_back(Point(-1, 3));  // Quadrant II
+    asymmetricPoints.push_back(Point(0, 0));   // Origin
+    asymmetricPoints.push_back(Point(1, 1));   // Quadrant I
+    asymmetricPoints.push_back(Point(3, 2));   // Quadrant I
+    asymmetricPoints.push_back(Point(5, 8));   // Quadrant I
+    asymmetricPoints.push_back(Point(8, 12));  // Quadrant I - far point
+    asymmetricPoints.push_back(Point(7, -3));  // Quadrant IV
+    asymmetricPoints.push_back(Point(4, -5));  // Quadrant IV
+    asymmetricPoints.push_back(Point(-2, -4)); // Quadrant III
+    
+    // Create a second plotter
+    Plotter plotter2(800, 600);
+    
+    // Build and save the chart - the origin axes should automatically adjust to the data range
+    plotter2.chart()
+        .title("Auto-Aligned Origin Axes")
+        .axisLabels("X-Axis", "Y-Axis")
+        .originAxes(true)  // Enable four quadrant origin axes
+        .grid(true)
+        .addSeries("Asymmetric Data", asymmetricPoints, RGBA(0x00, 0x9E, 0xFF, 0xFF), SERIES_SCATTER, 2, 8)
+        .saveAs("origin_axes_auto_aligned.png", "test-output");
+    
+    std::cout << "Auto-aligned origin axes test completed. Output image: test-output/origin_axes_auto_aligned.png" << std::endl;
+    
+    // Test 3: Compare auto-alignment with manual range specification
+    Plotter plotter3(800, 600);
+    
+    // Create a new set of points with specific range characteristics
+    std::vector<Point> offsetPoints;
+    
+    // Create points that are mostly in the positive X and Y region, but with some negative values
+    for (int i = 0; i < 20; i++) {
+        double x = i * 0.5 - 2.0;  // Values from -2 to 8
+        double y = sin(x) * 3;     // Values from -3 to 3
+        offsetPoints.push_back(Point(x, y));
+    }
+    
+    // Build and save the chart with origin axes enabled and let the system auto-align
+    plotter3.chart()
+        .title("Auto vs Manual Range Comparison")
+        .axisLabels("X-Axis", "Y-Axis")
+        .originAxes(true)  // Enable four quadrant origin axes
+        .grid(true)
+        .addSeries("Offset Sine Wave", offsetPoints, RGBA(0x03, 0xC0, 0x3C, 0xFF), SERIES_LINE, 2, 6)
+        .saveAs("origin_axes_comparison.png", "test-output");
+    
+    // Save a version with manually specified data ranges
+    plotter3.drawOriginAxes(-3.0, 9.0, -4.0, 4.0);
+    plotter3.saveAsPNG("origin_axes_manual_range.png", "test-output");
+    
+    std::cout << "Comparison test completed. Output images:" << std::endl
+              << "  - Auto-aligned: test-output/origin_axes_comparison.png" << std::endl
+              << "  - Manual range: test-output/origin_axes_manual_range.png" << std::endl;
 } 

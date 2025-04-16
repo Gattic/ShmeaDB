@@ -4,7 +4,9 @@
 namespace shmea {
 
 DataMapper::DataMapper(ChartLayout& chartLayout)
-    : layout(chartLayout)
+    : layout(chartLayout),
+      currentXRange(0.0, 1.0, 0.05),
+      currentYRange(0.0, 1.0, 0.05)
 {
 }
 
@@ -117,25 +119,45 @@ DataMapper::AxisRange DataMapper::calculateRange(const DataType& data, ValueFunc
 DataMapper::AxisRange DataMapper::calculateXRange(const std::vector<Point>& points) {
     // Use the class-level functor
     PointXValueFunctor func;
-    return calculateRange(points, func);
+    AxisRange range = calculateRange(points, func);
+    
+    // Update current X range
+    currentXRange = range;
+    
+    return range;
 }
 
 DataMapper::AxisRange DataMapper::calculateYRange(const std::vector<Point>& points) {
     // Use the class-level functor
     PointYValueFunctor func;
-    return calculateRange(points, func);
+    AxisRange range = calculateRange(points, func);
+    
+    // Update current Y range
+    currentYRange = range;
+    
+    return range;
 }
 
 DataMapper::AxisRange DataMapper::calculateXRange(const std::vector<std::vector<double> >& data) {
     // Use the class-level functor
     MatrixXValueFunctor func;
-    return calculateRange(data, func);
+    AxisRange range = calculateRange(data, func);
+    
+    // Update current X range
+    currentXRange = range;
+    
+    return range;
 }
 
 DataMapper::AxisRange DataMapper::calculateYRange(const std::vector<std::vector<double> >& data) {
     // Use the class-level functor
     MatrixYValueFunctor func;
-    return calculateRange(data, func);
+    AxisRange range = calculateRange(data, func);
+    
+    // Update current Y range
+    currentYRange = range;
+    
+    return range;
 }
 
 DataMapper::Point DataMapper::mapDataToScreen(double x, double y, const AxisRange& xRange, const AxisRange& yRange) {
