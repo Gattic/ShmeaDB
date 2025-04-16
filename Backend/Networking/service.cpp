@@ -31,9 +31,13 @@ using namespace GNet;
  * @brief Service constructor
  * @details creates a Service object and initialize timeExecuted
  */
-Service::Service()
+Service::Service(): serviceLogger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO)))
 {
+	serviceLogger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	timeExecuted = 0;
+
+	// Initialize the mutex
+    pthread_mutex_init(&loggerMutex, NULL);
 }
 
 /*!
@@ -42,7 +46,11 @@ Service::Service()
  */
 Service::~Service()
 {
+	serviceLogger.reset();
 	timeExecuted = 0;
+
+	// Destroy the mutex
+    pthread_mutex_destroy(&loggerMutex);
 }
 
 bool Service::getRunning() const
@@ -141,6 +149,16 @@ void* Service::launchService(void* y)
  */
 void Service::StartService(newServiceArgs* x)
 {
+	// Lock the mutex
+	pthread_mutex_lock(&loggerMutex);
+
+    if (serviceLogger){
+    	serviceLogger->info("SERVICE", "Starting service...");
+	}
+
+	// Unlock the mutex
+	pthread_mutex_unlock(&loggerMutex);
+
 	// set the start time
 	timeExecuted = time(NULL);
 
