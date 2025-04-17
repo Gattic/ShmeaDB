@@ -187,12 +187,6 @@ class Plotter {
 public:
     // Constructor and destructor
     Plotter(unsigned int width = 800, unsigned int height = 600, unsigned int ssaa_factor = 1);
-    
-    // Backwards compatibility constructor that allows explicit margin specification
-    Plotter(unsigned int width, unsigned int height,
-            unsigned int margin_top, unsigned int margin_right,
-            unsigned int margin_bottom, unsigned int margin_left,
-            unsigned int ssaa_factor = 1);
 
     void initialize_font(const std::string);
     
