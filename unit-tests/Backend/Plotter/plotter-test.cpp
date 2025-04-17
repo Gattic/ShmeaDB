@@ -526,6 +526,9 @@ void shmea::testArrows() {
         .saveAs("arrow_diagram_test.png", ".");
     
     printf("Arrow diagram test completed. Output saved as 'arrow_diagram_test.png'.\n");
+    
+    printf("Test 4: Running coordinate alignment test...\n");
+    testCoordinateAlignment();
 }
 
 // Test function for the origin axes feature
@@ -615,4 +618,109 @@ void shmea::testOriginAxes() {
     std::cout << "Comparison test completed. Output images:" << std::endl
               << "  - Auto-aligned: test-output/origin_axes_comparison.png" << std::endl
               << "  - Manual range: test-output/origin_axes_manual_range.png" << std::endl;
+}
+
+// Add a new test function for coordinate alignment
+void shmea::testCoordinateAlignment() {
+    std::cout << "=== Testing Coordinate Alignment (Series, Arrows, Origin Axes) ===" << std::endl;
+    
+    // Create a plotter with appropriate dimensions
+    Plotter plotter(1200, 800, 2);
+    
+    // Create a pattern of points that clearly shows the coordinate system
+    std::vector<Point> points;
+    
+    // Create a grid of points at integer coordinates
+    for (int x = -5; x <= 5; x++) {
+        for (int y = -5; y <= 5; y++) {
+            // Skip the origin for clarity
+            if (x == 0 && y == 0) continue;
+            
+            // Add point at this grid location
+            points.push_back(Point(x, y));
+        }
+    }
+    
+    // Create arrows that highlight the coordinate axes
+    std::vector<Arrow> arrows;
+    
+    // X-axis arrow (in red)
+    arrows.push_back(Arrow(-6.0, 0.0, 6.0, 0.0, RGBA(0xFF, 0x00, 0x00, 0xFF), 3, 15));
+    
+    // Y-axis arrow (in blue)
+    arrows.push_back(Arrow(0.0, -6.0, 0.0, 6.0, RGBA(0x00, 0x00, 0xFF, 0xFF), 3, 15));
+    
+    // Diagonal arrows from origin to each quadrant (in green)
+    arrows.push_back(Arrow(0.0, 0.0, 4.0, 4.0, RGBA(0x00, 0xFF, 0x00, 0xFF), 2, 10)); // Q1
+    arrows.push_back(Arrow(0.0, 0.0, -4.0, 4.0, RGBA(0x00, 0xFF, 0x00, 0xFF), 2, 10)); // Q2
+    arrows.push_back(Arrow(0.0, 0.0, -4.0, -4.0, RGBA(0x00, 0xFF, 0x00, 0xFF), 2, 10)); // Q3
+    arrows.push_back(Arrow(0.0, 0.0, 4.0, -4.0, RGBA(0x00, 0xFF, 0x00, 0xFF), 2, 10)); // Q4
+    
+    // Add a diamond shape to verify alignment
+    std::vector<Point> diamond;
+    diamond.push_back(Point(0, 5));
+    diamond.push_back(Point(5, 0));
+    diamond.push_back(Point(0, -5));
+    diamond.push_back(Point(-5, 0));
+    diamond.push_back(Point(0, 5)); // Close the shape
+    
+    // Use the fluent API to create the chart
+    plotter.chart()
+        .title("Coordinate System Alignment Test", 36)
+        .grid(true)
+        .axes(false)  // Disable standard axes
+        .originAxes(true)  // Enable origin axes
+        .cornerRadius(15)
+        .axisLabels("X Value", "Y Value", 28)
+        .autoMargins(CHART_DEFAULT)
+        .addSeries("Grid Points", points, RGBA(0x80, 0x80, 0x80, 0xFF), SERIES_SCATTER, 2, 6)
+        .addSeries("Diamond", diamond, RGBA(0xFF, 0x00, 0xFF, 0xFF), SERIES_LINE, 2)
+        .addArrows(arrows)
+        .saveAs("coordinate_alignment_test.png", ".");
+    
+    std::cout << "Coordinate alignment test completed. Output saved as 'coordinate_alignment_test.png'." << std::endl;
+    
+    // Create a second test focusing specifically on Y-axis alignment
+    std::cout << "=== Testing Y-Axis Specific Alignment ===" << std::endl;
+    
+    // Create a new plotter
+    Plotter plotter2(1200, 800, 2);
+    
+    // Create points specifically arranged to verify Y-axis alignment
+    std::vector<Point> yAxisPoints;
+    
+    // Create a vertical line of points at x=0 with specific y values
+    for (int y = -5; y <= 5; y++) {
+        if (y == 0) continue; // Skip origin
+        yAxisPoints.push_back(Point(0, y));
+    }
+    
+    // Create horizontal rows of points that should align with y-axis tick marks
+    for (int y = -5; y <= 5; y++) {
+        if (y == 0) continue; // Skip origin axis
+        for (int x = -5; x <= 5; x += 1) {
+            if (x == 0) continue; // Skip the points already on y-axis
+            // Add points at this y level
+            yAxisPoints.push_back(Point(x, y));
+        }
+    }
+    
+    // Add a specific y-axis arrow
+    std::vector<Arrow> yAxisArrow;
+    yAxisArrow.push_back(Arrow(0.0, 0, 0.0, 6.0, RGBA(0x00, 0x00, 0xFF, 0xFF), 3, 15));
+    
+    // Use the fluent API for the second test
+    plotter2.chart()
+        .title("Y-Axis Alignment Test", 36)
+        .grid(true)
+        .axes(false)  // Disable standard axes
+        .originAxes(true)  // Enable origin axes
+        .cornerRadius(15)
+        .axisLabels("X Value", "Y Value", 28)
+        .autoMargins(CHART_DEFAULT)
+        .addSeries("Y-Axis Points", yAxisPoints, RGBA(0xFF, 0x00, 0x00, 0xFF), SERIES_SCATTER, 2, 8)
+        .addArrows(yAxisArrow)
+        .saveAs("y_axis_alignment_test.png", ".");
+    
+    std::cout << "Y-axis alignment test completed. Output saved as 'y_axis_alignment_test.png'." << std::endl;
 } 

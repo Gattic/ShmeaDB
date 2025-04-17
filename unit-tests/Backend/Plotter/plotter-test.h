@@ -25,6 +25,7 @@ void testLineScatter();
 void testMultiCluster();
 void testArrows();
 void testOriginAxes();
+void testCoordinateAlignment();
 }
 
 #endif 

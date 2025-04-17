@@ -8,4 +8,6 @@ multi_cluster_test_output.png
 arrow_diagram_test.png
 line_chart_with_arrows_test.png
 scatter_with_arrows_test.png
+coordinate_alignment_test.png
+y_axis_alignment_test.png
 test-output/
