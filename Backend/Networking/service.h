@@ -18,7 +18,6 @@
 #define _GSERVICE
 
 #include "../Database/GString.h"
-#include "../Database/GLogger.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
