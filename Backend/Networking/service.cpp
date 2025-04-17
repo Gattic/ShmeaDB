@@ -31,13 +31,9 @@ using namespace GNet;
  * @brief Service constructor
  * @details creates a Service object and initialize timeExecuted
  */
-Service::Service(): serviceLogger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO)))
+Service::Service()
 {
-	serviceLogger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	timeExecuted = 0;
-
-	// Initialize the mutex
-    pthread_mutex_init(&loggerMutex, NULL);
 }
 
 /*!
@@ -46,11 +42,7 @@ Service::Service(): serviceLogger(shmea::GPointer<shmea::GLogger>(new shmea::GLo
  */
 Service::~Service()
 {
-	serviceLogger.reset();
 	timeExecuted = 0;
-
-	// Destroy the mutex
-    pthread_mutex_destroy(&loggerMutex);
 }
 
 bool Service::getRunning() const
@@ -95,6 +87,10 @@ void* Service::launchService(void* y)
 	if (!x->serverInstance)
 		return NULL;
 	GServer* serverInstance = x->serverInstance;
+
+	if(serverInstance){
+		serverInstance->logger->info("SERVICE", "Launching service");
+	}
 
 	// Get the command in order to tell the service what to do
 	x->command = x->sockData->getCommand();
@@ -149,16 +145,6 @@ void* Service::launchService(void* y)
  */
 void Service::StartService(newServiceArgs* x)
 {
-	// Lock the mutex
-	pthread_mutex_lock(&loggerMutex);
-
-    if (serviceLogger){
-    	serviceLogger->info("SERVICE", "Starting service...");
-	}
-
-	// Unlock the mutex
-	pthread_mutex_unlock(&loggerMutex);
-
 	// set the start time
 	timeExecuted = time(NULL);
 
@@ -167,10 +153,6 @@ void Service::StartService(newServiceArgs* x)
 	shmea::GString ipAddress = "";
 	if (!cConnection->isFinished())
 		ipAddress = cConnection->getIP();
-
-	// const shmea::GString& command = x->command;
-	// const shmea::GString& serviceKey = x->serviceKey;
-	//printf("---------Service Start: %s (%s: %s)---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str());
 
 	// add the thread to the connection's active thread vector
 	cThread = x->sThread;
@@ -194,7 +176,6 @@ void Service::ExitService(newServiceArgs* x)
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	//printf("---------Service Exit: %s (%s: %s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str(), timeExecuted);
 
 	pthread_exit(0);
 }
