@@ -325,8 +325,9 @@ private:
     Image image;
     
     // Logo handling
-    bool hasLogo;
-    Image logoImage;
+    static bool logoLoaded;
+    static bool hasLogo;
+    static Image logoImage;
     
     // Data axis ranges for origin axes
     DataMapper::AxisRange currentXAxisRange;

@@ -311,12 +311,15 @@ bool Plotter::fontLoaded = false;
 FT_Library Plotter::ft = NULL;
 FT_Face Plotter::face = NULL;
 
+bool Plotter::logoLoaded = false;
+bool Plotter::hasLogo = false;
+Image Plotter::logoImage = Image();
+
 Plotter::Plotter(unsigned int width, unsigned int height, 
                  unsigned int margin_top, unsigned int margin_right, 
                  unsigned int margin_bottom, unsigned int margin_left,
                  unsigned int ssaa_factor)
-    : hasLogo(false),
-      currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
+    : currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
       currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
     initialize_font("fonts/font.ttf");
@@ -353,8 +356,7 @@ Plotter::Plotter(unsigned int width, unsigned int height,
 
 // New constructor that automatically calculates margins
 Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_factor)
-    : hasLogo(false),
-      currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
+    : currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
       currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
     initialize_font("fonts/font.ttf");
@@ -565,9 +567,11 @@ void Plotter::setYAxisLabel(const std::string& label)
 
 void Plotter::loadLogo(const std::string& logoPath)
 {
+    if(logoLoaded)
+	return;
+
     // Try to load the logo image from the file
     try {
-        logoImage = Image();
         shmea::PNGHelper::LoadPNG(logoImage, logoPath.c_str());
         
         if (logoImage.getWidth() > 0 && logoImage.getHeight() > 0) {
@@ -613,6 +617,8 @@ void Plotter::loadLogo(const std::string& logoPath)
         
         printf("Error loading logo from: %s (exception occurred)\n", logoPath.c_str());
     }
+
+    logoLoaded = true;
 }
 
 void Plotter::drawLogo()
