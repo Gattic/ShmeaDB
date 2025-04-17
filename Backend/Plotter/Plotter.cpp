@@ -208,39 +208,69 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
     }
     
     // If we have data points, calculate a common axis range for all elements
+    DataMapper::AxisRange commonXRange, commonYRange;
+    bool hasCommonRange = false;
+    
     if (!allDataPoints.empty()) {
-        DataMapper::AxisRange xRange = plotter.dataMapper->calculateXRange(allDataPoints);
-        DataMapper::AxisRange yRange = plotter.dataMapper->calculateYRange(allDataPoints);
+        commonXRange = plotter.dataMapper->calculateXRange(allDataPoints);
+        commonYRange = plotter.dataMapper->calculateYRange(allDataPoints);
         
         // Add padding to ensure all elements are visible
-        double xPadding = (xRange.max - xRange.min) * 0.1;
-        double yPadding = (yRange.max - yRange.min) * 0.1;
+        double xPadding = (commonXRange.max - commonXRange.min) * 0.1;
+        double yPadding = (commonYRange.max - commonYRange.min) * 0.1;
         
         // Ensure minimum padding
         xPadding = std::max(xPadding, 0.5);
         yPadding = std::max(yPadding, 0.5);
         
         // Apply padding
-        xRange.min -= xPadding;
-        xRange.max += xPadding;
-        yRange.min -= yPadding;
-        yRange.max += yPadding;
+        commonXRange.min -= xPadding;
+        commonXRange.max += xPadding;
+        commonYRange.min -= yPadding;
+        commonYRange.max += yPadding;
         
         printf("Chart display range - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
-               xRange.min, xRange.max, yRange.min, yRange.max);
+               commonXRange.min, commonXRange.max, commonYRange.min, commonYRange.max);
         
         // Store the ranges in the DataMapper for consistent scaling of all elements
-        plotter.dataMapper->setCurrentXRange(xRange);
-        plotter.dataMapper->setCurrentYRange(yRange);
+        plotter.dataMapper->setCurrentXRange(commonXRange);
+        plotter.dataMapper->setCurrentYRange(commonYRange);
         
         // Set up standard axis ticks with this common data range
-        plotter.setupStandardAxisTicks(xRange, yRange, 50);
+        plotter.setupStandardAxisTicks(commonXRange, commonYRange, 50);
+        
+        hasCommonRange = true;
+    }
+    // If no data points, but we have arrows only, ensure we have reasonable default ranges
+    else if (!arrows.empty()) {
+        // Use default ranges that provide a reasonable viewing area
+        commonXRange = DataMapper::AxisRange(-10.0, 10.0);
+        commonYRange = DataMapper::AxisRange(-10.0, 10.0);
+        
+        printf("No data points found. Using default ranges for arrows - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+               commonXRange.min, commonXRange.max, commonYRange.min, commonYRange.max);
+               
+        // Store the ranges in the DataMapper
+        plotter.dataMapper->setCurrentXRange(commonXRange);
+        plotter.dataMapper->setCurrentYRange(commonYRange);
+        
+        // Set up standard axis ticks with default ranges
+        plotter.setupStandardAxisTicks(commonXRange, commonYRange, 50);
+        
+        hasCommonRange = true;
     }
     
     // Render the appropriate chart based on the data provided
     if (!series.empty()) {
         // Plot the series data
         plotter.plotChart(series);
+        
+        // If we have both series and arrows, make sure the DataMapper is using
+        // our common range and not just the series range
+        if (!arrows.empty() && hasCommonRange) {
+            plotter.dataMapper->setCurrentXRange(commonXRange);
+            plotter.dataMapper->setCurrentYRange(commonYRange);
+        }
     }
     else if (hasHistogramData) {
         // Plot histogram
@@ -260,13 +290,37 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
     
     // Draw any arrows that have been added
     if (!arrows.empty()) {
-        printf("Drawing %lu arrows in the coordinate system - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
-               arrows.size(), 
-               plotter.dataMapper->getCurrentXRange().min, 
-               plotter.dataMapper->getCurrentXRange().max,
-               plotter.dataMapper->getCurrentYRange().min, 
-               plotter.dataMapper->getCurrentYRange().max);
-               
+        // Make sure we're using the common ranges that include both series and arrows
+        if (hasCommonRange) {
+            printf("Drawing %lu arrows using common range - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+                   arrows.size(), 
+                   commonXRange.min, commonXRange.max, 
+                   commonYRange.min, commonYRange.max);
+                   
+            // Explicitly ensure DataMapper has the correct ranges right before drawing arrows
+            // This is critical for Y-axis scaling to work correctly
+            plotter.dataMapper->setCurrentXRange(commonXRange);
+            plotter.dataMapper->setCurrentYRange(commonYRange);
+            
+            // Verify the ranges were properly set in the DataMapper
+            DataMapper::AxisRange verifyX = plotter.dataMapper->getCurrentXRange();
+            DataMapper::AxisRange verifyY = plotter.dataMapper->getCurrentYRange();
+            printf("Verified DataMapper ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n",
+                   verifyX.min, verifyX.max, verifyY.min, verifyY.max);
+                   
+            // Update axis ticks to match common ranges
+            plotter.setupStandardAxisTicks(commonXRange, commonYRange, 50);
+        } else {
+            // Fallback to current ranges if common range wasn't calculated
+            DataMapper::AxisRange currentXRange = plotter.dataMapper->getCurrentXRange();
+            DataMapper::AxisRange currentYRange = plotter.dataMapper->getCurrentYRange();
+            
+            printf("Drawing %lu arrows using current range - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+                   arrows.size(), 
+                   currentXRange.min, currentXRange.max, 
+                   currentYRange.min, currentYRange.max);
+        }
+        
         // Plot the arrows without redrawing the background
         // This will use the DataMapper's current X and Y ranges that we already set
         plotter.plotArrows(arrows, false);
@@ -1794,6 +1848,9 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     xRange = dataMapper->calculateXRange(allDataPoints);
     yRange = dataMapper->calculateYRange(allDataPoints);
     
+    // Important: Log the Y range before any potential adjustments
+    printf("Series data Y range calculated: [%.2f, %.2f]\n", yRange.min, yRange.max);
+    
     // Store these ranges for origin axes if enabled
     if (chartLayout->areOriginAxesVisible()) {
         // If origin (0,0) is within the ranges, adjust them to ensure it's visible
@@ -1806,14 +1863,38 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
             if (yRange.min > -0.1 * (yRange.max - yRange.min)) yRange.min = -0.1 * (yRange.max - yRange.min);
             if (yRange.max < 0.1 * (yRange.max - yRange.min)) yRange.max = 0.1 * (yRange.max - yRange.min);
             
+            printf("Adjusted ranges for origin axes: X [%.2f, %.2f], Y [%.2f, %.2f]\n", 
+                  xRange.min, xRange.max, yRange.min, yRange.max);
+            
             // Update the ranges in the DataMapper
             dataMapper->setCurrentXRange(xRange);
             dataMapper->setCurrentYRange(yRange);
         }
     }
     
-    printf("Global X range: [%.2f, %.2f], Y range: [%.2f, %.2f]\n", 
-           xRange.min, xRange.max, yRange.min, yRange.max);
+    // Check if the dataMapper already has valid ranges (might be set by a common range calculation)
+    DataMapper::AxisRange currentXRange = dataMapper->getCurrentXRange();
+    DataMapper::AxisRange currentYRange = dataMapper->getCurrentYRange();
+    
+    // Use the stored ranges if they exist and have been explicitly set to include arrows
+    bool useStoredRanges = (currentXRange.min != 0.0 || currentXRange.max != 1.0) &&
+                         (currentYRange.min != 0.0 || currentYRange.max != 1.0);
+    
+    if (useStoredRanges) {
+        printf("Using pre-calculated data ranges including arrows - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n",
+             currentXRange.min, currentXRange.max, currentYRange.min, currentYRange.max);
+        
+        // Use these ranges instead of the series-only ranges
+        xRange = currentXRange;
+        yRange = currentYRange;
+    } else {
+        printf("Setting new data ranges from series only - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+             xRange.min, xRange.max, yRange.min, yRange.max);
+             
+        // Store the calculated ranges
+        dataMapper->setCurrentXRange(xRange);
+        dataMapper->setCurrentYRange(yRange);
+    }
     
     // Calculate optimal margins for the chart type
     calculateOptimalMargins(CHART_LINE); // Use line chart margins as a base
@@ -1825,6 +1906,9 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     // Prepare the chart with standard configuration and custom title
     prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 28, 180,
                        &originalTopMargin, &originalRightMargin, &titleY, &legendY);
+    
+    // Set up standard axis ticks with yRange, ensuring Y-axis ticks are correct
+    setupStandardAxisTicks(xRange, yRange, 70);
     
     // Prepare legend data
     std::vector<std::string> legendLabels;
@@ -1852,9 +1936,6 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     
     // Redraw the legend after adjusting margins
     addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
-    
-    // Set up standard axis ticks with 70px Y-axis label offset
-    setupStandardAxisTicks(xRange, yRange, 70);
     
     // Plot each series in order
     for (size_t i = 0; i < seriesList.size(); ++i) {
@@ -1985,13 +2066,46 @@ void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground
         yRange = dataMapper->getCurrentYRange();
         
         // Verify ranges are valid (not default values)
-        if (xRange.min == 0.0 && xRange.max == 1.0 && 
-            yRange.min == 0.0 && yRange.max == 1.0) {
-            calculateNewRanges = true;
+        bool validRanges = true;
+        
+        // Check if x-range is valid
+        if (xRange.min == xRange.max || 
+            std::abs(xRange.max - xRange.min) < 1e-8) {
+            validRanges = false;
+            printf("Invalid X range detected: [%.2f, %.2f]\n", xRange.min, xRange.max);
         }
-        else {
+        
+        // Check if y-range is valid
+        if (yRange.min == yRange.max || 
+            std::abs(yRange.max - yRange.min) < 1e-8) {
+            validRanges = false;
+            printf("Invalid Y range detected: [%.2f, %.2f]\n", yRange.min, yRange.max);
+        }
+        
+        if (!validRanges) {
+            calculateNewRanges = true;
+        } else {
             printf("Using existing ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
-                   xRange.min, xRange.max, yRange.min, yRange.max);
+                  xRange.min, xRange.max, yRange.min, yRange.max);
+            
+            // Check if any arrow points fall outside the current range
+            bool arrowsOutsideRange = false;
+            for (size_t i = 0; i < arrows.size(); i++) {
+                if (arrows[i].start.x < xRange.min || arrows[i].start.x > xRange.max ||
+                    arrows[i].start.y < yRange.min || arrows[i].start.y > yRange.max ||
+                    arrows[i].end.x < xRange.min || arrows[i].end.x > xRange.max ||
+                    arrows[i].end.y < yRange.min || arrows[i].end.y > yRange.max) {
+                    arrowsOutsideRange = true;
+                    printf("Arrow %zu has points outside the current range\n", i);
+                    break;
+                }
+            }
+            
+            // If any arrows are outside the range, recalculate
+            if (arrowsOutsideRange) {
+                printf("Some arrows are outside the current range. Calculating expanded range...\n");
+                calculateNewRanges = true;
+            }
         }
     }
     
@@ -1999,6 +2113,19 @@ void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground
     if (calculateNewRanges) {
         // Convert all arrow endpoints to data points for range calculation
         std::vector<DataMapper::Point> allDataPoints;
+        
+        // First, add existing data range points to preserve the current view
+        if (!redrawBackground && 
+            std::abs(xRange.max - xRange.min) > 1e-8 && 
+            std::abs(yRange.max - yRange.min) > 1e-8) {
+            // Add the four corners of the current range to preserve it
+            allDataPoints.push_back(DataMapper::Point(xRange.min, yRange.min));
+            allDataPoints.push_back(DataMapper::Point(xRange.min, yRange.max));
+            allDataPoints.push_back(DataMapper::Point(xRange.max, yRange.min));
+            allDataPoints.push_back(DataMapper::Point(xRange.max, yRange.max));
+        }
+        
+        // Add all arrow points
         for (size_t i = 0; i < arrows.size(); ++i) {
             allDataPoints.push_back(DataMapper::Point(arrows[i].start.x, arrows[i].start.y));
             allDataPoints.push_back(DataMapper::Point(arrows[i].end.x, arrows[i].end.y));
@@ -2007,25 +2134,34 @@ void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground
         }
         
         // Calculate appropriate ranges to include all arrows
-        xRange = dataMapper->calculateXRange(allDataPoints);
-        yRange = dataMapper->calculateYRange(allDataPoints);
-        
-        // Add padding to ensure arrows are fully visible
-        double xPadding = (xRange.max - xRange.min) * 0.1;
-        double yPadding = (yRange.max - yRange.min) * 0.1;
-        
-        // Ensure minimum padding
-        xPadding = std::max(xPadding, 0.5);
-        yPadding = std::max(yPadding, 0.5);
-        
-        // Apply padding
-        xRange.min -= xPadding;
-        xRange.max += xPadding;
-        yRange.min -= yPadding;
-        yRange.max += yPadding;
-        
-        printf("Using new ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
-               xRange.min, xRange.max, yRange.min, yRange.max);
+        if (!allDataPoints.empty()) {
+            xRange = dataMapper->calculateXRange(allDataPoints);
+            yRange = dataMapper->calculateYRange(allDataPoints);
+            
+            // Add padding to ensure arrows are fully visible
+            double xPadding = (xRange.max - xRange.min) * 0.1;
+            double yPadding = (yRange.max - yRange.min) * 0.1;
+            
+            // Ensure minimum padding
+            xPadding = std::max(xPadding, 0.5);
+            yPadding = std::max(yPadding, 0.5);
+            
+            // Apply padding
+            xRange.min -= xPadding;
+            xRange.max += xPadding;
+            yRange.min -= yPadding;
+            yRange.max += yPadding;
+            
+            printf("Using new ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+                   xRange.min, xRange.max, yRange.min, yRange.max);
+        } else {
+            // Fallback to default ranges if no data points were added
+            xRange = DataMapper::AxisRange(-10.0, 10.0);
+            yRange = DataMapper::AxisRange(-10.0, 10.0);
+            
+            printf("No valid data points for range calculation. Using default ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+                   xRange.min, xRange.max, yRange.min, yRange.max);
+        }
     }
     
     // If we need to prepare a new chart background
@@ -2047,17 +2183,32 @@ void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground
         // Store the current data ranges in the DataMapper
         dataMapper->setCurrentXRange(xRange);
         dataMapper->setCurrentYRange(yRange);
+    } else if (calculateNewRanges) {
+        // If we've calculated new ranges but aren't redrawing the background,
+        // make sure we update DataMapper with the new ranges
+        dataMapper->setCurrentXRange(xRange);
+        dataMapper->setCurrentYRange(yRange);
+        
+        // Update axis ticks to match the new ranges without redrawing background
+        setupStandardAxisTicks(xRange, yRange, 50);
     }
     
     // Draw each arrow
     for (size_t i = 0; i < arrows.size(); ++i) {
-        // Map arrow start point to screen coordinates
-        DataMapper::Point startPoint = dataMapper->mapDataToScreen(
-            arrows[i].start.x, arrows[i].start.y, xRange, yRange);
+        // Get current ranges directly from DataMapper to ensure consistency
+        DataMapper::AxisRange currentXRange = dataMapper->getCurrentXRange();
+        DataMapper::AxisRange currentYRange = dataMapper->getCurrentYRange();
         
-        // Map arrow end point to screen coordinates
+        // Log actual Y-axis range being used for mapping
+        printf("Using Y-range for arrow %zu: [%.2f, %.2f]\n", i, currentYRange.min, currentYRange.max);
+        
+        // Map arrow start point to screen coordinates using current ranges
+        DataMapper::Point startPoint = dataMapper->mapDataToScreen(
+            arrows[i].start.x, arrows[i].start.y, currentXRange, currentYRange);
+        
+        // Map arrow end point to screen coordinates using current ranges
         DataMapper::Point endPoint = dataMapper->mapDataToScreen(
-            arrows[i].end.x, arrows[i].end.y, xRange, yRange);
+            arrows[i].end.x, arrows[i].end.y, currentXRange, currentYRange);
         
         printf("Arrow %zu screen coords: (%.2f, %.2f) -> (%.2f, %.2f)\n", 
                i, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
@@ -2124,13 +2275,36 @@ void Plotter::plotArrow(double startX, double startY, double endX, double endY,
         yRange = dataMapper->getCurrentYRange();
         
         // Verify ranges are valid (not default values)
-        if (xRange.min == 0.0 && xRange.max == 1.0 && 
-            yRange.min == 0.0 && yRange.max == 1.0) {
-            calculateNewRanges = true;
+        bool validRanges = true;
+        
+        // Check if x-range is valid
+        if (xRange.min == xRange.max || 
+            std::abs(xRange.max - xRange.min) < 1e-8) {
+            validRanges = false;
+            printf("Invalid X range detected: [%.2f, %.2f]\n", xRange.min, xRange.max);
         }
-        else {
+        
+        // Check if y-range is valid
+        if (yRange.min == yRange.max || 
+            std::abs(yRange.max - yRange.min) < 1e-8) {
+            validRanges = false;
+            printf("Invalid Y range detected: [%.2f, %.2f]\n", yRange.min, yRange.max);
+        }
+        
+        if (!validRanges) {
+            calculateNewRanges = true;
+        } else {
             printf("Using existing ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
                    xRange.min, xRange.max, yRange.min, yRange.max);
+            
+            // Check if arrow points fall outside the current range
+            if (startX < xRange.min || startX > xRange.max ||
+                startY < yRange.min || startY > yRange.max ||
+                endX < xRange.min || endX > xRange.max ||
+                endY < yRange.min || endY > yRange.max) {
+                printf("Arrow has points outside the current range. Calculating expanded range...\n");
+                calculateNewRanges = true;
+            }
         }
     }
     
@@ -2138,6 +2312,19 @@ void Plotter::plotArrow(double startX, double startY, double endX, double endY,
     if (calculateNewRanges) {
         // Convert data points to a full vector for range determination
         std::vector<Point> points;
+        
+        // First, if we have valid existing ranges, add them to preserve the current view
+        if (!redrawBackground && 
+            std::abs(xRange.max - xRange.min) > 1e-8 && 
+            std::abs(yRange.max - yRange.min) > 1e-8) {
+            // Add the four corners of the current range to preserve it
+            points.push_back(Point(xRange.min, yRange.min));
+            points.push_back(Point(xRange.min, yRange.max));
+            points.push_back(Point(xRange.max, yRange.min));
+            points.push_back(Point(xRange.max, yRange.max));
+        }
+        
+        // Add arrow endpoints
         points.push_back(Point(startX, startY));
         points.push_back(Point(endX, endY));
         
@@ -2145,24 +2332,33 @@ void Plotter::plotArrow(double startX, double startY, double endX, double endY,
         std::vector<DataMapper::Point> dataPoints = convertToDataPoints(points);
         
         // Calculate axis ranges for scaling
-        calculateDataRanges(dataPoints, xRange, yRange);
-        
-        // Add padding to ensure arrows are fully visible
-        double xPadding = (xRange.max - xRange.min) * 0.1;
-        double yPadding = (yRange.max - yRange.min) * 0.1;
-        
-        // Ensure minimum padding
-        xPadding = std::max(xPadding, 0.5);
-        yPadding = std::max(yPadding, 0.5);
-        
-        // Apply padding
-        xRange.min -= xPadding;
-        xRange.max += xPadding;
-        yRange.min -= yPadding;
-        yRange.max += yPadding;
-        
-        printf("Using new ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
-               xRange.min, xRange.max, yRange.min, yRange.max);
+        if (!dataPoints.empty()) {
+            calculateDataRanges(dataPoints, xRange, yRange);
+            
+            // Add padding to ensure arrows are fully visible
+            double xPadding = (xRange.max - xRange.min) * 0.1;
+            double yPadding = (yRange.max - yRange.min) * 0.1;
+            
+            // Ensure minimum padding
+            xPadding = std::max(xPadding, 0.5);
+            yPadding = std::max(yPadding, 0.5);
+            
+            // Apply padding
+            xRange.min -= xPadding;
+            xRange.max += xPadding;
+            yRange.min -= yPadding;
+            yRange.max += yPadding;
+            
+            printf("Using new ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+                   xRange.min, xRange.max, yRange.min, yRange.max);
+        } else {
+            // Fallback to default ranges if no data points were added
+            xRange = DataMapper::AxisRange(-10.0, 10.0);
+            yRange = DataMapper::AxisRange(-10.0, 10.0);
+            
+            printf("No valid data points for range calculation. Using default ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+                   xRange.min, xRange.max, yRange.min, yRange.max);
+        }
     }
     
     if (redrawBackground) {
@@ -2183,13 +2379,28 @@ void Plotter::plotArrow(double startX, double startY, double endX, double endY,
         // Store the current data ranges in the DataMapper
         dataMapper->setCurrentXRange(xRange);
         dataMapper->setCurrentYRange(yRange);
+    } else if (calculateNewRanges) {
+        // If we've calculated new ranges but aren't redrawing the background,
+        // make sure we update DataMapper with the new ranges
+        dataMapper->setCurrentXRange(xRange);
+        dataMapper->setCurrentYRange(yRange);
+        
+        // Update axis ticks to match the new ranges without redrawing background
+        setupStandardAxisTicks(xRange, yRange, 50);
     }
     
-    // Map arrow start point to screen coordinates
-    DataMapper::Point startPoint = dataMapper->mapDataToScreen(startX, startY, xRange, yRange);
+    // Get current ranges directly from DataMapper to ensure consistency  
+    DataMapper::AxisRange currentXRange = dataMapper->getCurrentXRange();
+    DataMapper::AxisRange currentYRange = dataMapper->getCurrentYRange();
     
-    // Map arrow end point to screen coordinates
-    DataMapper::Point endPoint = dataMapper->mapDataToScreen(endX, endY, xRange, yRange);
+    // Log actual Y-axis range being used for mapping
+    printf("Using Y-range for single arrow: [%.2f, %.2f]\n", currentYRange.min, currentYRange.max);
+    
+    // Map arrow start point to screen coordinates using current ranges
+    DataMapper::Point startPoint = dataMapper->mapDataToScreen(startX, startY, currentXRange, currentYRange);
+    
+    // Map arrow end point to screen coordinates using current ranges
+    DataMapper::Point endPoint = dataMapper->mapDataToScreen(endX, endY, currentXRange, currentYRange);
     
     printf("Arrow screen coords: (%.2f, %.2f) -> (%.2f, %.2f)\n", 
            startPoint.x, startPoint.y, endPoint.x, endPoint.y);
