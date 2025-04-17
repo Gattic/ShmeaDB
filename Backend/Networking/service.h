@@ -49,8 +49,6 @@ protected:
 	int64_t timeExecuted;
 	pthread_t* cThread;
 	bool running;
-	shmea::GPointer<shmea::GLogger> serviceLogger;
-	pthread_mutex_t loggerMutex;
 
 	static void* launchService(void* y);
 	virtual shmea::ServiceData* execute(const shmea::ServiceData*) = 0;
