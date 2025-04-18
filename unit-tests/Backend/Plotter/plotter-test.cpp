@@ -94,7 +94,7 @@ void shmea::testHistogram() {
     
     // Create a Plotter instance optimized for histogram display
     // Use 4x supersampling for high quality output
-    Plotter plotter(1800, 1000, 120, 100, 150, 120, 4);
+    Plotter plotter(1800, 1000, 4);
     
     // Set parameters
     plotter.setShowGrid(true);

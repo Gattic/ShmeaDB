@@ -365,50 +365,12 @@ bool Plotter::fontLoaded = false;
 FT_Library Plotter::ft = NULL;
 FT_Face Plotter::face = NULL;
 
-Plotter::Plotter(unsigned int width, unsigned int height, 
-                 unsigned int margin_top, unsigned int margin_right, 
-                 unsigned int margin_bottom, unsigned int margin_left,
-                 unsigned int ssaa_factor)
-    : hasLogo(false),
-      currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
-      currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
-{
-    initialize_font("fonts/font.ttf");
+bool Plotter::logoLoaded = false;
+bool Plotter::hasLogo = false;
+Image Plotter::logoImage = Image();
 
-    // Initialize helper components in the correct order
-    colorManager = new ColorManager();
-    
-    chartLayout = new ChartLayout(width, height, margin_top, margin_right, margin_bottom, margin_left, ssaa_factor);
-    
-    ssaaManager = new SuperSamplingManager(width, height, ssaa_factor);
-    
-    shapeRenderer = new ShapeRenderer(*ssaaManager, *colorManager, *chartLayout);
-    
-    textRenderer = new TextRenderer(*ssaaManager, *colorManager, *chartLayout);
-    textRenderer->initialize(ft, face);
-    
-    gridRenderer = new GridRenderer(*ssaaManager, *colorManager, *chartLayout, *shapeRenderer, ft, face);
-    
-    dataMapper = new DataMapper(*chartLayout);
-    
-    // Initialize dataMapper with the same default ranges
-    dataMapper->setCurrentXRange(currentXAxisRange);
-    dataMapper->setCurrentYRange(currentYAxisRange);
-    
-    chartStyler = new ChartStyler(*colorManager, *chartLayout, *shapeRenderer, 
-                               *textRenderer, *gridRenderer, *dataMapper);
-    
-    // Allocate output image
-    image.Allocate(width, height);
-    
-    // Complete initialization
-    initialize();
-}
-
-// New constructor that automatically calculates margins
 Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_factor)
-    : hasLogo(false),
-      currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
+    : currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
       currentYAxisRange(-10.0, 10.0)    // Default Y range for origin axes
 {
     initialize_font("fonts/font.ttf");
@@ -619,9 +581,11 @@ void Plotter::setYAxisLabel(const std::string& label)
 
 void Plotter::loadLogo(const std::string& logoPath)
 {
+    if(logoLoaded)
+	return;
+
     // Try to load the logo image from the file
     try {
-        logoImage = Image();
         shmea::PNGHelper::LoadPNG(logoImage, logoPath.c_str());
         
         if (logoImage.getWidth() > 0 && logoImage.getHeight() > 0) {
@@ -667,6 +631,8 @@ void Plotter::loadLogo(const std::string& logoPath)
         
         printf("Error loading logo from: %s (exception occurred)\n", logoPath.c_str());
     }
+
+    logoLoaded = true;
 }
 
 void Plotter::drawLogo()
