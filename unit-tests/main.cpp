@@ -15,6 +15,7 @@
 #include "Backend/Networking/crypt-test.h"
 #include "Backend/Database/GVector-test.h"
 #include "Backend/Database/image-test.h"
+#include "Backend/Plotter/plotter-test.h"
 
 int main(int argc, char* argv[])
 {
@@ -27,6 +28,13 @@ int main(int argc, char* argv[])
 	//GObjectsUnitTest();
 	CryptUnitTest();
 	ImageUnitTest();
+	shmea::testCluster();
+	shmea::testHistogram();
+	shmea::testCandlestickChart();
+	shmea::testLineScatter();
+	shmea::testMultiCluster();
+	shmea::testArrows();
+	shmea::testOriginAxes();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");

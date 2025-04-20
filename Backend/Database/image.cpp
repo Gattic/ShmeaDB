@@ -22,7 +22,7 @@
 
 using namespace shmea;
 
-void Image::drawVerticalGradient(int x, int y, RGBA color1, RGBA color2, int cornerRadius)
+void Image::drawVerticalGradient(int x, int y, const RGBA& topColor, const RGBA& bottomColor, int cornerRadius)
 {
     int cHeight = static_cast<int>(height);
     int cWidth = static_cast<int>(width);
@@ -31,10 +31,10 @@ void Image::drawVerticalGradient(int x, int y, RGBA color1, RGBA color2, int cor
     int endY = y + cHeight;
 
     // Calculate color deltas with type casting to float for precision
-    float deltaR = (static_cast<float>(color2.r) - static_cast<float>(color1.r)) / cHeight;
-    float deltaG = (static_cast<float>(color2.g) - static_cast<float>(color1.g)) / cHeight;
-    float deltaB = (static_cast<float>(color2.b) - static_cast<float>(color1.b)) / cHeight;
-    float deltaA = (static_cast<float>(color2.a) - static_cast<float>(color1.a)) / cHeight;
+    float deltaR = (static_cast<float>(bottomColor.r) - static_cast<float>(topColor.r)) / cHeight;
+    float deltaG = (static_cast<float>(bottomColor.g) - static_cast<float>(topColor.g)) / cHeight;
+    float deltaB = (static_cast<float>(bottomColor.b) - static_cast<float>(topColor.b)) / cHeight;
+    float deltaA = (static_cast<float>(bottomColor.a) - static_cast<float>(topColor.a)) / cHeight;
 
     int rectXW = x + cWidth - 1;
     int rectYH = y + cHeight - 1;
@@ -42,10 +42,10 @@ void Image::drawVerticalGradient(int x, int y, RGBA color1, RGBA color2, int cor
     // Draw the vertical gradient with adjustable rounded corners
     for (int currentY = startY; currentY < endY; ++currentY) {
         // Calculate current color and cast to unsigned char
-        unsigned char r = static_cast<unsigned char>(color1.r + deltaR * (currentY - startY));
-        unsigned char g = static_cast<unsigned char>(color1.g + deltaG * (currentY - startY));
-        unsigned char b = static_cast<unsigned char>(color1.b + deltaB * (currentY - startY));
-        unsigned char a = static_cast<unsigned char>(color1.a + deltaA * (currentY - startY));
+        unsigned char r = static_cast<unsigned char>(topColor.r + deltaR * (currentY - startY));
+        unsigned char g = static_cast<unsigned char>(topColor.g + deltaG * (currentY - startY));
+        unsigned char b = static_cast<unsigned char>(topColor.b + deltaB * (currentY - startY));
+        unsigned char a = static_cast<unsigned char>(topColor.a + deltaA * (currentY - startY));
 
         // Iterate over the width of the rectangle
         for (int currentX = x; currentX <= rectXW; ++currentX) {
@@ -81,13 +81,13 @@ void Image::drawVerticalGradient(int x, int y, RGBA color1, RGBA color2, int cor
     }
 }
 
-RGBA Image::averageColor(int startX, int startY, int blockWidth, int blockHeight)
+RGBA Image::averageColor(int startX, int startY, int width, int height) const
 {
     int totalR = 0, totalG = 0, totalB = 0, totalA = 0;
     int count = 0;
 
-    for (int y = 0; y < blockHeight; ++y) {
-        for (int x = 0; x < blockWidth; ++x) {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
             // Retrieve the pixel color from the high-resolution image
             RGBA pixel = GetPixel(startX + x, startY + y);
 
@@ -107,8 +107,6 @@ RGBA Image::averageColor(int startX, int startY, int blockWidth, int blockHeight
         static_cast<unsigned char>(totalB / count),
         static_cast<unsigned char>(totalA / count)
     );
-
-
 }
 
 std::vector<unsigned char> Image::getPixels() const 

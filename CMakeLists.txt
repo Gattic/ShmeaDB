@@ -49,6 +49,7 @@ include(GNUInstallDirs)
 
 #Subdirectories
 add_subdirectory("Backend/Database")
+add_subdirectory("Backend/Plotter")
 add_subdirectory("Backend/Networking")
 
 set(MAIN_SRC_FILES
@@ -65,7 +66,7 @@ endif()
 
 #Link libraries
 target_link_libraries(${PROJECT_NAME}
-	GNet DB) #custom libs
+	Plotter GNet DB) #custom libs
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

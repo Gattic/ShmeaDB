@@ -1,1 +1,13 @@
 outputTest.csv
+cluster_test_output.png
+histogram_skewed_output.png
+histogram_test_output.png
+candlestick_chart_output.png
+line_scatter_test_output.png
+multi_cluster_test_output.png
+line_chart_with_arrows_test.png
+coordinate_alignment_test.png
+arrow_origin_alignment_test.png
+margin_consistency_test.png
+cluster_test_extreme_output.png
+test-output/
