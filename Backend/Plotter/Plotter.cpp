@@ -23,6 +23,7 @@ ChartBuilder::ChartBuilder(Plotter& plotter)
       chartType(CHART_DEFAULT),
       hasHistogramData(false),
       histogramShowXAxisLabels(true),
+      hasLabeledHistogramData(false),
       hasCandlestickData(false),
       bullishColor(0x03, 0xC0, 0x3C, 0xFF),
       bearishColor(0xFF, 0x47, 0x45, 0xFF),
@@ -264,8 +265,12 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         // Plot the series data
         plotter.plotChart(series);
     }
+    else if (hasLabeledHistogramData) {
+        // Plot histogram with custom labels
+        plotter.plotHistogramWithLabels(histogramBins, histogramLabels, histogramColor);
+    }
     else if (hasHistogramData) {
-        // Plot histogram
+        // Plot standard histogram
         plotter.plotHistogram(histogramBins, histogramColor, histogramShowXAxisLabels);
     }
     else if (hasCandlestickData) {
@@ -398,6 +403,27 @@ ChartBuilder& ChartBuilder::alignCentroidsWithClusters(bool align) {
     return *this;
 }
 
+// Let's implement the new method for histogram with custom labels
+ChartBuilder& ChartBuilder::addHistogramDataWithLabels(const std::vector<int>& bins,
+                                                    const std::vector<std::string>& labels,
+                                                    const RGBA& color)
+{
+    if (bins.empty() || labels.empty() || bins.size() != labels.size()) {
+        printf("Warning: Invalid input for histogram with labels. Bins and labels must be non-empty and have the same size.\n");
+        return *this;
+    }
+    
+    this->hasLabeledHistogramData = true;
+    this->histogramBins = bins;
+    this->histogramLabels = labels;
+    this->histogramColor = color;
+    this->chartType = CHART_HISTOGRAM;
+    
+    // Disable standard histogram display
+    this->hasHistogramData = false;
+    return *this;
+}
+
 //
 // Plotter Implementation
 //
@@ -408,6 +434,10 @@ FT_Face Plotter::face = NULL;
 bool Plotter::logoLoaded = false;
 bool Plotter::hasLogo = false;
 Image Plotter::logoImage = Image();
+int Plotter::logoWidth = 0;
+int Plotter::logoHeight = 0;
+int Plotter::logoWidthScaled = 0;
+int Plotter::logoHeightScaled = 0;
 
 Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_factor)
     : currentXAxisRange(-10.0, 10.0),   // Default X range for origin axes
@@ -423,6 +453,7 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
     forceAlignCentroids = true;  // Default to aligning centroids with cluster centers
     
     initialize_font("fonts/font.ttf");
+    loadLogo("logo.png", true);
 
     // Initialize helper components in the correct order
     colorManager = new ColorManager();
@@ -665,10 +696,18 @@ void Plotter::setYAxisLabel(const std::string& label)
     textRenderer->setYAxisLabel(label);
 }
 
-void Plotter::loadLogo(const std::string& logoPath)
+void Plotter::loadLogo(const std::string& logoPath, bool isInitializationCall)
 {
     if(logoLoaded)
+    {
+	if(!isInitializationCall)
+	{
+	    chartLayout->setLogoWidth(logoWidthScaled);
+	    chartLayout->setLogoHeight(logoHeightScaled);
+	}
+
 	return;
+    }
 
     // Try to load the logo image from the file
     try {
@@ -697,14 +736,25 @@ void Plotter::loadLogo(const std::string& logoPath)
             }
             
             // Store scaled logo dimensions in the chartLayout
-            chartLayout->setLogoWidth(scaledWidth);
-            chartLayout->setLogoHeight(scaledHeight);
+	    if(!isInitializationCall)
+	    {
+		chartLayout->setLogoWidth(scaledWidth);
+		chartLayout->setLogoHeight(scaledHeight);
+	    }
+
+	    logoWidth = originalWidth;
+	    logoHeight = originalHeight;
+	    logoWidthScaled = scaledWidth;
+	    logoHeightScaled = scaledHeight;
         } else {
             hasLogo = false;
             
             // Reset logo dimensions in chartLayout
-            chartLayout->setLogoWidth(0);
-            chartLayout->setLogoHeight(0);
+	    if(!isInitializationCall)
+	    {
+		chartLayout->setLogoWidth(0);
+		chartLayout->setLogoHeight(0);
+	    }
             
             printf("Failed to load logo from: %s (invalid dimensions)\n", logoPath.c_str());
         }
@@ -712,13 +762,25 @@ void Plotter::loadLogo(const std::string& logoPath)
         hasLogo = false;
         
         // Reset logo dimensions in chartLayout
-        chartLayout->setLogoWidth(0);
-        chartLayout->setLogoHeight(0);
+	if(!isInitializationCall)
+	{
+	    chartLayout->setLogoWidth(0);
+	    chartLayout->setLogoHeight(0);
+	}
+
+	logoWidth = 0;
+	logoHeight = 0;
+	logoWidthScaled = 0;
+	logoHeightScaled = 0;
         
         printf("Error loading logo from: %s (exception occurred)\n", logoPath.c_str());
     }
 
-    logoLoaded = true;
+    // This is in order load the logo without using it for this particular class
+    if(isInitializationCall)
+	hasLogo = false;
+    else
+	logoLoaded = true;
 }
 
 void Plotter::drawLogo()
@@ -893,152 +955,6 @@ void Plotter::setupChart(const ChartConfig& config, unsigned int* originalTopMar
     }
 }
 
-void Plotter::plotPoints(const std::vector<Point>& points, const RGBA& color, int pointSize, bool redrawBackground)
-{
-    if (points.empty()) {
-        printf("Warning: No points to plot in plotPoints\n");
-        return;
-    }
-    
-    printf("Plotting %lu points with pointSize = %d\n", points.size(), pointSize);
-    
-    // Convert Point vector to DataMapper::Point vector
-    std::vector<DataMapper::Point> dataPoints = convertToDataPoints(points);
-    
-    // Calculate axis ranges for scaling
-    DataMapper::AxisRange xRange, yRange;
-    calculateDataRanges(dataPoints, xRange, yRange);
-    
-    // If we're adding to an existing chart, skip the setup
-    if (!redrawBackground) {
-        // Draw each point
-        for (size_t i = 0; i < points.size(); ++i) {
-            // Map point to screen coordinates
-            DataMapper::Point p = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
-            
-            // Draw the point with supersampling
-            int ssaaX = ssaaManager->scaleX(p.x);
-            int ssaaY = ssaaManager->scaleY(p.y);
-            int ssaaSize = ssaaManager->scaleSize(pointSize);
-            
-            // Ensure coordinates are valid
-            if (isCoordinateValid(ssaaX, ssaaY)) {
-                shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
-            }
-        }
-        
-        return;
-    }
-    
-    // Calculate optimal margins for scatter plot
-    calculateOptimalMargins(CHART_SCATTER);
-    
-    // Variables for margin storage and positioning
-    unsigned int originalTopMargin, originalRightMargin;
-    int titleY, legendY;
-    
-    // Prepare the chart with standard configuration
-    prepareStandardChart("Point Visualization", "X Value", "Y Value", 36, 28, 160,
-                        &originalTopMargin, &originalRightMargin, &titleY, &legendY);
-    
-    // Set up standard axis ticks with 50px Y-axis label offset
-    setupStandardAxisTicks(xRange, yRange, 50);
-    
-    // Draw each point
-    for (size_t i = 0; i < points.size(); ++i) {
-        // Map point to screen coordinates
-        DataMapper::Point p = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
-        
-        // Print the first few points for debugging
-        if (i < 5) {
-            printf("Point %lu: data(%.2f, %.2f) -> screen(%.2f, %.2f)\n", 
-                   i, points[i].x, points[i].y, p.x, p.y);
-        }
-        
-        // Draw the point with supersampling
-        int ssaaX = ssaaManager->scaleX(p.x);
-        int ssaaY = ssaaManager->scaleY(p.y);
-        int ssaaSize = ssaaManager->scaleSize(pointSize);
-        
-        // Ensure coordinates are valid
-        if (isCoordinateValid(ssaaX, ssaaY)) {
-            shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
-        }
-        else {
-            printf("Warning: Point %lu is outside the valid drawing area\n", i);
-        }
-    }
-    
-    // Remove margin restoration - keeping consistent margins for subsequent elements
-    // chartLayout->setMarginRight(originalRightMargin);
-    // chartLayout->setMarginTop(originalTopMargin);
-}
-
-void Plotter::plotLine(const std::vector<Point>& points, const RGBA& color, int lineWidth, bool redrawBackground)
-{
-    if (points.size() < 2) {
-        printf("Warning: Not enough points to plot line in plotLine (need at least 2)\n");
-        return;
-    }
-    
-    printf("Plotting line with %lu points and lineWidth = %d\n", points.size(), lineWidth);
-    
-    // Convert Point vector to DataMapper::Point vector
-    std::vector<DataMapper::Point> dataPoints = convertToDataPoints(points);
-    
-    // Calculate axis ranges for scaling
-    DataMapper::AxisRange xRange, yRange;
-    calculateDataRanges(dataPoints, xRange, yRange);
-    
-    // If we're adding to an existing chart, skip the setup
-    if (!redrawBackground) {
-        // Draw line segments between adjacent points
-        for (size_t i = 1; i < points.size(); ++i) {
-            // Map points to screen coordinates
-            DataMapper::Point p1 = dataMapper->mapDataToScreen(points[i-1].x, points[i-1].y, xRange, yRange);
-            DataMapper::Point p2 = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
-            
-            // Draw the line segment with proper clipping
-            drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, lineWidth, 0);
-        }
-        
-        return;
-    }
-    
-    // Calculate optimal margins for line chart
-    calculateOptimalMargins(CHART_LINE);
-    
-    // Variables for margin storage and positioning
-    unsigned int originalTopMargin, originalRightMargin;
-    int titleY, legendY;
-    
-    // Prepare the chart with standard configuration
-    prepareStandardChart("Line Visualization", "X Value", "Y Value", 36, 28, 160,
-                        &originalTopMargin, &originalRightMargin, &titleY, &legendY);
-    
-    // Set up standard axis ticks with 50px Y-axis label offset
-    setupStandardAxisTicks(xRange, yRange, 50);
-    
-    // Draw line segments between adjacent points
-    for (size_t i = 1; i < points.size(); ++i) {
-        // Map points to screen coordinates
-        DataMapper::Point p1 = dataMapper->mapDataToScreen(points[i-1].x, points[i-1].y, xRange, yRange);
-        DataMapper::Point p2 = dataMapper->mapDataToScreen(points[i].x, points[i].y, xRange, yRange);
-        
-        // Print the first few line segments for debugging
-        if (i < 5) {
-            printf("Line segment %lu: (%.2f,%.2f) to (%.2f,%.2f)\n", i, p1.x, p1.y, p2.x, p2.y);
-        }
-        
-        // Draw the line segment with proper clipping
-        drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, lineWidth, i);
-    }
-    
-    // Remove margin restoration - keeping consistent margins for subsequent elements
-    // chartLayout->setMarginRight(originalRightMargin);
-    // chartLayout->setMarginTop(originalTopMargin);
-}
-
 // Helper for calculating histogram bar dimensions
 void Plotter::calculateHistogramBarDimensions(int totalBars, int& barWidth, int& barSpacing, int& startX) {
     // Use CSS-like styling for bars and spacing
@@ -1111,7 +1027,7 @@ void Plotter::plotHistogram(const std::vector<int>& bins,
     legendColors.push_back(useColor);
     
     // Estimate legend height before drawing
-    int estimatedLegendHeight = chartStyler->calculateInfoBoxHeight(legendLabels, 18);
+    int estimatedLegendHeight = chartStyler->calculateInfoBoxHeight(legendLabels, 16);
     
     // Estimate stats box height (fixed at 90px as defined in drawHistogramStats)
     int statsBoxHeight = 90;
@@ -1135,7 +1051,7 @@ void Plotter::plotHistogram(const std::vector<int>& bins,
                       colorManager->getElementColor("title"), displayFontSize, false);
     
     // Now add the legend
-    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 18);
+    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
     
     // Draw statistics info box with matching CSS styling - positioned right of the legend
     // We continue to display the true maxBinValue in the stats (not the adjusted one)
@@ -2246,35 +2162,6 @@ std::vector<std::string> Plotter::createClusterLegendLabels(int numClusters) {
     return legendLabels;
 }
 
-void Plotter::plotMultiSeries(const std::vector<std::vector<Point> >& seriesData,
-                             const std::vector<std::string>& seriesLabels,
-                             const std::vector<RGBA>& seriesColors,
-                             const std::vector<bool>& isLineStyleSeries,
-                             const std::string& title,
-                             const std::string& xAxisLabel,
-                             const std::string& yAxisLabel)
-{
-    // Validate inputs
-    if (seriesData.empty() || seriesLabels.size() != seriesData.size() || 
-        seriesColors.size() != seriesData.size() || isLineStyleSeries.size() != seriesData.size()) {
-        printf("Error: Invalid inputs to plotMultiSeries. Sizes must match.\n");
-        return;
-    }
-    
-    // Convert to new Series format and call plotChart
-    std::vector<Series> seriesList;
-    for (size_t i = 0; i < seriesData.size(); ++i) {
-        SeriesType type = isLineStyleSeries[i] ? SERIES_LINE : SERIES_SCATTER;
-        Series series(seriesLabels[i], seriesData[i], seriesColors[i], type);
-        seriesList.push_back(series);
-    }
-    
-    // Use the new plotChart method
-    plotChart(seriesList, title, xAxisLabel, yAxisLabel);
-}
-
-// After the plotLine method, add the arrow implementations:
-
 void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground) {
     if (arrows.empty()) {
         printf("Warning: No arrows to plot in plotArrows\n");
@@ -2576,6 +2463,146 @@ void Plotter::setAlignCentroidsWithClusters(bool align) {
 
 bool Plotter::getAlignCentroidsWithClusters() const {
     return forceAlignCentroids;
+}
+
+// New method for histograms with custom labels
+void Plotter::plotHistogramWithLabels(const std::vector<int>& bins,
+                                    const std::vector<std::string>& labels,
+                                    const RGBA& color,
+                                    const std::string& title,
+                                    const std::string& xAxisLabel,
+                                    const std::string& yAxisLabel)
+{
+    if (bins.empty() || labels.empty() || bins.size() != labels.size()) {
+        printf("Error: Invalid input for histogram with labels. Bins and labels must be non-empty and have the same size.\n");
+        return;
+    }
+    
+    // Use themeColors[0] if custom color not provided
+    RGBA useColor = color;
+    if (color.r == 0 && color.g == 0 && color.b == 0 && color.a == 0) {
+        useColor = colorManager->getThemeColor(0); // Use first theme color
+    }
+    
+    // Calculate optimal margins for histogram
+    calculateOptimalMargins(CHART_HISTOGRAM);
+    
+    // Variables for margin storage and positioning
+    unsigned int originalTopMargin, originalRightMargin;
+    int titleY, legendY;
+    
+    // Prepare the chart with standard configuration - use 180px right margin for histograms
+    prepareStandardChart(title, xAxisLabel, yAxisLabel, 42, 32, 180,
+                        &originalTopMargin, &originalRightMargin, &titleY, &legendY);
+    
+    // Find the maximum value in bins for scaling
+    int maxBinValue = *std::max_element(bins.begin(), bins.end());
+    if (maxBinValue == 0) maxBinValue = 1; // Avoid division by zero
+    
+    // Calculate adjusted max Y value to match the 80% scaling of bars
+    // Since bars are at 80% height, Y-axis needs to show 125% (1/0.8) of the max value
+    int adjustedMaxYValue = static_cast<int>(maxBinValue / 0.8);
+    
+    // Create our legend labels and colors
+    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Frequency");
+    
+    std::vector<RGBA> legendColors;
+    legendColors.push_back(useColor);
+    
+    // Estimate legend height before drawing
+    int estimatedLegendHeight = chartStyler->calculateInfoBoxHeight(legendLabels, 18);
+    
+    // Estimate stats box height (fixed at 90px as defined in drawHistogramStats)
+    int statsBoxHeight = 90;
+    
+    // Calculate maximum Y position needed for legend and stats box
+    int statsBoxMaxY = legendY + statsBoxHeight;
+    int legendMaxY = legendY + estimatedLegendHeight;
+    int maxElementsY = std::max(statsBoxMaxY, legendMaxY);
+    
+    // Dynamically set the top margin to accommodate title, legend, and stats box with buffer
+    unsigned int newTopMargin = maxElementsY + 15; // 15px buffer
+    chartLayout->setMarginTop(newTopMargin);
+    
+    // Redraw with proper margins
+    prepareCanvas();
+    
+    // Redraw title after prepareCanvas
+    std::string displayTitle = !chartTitle.empty() ? chartTitle : title;
+    unsigned int displayFontSize = !chartTitle.empty() ? chartTitleFontSize : 42;
+    textRenderer->drawText(chartLayout->getMarginLeft(), titleY, displayTitle, 
+                      colorManager->getElementColor("title"), displayFontSize, false);
+    
+    // Now add the legend
+    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 18);
+    
+    // Draw statistics info box with matching CSS styling - positioned right of the legend
+    // We continue to display the true maxBinValue in the stats (not the adjusted one)
+    chartStyler->drawHistogramStats(bins, maxBinValue, legendY, 16);
+    
+    // Draw axis labels with larger font size
+    addAxisLabels(xAxisLabel, yAxisLabel, 32);
+    
+    // Draw Y-axis with value labels - use adjustedMaxYValue instead of maxBinValue
+    // 5 ticks, values displayed as integers, 0 decimal places, 50px label offset
+    gridRenderer->drawYAxisTicks(0, adjustedMaxYValue, 5, true, 0, 50);
+    
+    // Don't use the default X-axis labels since we're adding custom ones
+    // Set showXAxisLabels to false in the internal code
+    
+    // Calculate bar dimensions
+    int barWidth, barSpacing, startX;
+    calculateHistogramBarDimensions(bins.size(), barWidth, barSpacing, startX);
+    
+    // Draw each histogram bar
+    for (size_t i = 0; i < bins.size(); ++i) {
+        // Calculate bar height based on bin value but cap it at 80% of the plot height
+        float ratio = static_cast<float>(bins[i]) / maxBinValue;
+        int barHeight = static_cast<int>(ratio * chartLayout->getPlotHeight() * 0.8); // Scale to 80% of original height
+        
+        // Ensure minimum height for visibility
+        barHeight = std::max(barHeight, 8);
+        
+        // Calculate bar position
+        int x = startX + i * (barWidth + barSpacing);
+        int y = chartLayout->getHeight() - chartLayout->getMarginBottom() - barHeight;
+        
+        // Draw the bar with styling
+        shapeRenderer->drawHistogramBar(
+            ssaaManager->scaleX(x),
+            ssaaManager->scaleY(y),
+            ssaaManager->scaleSize(barWidth),
+            ssaaManager->scaleSize(barHeight),
+            useColor);
+        
+        // Add bar value label on top of taller bars
+        if (barHeight > 45) { // Only for sufficiently tall bars
+            char valueText[16];
+            std::sprintf(valueText, "%d", bins[i]);
+            
+            // Position above the bar with proper spacing
+            // Use font size 22 for better mobile readability
+            textRenderer->drawText(x + barWidth / 2, 
+                        chartLayout->getHeight() - chartLayout->getMarginBottom() - barHeight - 20, 
+                        valueText, colorManager->getElementColor("legend"), 22, true);
+        }
+        
+        // Add custom label centered under each bar
+        // Calculate the center position of the bar
+        int labelX = x + barWidth / 2;
+        
+        // Position the label below the X-axis (use a font size of 22 to match other labels)
+        int labelY = chartLayout->getHeight() - chartLayout->getMarginBottom() + 25;
+        
+        // Get the label text
+        const std::string& labelText = labels[i];
+        
+        // Draw the label with center alignment (true for centerAligned parameter)
+        RGBA labelColor = colorManager->getElementColor("axisLabel");
+        labelColor.a = 0xCC; // 80% opacity to match X-axis labels
+        textRenderer->drawText(labelX, labelY, labelText, labelColor, 22, true);
+    }
 }
 
 } // namespace shmea 

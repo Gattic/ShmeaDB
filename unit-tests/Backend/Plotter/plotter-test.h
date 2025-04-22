@@ -27,6 +27,7 @@ void testArrows();
 void testOriginAxes();
 void testCoordinateAlignment();
 void testCentroidPositioning();
+void testLabeledHistogram();
 }
 
 #endif 

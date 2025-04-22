@@ -236,6 +236,8 @@ void ChartStyler::drawHistogramStats(const std::vector<int>& bins, int maxBinVal
     printf("Logo dimensions: width=%d, height=%d\n", logoWidth, logoHeight);
     
     // Only reposition if the logo actually exists and has positive dimensions
+    printf("HERE0: boxX=%d, boxWidth=%d, layout.width=%d, logoWidth=%d\n",
+		   boxX, boxWidth, layout.getWidth(), logoWidth);
     if (logoWidth > 0 && logoHeight > 0) {
         // Logo is present - need to shift the box left if it would overlap
         // Logo is positioned at: (width - logoWidth - 15, 20)

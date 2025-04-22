@@ -124,22 +124,10 @@ void shmea::testCluster() {
 }
 
 void shmea::testHistogram() {
-    printf("Testing enhanced histogram visualization from histogram.fig with supersampling...\n");
+    printf("Testing enhanced histogram visualization with fluent API...\n");
     
-    // Create a Plotter instance optimized for histogram display
-    // Use 4x supersampling for high quality output
+    // Create a Plotter instance
     Plotter plotter(1800, 1000, 4);
-    
-    // Set parameters
-    plotter.setShowGrid(true);
-    plotter.setShowAxes(false);
-    plotter.setCornerRadius(15);
-    
-    // Load the logo
-    plotter.loadLogo("logo.png");
-    
-    // Add title with increased font size
-    plotter.addTitle("Enhanced Histogram Visualization", 48);
     
     // Create a bell curve-like distribution
     std::vector<int> bellCurve;
@@ -155,20 +143,23 @@ void shmea::testHistogram() {
     bellCurve.push_back(65);
     bellCurve.push_back(32);   // End of distribution
     
-    // Plot bell curve histogram with blue color and standard X-axis labels
-    // Note: Bars will be drawn at 80% of their original height, while Y-axis values are scaled to 125%
-    // of the maximum bin value to ensure proper alignment between bars and axis labels
-    plotter.plotHistogram(bellCurve, RGBA(0x00, 0x9E, 0xFF, 0xFF), true);
-    
-    // Save the result
-    plotter.saveAsPNG("histogram_test_output.png", ".");
+    // Use the fluent API to create and save the histogram
+    plotter.chart()
+        .title("Enhanced Histogram Visualization", 48)
+        .grid(true)
+        .axes(false)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("Value", "Frequency", 32)
+        .autoMargins(CHART_HISTOGRAM)
+        .addHistogramData(bellCurve, RGBA(0x00, 0x9E, 0xFF, 0xFF), true)
+        .saveAs("histogram_test_output.png", ".");
     
     printf("Histogram test completed. Output saved as 'histogram_test_output.png'.\n");
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
     
     // Create a second test with skewed distribution
-    // Use the new constructor with automatic margin calculation
-    printf("Creating second histogram with the new fluent API...\n");
+    printf("Creating second histogram with skewed distribution...\n");
     Plotter plotter2(1800, 1000, 4);
     
     // Create a right-skewed distribution
@@ -184,7 +175,7 @@ void shmea::testHistogram() {
     skewedDist.push_back(30);
     skewedDist.push_back(20);   // Tapering to low values
     
-    // Use the new fluent API to create and save the histogram
+    // Use the fluent API to create and save the histogram
     plotter2.chart()
         .title("Skewed Distribution Histogram", 48)
         .grid(true)
@@ -196,7 +187,7 @@ void shmea::testHistogram() {
         .addHistogramData(skewedDist, RGBA(0xFF, 0x6B, 0x00, 0xFF), false)
         .saveAs("histogram_skewed_output.png", ".");
     
-    printf("Skewed histogram test with fluent API completed. Output saved as 'histogram_skewed_output.png'.\n");
+    printf("Skewed histogram test completed. Output saved as 'histogram_skewed_output.png'.\n");
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
 }
 
@@ -755,112 +746,88 @@ void shmea::testCoordinateAlignment() {
     std::cout << "5. The reference points form symmetrical patterns around the origin" << std::endl;
 }
 
-// Add this after testCluster function
-
-void shmea::testCentroidPositioning() {
-    printf("Testing centroid positioning with improved alignment...\n");
+// Add the new test function for labeled histogram
+void shmea::testLabeledHistogram() {
+    printf("Testing histogram with custom labels under each bar using fluent API...\n");
     
-    // Create a Plotter instance
+    // Create data for the histogram - monthly sales data
+    std::vector<int> salesData;
+    salesData.push_back(122);  // January
+    salesData.push_back(87);   // February
+    salesData.push_back(114);  // March
+    salesData.push_back(143);  // April
+    salesData.push_back(165);  // May
+    salesData.push_back(178);  // June
+    salesData.push_back(198);  // July
+    salesData.push_back(187);  // August
+    salesData.push_back(156);  // September
+    salesData.push_back(133);  // October
+    salesData.push_back(118);  // November
+    salesData.push_back(162);  // December
+    
+    // Create the month labels
+    std::vector<std::string> monthLabels;
+    monthLabels.push_back("Jan");
+    monthLabels.push_back("Feb");
+    monthLabels.push_back("Mar");
+    monthLabels.push_back("Apr");
+    monthLabels.push_back("May");
+    monthLabels.push_back("Jun");
+    monthLabels.push_back("Jul");
+    monthLabels.push_back("Aug");
+    monthLabels.push_back("Sep");
+    monthLabels.push_back("Oct");
+    monthLabels.push_back("Nov");
+    monthLabels.push_back("Dec");
+    
+    // Create a Plotter instance with fluent API
     Plotter plotter(1800, 1000, 4);
     
-    // Create data with clearly defined clusters in a grid pattern
-    std::vector<std::vector<double> > clusterData;
-    std::vector<int> clusterLabels;
-    
-    // Create 4 well-separated clusters in a 2x2 grid
-    // Each cluster will have a precise center for easy verification
-    
-    // Define cluster centers
-    std::vector<std::pair<double, double> > clusterCenters;
-    clusterCenters.push_back(std::make_pair(2.0, 2.0));  // Cluster 0: bottom-left
-    clusterCenters.push_back(std::make_pair(8.0, 2.0));  // Cluster 1: bottom-right
-    clusterCenters.push_back(std::make_pair(2.0, 8.0));  // Cluster 2: top-left
-    clusterCenters.push_back(std::make_pair(8.0, 8.0));  // Cluster 3: top-right
-    
-    // Generate points around each center
-    // Use fixed offsets instead of random to make the test deterministic
-    for (size_t clusterIdx = 0; clusterIdx < clusterCenters.size(); clusterIdx++) {
-        double centerX = clusterCenters[clusterIdx].first;
-        double centerY = clusterCenters[clusterIdx].second;
-        
-        // Generate 9 points in a 3x3 grid around center
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                std::vector<double> point;
-                point.push_back(centerX + dx * 0.5);  // 0.5 unit spacing
-                point.push_back(centerY + dy * 0.5);  // 0.5 unit spacing
-                clusterData.push_back(point);
-                clusterLabels.push_back(static_cast<int>(clusterIdx));
-            }
-        }
-    }
-    
-    // Define centroids - deliberately place them EXACTLY at the cluster centers
-    // This makes it very clear if they're properly aligned
-    std::vector<std::vector<double> > centroids;
-    for (size_t i = 0; i < clusterCenters.size(); i++) {
-        std::vector<double> centroid;
-        centroid.push_back(clusterCenters[i].first);
-        centroid.push_back(clusterCenters[i].second);
-        centroids.push_back(centroid);
-    }
-    
-    // Use the new fluent API to create and save the cluster visualization
+    // Use the fluent API to create and save the histogram with labels
     plotter.chart()
-        .title("Centroid Alignment Test", 36)
+        .title("Monthly Sales Performance", 48)
         .grid(true)
-        .axes(true)  // Show axes to help verify positions
+        .axes(false)
         .cornerRadius(15)
-        .axisLabels("X Coordinate", "Y Coordinate", 28)
-        .autoMargins(CHART_CLUSTER)
-        .addClusterData(clusterData, clusterLabels, centroids)
-        .saveAs("centroid_alignment_test.png", ".");
+        .logo("logo.png")
+        .axisLabels("Month", "Sales Units", 32)
+        .autoMargins(CHART_HISTOGRAM)
+        .addHistogramDataWithLabels(salesData, monthLabels, RGBA(0x00, 0x9E, 0xFF, 0xFF))
+        .saveAs("labeled_histogram_test.png", ".");
     
-    // Add a second test with clearly offset centroids
-    // This will help verify that we're drawing the actual centroids,
-    // not just the calculated cluster centers
-    std::vector<std::vector<double> > offsetCentroids;
-    for (size_t i = 0; i < clusterCenters.size(); i++) {
-        std::vector<double> centroid;
-        // Offset by 1.0 units in both directions - clearly visible offset
-        centroid.push_back(clusterCenters[i].first + 1.0);
-        centroid.push_back(clusterCenters[i].second + 1.0);
-        offsetCentroids.push_back(centroid);
-    }
+    printf("Labeled histogram test completed. Output saved as 'labeled_histogram_test.png'.\n");
     
-    // Create a second plotter and test with offset centroids
-    // This shows centroids that are deliberately NOT centered in the cluster circles
-    Plotter plotter2(1800, 1000, 4);
+    // Test quarterly data for a more compact visualization
+    printf("Testing with quarterly data for a more compact histogram...\n");
     
-    // This will use the adjusted centroids that perfectly align with circle centers
-    plotter2.chart()
-        .title("Centered Centroid Test (forced alignment)", 36)
-        .grid(true)
-        .axes(true)
-        .cornerRadius(15)
-        .axisLabels("X Coordinate", "Y Coordinate", 28)
-        .autoMargins(CHART_CLUSTER)
-        .alignCentroidsWithClusters(true)  // explicitly enable centroid alignment (default behavior)
-        .addClusterData(clusterData, clusterLabels, offsetCentroids)
-        .saveAs("centered_centroid_test.png", ".");
+    // Create a smaller dataset
+    std::vector<int> quarterlyData;
+    quarterlyData.push_back(325);  // Q1
+    quarterlyData.push_back(480);  // Q2 
+    quarterlyData.push_back(421);  // Q3
+    quarterlyData.push_back(390);  // Q4
     
-    // Create a third test with the same offset centroids but with alignment disabled
+    // Create quarter labels
+    std::vector<std::string> quarterLabels;
+    quarterLabels.push_back("Q1");
+    quarterLabels.push_back("Q2");
+    quarterLabels.push_back("Q3");
+    quarterLabels.push_back("Q4");
+    
+    // Create a new plotter
     Plotter plotter3(1800, 1000, 4);
-    plotter3.chart()
-        .title("Original Centroid Positions (no alignment)", 36)
-        .grid(true)
-        .axes(true)
-        .cornerRadius(15)
-        .axisLabels("X Coordinate", "Y Coordinate", 28)
-        .autoMargins(CHART_CLUSTER)
-        .alignCentroidsWithClusters(false)  // disable centroid alignment
-        .addClusterData(clusterData, clusterLabels, offsetCentroids)
-        .saveAs("offset_centroid_test.png", ".");
     
-    // Now modify the code to show the original centroid positions
-    // This requires direct access to set forceAlignCentroids to false
-    printf("Centroid positioning tests completed. Output saved as:\n");
-    printf("- centroid_alignment_test.png (centroids at exact cluster centers)\n");
-    printf("- centered_centroid_test.png (forced alignment with cluster centers)\n");
-    printf("- offset_centroid_test.png (original positions without alignment)\n");
+    // Use the fluent API for quarterly data
+    plotter3.chart()
+        .title("Quarterly Sales", 48)
+        .grid(true)
+        .axes(false)
+        .cornerRadius(15)
+        .logo("logo.png")
+        .axisLabels("Quarter", "Sales Units", 32)
+        .autoMargins(CHART_HISTOGRAM)
+        .addHistogramDataWithLabels(quarterlyData, quarterLabels, RGBA(0x33, 0xCC, 0x66, 0xFF))
+        .saveAs("quarterly_histogram_labeled.png", ".");
+    
+    printf("Quarterly labeled histogram completed. Output saved as 'quarterly_histogram_labeled.png'.\n");
 }

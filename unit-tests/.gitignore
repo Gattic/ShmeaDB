@@ -10,4 +10,7 @@ coordinate_alignment_test.png
 arrow_origin_alignment_test.png
 margin_consistency_test.png
 cluster_test_extreme_output.png
+labeled_histogram_fluent_test.png
+labeled_histogram_test.png
+quarterly_histogram_labeled.png
 test-output/

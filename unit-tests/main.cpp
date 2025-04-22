@@ -35,6 +35,7 @@ int main(int argc, char* argv[])
 	shmea::testMultiCluster();
 	shmea::testArrows();
 	shmea::testOriginAxes();
+	shmea::testLabeledHistogram();
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
