@@ -31,11 +31,8 @@ void Sockets::initSockets()
 {
 	//logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	PORT = "45019";
-	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-
-	pthread_mutex_init(inMutex, NULL);
-	pthread_mutex_init(outMutex, NULL);
+	inMutex = new GMutex();
+	outMutex = new GMutex();
 }
 
 Sockets::Sockets() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger()))
@@ -50,13 +47,11 @@ Sockets::Sockets(const GServer* serverInstance) : logger(serverInstance->logger)
 
 Sockets::~Sockets()
 {
-	pthread_mutex_destroy(inMutex);
-	if (inMutex)
-		free(inMutex);
-
-	pthread_mutex_destroy(outMutex);
-	if (outMutex)
-		free(outMutex);
+	delete inMutex;
+	inMutex = nullptr;
+	delete outMutex;
+	outMutex = nullptr;
+	
 }
 
 const shmea::GString Sockets::getPort()
@@ -492,7 +487,7 @@ bool Sockets::readLists(Connection* origin)
 		/*if (version != clientVersion)
 			return false;*/
 
-		pthread_mutex_lock(inMutex);
+		inMutex->lock();
 
 		int64_t serviceNum = cData->getServiceNum();
 		std::map<int64_t, shmea::ServiceData*>::iterator itr = inboundLists.find(serviceNum);
@@ -504,7 +499,7 @@ bool Sockets::readLists(Connection* origin)
 			inboundLists[serviceNum] = cData;
 		}
 
-		pthread_mutex_unlock(inMutex);
+		inMutex->unlock();
 	}
 	return true;
 }
@@ -518,10 +513,10 @@ void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 {
 	while (!inboundLists.empty())
 	{
-		pthread_mutex_lock(inMutex);
+		inMutex->lock();
 		shmea::ServiceData* nextSD = (*inboundLists.begin()).second;
 		inboundLists.erase(inboundLists.begin());
-		pthread_mutex_unlock(inMutex);
+		inMutex->unlock();
 		GNet::Service::ExecuteService(serverInstance, nextSD, cConnection);
 	}
 }
@@ -539,11 +534,11 @@ void Sockets::writeLists(GServer* serverInstance)
 	if (!anyOutboundLists())
 		return;
 
-	pthread_mutex_lock(outMutex);
+	outMutex->lock();
 	shmea::ServiceData* nextOutbound = (*outboundLists.begin()).second;
 	outboundLists.erase(outboundLists.begin());
 	serverInstance->send(nextOutbound);
-	pthread_mutex_unlock(outMutex);
+	outMutex->unlock();
 }
 
 /*!
@@ -573,7 +568,7 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, 
 	if (!cData)
 		return;
 
-	pthread_mutex_lock(outMutex);
+	outMutex->lock();
 
 	int64_t serviceNum = cData->getServiceNum();
 	std::map<int64_t, shmea::ServiceData*>::iterator itr = outboundLists.find(serviceNum);
@@ -586,5 +581,5 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, 
 	}
 
 	serverInstance->wakeWriter();
-	pthread_mutex_unlock(outMutex);
+	outMutex->unlock();
 }

@@ -19,11 +19,12 @@
 
 #include "../Database/GString.h"
 #include "../Database/GLogger.h"
+#include "GMutex.h"
+#include "GThread.h"
 #include "socket.h"
 #include <errno.h>
 #include <iostream>
 #include <map>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +53,7 @@ public:
 	class GServer* serverInstance;
 	class Connection* cConnection;
 	const shmea::ServiceData* sockData;
-	pthread_t* sThread;
+	GThread* sThread;
 	shmea::GString command;
 	shmea::GString serviceKey;
 	int stIndex;
@@ -76,12 +77,12 @@ class GServer
 	int sockfd;
 	bool cryptEnabled;
 	Connection* localConnection;
-	pthread_t* commandThread;
-	pthread_t* writerThread;
-	pthread_mutex_t* clientMutex;
-	pthread_mutex_t* serverMutex;
-	pthread_mutex_t* writersMutex;
-	pthread_cond_t* writersBlock;
+	GThread* commandThread;
+	GThread* writerThread;
+	GMutex* clientMutex;
+	GMutex* serverMutex;
+	GMutex* writersMutex;
+	GCondition* writersBlock;
 	bool LOCAL_ONLY;
 	bool running;
 	std::map<shmea::GString, Service*> service_depot;
@@ -102,8 +103,8 @@ class GServer
 	int getSockFD();
 	const std::vector<Connection*> getClientConnections();
 	const std::vector<Connection*> getServerConnections();
-	pthread_mutex_t* getClientMutex();
-	pthread_mutex_t* getServerMutex();
+	GMutex& getClientMutex();
+	GMutex& getServerMutex();
 
 	bool isConnection(int, const fd_set&);
 	Connection* setupNewConnection(int);

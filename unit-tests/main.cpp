@@ -40,6 +40,6 @@ int main(int argc, char* argv[])
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");
 	printf("========================\n");
-
-	pthread_exit(EXIT_SUCCESS);
+	//no longer needed
+	//pthread_exit(EXIT_SUCCESS);
 }

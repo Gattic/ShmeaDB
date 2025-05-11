@@ -9,6 +9,9 @@ include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
 set(GNet_src_files
+	GThread.h
+	GCondition.h
+	GMutex.h
 	main.cpp
 	main.h
 	crypt.cpp
@@ -23,7 +26,12 @@ set(GNet_src_files
 add_library(GNet ${GNet_src_files})
 
 #Link libraries
-target_link_libraries(GNet ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(GNet Threads::Threads)
+
+# Link libraries
+if(WIN32)
+    target_link_libraries(GNet ws2_32)
+endif()
 
 install(TARGETS GNet EXPORT shmeaConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}

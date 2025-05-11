@@ -19,11 +19,22 @@
 
 #include "../Database/GString.h"
 #include "../Database/GLogger.h"
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <windows.h>         // Needed for HANDLE, CreateMutex, etc.
+    #pragma comment(lib, "ws2_32.lib") // Only for MSVC
+#else
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+    #include <netinet/tcp.h>
+    #include <sys/socket.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
+#include "GThread.h"
 #include <iostream>
 #include <netdb.h>
-#include <pthread.h>
 #include <map>
 #include <queue>
 #include <stdio.h>
@@ -31,9 +42,6 @@
 #include <string.h>
 #include <string>
 #include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <utility>
 #include <vector>
 
@@ -52,8 +60,8 @@ private:
 	static const shmea::GString ANYADDR;
 
 	shmea::GString PORT;
-	pthread_mutex_t* inMutex;
-	pthread_mutex_t* outMutex;
+	GMutex* inMutex;
+	GMutex* outMutex;
 	std::map<int64_t, shmea::ServiceData*> inboundLists; // Vector of sds instead? Make the key advanced to take hostnames, usernames,  etc; too
 	std::map<int64_t, shmea::ServiceData*> outboundLists; // Vector of sds instead?
 

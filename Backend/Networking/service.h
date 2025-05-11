@@ -18,7 +18,7 @@
 #define _GSERVICE
 
 #include "../Database/GString.h"
-#include <pthread.h>
+#include "GThread.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +46,7 @@ protected:
 	// timestamp variable to store service start and end time
 	static shmea::GString name;
 	int64_t timeExecuted;
-	pthread_t* cThread;
+	GThread* cThread;
 	bool running;
 
 	static void* launchService(void* y);

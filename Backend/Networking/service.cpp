@@ -64,12 +64,8 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* 
 	x->serverInstance = serverInstance;
 	x->cConnection = cConnection;
 	x->sockData = sockData;
-	x->sThread = new pthread_t[sizeof(pthread_t)];
+	x->sThread = new GThread(&launchService, x, true);
 
-	// launch a new service thread
-	pthread_create(x->sThread, NULL, &launchService, (void*)x);
-	if (x->sThread)
-		pthread_detach(*x->sThread);
 }
 
 /*!
@@ -79,7 +75,7 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* 
  */
 void* Service::launchService(void* y)
 {
-	// Helper function for pthread_create
+	// Helper function for pthread_create --> GThread
 
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
@@ -178,5 +174,6 @@ void Service::ExitService(newServiceArgs* x)
 	timeExecuted = time(NULL) - timeExecuted;
 	//printf("---------Service Exit: %s (%s: %s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str(), timeExecuted);
 
-	pthread_exit(0);
+	//No longer need pthread_exit(0) as it will safely from thread function
+	//pthread_exit(0);
 }
