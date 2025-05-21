@@ -20,7 +20,7 @@
 
 using namespace GNet;
 
-Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newIP)
+Connection::Connection(sock_t newSockFD, int newConnectionType, shmea::GString newIP) : sockfd(newSockFD)
 {
 	name = "";
 	ip = newIP;
@@ -50,7 +50,7 @@ Connection::~Connection()
 
 	name = "";
 	ip = "";
-	sockfd = -1;
+	sockfd = SHMEA_INVALID_SOCKET;
 	connectionType = EMPTY_TYPE;
 	cryptEnabled = true;
 	key = 420l;
@@ -65,8 +65,8 @@ void Connection::finish()
 	finished = true;
 
 	// close the connection
-	close(this->sockfd);
-	this->sockfd = -1;
+	CLOSESOCK(this->sockfd);
+	this->sockfd = SHMEA_INVALID_SOCKET;
 }
 
 shmea::GString Connection::getName() const

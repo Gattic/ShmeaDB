@@ -17,6 +17,7 @@
 #ifndef _GTYPES
 #define _GTYPES
 
+#include <cstdint>
 #include <ctime>
 #include <stdio.h>
 #include <stdlib.h>

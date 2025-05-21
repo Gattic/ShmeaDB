@@ -64,7 +64,8 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* 
 	x->serverInstance = serverInstance;
 	x->cConnection = cConnection;
 	x->sockData = sockData;
-	x->sThread = new GThread(&launchService, x, true);
+	x->sThread = new GThread();
+	x->sThread->start(&launchService, x);
 
 }
 

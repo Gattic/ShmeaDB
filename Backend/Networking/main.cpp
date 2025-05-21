@@ -14,6 +14,7 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#include "platform.h"
 #include "main.h"
 #include "../../services/bad_request.h"
 #include "../../services/handshake_client.h"
@@ -30,10 +31,19 @@ using namespace GNet;
 
 GNet::GServer::GServer()
 {
+	#ifdef _WIN32
+		WSADATA wsaData;
+		int wsaInitResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+		if (wsaInitResult != 0) {
+			printf("WSAStartup failed: %d\n", wsaInitResult);
+			exit(1);
+		}
+	#endif
+
 	logger = shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO));
 	logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	socks = shmea::GPointer<Sockets>(new Sockets(this));
-	sockfd = -1;
+	sockfd = SHMEA_INVALID_SOCKET;
 	cryptEnabled = true;
 	LOCAL_ONLY = false;
 	running = false;
@@ -63,11 +73,14 @@ GNet::GServer::GServer()
 
 GNet::GServer::~GServer()
 {
+	#ifdef _WIN32
+    	WSACleanup();
+	#endif
 	running = false;
-	shutdown(getSockFD(), 2);
+	shutdown(getSockFD(), SHMEA_SHUT_RDWR);
 
 	LOCAL_ONLY = true;
-	sockfd = -1;
+	sockfd = SHMEA_INVALID_SOCKET;
 	cryptEnabled = true;
 
 	if (localConnection)
@@ -476,14 +489,16 @@ void* GNet::GServer::commandLauncher(void* y)
 void GNet::GServer::commandCatcher(void*)
 {
 	// socket stuff
-	sockfd = -1;
+	sockfd = SHMEA_INVALID_SOCKET;
 	int max_sock = 0;
 
 	// dont want to crash unnecassarily
-	signal(SIGPIPE, SIG_IGN);
+	#ifndef _WIN32
+        signal(SIGPIPE, SIG_IGN);
+    #endif
 
 	sockfd = socks->openServerConnection();
-	if (sockfd < 0)
+	if (sockfd == SHMEA_INVALID_SOCKET)
 	{
 		printf("[SOCKS] Could not create server socket");
 		exit(0);
@@ -606,8 +621,8 @@ void GNet::GServer::commandCatcher(void*)
 				continue;
 
 			// close the client connection
-			shutdown(cConnection->sockfd, 2);
-			close(cConnection->sockfd);
+			shutdown(cConnection->sockfd, SHMEA_SHUT_RDWR);
+			CLOSESOCK(cConnection->sockfd);
 		}
 	}
 	//Empty client list and client look up
@@ -631,8 +646,8 @@ void GNet::GServer::commandCatcher(void*)
 				continue;
 
 			// close the server connection
-			shutdown(cConnection->sockfd, 2);
-			close(cConnection->sockfd);
+			shutdown(cConnection->sockfd, SHMEA_SHUT_RDWR);
+			CLOSESOCK(cConnection->sockfd);
 		}
 	}
 	//Empty server List and Server Look up
@@ -640,7 +655,7 @@ void GNet::GServer::commandCatcher(void*)
 	serverC.clear();
 
 	// close the socket
-	close(sockfd);
+	CLOSESOCK(sockfd);
 }
 
 void* GNet::GServer::LaunchInstanceLauncher(void* y)
@@ -735,7 +750,8 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 		// Launch the Connection with a connection request
 		// If you want to store or manage the thread, hold onto the pointer
 		// Otherwise, let it self-manage if `GThread` handles its own cleanup
-		GThread* launchInstanceThread = new GThread(LaunchInstanceLauncher, x, true); // auto-detach
+		GThread* launchInstanceThread = new GThread();
+		launchInstanceThread->start(LaunchInstanceLauncher, x); // auto-detach
 	}
 	/*else//For Testing Logouts
 	{
@@ -773,13 +789,13 @@ void GNet::GServer::ListWriter(void*)
 
 		// Blocking call
 		writersMutex->lock();
-		writersBlock->wait(writersMutex);
+		writersBlock->wait(*writersMutex);
 		writersMutex->unlock();
 
 		// We found a ServiceData!
 		if (waitError == 0)
 			socks->writeLists(this);
-		else if (waitError != ETIMEDOUT)
+		else if (waitError != SHMEA_ETIMEDOUT)
 			printf("[SOCKS] ListWriter Err: %d\n", waitError);
 	}
 }

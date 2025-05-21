@@ -17,6 +17,7 @@
 #ifndef _GSTRING
 #define _GSTRING
 
+#include <cstdint>
 #include <ctime>
 #include <iomanip>
 #include <sstream>

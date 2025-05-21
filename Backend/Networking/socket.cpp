@@ -106,8 +106,8 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 		// Having no buffer will force the socket to wait to send until the previous transaction is done.
 		// Ths knowledge cannot be found anywhere so please do not delete this comment
 		int bufVal = 0;
-		setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &bufVal, sizeof(bufVal));
-		setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufVal, sizeof(bufVal));
+		setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_CAST &bufVal, sizeof(bufVal));
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_CAST &bufVal, sizeof(bufVal));
 
 		status = connect(sockfd, result->ai_addr, result->ai_addrlen);
 		if (status < 0)
@@ -119,7 +119,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 // Get the size of the receive buffer
     int bufferSize;
     socklen_t bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, &bufferSizeLen) == 0) {
+    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
         std::cout << "Client Receive buffer size: " << bufferSize << " bytes" << std::endl;
     } else {
         perror("getsockopt");
@@ -127,7 +127,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 
 // Get the size of the receive buffer
     bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &bufferSize, &bufferSizeLen) == 0) {
+    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
         std::cout << "Client SEND buffer size: " << bufferSize << " bytes" << std::endl;
     } else {
         perror("getsockopt");
@@ -154,7 +154,7 @@ int Sockets::openServerConnection()
 #if (SO_REUSEPORT)
 	sockopts |= SO_REUSEPORT;
 #endif
-	setsockopt(sockfd, SOL_SOCKET, sockopts, &optval, sizeof(optval));
+	setsockopt(sockfd, SOL_SOCKET, sockopts, SOCKOPT_CAST &optval, sizeof(optval));
 
 	struct addrinfo* result;
 	struct addrinfo hints;
@@ -172,7 +172,7 @@ int Sockets::openServerConnection()
 // Get the size of the receive buffer
     int bufferSize = 0;
     socklen_t bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, &bufferSizeLen) == 0) {
+    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
         std::cout << "Server Receive buffer size: " << bufferSize << " bytes" << std::endl;
     } else {
         perror("getsockopt");
@@ -181,7 +181,7 @@ int Sockets::openServerConnection()
     bufferSize = 0;
     bufferSizeLen = sizeof(bufferSize);
     bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &bufferSize, &bufferSizeLen) == 0) {
+    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
         std::cout << "Server Write buffer size: " << bufferSize << " bytes" << std::endl;
     } else {
         perror("getsockopt");
@@ -237,7 +237,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	do
 	{
 		char buffer[1025];
-		bzero(buffer, 1025);
+		memset(buffer, 0, 1025);
 		*buffer = readOverflow;
 		unsigned int bytesLeft = eTotal-eByteCounter;
 		if(bytesLeft == 0) bytesLeft = 1024;

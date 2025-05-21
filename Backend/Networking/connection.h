@@ -17,7 +17,9 @@
 #ifndef _GCONNECTION
 #define _GCONNECTION
 
+#include "platform.h"
 #include "../Database/GString.h"
+#include "connection.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,10 +52,10 @@ public:
 	static const int SERVER_TYPE = 0;
 	static const int CLIENT_TYPE = 1;
 
-	int sockfd;
+	sock_t sockfd;
 	shmea::GString overflow;
 
-	Connection(int, int, shmea::GString);
+	Connection(sock_t, int, shmea::GString);
 	Connection(const Connection&);
 	~Connection();
 	void finish();

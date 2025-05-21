@@ -9,9 +9,13 @@ include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
 set(GNet_src_files
+	platform.h
 	GThread.h
+	GThread.cpp
 	GCondition.h
+	GCondition.cpp
 	GMutex.h
+	GMutex.cpp
 	main.cpp
 	main.h
 	crypt.cpp

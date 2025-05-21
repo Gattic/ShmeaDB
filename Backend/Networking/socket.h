@@ -17,31 +17,36 @@
 #ifndef _GSOCKET
 #define _GSOCKET
 
+#include "platform.h"
 #include "../Database/GString.h"
 #include "../Database/GLogger.h"
 #ifdef _WIN32
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <windows.h>         // Needed for HANDLE, CreateMutex, etc.
-    #pragma comment(lib, "ws2_32.lib") // Only for MSVC
+    #ifdef _MSC_VER
+	#pragma comment(lib, "ws2_32.lib")
+	#endif
 #else
     #include <arpa/inet.h>
     #include <netinet/in.h>
     #include <netinet/tcp.h>
     #include <sys/socket.h>
     #include <sys/types.h>
+	#include <sys/select.h>
     #include <unistd.h>
+	#include <netdb.h>
 #endif
 #include "GThread.h"
+#include "GMutex.h"
+#include "GCondition.h"
 #include <iostream>
-#include <netdb.h>
 #include <map>
 #include <queue>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <sys/select.h>
 #include <utility>
 #include <vector>
 

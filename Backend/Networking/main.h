@@ -17,6 +17,7 @@
 #ifndef _GNET
 #define _GNET
 
+#include "platform.h"
 #include "../Database/GString.h"
 #include "../Database/GLogger.h"
 #include "GMutex.h"
@@ -29,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <sys/signal.h>
 #include <unistd.h>
 #include <vector>
 /*#include <openssl/bio.h>
@@ -74,7 +74,7 @@ class GServer
 	std::map<shmea::GString, std::vector<int> >serverCLookUp;
 	std::vector<Connection*> serverC;
 
-	int sockfd;
+	sock_t sockfd;
 	bool cryptEnabled;
 	Connection* localConnection;
 	GThread* commandThread;
