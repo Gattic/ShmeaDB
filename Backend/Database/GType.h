@@ -17,7 +17,11 @@
 #ifndef _GTYPES
 #define _GTYPES
 
-#include <cstdint>
+#ifdef _WIN32
+	#include <winsock2.h>
+    #include <ws2tcpip.h>
+	#include <stdint.h>
+#endif
 #include <ctime>
 #include <stdio.h>
 #include <stdlib.h>

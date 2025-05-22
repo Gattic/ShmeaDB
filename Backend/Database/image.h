@@ -17,6 +17,10 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
+#ifdef _WIN32
+	#include <winsock2.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <string>

@@ -64,7 +64,14 @@ set(MAIN_SRC_FILES
 )
 
 # Build target: use executable, not shared lib
-add_executable(${PROJECT_NAME} ${MAIN_SRC_FILES})
+#add_executable(${PROJECT_NAME} ${MAIN_SRC_FILES})
+
+#Build target should be shared library, because main is not even defined
+#Windows is a lot stricter about defining main
+add_library(${PROJECT_NAME} STATIC ${MAIN_SRC_FILES})
+if(WIN32)
+    target_link_options(${PROJECT_NAME} PRIVATE -mconsole)
+endif()
 
 # Link with internal components
 target_link_libraries(${PROJECT_NAME} PUBLIC

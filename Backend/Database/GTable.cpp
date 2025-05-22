@@ -138,7 +138,7 @@ void GTable::importFromFile(const GString& fname)
 	do
 	{
 		shmea::GList newRow;
-		bzero(buffer, MAX_LINE_SIZE);
+		memset(buffer, 0, MAX_LINE_SIZE);
 
 		// get the current line
 		char readBuffer[MAX_LINE_SIZE];

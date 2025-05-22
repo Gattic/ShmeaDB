@@ -73,7 +73,11 @@ SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 		if (stat(dirname.c_str(), &info) != 0)
 		{
 			// make the directory
-			int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+			#ifdef _WIN32
+				int status = mkdir(dirname.c_str());
+			#else
+				int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+			#endif
 			if (status < 0)
 			{
 				printf("[DB] %s mkdir failed\n", dirname.c_str());

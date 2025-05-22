@@ -38,6 +38,15 @@ freely, subject to the following restrictions:
     3. This notice may not be removed or altered from any source
     distribution.
 */
+
+#ifdef _WIN32
+    #include <direct.h>
+    #define MKDIR(path) _mkdir(path)
+#else
+    #include <sys/stat.h>
+    #define MKDIR(path) mkdir(path, 0777)
+#endif
+
 #include "png-helper.h"
 #include "image.h"
 #include "lodepng.h"
@@ -196,7 +205,7 @@ bool create_directories(const std::string& path)
 	if (current_path.empty())
 	    continue;
 	//Create directory
-	if (mkdir(current_path.c_str(), 0777) && errno != EEXIST)
+	if (MKDIR(current_path.c_str()) && errno != EEXIST)
 	{
 	    std::cerr << "[ERROR] Could not create directory: " << current_path << std::endl;
 	    return false; //Return false if directory fails to be created

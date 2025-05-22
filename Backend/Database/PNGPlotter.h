@@ -2,6 +2,11 @@
 #ifndef PNGPLOTTER_H
 #define PNGPLOTTER_H
 
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <stdint.h>
+	#define M_PI 3.14159265358979323846
+#endif
 #include "image.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H

@@ -17,6 +17,7 @@
 #ifndef _GPOINTER
 #define _GPOINTER
 
+#include "../Networking/GMutex.h"
 #include "GDeleter.h"
 #include <ctime>
 #include <stdio.h>
@@ -33,14 +34,14 @@ protected:
 
 	T* data;
 	unsigned int* refCount;
-	pthread_mutex_t* refMutex;
+	GMutex* refMutex;
 
 public:
 
 	explicit GPointer(T* newData = NULL) : 
 		data(newData),
 		refCount(newData ? new unsigned int(1) : NULL),
-		refMutex(NULL) {}
+		refMutex(newData ? new GMutex() : NULL) {}
 
 	GPointer(const GPointer<T, Deleter>& g2) :
 		data(NULL),
@@ -68,6 +69,7 @@ public:
 			// Store local copies before nulling members
 			T* dataToDelete = data;
 			unsigned int* countToDelete = refCount;
+			GMutex* mutextoDelete = refMutex;
 			
 			// Null members first
 			data = NULL;
@@ -80,6 +82,7 @@ public:
 				Deleter(dataToDelete);
 			}
 			delete countToDelete;
+			delete mutextoDelete;
 		} else {
 			// Just null our references
 			data = NULL;
@@ -95,20 +98,27 @@ public:
 
 	unsigned int increment()
 	{
-		if (refCount)
+		if (refCount && refMutex)
 		{
+			refMutex->lock();
 			++(*refCount);
+			refMutex->unlock();
+			return *refCount;
 		}
-		return refCount ? *refCount : 0;
+		return 0;
 	}
 
 	unsigned int decrement()
 	{
-		if (refCount)
+		if (refCount && refMutex)
 		{
+			refMutex->lock();
 			--(*refCount);
+			unsigned int count = *refCount;
+			refMutex->unlock();
+			return count;
 		}
-		return refCount ? *refCount : 0;
+		return 0;
 	}
 
 	T& operator*()

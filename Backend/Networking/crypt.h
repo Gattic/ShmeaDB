@@ -17,7 +17,9 @@
 #ifndef _CRYPT
 #define _CRYPT
 
-#include <cstdint>
+#ifdef _WIN32
+	#include <stdint.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

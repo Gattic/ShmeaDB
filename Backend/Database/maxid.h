@@ -17,16 +17,23 @@
 #ifndef _DB_MAXID
 #define _DB_MAXID
 
+#ifdef _WIN32
+	#include <stdint.h>
+	#include <winsock2.h>
+	#include <windows.h>
+#else
+	#include <sys/signal.h>
+	#include <sys/stat.h>
+	#include <pthread.h>
+#endif
+
 #include <algorithm>
 #include <dirent.h>
 #include <map>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <sys/signal.h>
-#include <sys/stat.h>
 #include <vector>
 #include "GString.h"
 

@@ -61,7 +61,7 @@ void GList::loadWords(const GString& fname)
 	char *ptr = NULL;
 
 	shmea::GList newRow;
-	bzero(buffer, MAX_LINE_SIZE);
+	memset(buffer, 0,  MAX_LINE_SIZE);
 	while( !feof( fd ) )
 	{
 		fgets(&buffer[0], MAX_LINE_SIZE, fd);

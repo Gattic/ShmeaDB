@@ -16,9 +16,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GLogger.h"
 #include "GType.h"
-#include <sys/time.h>
+#ifdef _WIN32
+    #include <direct.h>
+    #define mkdir(dir, mode) _mkdir(dir)
+    #include <sys/stat.h>
+#else
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
+#endif
 #include <time.h>
-#include <sys/stat.h>
 
 using namespace shmea;
 
@@ -214,24 +221,20 @@ bool GLogger::surpressCheck(int logType) const
 
 shmea::GString GLogger::getDateTime() const
 {
-	char timeString[100];
-	struct timeval tv;
-	struct timezone tz;
-	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
-	shmea::GString strDateTime(timeString);
-	return strDateTime;
+    char timeString[100];
+    time_t now = time(0);
+    struct tm *timeinfo = localtime(&now);
+    strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
+    return shmea::GString(timeString);
 }
 
 shmea::GString GLogger::generateLogFName() const
 {
 	char timeString[100];
-	struct timeval tv;
-	struct timezone tz;
-	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", localtime(&tv.tv_sec));
-	shmea::GString strDateTime(timeString);
-	return strDateTime;
+    time_t now = time(0);
+    struct tm *timeinfo = localtime(&now);
+    strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", timeinfo);
+    return shmea::GString(timeString);
 }
 
 void GLogger::log(int logType, shmea::GString category, shmea::GString message)
