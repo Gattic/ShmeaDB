@@ -122,9 +122,9 @@ void* Service::launchService(void* y)
 		}
 	}
 
-	if (x)
+	/*if (x)
 		delete x;
-
+*/
 	// delete the Connection
 	if (cConnection->isFinished())
 		delete cConnection;
