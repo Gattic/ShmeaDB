@@ -535,13 +535,13 @@ void GNet::GServer::commandCatcher(void*)
 				Connection* cConnection = clientC[clientCIndexs[i]];
 
 				// Valid socket descriptor?
-				if (cConnection->sockfd < 0)
+				if (cConnection->sockfd == SHMEA_INVALID_SOCKET)
 					continue;
 
 				instanceList.push_back(cConnection);
 				FD_SET(cConnection->sockfd, &fdarr);
-				if (cConnection->sockfd > max_sock)
-					max_sock = cConnection->sockfd;
+				if (cConnection->sockfd > (sock_t)max_sock)
+					max_sock = (int)cConnection->sockfd;
 			}
 		}
 
@@ -556,13 +556,13 @@ void GNet::GServer::commandCatcher(void*)
 				Connection* cConnection = serverC[serverCIndexs[i]];
 
 				// Valid socket descriptor?
-				if (cConnection->sockfd < 0)
+				if (cConnection->sockfd == SHMEA_INVALID_SOCKET)
 					continue;
 
 				instanceList.push_back(cConnection);
 				FD_SET(cConnection->sockfd, &fdarr);
-				if (cConnection->sockfd > max_sock)
-					max_sock = cConnection->sockfd;
+				if (cConnection->sockfd > (sock_t)max_sock)
+					max_sock = (int)cConnection->sockfd;
 			}
 		}
 
@@ -617,7 +617,7 @@ void GNet::GServer::commandCatcher(void*)
 			Connection* cConnection = clientC[clientCIndexs[i]];
 
 			// Valid socket descriptor?
-			if (cConnection->sockfd < 0)
+			if (cConnection->sockfd == SHMEA_INVALID_SOCKET)
 				continue;
 
 			// close the client connection
@@ -642,7 +642,7 @@ void GNet::GServer::commandCatcher(void*)
 			Connection* cConnection = serverC[serverCIndexs[i]];
 
 			// Valid socket descriptor?
-			if (cConnection->sockfd < 0)
+			if (cConnection->sockfd == SHMEA_INVALID_SOCKET)
 				continue;
 
 			// close the server connection

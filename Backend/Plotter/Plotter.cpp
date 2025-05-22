@@ -287,7 +287,7 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
     
     // Draw any arrows that have been added
     if (!arrows.empty()) {
-        printf("Drawing %lu arrows in the coordinate system - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+        printf("Drawing %llu arrows in the coordinate system - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
                arrows.size(), 
                plotter.dataMapper->getCurrentXRange().min, 
                plotter.dataMapper->getCurrentXRange().max,
@@ -1639,7 +1639,7 @@ void Plotter::drawLineSegment(int x1, int y1, int x2, int y2, const RGBA& color,
     }
     else {
         if (segmentIndex > 0) {
-            printf("Warning: Line segment %lu has points outside the valid drawing area\n", segmentIndex);
+            printf("Warning: Line segment %llu has points outside the valid drawing area\n", segmentIndex);
         }
         
         // Try to draw with clipping to viewport
@@ -2168,7 +2168,7 @@ void Plotter::plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground
         return;
     }
     
-    printf("Plotting %lu arrows\n", arrows.size());
+    printf("Plotting %llu arrows\n", arrows.size());
     
     // Get the current data ranges from DataMapper
     DataMapper::AxisRange xRange = dataMapper->getCurrentXRange();
