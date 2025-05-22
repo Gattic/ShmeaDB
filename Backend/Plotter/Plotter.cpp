@@ -259,13 +259,9 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         DataMapper::AxisRange yRange = plotter.dataMapper->getCurrentYRange();
         plotter.setupStandardAxisTicks(xRange, yRange, 50);
     }
-    
+   
     // Render the appropriate chart based on the data provided
-    if (!series.empty()) {
-        // Plot the series data
-        plotter.plotChart(series);
-    }
-    else if (hasLabeledHistogramData) {
+    if (hasLabeledHistogramData) {
         // Plot histogram with custom labels
         plotter.plotHistogramWithLabels(histogramBins, histogramLabels, histogramColor);
     }
@@ -274,14 +270,27 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         plotter.plotHistogram(histogramBins, histogramColor, histogramShowXAxisLabels);
     }
     else if (hasCandlestickData) {
+	printf("Plotting Candle\n");
         // Plot candlestick chart
         plotter.plotCandlestickChart(candlestickData, bullishColor, bearishColor);
+
+	if(!series.empty())
+	{
+	    printf("Plotting Series\n");
+	    plotter.plotChart(series,
+		plotter.dataMapper->getCurrentXRange(),
+		plotter.dataMapper->getCurrentYRange());
+	}
     }
     else if (hasClusterData) {
         // Plot cluster chart
         plotter.plotClusters(clusterData, clusterLabels, centroids);
     }
-    else if (arrows.empty()) {
+    else if(!series.empty())
+    {
+	plotter.plotChart(series);
+    }
+    else {
         printf("Warning: No chart data provided to ChartBuilder. Nothing to render.\n");
     }
     
@@ -298,7 +307,7 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         // This will use the DataMapper's current X and Y ranges that we already set
         plotter.plotArrows(arrows, false);
     }
-    
+   
     // Save the chart
     plotter.saveAsPNG(filename, folder);
     
@@ -447,7 +456,10 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
       savedMarginBottom(0),
       savedMarginLeft(0),
       chartTitle(""),
-      chartTitleFontSize(36)
+      chartTitleFontSize(36),
+      bullishColor(0x03, 0xC0, 0x3C, 0xFF),
+      bearishColor(0xFF, 0x47, 0x45, 0xFF),
+      lastLegendY(0)
 {
     // Initialize boolean flags
     forceAlignCentroids = true;  // Default to aligning centroids with cluster centers
@@ -1160,6 +1172,9 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
         // Use bright pink/red for bearish candles
         useBearishColor = colorManager->getElementColor("bearish");
     }
+
+    this->bullishColor = useBullishColor;
+    this->bearishColor = useBearishColor;    
     
     // Variables for margin storage and positioning
     unsigned int originalTopMargin, originalRightMargin;
@@ -1168,7 +1183,9 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Prepare the chart with standard configuration - use 220px right margin for candlestick charts
     prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 32, 220,
                         &originalTopMargin, &originalRightMargin, &titleY, &legendY);
-    
+   
+    this->lastLegendY = legendY;
+ 
     // Convert to DataMapper::CandleData
     std::vector<DataMapper::CandleData> mapperCandles = convertToCandleData(candles);
     
@@ -2129,6 +2146,74 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     // chartLayout->setMarginRight(originalRightMargin);
     // chartLayout->setMarginTop(originalTopMargin);
 }
+
+void Plotter::plotChart(const std::vector<Series>& seriesList,
+                        const DataMapper::AxisRange& xRange,
+                        const DataMapper::AxisRange& yRange)
+{
+    if (seriesList.empty()) {
+        printf("Error: No series data to plot.\n");
+        return;
+    }
+
+    
+    std::vector<std::string> legendLabels;
+    std::vector<RGBA> legendColors;
+
+    legendLabels.push_back("Bullish");
+    legendLabels.push_back("Bearish");
+
+    legendColors.push_back(bullishColor);
+    legendColors.push_back(bearishColor);
+
+    for (size_t i = 0; i < seriesList.size(); ++i) {
+        legendLabels.push_back(seriesList[i].name);
+        legendColors.push_back(seriesList[i].color);
+    }
+
+
+    chartStyler->addLegend(legendLabels, legendColors,
+                           chartLayout->getMarginLeft(), lastLegendY, 16);
+                           
+    // You assume margins, canvas, title, legend, etc., are already set up externally.
+    // Only plot the series using the given ranges.
+
+    for (size_t i = 0; i < seriesList.size(); ++i) {
+        const Series& series = seriesList[i];
+        if (series.data.empty()) continue;
+
+        RGBA color = series.color;
+
+        if (series.type == SERIES_LINE && series.data.size() >= 2) {
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                DataMapper::Point p1 = dataMapper->mapDataToScreen(
+                    series.data[j - 1].x, series.data[j - 1].y, xRange, yRange);
+                DataMapper::Point p2 = dataMapper->mapDataToScreen(
+                    series.data[j].x, series.data[j].y, xRange, yRange);
+
+                drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, series.lineWidth, j);
+            }
+        }
+        else if (series.type == SERIES_SCATTER) {
+            for (size_t j = 0; j < series.data.size(); ++j) {
+                DataMapper::Point p = dataMapper->mapDataToScreen(
+                    series.data[j].x, series.data[j].y, xRange, yRange);
+
+                int ssaaX = ssaaManager->scaleX(p.x);
+                int ssaaY = ssaaManager->scaleY(p.y);
+                int ssaaSize = ssaaManager->scaleSize(series.pointSize);
+
+                if (isCoordinateValid(ssaaX, ssaaY)) {
+                    shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
+                }
+            }
+        }
+        else if (series.type == SERIES_AREA) {
+            printf("Area charts not yet implemented.\n");
+        }
+    }
+}
+
 
 // Helper method to prepare cluster colors
 std::vector<RGBA> Plotter::prepareClusterColors(int numClusters) {

@@ -74,14 +74,14 @@ struct Arrow {
 
 // Candlestick data structure
 struct CandleData {
-    double timestamp;
+    int64_t timestamp;
     double open;
     double close;
     double high;
     double low;
     
     CandleData() : timestamp(0), open(0), close(0), high(0), low(0) {}
-    CandleData(double t, double o, double c, double h, double l)
+    CandleData(int64_t t, double o, double c, double h, double l)
         : timestamp(t), open(o), close(c), high(h), low(l) {}
 };
 
@@ -255,7 +255,12 @@ public:
                   const std::string& title = "Chart Visualization",
                   const std::string& xAxisLabel = "X Value",
                   const std::string& yAxisLabel = "Y Value");
-                  
+         
+    void plotChart(const std::vector<Series>& seriesList,
+                        const DataMapper::AxisRange& xRange,
+                        const DataMapper::AxisRange& yRange);
+
+         
     // Arrow visualization methods
     void plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground = false);
     void plotArrow(const Arrow& arrow, bool redrawBackground = false);
@@ -312,6 +317,11 @@ public:
 private:
     friend class ChartBuilder;
     
+    RGBA bullishColor;
+    RGBA bearishColor;
+    int lastLegendY;
+    
+
     // Component pointers
     ColorManager* colorManager;
     SuperSamplingManager* ssaaManager;
