@@ -30,7 +30,7 @@ set(GNet_src_files
 add_library(GNet ${GNet_src_files})
 
 #Link libraries
-target_link_libraries(GNet Threads::Threads)
+target_link_libraries(GNet ${CMAKE_THREAD_LIBS_INIT})
 
 # Link libraries
 if(WIN32)
