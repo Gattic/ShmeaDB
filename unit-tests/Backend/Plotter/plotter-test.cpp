@@ -1,3 +1,9 @@
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <stdint.h>
+	#define M_PI 3.14159265358979323846
+#endif
+
 #include "plotter-test.h"
 #include "../../../Backend/Plotter/Plotter.h"
 #include "../../../Backend/Plotter/GridRenderer.h"

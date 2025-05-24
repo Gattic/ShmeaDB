@@ -12,7 +12,17 @@
 
 // === This is the primary unit testing function:
 // void G_assert(const char* fileName, int lineNo, const char* failureMsg, bool expr)
+/*
+    GCC (Linux): Sometimes (especially in older versions) is more permissive, and might implicitly convert str_c to a temporary GString using your GString(const char*) constructor if it can, and then call your member function.
 
+    MSVC (Windows): Strictly follows the rules and does not perform this conversion for the left-hand side unless you have a non-member overload for operator< that takes (const char*, const GString&).
+
+Bottom Line:
+
+    If the left operand is not your class type, member overloads are ignored!
+
+    This is standard C++ overload resolution. If you want const char* < GString to work, you must provide a non-member function:
+*/
 void GStringUnitTest()
 {
 	const char* str_c = "Test123!\0";
@@ -31,7 +41,11 @@ void GStringUnitTest()
 
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str < str3);
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str2 < str3);
-	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str_c < str3);
+
+	//This is where the difference between GCC and MSVC comes into play:\
+	//GCC will convert str_c to a temporary GString and then call the member function
+	//MSVC will not convert str_c to a temporary GString and will call the member function
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", shmea::GString(str_c) < str3);
 
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= "Test123!");
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= str2);

@@ -48,9 +48,9 @@ Sockets::Sockets(const GServer* serverInstance) : logger(serverInstance->logger)
 Sockets::~Sockets()
 {
 	delete inMutex;
-	inMutex = nullptr;
+	inMutex = NULL;
 	delete outMutex;
-	outMutex = nullptr;
+	outMutex = NULL;
 	
 }
 

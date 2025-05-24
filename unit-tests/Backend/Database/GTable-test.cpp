@@ -42,8 +42,8 @@ void GTableUnitTest()
 	//
 	// Test file I/O
 	//
-	shmea::GString fname( "AAPLtestTable.csv" );
-	shmea::GString outputFile( "outputTest.csv" );
+	shmea::GString fname( "../AAPLtestTable.csv" );
+	shmea::GString outputFile( "../outputTest.csv" );
 	shmea::GTable testTable( fname, ',', shmea::GTable::TYPE_FILE );
 
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumCols() Failed==============", testTable.numberOfCols() == 6);

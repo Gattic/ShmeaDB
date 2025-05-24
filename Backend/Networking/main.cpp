@@ -90,19 +90,19 @@ GNet::GServer::~GServer()
 	if (writerThread) delete writerThread;
 
 	delete clientMutex;
-	clientMutex = nullptr;
+	clientMutex = NULL;
 
 	delete serverMutex;
-	serverMutex = nullptr;
+	serverMutex = NULL;
 
 	delete writersMutex;
-	writersMutex = nullptr;
+	writersMutex = NULL;
 
 	if (writersBlock)
 	{
 		delete writersBlock;
 	}
-	writersBlock = nullptr;
+	writersBlock = NULL;
 }
 
 void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool networkingDisabled)

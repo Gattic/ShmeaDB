@@ -17,7 +17,7 @@ void* threadFuncWrapper(void* lpParam) {
     ThreadParams* params = static_cast<ThreadParams*>(lpParam);
     params->func(params->arg);
     delete params;
-    return nullptr;
+    return NULL;
 }
 #endif
 
@@ -28,10 +28,10 @@ bool GThread::start(void* (*func)(void*), void* arg) {
     started = true;
     ThreadParams* params = new ThreadParams{func, arg};
 #ifdef _WIN32
-    handle = CreateThread(nullptr, 0, threadFuncWrapper, params, 0, nullptr);
-    return handle != nullptr;
+    handle = CreateThread(NULL, 0, threadFuncWrapper, params, 0, NULL);
+    return handle != NULL;
 #else
-    return pthread_create(&handle, nullptr, threadFuncWrapper, params) == 0;
+    return pthread_create(&handle, NULL, threadFuncWrapper, params) == 0;
 #endif
 }
 
@@ -39,6 +39,6 @@ void GThread::join() {
 #ifdef _WIN32
     if (handle) WaitForSingleObject(handle, INFINITE);
 #else
-    if (started) pthread_join(handle, nullptr);
+    if (started) pthread_join(handle, NULL);
 #endif
 }
