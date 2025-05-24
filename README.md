@@ -31,20 +31,20 @@ make install
 
 ## Visual Studio Preparations (WINDOWS ONLY)
 1. Make sure you have `Desktop development with C++` installed
-
-# Download VCPKG
+2. Download https://strawberryperl.com/
+3. Install strawberry and set the path to environment variables (Example Env Var PATH add C:\Strawberry\c\bin)
+4. Download VCPKG
 ```
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
 Add to your PATH
 ```
-# Download freetype
+5. Download freetype
 ```
 vcpkg install freetype
 ```
-
-# Run program
+6. Run program
 ```
 make the build directory in ShmeaDB
 cd build
