@@ -17,7 +17,7 @@ Windows
 ```
 mkdir build
 cd build
-cmake .. -G Ninja -DCMAKE_TOOLCHAIN_FILE="C:/Users/Matt/dev/vcpkg/scripts/buildsystems/vcpkg.cmake"
+cmake .. -G Ninja -DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg>/vcpkg/scripts/buildsystems/vcpkg.cmake"
 ninja
 ninja run
 OPTIONAL (if you want to see output):

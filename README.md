@@ -50,5 +50,5 @@ make the build directory in ShmeaDB
 cd build
 cmake .. -G Ninja
 ninja
-cmake --install .
+ninja install
 ```
