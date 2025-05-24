@@ -14,14 +14,6 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#ifdef _WIN32
-    #include <direct.h>
-    #define GETCWD _getcwd
-#else
-    #include <unistd.h>
-    #define GETCWD getcwd
-#endif
-
 #include "GList.h"
 #include "GType.h"
 
@@ -54,13 +46,6 @@ void GList::copy(const GList& list2)
 
 void GList::loadWords(const GString& fname)
 {
-	char cwd[1024];
-	if (GETCWD(cwd, sizeof(cwd)) != NULL) {
-		printf("[DEBUG] Current working directory: %s\n", cwd);
-	} else {
-		perror("getcwd() error");
-	}
-
 	if (fname.length() == 0)
 		return;
 

@@ -20,9 +20,18 @@ https://discord.gg/4DN2WMm
 This is a database and networking library for C++.
 This is coded in C++98.
 
+## Linux/MacOS:
+```
+mkdir build
+cd build
+cmake ../
+make install
+```
 
-## Visual Studio Preparations
-1. Make sure you have Desktop development with C++
+
+## Visual Studio Preparations (WINDOWS ONLY)
+1. Make sure you have `Desktop development with C++` installed
+
 # Download VCPKG
 1. git clone https://github.com/microsoft/vcpkg.git
 2. cd vcpkg
@@ -33,17 +42,10 @@ This is coded in C++98.
 1. vcpkg install freetype
 
 # Run program
-1. make the build directory in ShmeaDB
-2. cd build
-3. cmake .. -G Ninja
-4. ninja
-5. cmake --install .
-
-# Run Unit Tests
-1. vcpkg install freetype
-2. cd unit-tests
-3. make the build directory in unit-tests
-4. cd build
-5. cmake .. -G Ninja -DCMAKE_TOOLCHAIN_FILE="C:/Users/Matt/dev/vcpkg/scripts/buildsystems/vcpkg.cmake"
-6. ninja
-7. .\shmea-unit-tests.exe
+```
+make the build directory in ShmeaDB
+cd build
+cmake .. -G Ninja
+ninja
+cmake --install .
+```
