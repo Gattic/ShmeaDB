@@ -33,13 +33,16 @@ make install
 1. Make sure you have `Desktop development with C++` installed
 
 # Download VCPKG
-1. git clone https://github.com/microsoft/vcpkg.git
-2. cd vcpkg
-3. .\bootstrap-vcpkg.bat
-4. Add to your PATH
-
+```
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+Add to your PATH
+```
 # Download freetype
-1. vcpkg install freetype
+```
+vcpkg install freetype
+```
 
 # Run program
 ```
