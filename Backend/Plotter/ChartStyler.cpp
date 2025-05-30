@@ -43,9 +43,24 @@ void ChartStyler::prepareLegendColors(const std::vector<std::string>& labels, co
 }
 
 int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, 
-                         int x, int y, unsigned int fontSize) {
-    if (labels.size() != colors.size() || labels.empty()) {
+                         int x, int y, unsigned int fontSize, bool _new, bool redraw) {
+    if (labels.size() != colors.size()) {
         return 0;
+    }
+
+    if (legendLabels.size() == 0 || _new)
+    {
+	legendLabels = std::vector<std::string>();
+	legendColors = std::vector<RGBA>();
+    }
+
+    if(!redraw)
+    {
+	for(unsigned int i = 0; i < labels.size(); ++i)
+	{
+	    legendLabels.push_back(labels[i]);
+	    legendColors.push_back(colors[i]);
+	}
     }
     
     // Calculate dimensions based on content
@@ -58,11 +73,11 @@ int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::ve
     int totalWidth = 0;
     std::vector<int> textWidths; // Store individual text widths for later use
     
-    for (size_t i = 0; i < labels.size(); ++i) {
-        int textWidth = layout.estimateTextWidth(labels[i], fontSize);
+    for (size_t i = 0; i < legendLabels.size(); ++i) {
+        int textWidth = layout.estimateTextWidth(legendLabels[i], fontSize);
         textWidths.push_back(textWidth);
         totalWidth += colorIndicatorSize + colorTextPadding + textWidth;
-        if (i < labels.size() - 1) {
+        if (i < legendLabels.size() - 1) {
             totalWidth += minItemSpacing;
         }
     }
@@ -78,7 +93,7 @@ int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::ve
     // Draw each legend item with exact positioning - now horizontally aligned
     int currentX = x + sidePadding; // Start with left padding
     
-    for (size_t i = 0; i < labels.size(); ++i) {
+    for (size_t i = 0; i < legendLabels.size(); ++i) {
         // Draw color indicator dot
         int dotX = currentX;
         int dotY = y + legendHeight/2; // Centered vertically
@@ -91,7 +106,7 @@ int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::ve
         int ssaaRadius = layout.getSsaaFactor() * (colorIndicatorSize/2);
         
         // Check if this is the "Centroid" label which should use the special centroid style
-        bool isCentroid = (i == labels.size() - 1 && labels[i] == "Centroid");
+        bool isCentroid = (i == legendLabels.size() - 1 && legendLabels[i] == "Centroid");
         
         if (isCentroid) {
             // Draw white circle with colored cross, exactly matching the main visualization style
@@ -131,7 +146,7 @@ int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::ve
                 ssaaX,           // Use scaled x coordinate
                 ssaaY,           // Use scaled y coordinate
                 ssaaRadius,      // Use scaled radius 
-                colors[i],
+                legendColors[i],
                 true);
         }
         
@@ -139,7 +154,7 @@ int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::ve
         text.drawText(
             dotX + colorTextPadding,
             dotY,
-            labels[i],
+            legendLabels[i],
             this->colors.getElementColor("legend"),
             fontSize,
             false);
@@ -153,25 +168,25 @@ int ChartStyler::addLegend(const std::vector<std::string>& labels, const std::ve
 }
 
 int ChartStyler::createClusterLegend(const std::vector<RGBA>& clusterColors, int numClusters, int x, int y) {
-    std::vector<std::string> legendLabels;
-    std::vector<RGBA> legendColors;
+    std::vector<std::string> cLegendLabels;
+    std::vector<RGBA> cLegendColors;
     
     // Add cluster entries
     for (int i = 0; i < numClusters; ++i) {
         char label[32];
         std::sprintf(label, "Cluster %d", i);
-        legendLabels.push_back(label);
-        legendColors.push_back(clusterColors[i]);
+        cLegendLabels.push_back(label);
+        cLegendColors.push_back(clusterColors[i]);
     }
     
     // Add the centroid legend item
-    legendLabels.push_back("Centroid");
-    legendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // White for centroid
+    cLegendLabels.push_back("Centroid");
+    cLegendColors.push_back(RGBA(0xFF, 0xFF, 0xFF, 0xFF)); // White for centroid
     
     // Process colors to ensure opacity
     std::vector<std::string> processedLabels;
     std::vector<RGBA> processedColors;
-    prepareLegendColors(legendLabels, legendColors, processedLabels, processedColors);
+    prepareLegendColors(cLegendLabels, cLegendColors, processedLabels, processedColors);
     
     // Add the legend to the visualization
     return addLegend(processedLabels, processedColors, x, y, 16);
@@ -332,12 +347,12 @@ void ChartStyler::drawCandlestickPriceInfo(const std::vector<DataMapper::CandleD
     int percentWidth = layout.estimateTextWidth(percentText, 22);
     
     // Calculate minimum spacing between components
-    int minComponentSpacing = 30;
+    int minComponentSpacing = 20;
     int indicatorSize = 8;
     int indicatorSpace = 40; // Space for indicator including padding
     
     // Calculate box dimensions
-    int sidePadding = 20;
+    int sidePadding = 10;
     int boxWidth = sidePadding * 2 + closeWidth + changeWidth + percentWidth + indicatorSpace + 
                  minComponentSpacing * 2; // Two spaces between three components plus indicator
     int boxHeight = 40;
@@ -357,7 +372,7 @@ void ChartStyler::drawCandlestickPriceInfo(const std::vector<DataMapper::CandleD
     int spacing = extraSpace / 2; // Two spaces between three components
     
     // Draw components with dynamically calculated positions
-    int textX = boxX + sidePadding;
+    int textX = boxX + (sidePadding * 2);
     text.drawText(textX, textY, closeText, colors.getElementColor("legend"), 22, false);
     
     textX += closeWidth + spacing;

@@ -235,7 +235,7 @@ public:
     void addTitle(const std::string& text, unsigned int fontSize = 24);
     void addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize = 18);
     int addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors,
-                  int x, int y, unsigned int fontSize = 18);
+                  int x, int y, unsigned int fontSize = 18, bool _new = false, bool redraw = false);
     void setYAxisLabel(const std::string& label);
     
     // Logo handling

@@ -658,10 +658,8 @@ void Plotter::prepareCanvas()
     
     // Redraw title if one is set
     if (!chartTitle.empty()) {
-        int titleY = 30;  // Standard position below top margin
         RGBA titleColor = colorManager->getElementColor("title");
-        textRenderer->drawText(chartLayout->getMarginLeft(), titleY, 
-                            chartTitle, titleColor, chartTitleFontSize, false);
+	addTitle(chartTitle, chartTitleFontSize);
     }
 }
 
@@ -671,8 +669,6 @@ void Plotter::addTitle(const std::string& text, unsigned int fontSize)
     chartTitle = text;
     chartTitleFontSize = fontSize;
     
-    // Draw the title immediately
-    textRenderer->addTitle(text, fontSize);
 }
 
 void Plotter::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize)
@@ -698,9 +694,9 @@ void Plotter::addAxisLabels(const std::string& xLabel, const std::string& yLabel
 }
 
 int Plotter::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, 
-                       int x, int y, unsigned int fontSize)
+                       int x, int y, unsigned int fontSize, bool _new, bool redraw)
 {
-    return chartStyler->addLegend(labels, colors, x, y, fontSize);
+    return chartStyler->addLegend(labels, colors, x, y, fontSize, _new, redraw);
 }
 
 void Plotter::setYAxisLabel(const std::string& label)
@@ -948,7 +944,7 @@ void Plotter::setupChart(const ChartConfig& config, unsigned int* originalTopMar
     
     // Set default titleY if needed and provided - exact positioning from plotter.cpp
     if (titleY) {
-        *titleY = 30; // Standard position below top margin - exact value from plotter.cpp
+        *titleY = 40; // Standard position below top margin - exact value from plotter.cpp
         
         // Use stored title if available, otherwise use config title
         std::string displayTitle = !chartTitle.empty() ? chartTitle : config.title;
@@ -1190,23 +1186,25 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     std::vector<DataMapper::CandleData> mapperCandles = convertToCandleData(candles);
     
     // Create legend labels and colors
-    std::vector<std::string> legendLabels;
-    legendLabels.push_back("Bullish Candle");
-    legendLabels.push_back("Bearish Candle");
+    // I don't think these are necessary 
+/*    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Bullish");
+    legendLabels.push_back("Bearish");
     
     std::vector<RGBA> legendColors;
     legendColors.push_back(useBullishColor);
     legendColors.push_back(useBearishColor);
-    
+  */  
     // Add the legend - exact font size (16px) as in plotter.cpp
-    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
-    
-    // Draw price movement indicators and current price display
-    chartStyler->drawCandlestickPriceInfo(mapperCandles, useBullishColor, useBearishColor, legendY);
-    
+    //int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
+    //No need to actually draw anything since the calculation is:
+    // fontsize + 6 + top/bottom padding (these are hardcoded 
+    // idk where the 6 comes from...
+    int actualLegendHeight = 16 + 6 + 24;
+
     // Dynamically adjust top margin to fit both legend and price info with spacing
-    unsigned int newTopMargin = std::max(static_cast<unsigned int>(legendY + actualLegendHeight + 15), 
-                                         chartLayout->getMarginTop());
+    unsigned int newTopMargin = std::max(static_cast<unsigned int>(legendY + actualLegendHeight + 15), chartLayout->getMarginTop());
+
     chartLayout->setMarginTop(newTopMargin);
     
     // Redraw to ensure proper layout
@@ -1219,7 +1217,7 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
                        colorManager->getElementColor("title"), displayFontSize, false);
     
     // Add the legend again after the canvas redraw
-    chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
+    chartStyler->addLegend(std::vector<std::string>(), std::vector<RGBA>(), chartLayout->getMarginLeft(), legendY, 16);
     
     // Draw price info again after canvas redraw
     chartStyler->drawCandlestickPriceInfo(mapperCandles, useBullishColor, useBearishColor, legendY);
@@ -2159,12 +2157,6 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     
     std::vector<std::string> legendLabels;
     std::vector<RGBA> legendColors;
-
-    legendLabels.push_back("Bullish");
-    legendLabels.push_back("Bearish");
-
-    legendColors.push_back(bullishColor);
-    legendColors.push_back(bearishColor);
 
     for (size_t i = 0; i < seriesList.size(); ++i) {
         legendLabels.push_back(seriesList[i].name);
