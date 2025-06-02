@@ -18,7 +18,7 @@ public:
     };
 
     struct CandleData {
-        double timestamp;  // Unix timestamp for the candle
+        int64_t timestamp;  // Unix timestamp for the candle
         double open;
         double close;
         double high;

@@ -258,7 +258,8 @@ public:
          
     void plotChart(const std::vector<Series>& seriesList,
                         const DataMapper::AxisRange& xRange,
-                        const DataMapper::AxisRange& yRange);
+                        const DataMapper::AxisRange& yRange,
+			const std::vector<CandleData>& candles = std::vector<CandleData>());
 
          
     // Arrow visualization methods
@@ -402,7 +403,7 @@ private:
     void calculateCandlestickRanges(const std::vector<DataMapper::CandleData>& candles,
                                   DataMapper::AxisRange& timeRange,
                                   DataMapper::AxisRange& priceRange);
-    std::vector<std::string> createTimeLabels(double minTime, double maxTime, int numLabels);
+    std::vector<std::string> createTimeLabels(int64_t minTime, int64_t maxTime, int total_positions, int numLabels);
     
     // Helper methods - cluster specific
     std::vector<RGBA> prepareClusterColors(int numClusters);
