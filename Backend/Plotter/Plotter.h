@@ -3,6 +3,7 @@
 
 #include "../Database/image.h"
 #include "DataMapper.h"
+#include <map>
 #include <string>
 #include <vector>
 #include <ft2build.h>
@@ -74,14 +75,14 @@ struct Arrow {
 
 // Candlestick data structure
 struct CandleData {
-    int64_t timestamp;
+    double timestamp;
     double open;
     double close;
     double high;
     double low;
     
     CandleData() : timestamp(0), open(0), close(0), high(0), low(0) {}
-    CandleData(int64_t t, double o, double c, double h, double l)
+    CandleData(double t, double o, double c, double h, double l)
         : timestamp(t), open(o), close(c), high(h), low(l) {}
 };
 
@@ -194,8 +195,11 @@ private:
 // Plotter class that handles visualization using the component classes
 class Plotter {
 public:
+    static std::map<unsigned int, std::string> AGG_SIZE;
     // Constructor and destructor
     Plotter(unsigned int width = 800, unsigned int height = 600, unsigned int ssaa_factor = 1);
+
+    void initAggSize();
 
     void initialize_font(const std::string);
     
@@ -294,7 +298,7 @@ public:
                                const std::string& xAxisLabel = "Value",
                                const std::string& yAxisLabel = "Frequency");
                       
-    void plotCandlestickChart(const std::vector<CandleData>& candles,
+    void plotCandlestickChart(const std::vector<DataMapper::CandleData>& candles,
                              const RGBA& bullishColor,
                              const RGBA& bearishColor,
                              const std::string& title,
@@ -403,7 +407,7 @@ private:
     void calculateCandlestickRanges(const std::vector<DataMapper::CandleData>& candles,
                                   DataMapper::AxisRange& timeRange,
                                   DataMapper::AxisRange& priceRange);
-    std::vector<std::string> createTimeLabels(int64_t minTime, int64_t maxTime, int total_positions, int numLabels);
+    std::vector<DataMapper::CandleXAxis> createTimeLabels(double minTime, double maxTime,int numLabels);
     
     // Helper methods - cluster specific
     std::vector<RGBA> prepareClusterColors(int numClusters);

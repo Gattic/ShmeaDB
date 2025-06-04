@@ -18,7 +18,7 @@ public:
     };
 
     struct CandleData {
-        int64_t timestamp;  // Unix timestamp for the candle
+        double timestamp;  // Unix timestamp for the candle
         double open;
         double close;
         double high;
@@ -27,6 +27,17 @@ public:
         CandleData() : timestamp(0.0), open(0.0), close(0.0), high(0.0), low(0.0) {}
         CandleData(double t, double o, double c, double h, double l) 
             : timestamp(t), open(o), close(c), high(h), low(l) {}
+    };
+
+    struct CandleXAxis
+    {
+	double timestamp;
+        std::string timeLabel;
+        CandleXAxis() : timestamp(0.0), timeLabel("0") {}
+        CandleXAxis(double t, std::string tl)
+	    : timestamp(t), timeLabel(tl) {}
+
+
     };
 
     struct AxisRange {
