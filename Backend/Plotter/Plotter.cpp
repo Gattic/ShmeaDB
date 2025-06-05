@@ -1858,7 +1858,7 @@ std::vector<DataMapper::CandleXAxis> Plotter::createTimeLabels(double start, dou
 	    {
 		double foundTime = cTime;
 		std::string foundLabel = "";
-		for(double j = cTime; j <= end; j += 1800)
+		for(double j = cTime; j <= end; j += DAY)
 		{
 			std::string cLabel = dateToString(j, "%m-%d");
 			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel)
@@ -1890,7 +1890,7 @@ std::vector<DataMapper::CandleXAxis> Plotter::createTimeLabels(double start, dou
 	    {
 		double foundTime = cTime;
 		std::string foundLabel = "";
-		for(double j = cTime; j <= end; j += 1800)
+		for(double j = cTime; j <= end; j += 86400)
 		{
 			std::string cLabel = dateToString(j, "%b-%Y");
 			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel && cLabel != last_month_label)
@@ -1920,6 +1920,26 @@ std::vector<DataMapper::CandleXAxis> Plotter::createTimeLabels(double start, dou
 			timeLabels.push_back(DataMapper::CandleXAxis(cTime, cYear));
 			last_year_label = cYear;
 		}
+	    if(i == numLabels -1)
+	    {
+		double foundTime = cTime;
+		std::string foundLabel = "";
+		for(double j = cTime; j <= end; j += 2500000)
+		{
+			std::string cLabel = dateToString(j, "%Y");
+			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel && cLabel != last_month_label)
+			{
+				foundLabel = cLabel;
+				foundTime = j;
+				last_year_label = cLabel; 
+			}
+		}
+		if(foundLabel != "")
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(foundTime, foundLabel)); 
+			
+		}
+            }
 	}
 
     }
