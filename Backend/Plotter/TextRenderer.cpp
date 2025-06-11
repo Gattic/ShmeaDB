@@ -209,15 +209,6 @@ void TextRenderer::drawVerticalText(const std::string& text, int x, int y, int f
     }
 }
 
-void TextRenderer::addTitle(const std::string& text, unsigned int fontSize) {
-    // Position title at the top left of the image with some padding
-    int x = layout.getMarginLeft();
-    int y = layout.getMarginTop() / 2;
-    
-    // Use left alignment (false for centerAligned parameter)
-    drawText(x, y, text, colors.getElementColor("title"), fontSize, false);
-}
-
 void TextRenderer::drawAxisLabels(const std::string& xLabel, const std::string& yLabel, 
                                 unsigned int fontSize, bool centerX) {
     // Get text color from CSS design
