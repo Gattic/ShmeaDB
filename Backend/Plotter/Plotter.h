@@ -139,7 +139,9 @@ public:
     ChartBuilder& cornerRadius(int radius);
     ChartBuilder& logo(const std::string& logoPath);
     ChartBuilder& colors(const std::vector<RGBA>& colors);
-    
+    ChartBuilder& dateLabels(bool date);
+    ChartBuilder& legendLabels(bool legend);
+
     // Data visualization methods
     ChartBuilder& addSeries(const Series& series);
     ChartBuilder& addSeries(const std::string& name, const std::vector<Point>& data, 
@@ -233,7 +235,13 @@ public:
     // Custom color manager
     void setCustomColors(const std::vector<RGBA>& clusterColors);
     void use10ClusterColorScheme(); // Use the 10-cluster color scheme
-    
+   
+    //Custom Date Labels decision
+    void setDateLabels(bool date);
+
+    //Custom Legend Labels
+    void setLegendLabels(bool legend);
+
     // Basic drawing methods
     void prepareCanvas();
     void addTitle(const std::string& text, unsigned int fontSize = 24);
