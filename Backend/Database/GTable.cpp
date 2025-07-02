@@ -968,7 +968,7 @@ shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
 			if (rowCounter + fold >= inputSet.numberOfRows())
 				break;
 
-			outputSet[fold]->addRow(inputSet.getRow(rowCounter));
+			outputSet[fold]->addRow(inputSet.getRow(rowCounter+fold));
 		}
 
 		rowCounter += k;
@@ -1025,6 +1025,38 @@ shmea::GVector<GTable*> GTable::stratify(const shmea::GVector<GTable*> inputSet,
 	}
 
 	return outputSet;
+}
+
+/*!
+ * @brief union of GTables
+ * @details union of GTables (folds) except test fold
+ * @param folds vector of GTables(folds)
+ * @param testFold index of test fold in vector which does not participate in union
+ * @return GTable* union of GTables(folds) except test fold
+ */
+shmea::GTable* GTable::unionFolds(const shmea::GVector<GTable*>& folds, unsigned int testFold)
+{
+    if (folds.size() == 0)
+    {
+        return NULL;
+    }
+    
+    GTable* output = new GTable(folds[0]->getDelimiter());
+    output->header = folds[0]->header;
+    output->outputColumns = folds[0]->outputColumns;
+    
+    for(unsigned int i = 0; i < folds.size(); ++i)
+    {
+        if (testFold == i)
+        {
+            continue;
+        }
+        for (unsigned int j = 0; j < folds[i]->numberOfRows(); ++j)
+        {
+			output->addRow(folds[i]->getRow(j));
+        }
+    }
+    return output;
 }
 
 /*!
