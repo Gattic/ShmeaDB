@@ -2916,7 +2916,6 @@ void Plotter::plotHistogramWithLabels(const std::vector<int>& bins,
     
     std::vector<RGBA> legendColors;
     legendColors.push_back(useColor);
-    
     // Estimate legend height before drawing
     int estimatedLegendHeight = chartStyler->calculateInfoBoxHeight(legendLabels, 18);
     
@@ -2940,10 +2939,12 @@ void Plotter::plotHistogramWithLabels(const std::vector<int>& bins,
     unsigned int displayFontSize = !chartTitle.empty() ? chartTitleFontSize : 42;
     textRenderer->drawText(chartLayout->getMarginLeft(), titleY, displayTitle, 
                       colorManager->getElementColor("title"), displayFontSize, false);
-    
-    // Now add the legend
-    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 18);
-    
+   if(chartLayout->isLegendVisible())
+   { 
+	   // Now add the legend
+	   int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 18);
+   }
+
     // Draw statistics info box with matching CSS styling - positioned right of the legend
     // We continue to display the true maxBinValue in the stats (not the adjusted one)
     chartStyler->drawHistogramStats(bins, maxBinValue, legendY, 16);
