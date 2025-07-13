@@ -29,7 +29,8 @@ ChartBuilder::ChartBuilder(Plotter& plotter)
       bullishColor(0x03, 0xC0, 0x3C, 0xFF),
       bearishColor(0xFF, 0x47, 0x45, 0xFF),
       hasClusterData(false),
-      alignCentroids(true)  // Default to aligning centroids with cluster centers
+      alignCentroids(true),  // Default to aligning centroids with cluster centers
+      normalizationMode(NORMALIZE_TOGETHER)  // Default to normalizing together
 {
     // Initialize boolean flags
     
@@ -364,7 +365,7 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
     }
     else if(!series.empty())
     {
-	plotter.plotChart(series);
+	plotter.plotChart(series, "", "", "", normalizationMode);
     }
     else {
         printf("Warning: No chart data provided to ChartBuilder. Nothing to render.\n");
@@ -485,6 +486,11 @@ ChartBuilder& ChartBuilder::alignCentroidsWithClusters(bool align) {
     // Pass the setting to the plotter
     plotter.setAlignCentroidsWithClusters(align);
     
+    return *this;
+}
+
+ChartBuilder& ChartBuilder::normalizeSeries(NormalizationMode mode) {
+    normalizationMode = mode;
     return *this;
 }
 
@@ -2241,17 +2247,46 @@ ChartBuilder Plotter::chart() {
 void Plotter::plotChart(const std::vector<Series>& seriesList,
                   const std::string& title,
                   const std::string& xAxisLabel,
-                  const std::string& yAxisLabel)
+                  const std::string& yAxisLabel,
+                  NormalizationMode normalizationMode)
 {
     if (seriesList.empty()) {
         printf("Error: No series data to plot.\n");
         return;
     }
     
+    // Handle normalization based on the mode
+    std::vector<Series> normalizedSeriesList = seriesList;
+    
+    if (normalizationMode == NORMALIZE_INDEPENDENT) {
+        // Normalize each series independently
+        for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+            Series& series = normalizedSeriesList[i];
+            if (series.data.empty()) continue;
+            
+            // Find min and max values for this series
+            double minY = series.data[0].y;
+            double maxY = series.data[0].y;
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                minY = std::min(minY, series.data[j].y);
+                maxY = std::max(maxY, series.data[j].y);
+            }
+            
+            // Normalize Y values to [0, 1] range
+            double range = maxY - minY;
+            if (range > 0) {
+                for (size_t j = 0; j < series.data.size(); ++j) {
+                    series.data[j].y = (series.data[j].y - minY) / range;
+                }
+            }
+        }
+        printf("Applied independent normalization to %zu series\n", seriesList.size());
+    }
+    
     // Combine all points to calculate global axis ranges
     std::vector<DataMapper::Point> allDataPoints;
-    for (size_t i = 0; i < seriesList.size(); ++i) {
-        const Series& series = seriesList[i];
+    for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        const Series& series = normalizedSeriesList[i];
         if (series.data.empty()) {
             continue;
         }
@@ -2352,9 +2387,9 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     
     if(chartLayout->isLegendVisible())
     {
-    	for (size_t i = 0; i < seriesList.size(); ++i) {
-        	legendLabels.push_back(seriesList[i].name);
-        	legendColors.push_back(seriesList[i].color);
+    	for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        	legendLabels.push_back(normalizedSeriesList[i].name);
+        	legendColors.push_back(normalizedSeriesList[i].color);
     	}
     
     	// Add the legend
@@ -2399,8 +2434,8 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     gridRenderer->drawYAxisTicks(yRange.min, yRange.max, 5, false, 1, 70);
 
     // Plot each series in order
-    for (size_t i = 0; i < seriesList.size(); ++i) {
-        const Series& series = seriesList[i];
+    for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        const Series& series = normalizedSeriesList[i];
         if (series.data.empty()) {
             continue;
         }
@@ -2450,20 +2485,49 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
 void Plotter::plotChart(const std::vector<Series>& seriesList,
                         const DataMapper::AxisRange& xRange,
                         const DataMapper::AxisRange& yRange,
-			const std::vector<CandleData>& candles)
+			const std::vector<CandleData>& candles,
+                        NormalizationMode normalizationMode)
 {
     if (seriesList.empty()) {
         printf("Error: No series data to plot.\n");
         return;
     }
 
+    // Handle normalization based on the mode
+    std::vector<Series> normalizedSeriesList = seriesList;
+    
+    if (normalizationMode == NORMALIZE_INDEPENDENT) {
+        // Normalize each series independently
+        for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+            Series& series = normalizedSeriesList[i];
+            if (series.data.empty()) continue;
+            
+            // Find min and max values for this series
+            double minY = series.data[0].y;
+            double maxY = series.data[0].y;
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                minY = std::min(minY, series.data[j].y);
+                maxY = std::max(maxY, series.data[j].y);
+            }
+            
+            // Normalize Y values to [0, 1] range
+            double range = maxY - minY;
+            if (range > 0) {
+                for (size_t j = 0; j < series.data.size(); ++j) {
+                    series.data[j].y = (series.data[j].y - minY) / range;
+                }
+            }
+        }
+        printf("Applied independent normalization to %zu series\n", seriesList.size());
+    }
+
     
     std::vector<std::string> legendLabels;
     std::vector<RGBA> legendColors;
 
-    for (size_t i = 0; i < seriesList.size(); ++i) {
-        legendLabels.push_back(seriesList[i].name);
-        legendColors.push_back(seriesList[i].color);
+    for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        legendLabels.push_back(normalizedSeriesList[i].name);
+        legendColors.push_back(normalizedSeriesList[i].color);
     }
 
     if (legendLabels.size() != 0)
