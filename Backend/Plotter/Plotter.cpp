@@ -1862,7 +1862,7 @@ inline std::string dateToString(double timestamp, const char* format= "%m-%d-%Y"
     char buffer[64];
     std::memset(buffer, 0, sizeof(buffer));
     // Format the timestamp into a human-readable string
-    if (std::strftime(buffer, sizeof(buffer), format, std::localtime(&time))) 
+    if (std::strftime(buffer, sizeof(buffer), format, std::gmtime(&time))) 
     {
         return std::string(buffer);
     } 

@@ -494,7 +494,7 @@ GString GString::dateTOstring(int64_t ts)
 {
 	//mm-d-yyyy
 	struct tm tstruct;
-	tstruct = *localtime((time_t*)&ts);
+	tstruct = *gmtime((time_t*)&ts);
 	int cDay = tstruct.tm_mday;
 	int cMonth = tstruct.tm_mon + 1;
 	int cYear = tstruct.tm_year + 1900;
@@ -503,7 +503,7 @@ GString GString::dateTOstring(int64_t ts)
 	int cSeconds = tstruct.tm_sec;
 
 	time_t time = (time_t)ts;
-	std::tm* date = localtime(&time);
+	std::tm* date = gmtime(&time);
 	GString newDateStr = intTOstring(cMonth) + "-" + intTOstring(cDay) + "-" + intTOstring(cYear);
 	return newDateStr;
 }
@@ -511,7 +511,7 @@ GString GString::dateTOstring(int64_t ts)
 GString GString::timeTOstring(int64_t ts)
 {
 	struct tm tstruct;
-	tstruct = *localtime((time_t*)&ts);
+	tstruct = *gmtime((time_t*)&ts);
 	int cDay = tstruct.tm_mday;
 	int cMonth = tstruct.tm_mon + 1;
 	int cYear = tstruct.tm_year + 1900;
@@ -520,7 +520,7 @@ GString GString::timeTOstring(int64_t ts)
 	int cSeconds = tstruct.tm_sec;
 
 	time_t time = (time_t)ts;
-	std::tm* date = localtime(&time);
+	std::tm* date = gmtime(&time);
 	char buffer[80];
 	sprintf(buffer, "%d:%d:%d", cHour, cMinute, cSeconds);
 	GString retString = buffer;
