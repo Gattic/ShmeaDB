@@ -458,6 +458,58 @@ void GridRenderer::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const 
 }
 
 //I am forgoing the labels and numTicsk comparison. The number of labels determines how many labels are going on the x-axis
+void GridRenderer::drawXAxisTicks(const std::vector<DataMapper::CandleXAxis>& labels, const Series& series )
+{
+    // Get text color from CSS design
+    RGBA textColor = colors.getElementColor("axisLabel");
+    textColor.a = 0xCC; // 80% opacity - exactly like in plotter.cpp
+    
+    // Create TextRenderer instance for text rendering
+    TextRenderer textRenderer(ssaa, colors, layout);
+    textRenderer.initialize(ft, face);
+    
+    // Define labelY here to make it available throughout the function
+    int labelY = layout.getHeight() - layout.getMarginBottom() + 25; // Exact position from plotter.cpp
+    int startX = layout.getMarginLeft();
+    int tickIndex = 0;
+    // Draw ticks at specific intervals - exactly like in plotter.cpp
+    // This creates tick marks at positions 0, tickInterval, 2*tickInterval, etc.
+    for(int i = 0; i < series.data.size(); ++i)
+    {
+	double serieTimestamp = series.data[i].x;
+        double labelTimestamp = labels[tickIndex].timestamp;
+
+	if(i == 0 || tickIndex < labels.size() && labelTimestamp <= serieTimestamp)
+	{
+		int indexPos = i;
+		if(labelTimestamp != serieTimestamp)
+		{
+			--indexPos;
+		}
+
+		int x = startX + indexPos;
+        
+        	// Draw tick mark - exactly like plotter.cpp
+	        shapes.drawLine(
+           	 ssaa.scaleX(x), 
+            	ssaa.scaleY(layout.getHeight() - layout.getMarginBottom()), 
+            	ssaa.scaleX(x), 
+            	ssaa.scaleY(layout.getHeight() - layout.getMarginBottom() + 6), 
+            	textColor, 
+            	ssaa.getSamplingFactor());
+       
+//TODO: Labels will need its own index 
+        	textRenderer.drawText(x, labelY, labels[tickIndex].timeLabel, textColor, 22, true); // Center-aligned with 22px font
+		++tickIndex;
+	}
+    }
+    
+    // Note: We don't add a special case for the last label here because in plotter.cpp,
+    // the specific histogram implementation in plotHistogram() handles drawing labels
+    // for index positions 0, 4, 8, etc. and the last index directly in its loop.
+	return;
+}
+//I am forgoing the labels and numTicsk comparison. The number of labels determines how many labels are going on the x-axis
 void GridRenderer::drawCandleXAxisTicks(const std::vector<DataMapper::CandleData>& candles, const std::vector<DataMapper::CandleXAxis>& labels, int startingOffset, int candleOffset)
 {
     // Get text color from CSS design
@@ -508,6 +560,7 @@ void GridRenderer::drawCandleXAxisTicks(const std::vector<DataMapper::CandleData
     // for index positions 0, 4, 8, etc. and the last index directly in its loop.
 	return;
 }
+
 
 //TODO: We are just guessing where the tickers should go, instead we should be smarter about it
 void GridRenderer::drawXAxisTicks(const std::vector<std::string>& labels, int numTicks, XPositionMode xMode, int startingOffset) {
@@ -591,7 +644,19 @@ void GridRenderer::drawXAxisTicks(double minValue, double maxValue, int numTicks
         // Format the value with consistent precision from plotter.cpp
         char valueText[32];
         char formatStr[10];
-        std::sprintf(formatStr, "%%.%df", precision);
+	int dPoints = 0;
+	double tempV = fabs(value);
+	if(tempV > 0 && tempV < 1)
+	{
+		while(fabs(tempV) < 1 && dPoints < 10)
+		{
+			tempV *= 10;
+			dPoints++;
+		}
+	}
+	const int maxPrecision = 10;
+	int finalPrecision = std::min(precision + dPoints, 10); 
+        std::sprintf(formatStr, "%%.%df", finalPrecision);
         std::sprintf(valueText, formatStr, value);
         
         // Draw value label - exact positioning from plotter.cpp
@@ -639,8 +704,21 @@ void GridRenderer::drawYAxisTicks(double minValue, double maxValue, int numTicks
         if (isInteger) {
             std::sprintf(valueText, "%d", static_cast<int>(value));
         } else {
+
+	    int dPoints = 0;
+	    double tempV = fabs(value);
+	    if(tempV > 0 && tempV < 1)
+	    {
+		    while(fabs(tempV) < 1 && dPoints < 10)
+		    {
+			tempV *= 10;
+			dPoints++;
+		    }
+	    }
+	    const int maxPrecision = 10;
+	    int finalPrecision = std::min(precision + dPoints, 10); 
             char formatStr[10];
-            std::sprintf(formatStr, "%%.%df", precision);
+	    std::sprintf(formatStr, "%%.%df", finalPrecision);
             std::sprintf(valueText, formatStr, value);
         }
         

@@ -218,7 +218,7 @@ shmea::GString GLogger::getDateTime() const
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&tv.tv_sec));
 	shmea::GString strDateTime(timeString);
 	return strDateTime;
 }
@@ -229,7 +229,7 @@ shmea::GString GLogger::generateLogFName() const
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", localtime(&tv.tv_sec));
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&tv.tv_sec));
 	shmea::GString strDateTime(timeString);
 	return strDateTime;
 }
