@@ -20,6 +20,8 @@
 #include "GType.h"
 #include "GString.h"
 #include "GVector.h"
+#include <cstdlib>
+#include <ctime>
 
 using namespace shmea;
 
@@ -1055,6 +1057,102 @@ shmea::GTable* GTable::unionFolds(const shmea::GVector<GTable*>& folds, unsigned
         {
 			output->addRow(folds[i]->getRow(j));
         }
+    }
+    return output;
+}
+
+/*!
+ * @brief shuffle rows of GTable
+ * @details random shuffling rows of GTable
+ * @param inputTbl original GTable to be shuffled
+ * @return GTable* pointer to new shuffled GTable
+ */
+shmea::GTable* GTable::shuffleRows(const GTable& inputTbl)
+{
+    if (inputTbl.numberOfRows() == 0)
+    {
+        return NULL;
+    }
+
+    std::vector<unsigned int> inds;
+    for (unsigned int i = 0; i < inputTbl.numberOfRows(); ++i) {
+        inds.push_back(i);
+    }
+
+    std::srand(static_cast<unsigned int>(std::time(0)));
+
+    for (int i = inds.size() - 1; i > 0; --i) {
+        int j = std::rand() % (i + 1);
+        std::swap(inds[i], inds[j]);
+    }
+
+    GTable* output = new GTable(inputTbl.getDelimiter());
+    output->header = inputTbl.header;
+    output->outputColumns = inputTbl.outputColumns;
+
+    for(unsigned int i = 0; i < inds.size(); ++i)
+    {
+        output->addRow(inputTbl.getRow(inds[i]));
+    }
+    return output;
+}
+
+/*!
+ * @brief returns GTable with first n rows of original GTable
+ * @details creates new GTable from the first n rows of original GTable
+ * @param inputTbl original GTable
+ * @param n number of rows to be taken from original GTable
+ * @return GTable* pointer to new GTable
+ */
+shmea::GTable* GTable::firstNRows(const GTable& inputTbl, unsigned int n)
+{
+    if (inputTbl.numberOfRows() == 0 || n <= 0)
+    {
+        return NULL;
+    }
+
+    GTable* output = new GTable(inputTbl.getDelimiter());
+    if (inputTbl.numberOfRows() <= n)
+    {
+        output->copy(inputTbl);
+        return output;
+    }
+
+    output->header = inputTbl.header;
+    output->outputColumns = inputTbl.outputColumns;
+    for(unsigned int i = 0; i < n; ++i)
+    {
+        output->addRow(inputTbl.getRow(i));
+    }
+    return output;
+}
+
+/*!
+ * @brief returns GTable with last n rows of original GTable
+ * @details creates new GTable from the last n rows of original GTable
+ * @param inputTbl original GTable
+ * @param n number of rows to be taken from original GTable
+ * @return GTable* pointer to new GTable
+ */
+shmea::GTable* GTable::lastNRows(const GTable& inputTbl, unsigned int n)
+{
+    if (inputTbl.numberOfRows() == 0 || n <= 0)
+    {
+        return NULL;
+    }
+
+    GTable* output = new GTable(inputTbl.getDelimiter());
+    if (inputTbl.numberOfRows() <= n)
+    {
+        output->copy(inputTbl);
+        return output;
+    }
+
+    output->header = inputTbl.header;
+    output->outputColumns = inputTbl.outputColumns;
+    for(unsigned int i = n-1; i < inputTbl.numberOfRows(); ++i)
+    {
+        output->addRow(inputTbl.getRow(i));
     }
     return output;
 }
