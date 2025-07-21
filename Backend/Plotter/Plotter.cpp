@@ -15,6 +15,19 @@
 namespace shmea {
 
 std::map<unsigned int, std::string> Plotter::AGG_SIZE;
+
+RGBA Plotter::GetUniqueColor(int i, int total)
+{
+    float hue = static_cast<float>(i)/total;
+    return colorManager->HSVtoRGBA(hue, 0.7f, 1.0f);
+}
+
+RGBA Plotter::GetThemeColor(int i)
+{
+    int themeColorSize = colorManager->getThemeColors().size();
+    return colorManager->getThemeColor(i % themeColorSize);
+}
+
 //
 // ChartBuilder Implementation
 //
