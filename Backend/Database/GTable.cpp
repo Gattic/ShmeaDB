@@ -1036,7 +1036,7 @@ shmea::GVector<GTable*> GTable::stratify(const shmea::GVector<GTable*> inputSet,
  * @param testFold index of test fold in vector which does not participate in union
  * @return GTable* union of GTables(folds) except test fold
  */
-shmea::GTable* GTable::unionFolds(const shmea::GVector<GTable*>& folds, unsigned int testFold)
+shmea::GTable* GTable::unionFolds(const shmea::GVector<GTable*>& folds, unsigned int testFold, bool unionOnlyFirstFolds)
 {
     if (folds.size() == 0)
     {
@@ -1051,6 +1051,9 @@ shmea::GTable* GTable::unionFolds(const shmea::GVector<GTable*>& folds, unsigned
     {
         if (testFold == i)
         {
+            if (unionOnlyFirstFolds) {
+                break;
+            }
             continue;
         }
         for (unsigned int j = 0; j < folds[i]->numberOfRows(); ++j)
@@ -1150,7 +1153,8 @@ shmea::GTable* GTable::lastNRows(const GTable& inputTbl, unsigned int n)
 
     output->header = inputTbl.header;
     output->outputColumns = inputTbl.outputColumns;
-    for(unsigned int i = n-1; i < inputTbl.numberOfRows(); ++i)
+    unsigned int rowNum = inputTbl.numberOfRows();
+    for(unsigned int i = rowNum-n; i < rowNum; ++i)
     {
         output->addRow(inputTbl.getRow(i));
     }
