@@ -947,7 +947,7 @@ void GTable::save(const GString& fname) const
  * @param k the number of rows per sub-grouping
  * @return the stratified subpgroups (a vector of GTables)
  */
-shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
+shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k, bool timingSeries)
 {
 	shmea::GVector<GTable*> outputSet;
 	// Initialize the outputSet
@@ -959,6 +959,22 @@ shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
 		newTable->outputColumns = inputSet.outputColumns;
 		outputSet.push_back(newTable);
 	}
+
+    if (timingSeries)
+    {
+        unsigned int numberOfRows = inputSet.numberOfRows();
+        unsigned int foldSize = (numberOfRows + k - 1) / k;
+        for (unsigned int i = 0; i < k; ++i) {
+            unsigned int f = foldSize * i;
+            for (unsigned int j = 0; j < foldSize; ++j) {
+                if (f + j >= numberOfRows) {
+                    return outputSet;
+                }
+                outputSet[i]->addRow(inputSet.getRow(f + j));
+            }
+        }
+        return outputSet;
+    }
 
 	unsigned int rowCounter = 0;
 	while (rowCounter < inputSet.numberOfRows())
