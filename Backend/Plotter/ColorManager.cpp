@@ -178,6 +178,33 @@ RGBA ColorManager::blendRGBA(const RGBA& base, const RGBA& over) const {
     return RGBA(r, g, b, a);
 }
 
+RGBA ColorManager::HSVtoRGBA(float h, float s, float v)
+{
+    float r, g, b;
+    int i = static_cast<int>(h * 6.0f);
+
+    float f = h * 6.0f - i;
+    float p = v * (1.0f - s);
+    float q = v * (1.0f - f * s);
+    float t = v * (1.0f - (1.0f - f) * s);
+
+    switch (i % 6)
+    {
+	case 0: r = v; g = t; b = p; break;
+	case 1: r = q; g = v; b = p; break;
+	case 2: r = p; g = v; b = t; break;
+	case 3: r = p; g = q; b = v; break;
+	case 4: r = t; g = p; b = v; break;
+	case 5: r = v; g = p; b = q; break;
+	default: r = g = b = 0; break;
+
+    }
+
+    return RGBA(0x00,
+		static_cast<unsigned char>(r * 255),
+		static_cast<unsigned char>(g * 255),
+		static_cast<unsigned char>(b * 255));
+}
 const std::vector<RGBA>& ColorManager::getThemeColors() const {
     return themeColors;
 }

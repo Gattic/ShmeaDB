@@ -167,7 +167,7 @@ inline std::string dateToString(int64_t timestamp, const char* format= "%m-%d-%Y
     std::memset(buffer, 0, sizeof(buffer));
 
     // Format the timestamp into a human-readable string
-    if (std::strftime(buffer, sizeof(buffer), format, std::localtime(&time))) 
+    if (std::strftime(buffer, sizeof(buffer), format, std::gmtime(&time))) 
     {
         return std::string(buffer);
     } 
