@@ -31,9 +31,11 @@ using namespace GNet;
  * @brief Service constructor
  * @details creates a Service object and initialize timeExecuted
  */
-Service::Service()
+Service::Service() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO)))
 {
 	timeExecuted = 0;
+	if (logger)
+        logger->info("SERVICE", "Service object created.");
 }
 
 /*!
@@ -42,6 +44,8 @@ Service::Service()
  */
 Service::~Service()
 {
+	if (logger)
+        logger->info("SERVICE", "Service object is being destroyed. Time executed: " + shmea::GString::format("%lld", timeExecuted) + " seconds.");
 	timeExecuted = 0;
 }
 
@@ -59,6 +63,9 @@ bool Service::getRunning() const
 void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* sockData,
 							 Connection* cConnection)
 {
+	if (serverInstance->logger)
+		serverInstance->logger->info("SERVICE", "Executing service asynchronously.");
+
 	// set the args to pass in
 	newServiceArgs* x = new newServiceArgs[sizeof(newServiceArgs)];
 	x->serverInstance = serverInstance;
@@ -69,7 +76,16 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* 
 	// launch a new service thread
 	pthread_create(x->sThread, NULL, &launchService, (void*)x);
 	if (x->sThread)
-		pthread_detach(*x->sThread);
+    {
+        pthread_detach(*x->sThread);
+        if (serverInstance->logger)
+            serverInstance->logger->info("SERVICE", "Service thread launched and detached.");
+    }
+    else
+    {
+        if (serverInstance->logger)
+            serverInstance->logger->error("SERVICE", "Failed to launch service thread.");
+    }
 }
 
 /*!
@@ -85,13 +101,22 @@ void* Service::launchService(void* y)
 	newServiceArgs* x = (newServiceArgs*)y;
 
 	if (!x->serverInstance)
-		return NULL;
+    {
+        if (x->serverInstance->logger)
+            x->serverInstance->logger->error("SERVICE", "Server instance is null. Cannot launch service.");
+        return NULL;
+    }
+
 	GServer* serverInstance = x->serverInstance;
 
 	// Get the command in order to tell the service what to do
 	x->command = x->sockData->getCommand();
 	if(x->command.length() == 0)
-		return NULL;
+	{
+        if (serverInstance->logger)
+            serverInstance->logger->warning("SERVICE", "Command is empty. Service will not execute.");
+        return NULL;
+    }
 
 	// Can be 0 len
 	x->serviceKey = x->sockData->getServiceKey();
@@ -99,13 +124,20 @@ void* Service::launchService(void* y)
 	// Connection is dead so ignore it
 	Connection* cConnection = x->cConnection;
 	if (!cConnection)
-		return NULL;
+	{
+        if (serverInstance->logger)
+            serverInstance->logger->warning("SERVICE", "Connection is null. Service will not execute.");
+        return NULL;
+    }
 
 	if (!cConnection->isFinished())
 	{
 		Service* cService = serverInstance->DoService(x->command, x->serviceKey);
 		if (cService)
 		{
+			if (serverInstance->logger)
+                serverInstance->logger->info("SERVICE", "Service found and starting execution.");
+
 			// start the service
 			cService->StartService(x);
 
@@ -116,6 +148,9 @@ void* Service::launchService(void* y)
 				//Response Service Number will be given by the service received by the server
 				retData->setResponseServiceNum(x->sockData->getResponseServiceNum());
 				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
+			
+				if (serverInstance->logger)
+                    serverInstance->logger->info("SERVICE", "Service executed successfully. Response added to outbound list.");
 			}
 
 			// exit the service
@@ -123,6 +158,11 @@ void* Service::launchService(void* y)
 
 			delete cService;
 		}
+		else
+        {
+            if (serverInstance->logger)
+                serverInstance->logger->warning("SERVICE", "No service found for the given command.");
+        }
 	}
 
 	if (x)
@@ -130,7 +170,11 @@ void* Service::launchService(void* y)
 
 	// delete the Connection
 	if (cConnection->isFinished())
-		delete cConnection;
+    {
+        if (serverInstance->logger)
+            serverInstance->logger->info("SERVICE", "Connection is finished. Deleting connection.");
+        delete cConnection;
+    }
 	return NULL;
 }
 
@@ -150,9 +194,8 @@ void Service::StartService(newServiceArgs* x)
 	if (!cConnection->isFinished())
 		ipAddress = cConnection->getIP();
 
-	// const shmea::GString& command = x->command;
-	// const shmea::GString& serviceKey = x->serviceKey;
-	//printf("---------Service Start: %s (%s: %s)---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str());
+	if (logger)
+        logger->info("SERVICE", "Service started for IP: " + ipAddress);
 
 	// add the thread to the connection's active thread vector
 	cThread = x->sThread;
@@ -176,7 +219,9 @@ void Service::ExitService(newServiceArgs* x)
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	//printf("---------Service Exit: %s (%s: %s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str(), timeExecuted);
+
+	if (logger)
+        logger->info("SERVICE", "Service exited for IP: " + ipAddress + ". Execution time: " + shmea::GString::format("%lld", timeExecuted) + " seconds.");
 
 	pthread_exit(0);
 }

@@ -18,6 +18,7 @@
 #define _GSERVICE
 
 #include "../Database/GString.h"
+#include "../Database/GLogger.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +58,8 @@ protected:
 	static void ExecuteService(GServer*, const shmea::ServiceData*, Connection* = NULL);
 
 public:
+	shmea::GPointer<shmea::GLogger> logger;
+	
 	Service();
 	virtual ~Service();
 
