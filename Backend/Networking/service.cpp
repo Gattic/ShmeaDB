@@ -88,6 +88,10 @@ void* Service::launchService(void* y)
 		return NULL;
 	GServer* serverInstance = x->serverInstance;
 
+	if(serverInstance){
+		serverInstance->logger->info("SERVICE", "Launching service");
+	}
+
 	// Get the command in order to tell the service what to do
 	x->command = x->sockData->getCommand();
 	if(x->command.length() == 0)
@@ -150,10 +154,6 @@ void Service::StartService(newServiceArgs* x)
 	if (!cConnection->isFinished())
 		ipAddress = cConnection->getIP();
 
-	// const shmea::GString& command = x->command;
-	// const shmea::GString& serviceKey = x->serviceKey;
-	//printf("---------Service Start: %s (%s: %s)---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str());
-
 	// add the thread to the connection's active thread vector
 	cThread = x->sThread;
 	running = true;
@@ -176,7 +176,6 @@ void Service::ExitService(newServiceArgs* x)
 
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
-	//printf("---------Service Exit: %s (%s: %s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str(), timeExecuted);
 
 	pthread_exit(0);
 }
