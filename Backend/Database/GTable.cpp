@@ -20,6 +20,8 @@
 #include "GType.h"
 #include "GString.h"
 #include "GVector.h"
+#include <cstdlib>
+#include <ctime>
 
 using namespace shmea;
 
@@ -945,7 +947,7 @@ void GTable::save(const GString& fname) const
  * @param k the number of rows per sub-grouping
  * @return the stratified subpgroups (a vector of GTables)
  */
-shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
+shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k, bool timingSeries)
 {
 	shmea::GVector<GTable*> outputSet;
 	// Initialize the outputSet
@@ -958,6 +960,22 @@ shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
 		outputSet.push_back(newTable);
 	}
 
+    if (timingSeries)
+    {
+        unsigned int numberOfRows = inputSet.numberOfRows();
+        unsigned int foldSize = (numberOfRows + k - 1) / k;
+        for (unsigned int i = 0; i < k; ++i) {
+            unsigned int f = foldSize * i;
+            for (unsigned int j = 0; j < foldSize; ++j) {
+                if (f + j >= numberOfRows) {
+                    return outputSet;
+                }
+                outputSet[i]->addRow(inputSet.getRow(f + j));
+            }
+        }
+        return outputSet;
+    }
+
 	unsigned int rowCounter = 0;
 	while (rowCounter < inputSet.numberOfRows())
 	{
@@ -968,7 +986,7 @@ shmea::GVector<GTable*> GTable::stratify(const GTable& inputSet, unsigned int k)
 			if (rowCounter + fold >= inputSet.numberOfRows())
 				break;
 
-			outputSet[fold]->addRow(inputSet.getRow(rowCounter));
+			outputSet[fold]->addRow(inputSet.getRow(rowCounter+fold));
 		}
 
 		rowCounter += k;
@@ -1025,6 +1043,138 @@ shmea::GVector<GTable*> GTable::stratify(const shmea::GVector<GTable*> inputSet,
 	}
 
 	return outputSet;
+}
+
+/*!
+ * @brief union of GTables
+ * @details union of GTables (folds) except test fold
+ * @param folds vector of GTables(folds)
+ * @param testFold index of test fold in vector which does not participate in union
+ * @return GTable* union of GTables(folds) except test fold
+ */
+shmea::GTable* GTable::unionFolds(const shmea::GVector<GTable*>& folds, unsigned int testFold, bool unionOnlyFirstFolds)
+{
+    if (folds.size() == 0)
+    {
+        return NULL;
+    }
+    
+    GTable* output = new GTable(folds[0]->getDelimiter());
+    output->header = folds[0]->header;
+    output->outputColumns = folds[0]->outputColumns;
+    
+    for(unsigned int i = 0; i < folds.size(); ++i)
+    {
+        if (testFold == i)
+        {
+            if (unionOnlyFirstFolds) {
+                break;
+            }
+            continue;
+        }
+        for (unsigned int j = 0; j < folds[i]->numberOfRows(); ++j)
+        {
+			output->addRow(folds[i]->getRow(j));
+        }
+    }
+    return output;
+}
+
+/*!
+ * @brief shuffle rows of GTable
+ * @details random shuffling rows of GTable
+ * @param inputTbl original GTable to be shuffled
+ * @return GTable* pointer to new shuffled GTable
+ */
+shmea::GTable* GTable::shuffleRows(const GTable& inputTbl)
+{
+    if (inputTbl.numberOfRows() == 0)
+    {
+        return NULL;
+    }
+
+    std::vector<unsigned int> inds;
+    for (unsigned int i = 0; i < inputTbl.numberOfRows(); ++i) {
+        inds.push_back(i);
+    }
+
+    std::srand(static_cast<unsigned int>(std::time(0)));
+
+    for (int i = inds.size() - 1; i > 0; --i) {
+        int j = std::rand() % (i + 1);
+        std::swap(inds[i], inds[j]);
+    }
+
+    GTable* output = new GTable(inputTbl.getDelimiter());
+    output->header = inputTbl.header;
+    output->outputColumns = inputTbl.outputColumns;
+
+    for(unsigned int i = 0; i < inds.size(); ++i)
+    {
+        output->addRow(inputTbl.getRow(inds[i]));
+    }
+    return output;
+}
+
+/*!
+ * @brief returns GTable with first n rows of original GTable
+ * @details creates new GTable from the first n rows of original GTable
+ * @param inputTbl original GTable
+ * @param n number of rows to be taken from original GTable
+ * @return GTable* pointer to new GTable
+ */
+shmea::GTable* GTable::firstNRows(const GTable& inputTbl, unsigned int n)
+{
+    if (inputTbl.numberOfRows() == 0 || n <= 0)
+    {
+        return NULL;
+    }
+
+    GTable* output = new GTable(inputTbl.getDelimiter());
+    if (inputTbl.numberOfRows() <= n)
+    {
+        output->copy(inputTbl);
+        return output;
+    }
+
+    output->header = inputTbl.header;
+    output->outputColumns = inputTbl.outputColumns;
+    for(unsigned int i = 0; i < n; ++i)
+    {
+        output->addRow(inputTbl.getRow(i));
+    }
+    return output;
+}
+
+/*!
+ * @brief returns GTable with last n rows of original GTable
+ * @details creates new GTable from the last n rows of original GTable
+ * @param inputTbl original GTable
+ * @param n number of rows to be taken from original GTable
+ * @return GTable* pointer to new GTable
+ */
+shmea::GTable* GTable::lastNRows(const GTable& inputTbl, unsigned int n)
+{
+    if (inputTbl.numberOfRows() == 0 || n <= 0)
+    {
+        return NULL;
+    }
+
+    GTable* output = new GTable(inputTbl.getDelimiter());
+    if (inputTbl.numberOfRows() <= n)
+    {
+        output->copy(inputTbl);
+        return output;
+    }
+
+    output->header = inputTbl.header;
+    output->outputColumns = inputTbl.outputColumns;
+    unsigned int rowNum = inputTbl.numberOfRows();
+    for(unsigned int i = rowNum-n; i < rowNum; ++i)
+    {
+        output->addRow(inputTbl.getRow(i));
+    }
+    return output;
 }
 
 /*!
