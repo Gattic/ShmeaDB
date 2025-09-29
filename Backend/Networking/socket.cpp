@@ -77,7 +77,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int status = getaddrinfo(serverIP.c_str(), PORT.c_str(), &hints, &result);
+	int status = getaddrinfo(serverIP.c_str(), serverPort.c_str(), &hints, &result);
 	if (status < 0)
 	{
 		logger->error("SOCKS", "Get client addr info fail");
@@ -266,7 +266,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 		    origin->overflow = "";
 		}
 
-		// If we read nothing, then the other side probabled dced
+		// If we read nothing, then the other side probably disconnected
 		if(bytesRead == 0)
 		    return;
 
