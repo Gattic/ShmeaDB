@@ -31,6 +31,8 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	cryptEnabled = true;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
+	protocol = PROTO_TCP;
+	closeOnFinish = true;
 }
 
 Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newIP, shmea::GString newPort)
@@ -44,6 +46,8 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	cryptEnabled = true;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
+	protocol = PROTO_TCP;
+	closeOnFinish = true;
 }
 
 Connection::Connection(const Connection& instance2)
@@ -57,6 +61,8 @@ Connection::Connection(const Connection& instance2)
 	cryptEnabled = instance2.cryptEnabled;
 	key = instance2.key; // shouldnt matter what this value is
 	finished = instance2.finished;
+	protocol = instance2.protocol;
+	closeOnFinish = instance2.closeOnFinish;
 }
 
 Connection::~Connection()
@@ -81,7 +87,8 @@ void Connection::finish()
 	finished = true;
 
 	// close the connection
-	close(this->sockfd);
+	if (closeOnFinish)
+		close(this->sockfd);
 	this->sockfd = -1;
 }
 
@@ -116,6 +123,11 @@ bool Connection::isFinished() const
 	return finished;
 }
 
+int Connection::getProtocol() const
+{
+	return protocol;
+}
+
 void Connection::setName(shmea::GString newName)
 {
 	name = newName;
@@ -144,6 +156,16 @@ void Connection::disableEncryption()
 void Connection::setKey(int64_t newKey)
 {
 	key = newKey;
+}
+
+void Connection::setProtocol(int newProtocol)
+{
+	protocol = newProtocol;
+}
+
+void Connection::setCloseOnFinish(bool value)
+{
+	closeOnFinish = value;
 }
 
 bool Connection::validName(const shmea::GString& tempName)

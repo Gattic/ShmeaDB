@@ -35,7 +35,6 @@ GNet::GServer::GServer()
 	cryptEnabled = true;
 	LOCAL_ONLY = false;
 	running = false;
-	localConnection = NULL;
 	logoutListener = shmea::GPointer<LogoutListener>();
 	loginListener = shmea::GPointer<LoginListener>();
 	commandThread = (pthread_t*)malloc(sizeof(pthread_t));
@@ -69,10 +68,6 @@ GNet::GServer::~GServer()
 	sockfd = -1;
 	cryptEnabled = true;
 
-	if (localConnection)
-		delete localConnection;
-	localConnection = NULL;
-
 	if (commandThread)
 		free(commandThread);
 	commandThread = NULL;
@@ -104,7 +99,7 @@ GNet::GServer::~GServer()
 	writersBlock = NULL;
 }
 
-void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool networkingDisabled)
+void GNet::GServer::send(shmea::ServiceData* cData)
 {
 	if (!cData)
 		return;
@@ -113,10 +108,8 @@ void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool net
 	 GNet::Connection* destination = cData->getConnection();
 	if (!destination)
 	{
-		if (localFallback)
-			destination = getLocalConnection();
-		else
-			return;
+		printf("[NET] Invalid Connection\n");
+		return;
 	}
 
 	// Do not attempt to send to or logout an already finished connection
@@ -124,15 +117,8 @@ void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool net
 		return;
 
 	if (isNetworkingDisabled())
-		networkingDisabled = true;
-
-	if (!destination)
-	{
-		printf("[NET] Invalid Local Connection\n");
-		return;
-	}
-
-	if (!networkingDisabled)
+		GNet::Service::ExecuteService(this, cData, destination);
+	else
 	{
 		int bytesWritten =
 			socks->writeConnection(destination, destination->sockfd, cData);
@@ -140,10 +126,48 @@ void GNet::GServer::send(shmea::ServiceData* cData, bool localFallback, bool net
 		if (bytesWritten < 0 && destination && !destination->isFinished())
 			LogoutInstance(destination);
 	}
-	else
+}
+
+Connection* GNet::GServer::getOrCreateUDPConnection(const shmea::GString& serverIP, const shmea::GString& serverPort, const shmea::GString& clientName)
+{
+	// For UDP, we do not maintain a connected socket per peer. We reuse the shared UDP socket (udpfd) via destination->sockfd.
+	// Find existing server connection with UDP protocol
+	Connection* existing = getConnection(serverIP, clientName, serverPort);
+	if (existing && existing->getProtocol() == Connection::PROTO_UDP)
+		return existing;
+
+	// Create a lightweight Connection object pointing to the UDP socket
+	int udpfd = socks->getUDPSocketFD();
+	if (udpfd < 0)
+		udpfd = socks->openUDPServerSocket();
+
+	Connection* destination = new Connection(udpfd, Connection::SERVER_TYPE, serverIP, serverPort);
+	destination->setName(clientName);
+	destination->setProtocol(Connection::PROTO_UDP);
+	destination->setCloseOnFinish(false);
+	if(!cryptEnabled)
+		destination->disableEncryption();
+
+	// Track in server maps under UDP key
+	shmea::GString serverKey = serverIP + ":" + serverPort;
+	if(serverCLookUp.find(serverKey) == serverCLookUp.end())
 	{
-		GNet::Service::ExecuteService(this, cData, destination);
+		pthread_mutex_lock(serverMutex);
+		serverCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(serverKey, std::vector<int>()));
+		pthread_mutex_unlock(serverMutex);
 	}
+
+	pthread_mutex_lock(serverMutex);
+	serverC.push_back(destination);
+	serverCLookUp[serverKey].push_back(serverC.size()-1);
+	pthread_mutex_unlock(serverMutex);
+
+	return destination;
+}
+
+void GNet::GServer::LaunchUDPInstance(const shmea::GString& serverIP, const shmea::GString& serverPort, const shmea::GString& clientName)
+{
+	getOrCreateUDPConnection(serverIP, serverPort, clientName);
 }
 
 unsigned int GNet::GServer::addService(GNet::Service* newServiceObj)
@@ -243,11 +267,6 @@ bool GNet::GServer::isEncryptedByDefault() const
 int GNet::GServer::getSockFD()
 {
 	return sockfd;
-}
-
-Connection* GNet::GServer::getLocalConnection()
-{
-	return localConnection;
 }
 
 const std::vector<GNet::Connection*> GNet::GServer::getClientConnections()
@@ -423,6 +442,9 @@ GNet::GServer::findExistingConnection(const std::vector<GNet::Connection*>& inst
 //and there is no way to differentiate between them with the current implementation
 GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea::GString clientName, shmea::GString newPort)
 {
+	if(newPort == "-1" || newPort.length() == 0)
+	    newPort = socks->getPort();
+
 	shmea::GString serverKey = newServerIP + ":" + newPort;
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.find(serverKey);
 
@@ -514,8 +536,13 @@ void GNet::GServer::commandCatcher(void*)
 	else
 		printf("[SOCKS] Listening on port %s\n", socks->getPort().c_str());
 
+	// Open UDP socket on same port
+	int udpfd = socks->openUDPServerSocket();
+	if (udpfd < 0)
+		printf("[SOCKS] Could not create UDP socket on port %s\n", socks->getPort().c_str());
+
 	// Launch a local instance of a client
-	LaunchLocalInstance("Mar");
+	LaunchLocalInstance("admin");
 
 	// the engine
 	while (getRunning())
@@ -528,6 +555,12 @@ void GNet::GServer::commandCatcher(void*)
 		FD_ZERO(&fdarr);
 		FD_SET(sockfd, &fdarr);
 		max_sock = sockfd;
+		if (udpfd >= 0)
+		{
+			FD_SET(udpfd, &fdarr);
+			if (udpfd > max_sock)
+				max_sock = udpfd;
+		}
 
 		// clientConnections+serverConnections
 		std::vector<Connection*> instanceList;
@@ -586,19 +619,22 @@ void GNet::GServer::commandCatcher(void*)
 			continue;
 
 		Connection* cConnection = NULL;
+		bool udpEvent = false;
 		if (isConnection(sockfd, fdarr))
 			cConnection = setupNewConnection(max_sock);
+		else if (udpfd >= 0 && isConnection(udpfd, fdarr))
+			udpEvent = socks->readUDPDatagram(this);
 		else
 			cConnection = findExistingConnection(instanceList, fdarr);
 
-		if (!cConnection)
+		if (!cConnection && !udpEvent)
 		{
 			// LogoutInstance(cConnection);
 			continue;
 		}
 
 		// Put together new services from the socket
-		if (!socks->readLists(cConnection))
+		if (cConnection && !socks->readLists(cConnection))
 		{
 			// Close the socket immediately to stop further events
 			if (cConnection && !cConnection->isFinished())
@@ -610,7 +646,7 @@ void GNet::GServer::commandCatcher(void*)
 
 		// Run a service if we have any
 		if (socks->anyInboundLists())
-			socks->processLists(this, cConnection);
+			socks->processLists(this);
 	}
 
 	// stop everything
@@ -699,7 +735,6 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	destination->setName(x->clientName);   
 	if(!cryptEnabled)
 		destination->disableEncryption();
-
 	
 	shmea::GString serverKey = x->serverIP + ":" + x->serverPort;
 	if(serverCLookUp.find(serverKey) == serverCLookUp.end())
@@ -714,11 +749,6 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	serverCLookUp[serverKey].push_back(serverC.size()-1);
 	pthread_mutex_unlock(serverMutex);
 
-	if (x->serverIP == "127.0.0.1")
-		localConnection = destination;
-
-	// Notify listener for server login before handshake
-	notifyServerLogin(destination);
 	// Start the Login Handshake
 	shmea::GList wData;
 	wData.addString(x->clientName);
@@ -763,18 +793,6 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 		pthread_create(launchInstanceThread, NULL, LaunchInstanceLauncher, x);
 		pthread_detach(*launchInstanceThread);
 	}
-	/*else//For Testing Logouts
-	{
-		Connection* cConnection=(serverConnections.find(serverIP))->second;
-
-		//Log the client out of the server
-		LogoutInstance(cConnection);
-
-		//Log the server out of the client
-		ServiceData* wData;
-		wData.addInt(Service::LOGOUT_SERVER);
-		GNet::Service::ExecuteService(this, wData, cConnection);
-	}*/
 }
 
 void GNet::GServer::wakeWriter()
