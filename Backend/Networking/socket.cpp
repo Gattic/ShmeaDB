@@ -33,6 +33,7 @@ void Sockets::initSockets()
 	PORT = "45019";
 	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+	udpfd = -1;
 
 	pthread_mutex_init(inMutex, NULL);
 	pthread_mutex_init(outMutex, NULL);
@@ -77,7 +78,7 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int status = getaddrinfo(serverIP.c_str(), PORT.c_str(), &hints, &result);
+	int status = getaddrinfo(serverIP.c_str(), serverPort.c_str(), &hints, &result);
 	if (status < 0)
 	{
 		logger->error("SOCKS", "Get client addr info fail");
@@ -205,6 +206,49 @@ int Sockets::openServerConnection()
 	return sockfd;
 }
 
+int Sockets::openUDPServerSocket()
+{
+	int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s < 0)
+	{
+		logger->error("SOCKS", "Could not open UDP socket");
+		return -1;
+	}
+
+	int optval = 1;
+	int sockopts = SO_REUSEADDR;
+#if (SO_REUSEPORT)
+	sockopts |= SO_REUSEPORT;
+#endif
+	setsockopt(s, SOL_SOCKET, sockopts, &optval, sizeof(optval));
+
+	struct addrinfo* result;
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+
+	int status = getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
+	if (status < 0)
+	{
+		logger->error("SOCKS", "Get UDP addr info fail");
+		close(s);
+		return -1;
+	}
+
+	status = bind(s, result->ai_addr, result->ai_addrlen);
+	freeaddrinfo(result);
+	if (status < 0)
+	{
+		logger->error("SOCKS", "Could not bind UDP socket");
+		close(s);
+		return -1;
+	}
+
+	udpfd = s;
+	return s;
+}
+
 void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<shmea::ServiceData*>& srvcList)
 {
 	readConnectionHelper(origin, sockfd, srvcList);
@@ -225,151 +269,75 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	if (origin == NULL)
 		return;
 
-	shmea::GString cOverflow = origin->overflow;
-	int64_t key = origin->getKey();
+	// Accumulate raw network-order data and parse as many complete frames as available
+	shmea::GString raw = origin->overflow;
+	origin->overflow = "";
 
-	shmea::GString eText = "";
-	unsigned int eTotal = 0; // in bytes
-	unsigned int endPadding = 0; // in bytes
-
-	// bytes read
-	unsigned int eByteCounter = 0;
-
-	// Incase we read an amount that is not divisible by 4
-	unsigned int readOverflow = 0;
-	unsigned int readOverflowLen = 0; // in bytes
-
-	do
+	char buffer[4096];
+	int bytesRead = read(sockfd, buffer, sizeof(buffer));
+	if (bytesRead == -1)
 	{
-		char buffer[1025];
-		bzero(buffer, 1025);
-		*buffer = readOverflow;
-		unsigned int bytesLeft = eTotal-eByteCounter;
-		if(bytesLeft == 0) bytesLeft = 1024;
-		bytesLeft = bytesLeft > 1024 ? 1024-readOverflow : bytesLeft;
-		unsigned int bytesRead = read(sockfd, &buffer[readOverflowLen], bytesLeft);
-		bytesRead+=readOverflowLen;
-		//if ((bytesRead == 0) || (bytesRead == -1))
-		if (bytesRead == (unsigned int)-1)
+		logger->error("SOCKS", "[READER] Error: 3");
+		return;
+	}
+	if (bytesRead == 0)
+		return; // peer closed or no data
+
+	raw += shmea::GString(buffer, bytesRead);
+
+	while (raw.length() >= sizeof(unsigned int) * 2)
+	{
+		unsigned int blockSize = ntohl(*(unsigned int*)(&raw[0]));
+		if (blockSize < sizeof(unsigned int) * 2)
 		{
-			logger->error("SOCKS", "[READER] Error: 3");
+			logger->error("SOCKS", shmea::GString::format("Invalid blockSize: %u", blockSize));
 			return;
 		}
 
-		shmea::GString bufferStr = shmea::GString(buffer, bytesRead);
-		if(cOverflow.length() > 0)
+		if (raw.length() < blockSize)
+			break; // wait for more bytes
+
+		unsigned int padding = ntohl(*(unsigned int*)(&raw[4]));
+		unsigned int payloadNetLen = blockSize - (sizeof(unsigned int) * 2);
+		shmea::GString payloadHost = "";
+		for (unsigned int i = 8; i < 8 + payloadNetLen; i += sizeof(unsigned int))
 		{
-		    logger->debug("SOCKS", shmea::GString::format("cOverflow.length(): %u", cOverflow.length()));
-		    bytesRead += cOverflow.length();
-		    bufferStr = cOverflow + bufferStr;
-		    cOverflow = "";
-		    origin->overflow = "";
+			unsigned int cIntBlock = ntohl(*(unsigned int*)(&raw[i]));
+			payloadHost += shmea::GString((const char*)&cIntBlock, sizeof(unsigned int));
+		}
+		// Remove padding from the tail of the host-order payload
+		if (padding > 0 && payloadHost.length() >= padding)
+			payloadHost = payloadHost.substr(0, payloadHost.length() - padding);
+
+		int64_t key = origin->getKey();
+		if (origin->isEncrypted())
+		{
+			Crypt crypt; // TODO: MOVE THIS TO SERIALIZE
+			crypt.decrypt((int64_t*)payloadHost.c_str(), key, payloadHost.length() / 8);
+			if (crypt.error)
+			{
+				logger->error("CRYPT", shmea::GString::format("Readside Error: %d", crypt.error));
+				return;
+			}
+			shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
+			shmea::GString cStr = crypt.dText;
+			shmea::Serializable::Deserialize(cData, cStr);
+			cData->setTimesent(crypt.getTimesent());
+			srvcList.push_back(cData);
+		}
+		else
+		{
+			shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
+			shmea::Serializable::Deserialize(cData, payloadHost);
+			srvcList.push_back(cData);
 		}
 
-		// If we read nothing, then the other side probabled dced
-		if(bytesRead == 0)
-		    return;
-
-		bool headerIteration = false;
-		if(eTotal == 0)
-		{
-		    headerIteration = true;
-
-		    // The total bytes to read
-		    unsigned int newSize = ntohl(*(unsigned int*)(&bufferStr[0]));
-		    eTotal = newSize;
-		    eByteCounter += sizeof(unsigned int);
-		    logger->debug("SOCKS", shmea::GString::format("eTotal: %u", eTotal));
-
-		    // Padding at the end in bytes
-		    unsigned int newPadding = ntohl(*(unsigned int*)(&bufferStr[4]));
-		    endPadding = newPadding;
-		    eByteCounter += sizeof(unsigned int);
-		    logger->debug("SOCKS", shmea::GString::format("endPadding: %u", endPadding));
-		}
-
-		unsigned int headerOffset = 0;
-		if(headerIteration)
-		    headerOffset = 8;
-
-		// We will deal with the overflow later
-		readOverflowLen = bytesRead % sizeof(unsigned int);
-		bytesRead -= readOverflowLen;
-
-		// Convert the content from network byte order
-		shmea::GString newStr = "";
-		for(unsigned int i=headerOffset; i < bytesRead; i+=sizeof(unsigned int))
-		{
-		    unsigned int cIntBlock = ntohl(*(unsigned int*)(&bufferStr[i]));
-		    newStr += shmea::GString((const char*)&cIntBlock, sizeof(unsigned int));
-		    eByteCounter += sizeof(unsigned int);
-		}
-
-		if(readOverflowLen > 0)
-		    readOverflow = *(unsigned int*)(&bufferStr[bytesRead]);
-
-		eText += newStr;
-
-		//logger->debug("SOCKS", shmea::GString::format("eByteCounter: %u/%u/%u", eByteCounter, eText.length(), eTotal));
-	} while ((eByteCounter < eTotal) || (readOverflowLen > 0));
-
-	// We read a part of the next request
-	unsigned int extraSize = eByteCounter - eTotal;
-	if(extraSize > 0)
-	{
-	    //logger->debug("SOCKS", shmea::GString::format("Extra Size: %u", extraSize));
-	    origin->overflow = eText.substr(eTotal);
-
-	    eText = eText.substr(0, eByteCounter-extraSize-sizeof(int)*2);
-	    //logger->debug("SOCKS", shmea::GString::format("new-eTextLen: %u", eText.length()));
+		// Consume this frame from the raw buffer
+		raw = raw.substr(blockSize);
 	}
-	else
-	    origin->overflow = "";
 
-	// Decrypt
-	Crypt crypt;//TODO: MOVE THIS TO SERIALIZE
-	if(origin->isEncrypted())
-	{
-	    //crypt.decryptHeader(eText, key);
-	    crypt.decrypt((int64_t*)eText.c_str(), key, eText.length() / 8);
-
-	    if((eText.length()-crypt.sizeClaimed*sizeof(int64_t)) > 0)
-	        logger->warning("SOCKS", shmea::GString::format("CryptOverrun: %u", eText.length()-crypt.sizeClaimed*sizeof(int64_t)));
-
-	    if (crypt.error)
-	    {
-	        logger->error("CRYPT", shmea::GString::format("Readside Error: %d", crypt.error));
-	        return;
-	    }
-
-	    //logger->debug("SOCKS", shmea::GString::format("crypt.sizeClaimed: %lu", crypt.sizeClaimed*sizeof(int64_t)));
-	    if(crypt.sizeClaimed*sizeof(int64_t) != eTotal-(sizeof(int)*2))
-	    {
-	        logger->error("SOCKS", shmea::GString::format("RCV Misalignment: %lu != %lu", crypt.sizeClaimed*sizeof(int64_t), eTotal-(sizeof(int)*2)));
-	        return;
-	    }
-	    else
-	    {
-	        logger->verbose("SOCKS", shmea::GString::format("RCV Success: %lu == %lu", (crypt.sizeClaimed*sizeof(int64_t))+(sizeof(int)*2), eTotal));
-	    }
-
-	    //if (crypt.sizeCurrent < crypt.sizeClaimed)
-	    //else if (crypt.sizeCurrent == crypt.sizeClaimed)
-
-	    // Recreate the ServiceData to run later
-	    shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
-	    shmea::GString cStr = crypt.dText;
-	    shmea::Serializable::Deserialize(cData, cStr);
-	    cData->setTimesent(crypt.getTimesent());
-	    srvcList.push_back(cData); // minus the key
-	}
-	else
-	{
-	    // Recreate the ServiceData to run later
-	    shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
-	    shmea::Serializable::Deserialize(cData, eText);
-	    srvcList.push_back(cData);
-	}
+	// Save any leftover raw bytes for the next read
+	origin->overflow = raw;
 }
 
 int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
@@ -426,7 +394,8 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	else
 	    newStr = rawData;
 	unsigned int newBlockSize = newStr.length() + 8; // plus size and padding
-	unsigned int newPadding = newStr.length() % 4; // end 0s for even writes
+    // Pad up to the next 4-byte boundary
+    unsigned int newPadding = (4 - (newStr.length() % 4)) % 4; // 0..3 padding bytes
 	newBlockSize += newPadding;
 	shmea::GString sizeInt = shmea::GString((const char*)&newBlockSize, sizeof(unsigned int));
 	shmea::GString paddingInt = shmea::GString((const char*)&newPadding, sizeof(unsigned int));
@@ -444,12 +413,27 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	}
 
 	unsigned int writeLen = 0;
-	for (unsigned int i = 0; i < writeStr.length(); i+=1024)
+	if (cConnection && cConnection->getProtocol() == Connection::PROTO_UDP)
 	{
-	    if(writeStr.length()-i < 1024)
-	        writeLen += write(sockfd, writeStr.c_str()+i, writeStr.length()-i);
-	    else
-	        writeLen += write(sockfd, writeStr.c_str()+i, 1024);
+		// Send full datagram via UDP
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(atoi(cConnection->getPort().c_str()));
+		inet_pton(AF_INET, cConnection->getIP().c_str(), &addr.sin_addr);
+		int sent = sendto(sockfd, writeStr.c_str(), writeStr.length(), 0, (struct sockaddr*)&addr, sizeof(addr));
+		if (sent >= 0)
+			writeLen = (unsigned int)sent;
+	}
+	else
+	{
+		for (unsigned int i = 0; i < writeStr.length(); i+=1024)
+		{
+		    if(writeStr.length()-i < 1024)
+		        writeLen += write(sockfd, writeStr.c_str()+i, writeStr.length()-i);
+		    else
+		        writeLen += write(sockfd, writeStr.c_str()+i, 1024);
+		}
 	}
 
 	if ((writeLen != writeStr.length()) || (newBlockSize != newStr.length()))
@@ -474,11 +458,21 @@ void Sockets::closeConnection(const int& sockfd)
  */
 bool Sockets::readLists(Connection* origin)
 {
-	std::vector<shmea::ServiceData*> srvcList;
-	readConnection(origin, origin->sockfd, srvcList);
+    if (!origin)
+        return false;
 
-	if (srvcList.size() == 0)
-		return false;
+    // Capture overflow size to detect partial progress
+    unsigned int overflowBefore = origin->overflow.length();
+
+    std::vector<shmea::ServiceData*> srvcList;
+    readConnection(origin, origin->sockfd, srvcList);
+
+    // If no complete services arrived but overflow grew, we made progress (partial frame)
+    if (srvcList.size() == 0 && origin->overflow.length() > overflowBefore)
+        return true;
+
+    if (srvcList.size() == 0)
+        return false;
 
 	// loop through the srvcList
 	for (unsigned int i = 0; i < srvcList.size(); ++i)
@@ -509,12 +503,105 @@ bool Sockets::readLists(Connection* origin)
 	return true;
 }
 
+bool Sockets::readUDPDatagram(GServer* serverInstance)
+{
+	if (udpfd < 0)
+		return false;
+
+	char buffer[4096];
+	struct sockaddr_in from;
+	socklen_t fromlen = sizeof(from);
+	int bytes = recvfrom(udpfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromlen);
+	if (bytes <= 0)
+		return false;
+
+	char fromIP[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &from.sin_addr, fromIP, INET_ADDRSTRLEN);
+	shmea::GString ip = fromIP;
+	shmea::GString port = shmea::GString::format("%d", ntohs(from.sin_port));
+
+	Connection* tempConn = new Connection(udpfd, Connection::CLIENT_TYPE, ip, port);
+	tempConn->setProtocol(Connection::PROTO_UDP);
+	tempConn->setCloseOnFinish(false);
+	if (serverInstance && !serverInstance->isEncryptedByDefault())
+		tempConn->disableEncryption();
+
+	// UDP datagram carries already network-order encapsulated frame per existing protocol
+	// Reuse readConnectionHelper by simulating a stream read from datagram contents
+	// Build srvcList and enqueue to inboundLists
+	std::vector<shmea::ServiceData*> srvcList;
+	// emulate origin overflow-less path by temporarily injecting buffer
+	// Minimal wrapper: deserialize directly (unencrypted path supported)
+	// We need to mirror TCP framing: [size(4)][padding(4)][payload(net32 chunks)]
+	if ((unsigned int)bytes < sizeof(unsigned int)*2)
+	{
+		delete tempConn;
+		return false;
+	}
+	// Create a temporary string with the datagram
+	shmea::GString chunk(buffer, bytes);
+
+	// Since readConnectionHelper expects to read() from fd, we replicate core branch here
+	unsigned int blockSize = ntohl(*(unsigned int*)(&chunk[0]));
+	unsigned int padding = ntohl(*(unsigned int*)(&chunk[4]));
+	if (blockSize != (unsigned int)bytes)
+	{
+		logger->warning("SOCKS", shmea::GString::format("UDP size mismatch: %u != %u", blockSize, bytes));
+	}
+	shmea::GString payload = "";
+	for (unsigned int i = 8; i + sizeof(unsigned int) <= (unsigned int)bytes; i += sizeof(unsigned int))
+	{
+		unsigned int v = ntohl(*(unsigned int*)(&chunk[i]));
+		payload += shmea::GString((const char*)&v, sizeof(unsigned int));
+	}
+	if (padding > 0 && payload.length() >= padding)
+		payload = payload.substr(0, payload.length() - padding);
+
+	Crypt crypt;
+	if (tempConn->isEncrypted())
+	{
+		int64_t key = tempConn->getKey();
+		crypt.decrypt((int64_t*)payload.c_str(), key, payload.length()/8);
+		if (crypt.error)
+		{
+			logger->error("CRYPT", shmea::GString::format("UDP Readside Error: %d", crypt.error));
+			delete tempConn;
+			return false;
+		}
+		shmea::ServiceData* cData = new shmea::ServiceData(tempConn, "");
+		shmea::GString cStr = crypt.dText;
+		shmea::Serializable::Deserialize(cData, cStr);
+		cData->setTimesent(crypt.getTimesent());
+		srvcList.push_back(cData);
+	}
+	else
+	{
+		shmea::ServiceData* cData = new shmea::ServiceData(tempConn, "");
+		shmea::Serializable::Deserialize(cData, payload);
+		srvcList.push_back(cData);
+	}
+
+	for (unsigned int i = 0; i < srvcList.size(); ++i)
+	{
+		pthread_mutex_lock(inMutex);
+		int64_t serviceNum = srvcList[i]->getServiceNum();
+		std::map<int64_t, shmea::ServiceData*>::iterator itr = inboundLists.find(serviceNum);
+		if (itr == inboundLists.end())
+			inboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, srvcList[i]));
+		else
+			inboundLists[serviceNum] = srvcList[i];
+		pthread_mutex_unlock(inMutex);
+	}
+
+	return true;
+}
+
 /*!
  * @brief process lists
  * @details create new services from the lists in the "inbound" map
  * @param cConnection the connection Connection
  */
-void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
+void Sockets::processLists(GServer* serverInstance)
 {
 	while (!inboundLists.empty())
 	{
@@ -522,7 +609,7 @@ void Sockets::processLists(GServer* serverInstance, Connection* cConnection)
 		shmea::ServiceData* nextSD = (*inboundLists.begin()).second;
 		inboundLists.erase(inboundLists.begin());
 		pthread_mutex_unlock(inMutex);
-		GNet::Service::ExecuteService(serverInstance, nextSD, cConnection);
+		GNet::Service::ExecuteService(serverInstance, nextSD, nextSD->getConnection());
 	}
 }
 

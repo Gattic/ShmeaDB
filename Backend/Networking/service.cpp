@@ -24,8 +24,6 @@ using namespace GNet;
 #include "../../services/bad_request.h"
 #include "../../services/handshake_client.h"
 #include "../../services/handshake_server.h"
-#include "../../services/logout_client.h"
-#include "../../services/logout_server.h"
 
 /*!
  * @brief Service constructor
@@ -60,11 +58,11 @@ void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* 
 							 Connection* cConnection)
 {
 	// set the args to pass in
-	newServiceArgs* x = new newServiceArgs[sizeof(newServiceArgs)];
+	newServiceArgs* x = new newServiceArgs();
 	x->serverInstance = serverInstance;
 	x->cConnection = cConnection;
 	x->sockData = sockData;
-	x->sThread = new pthread_t[sizeof(pthread_t)];
+	x->sThread = new pthread_t();
 
 	// launch a new service thread
 	pthread_create(x->sThread, NULL, &launchService, (void*)x);
@@ -126,11 +124,14 @@ void* Service::launchService(void* y)
 	}
 
 	if (x)
+	{
+		if (x->sThread)
+			delete x->sThread;
 		delete x;
+	}
 
 	// delete the Connection
-	if (cConnection->isFinished())
-		delete cConnection;
+	// Connection lifetime is managed by server logout handlers
 	return NULL;
 }
 

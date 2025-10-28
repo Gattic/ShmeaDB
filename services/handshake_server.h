@@ -86,6 +86,9 @@ public:
 
 		serverInstance->logger->info("SRVC", shmea::GString::format("Handshake_Server: %s", destination->getName().c_str()));
 
+		// Notify login listener now that the name is known
+		serverInstance->notifyClientLogin(destination);
+
 		return NULL;
 	}
 
