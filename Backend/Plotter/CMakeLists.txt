@@ -1,46 +1,42 @@
-#Threading lib
+# Plotter lib: Plotter
 
 if(EMSCRIPTEN)
-    message(STATUS "Emscripten detected, enabling Freetype port.")
-    add_compile_definitions(USE_FREETYPE_PORT) # Optional, for your app logic
+    message(STATUS "Emscripten detected, enabling Freetype port for Plotter.")
+    add_compile_definitions(USE_FREETYPE_PORT)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_FREETYPE=1")
 else()
-    include(FindPkgConfig)
     find_package(Freetype REQUIRED)
-    include_directories(${FREETYPE_INCLUDE_DIRS})
 endif()
-
-# Set C++03 standard flag
-set(CMAKE_CXX_STANDARD 98)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(Plotter_src_files
-	ColorManager.cpp
-	SuperSamplingManager.cpp
-	ChartLayout.cpp
-	ShapeRenderer.cpp
-	TextRenderer.cpp
-	GridRenderer.cpp
-	DataMapper.cpp
-	ChartStyler.cpp
-	Plotter.cpp
+    ColorManager.cpp
+    SuperSamplingManager.cpp
+    ChartLayout.cpp
+    ShapeRenderer.cpp
+    TextRenderer.cpp
+    GridRenderer.cpp
+    DataMapper.cpp
+    ChartStyler.cpp
+    Plotter.cpp
 )
+
 add_library(Plotter ${Plotter_src_files})
 
-#Link libraries
-if(EMSCRIPTEN)
-else()
-    target_link_libraries(Plotter ${FREETYPE_LIBRARIES} DB)
+# Include/link: keep Freetype PRIVATE; DB is PUBLIC if Plotter's headers depend on DB types
+if(NOT EMSCRIPTEN)
+    target_include_directories(Plotter PRIVATE ${FREETYPE_INCLUDE_DIRS})
+    target_link_libraries(Plotter PRIVATE ${FREETYPE_LIBRARIES})
 endif()
 
-install(TARGETS Plotter EXPORT shmeaConfig
-    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+# Plotter needs DB — expose it PUBLIC if Plotter's public headers use DB types; otherwise PRIVATE
+target_link_libraries(Plotter PUBLIC DB)
+
+install(TARGETS Plotter
+    EXPORT   shmeaTargets
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
-install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
-
-export(TARGETS Plotter FILE shmeaConfig.cmake)
-
+# NO install(EXPORT ...) or export(TARGETS ...) here

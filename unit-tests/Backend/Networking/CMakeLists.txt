@@ -1,4 +1,18 @@
-set(GNetTests_src_files
-crypt-test.cpp
+add_library(GNetTests
+  crypt-test.cpp
 )
-add_library(GNetTests ${GNetTests_src_files})
+
+target_include_directories(GNetTests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/.."
+)
+
+target_link_libraries(GNetTests PRIVATE
+  shmea::GNet
+  shmea::DB
+  shmea::GCore
+)
+
+# If any test directly calls winsock (rare), you could also:
+# if(WIN32)
+#   target_link_libraries(GNetTests PRIVATE ws2_32)
+# endif()

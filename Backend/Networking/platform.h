@@ -5,7 +5,9 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <signal.h>
-    #pragma comment(lib, "ws2_32.lib")
+    #ifdef _MSC_VER
+        #pragma comment(lib, "ws2_32.lib")
+    #endif
 
     typedef SOCKET sock_t;  // Windows sockets are unsigned (SOCKET is UINT_PTR)
     #define CLOSESOCK(s) closesocket(s)

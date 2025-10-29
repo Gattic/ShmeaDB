@@ -6,7 +6,7 @@ GCondition::GCondition()
 #ifdef _WIN32
     InitializeConditionVariable(&condVar);
 #else
-    pthread_cond_init(&condVar, nullptr);
+    pthread_cond_init(&condVar, NULL);
 #endif
 }
 

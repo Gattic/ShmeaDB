@@ -1,96 +1,117 @@
-if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
-    message(FATAL_ERROR "Must be in \"build\" directory")
+cmake_minimum_required(VERSION 3.16)  # safer on Windows; 3.5.1 is too old for many niceties
+project(shmea-unit-tests LANGUAGES CXX)
+
+# Force out-of-source build in a 'build' dir
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR OR NOT (CMAKE_BINARY_DIR STREQUAL "${CMAKE_SOURCE_DIR}/build"))
+  message(FATAL_ERROR "Must configure in a separate 'build' directory (i.e., run from unit-tests/build).")
 endif()
 
-if(WIN32)
-    set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/.local" CACHE PATH "default install path" FORCE)
-else()
-    set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
-endif()
-
-cmake_minimum_required(VERSION 3.5.1)
+# C++ standard for tests
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Default build type for single-config generators
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
+endif()
+
+# Where the exe lands
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
-file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
-
+# Warnings
 if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /EHsc")
-elseif(MINGW)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+  add_compile_options(/W3 /EHsc)
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+  add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 endif()
 
-project(shmea-unit-tests)
-set(G_VERSION_MAJOR 0)
-set(G_VERSION_MINOR 57)
-
-set(DEFAULT_BUILD_TYPE "Release")
-
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
-    set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+# Help CMake find your installed 'shmea' package under ~/.local or %USERPROFILE%/.local
+if(DEFINED ENV{USERPROFILE})
+  file(TO_CMAKE_PATH "$ENV{USERPROFILE}/.local" _user_local)
+  list(APPEND CMAKE_PREFIX_PATH "${_user_local}")
+endif()
+if(DEFINED ENV{HOME})
+  file(TO_CMAKE_PATH "$ENV{HOME}/.local" _home_local)
+  list(APPEND CMAKE_PREFIX_PATH "${_home_local}")
 endif()
 
-include(GNUInstallDirs)
+# Load the installed package (exported by your main ShmeaDB install)
+# Expect imported targets: shmea::shmea, shmea::DB, shmea::GNet, shmea::Plotter, shmea::GCore
+find_package(shmea CONFIG REQUIRED)
 
-find_package(shmea REQUIRED)
+# Subdirs with the three small test libs
+add_subdirectory(Backend)
 
-add_subdirectory("Backend/Database")
-add_subdirectory("Backend/Plotter")
-add_subdirectory("Backend/Networking")
-
+# Test runner
 set(MAIN_src_files
-    main.cpp
-    main.h
-    unit-test.cpp
-    unit-test.h
+  main.cpp
+  main.h
+  unit-test.cpp
+  unit-test.h
 )
-
 add_executable(${PROJECT_NAME} ${MAIN_src_files})
 
+# Make sure it's a console app (show output)
+set_target_properties(shmea-unit-tests PROPERTIES WIN32_EXECUTABLE OFF)
+
+# Copy ALL dependent DLLs beside the exe (CMake >= 3.21)
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} ws2_32)
+  add_custom_command(TARGET shmea-unit-tests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:shmea-unit-tests>
+            $<TARGET_FILE_DIR:shmea-unit-tests>
+    COMMAND_EXPAND_LISTS
+  )
 endif()
 
-target_link_libraries(${PROJECT_NAME}
-    PlotterTests DBTests GNetTests shmea
-)
 
+# Ensure console subsystem on Windows (so we actually see stdout/stderr)
+set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
+
+# Test code includes its own headers under unit-tests/Backend/...
 target_include_directories(${PROJECT_NAME} PRIVATE
-    "${CMAKE_SOURCE_DIR}/Backend"
-    "${CMAKE_SOURCE_DIR}/Backend/Database"
-    "${CMAKE_SOURCE_DIR}/Backend/Plotter"
-    "${CMAKE_SOURCE_DIR}/Backend/Networking"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Backend"
 )
 
+# Link the three helper libs + the installed shmea library
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  DBTests
+  GNetTests
+  PlotterTests
+  shmea::shmea
+)
+
+# Convenience targets
 add_custom_target(run
-    COMMAND ${PROJECT_NAME}
-    DEPENDS ${PROJECT_NAME}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  COMMAND $<TARGET_FILE:${PROJECT_NAME}>
+  DEPENDS ${PROJECT_NAME}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 add_custom_target(debug
-    COMMAND gdb ./build/${PROJECT_NAME}
-    DEPENDS ${PROJECT_NAME}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  COMMAND gdb ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}
+  DEPENDS ${PROJECT_NAME}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 if(UNIX AND NOT APPLE)
-    add_custom_target(mem
-        COMMAND valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./build/${PROJECT_NAME}
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+  add_custom_target(mem
+    COMMAND valgrind --leak-check=full --track-origins=yes --show-reachable=yes ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}
+    DEPENDS ${PROJECT_NAME}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+  add_custom_target(profile
+    COMMAND valgrind --tool=callgrind ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}
+    DEPENDS ${PROJECT_NAME}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+endif()
 
-    add_custom_target(profile
-        COMMAND valgrind --tool=callgrind ./build/${PROJECT_NAME}
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+# Optional: ctest integration
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME shmea_unit_tests COMMAND $<TARGET_FILE:${PROJECT_NAME}>)
 endif()

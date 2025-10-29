@@ -1,48 +1,46 @@
-#ssl and crypto libs
-#find_library(OpenSSL REQUIRED ssl crypto)
+# Networking lib: GNet
 
-#find_package(OpenSSL)
-#include_directories(${OPENSSL_INCLUDE_DIRS})
-
-#Threading lib
-include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
 set(GNet_src_files
-	platform.h
-	GThread.h
-	GThread.cpp
-	GCondition.h
-	GCondition.cpp
-	GMutex.h
-	GMutex.cpp
-	main.cpp
-	main.h
-	crypt.cpp
-	crypt.h
-	connection.cpp
-	connection.h
-	service.cpp
-	service.h
-	socket.cpp
-	socket.h
+  platform.h
+  GThread.h        # headers still included by users of GNet
+  GCondition.h
+  GMutex.h
+  main.cpp
+  main.h
+  crypt.cpp
+  crypt.h
+  connection.cpp
+  connection.h
+  service.cpp
+  service.h
+  socket.cpp
+  socket.h
+  # IMPORTANT: DO NOT compile these here anymore:
+  # GThread.cpp
+  # GCondition.cpp
+  # GMutex.cpp
 )
+
 add_library(GNet ${GNet_src_files})
 
-#Link libraries
-target_link_libraries(GNet ${CMAKE_THREAD_LIBS_INIT})
+# Link: core first, then DB (if public headers expose DB types, use PUBLIC; otherwise PRIVATE)
+target_link_libraries(GNet
+  PRIVATE
+    GCore
+    DB
+    ${CMAKE_THREAD_LIBS_INIT}
+)
 
-# Link libraries
 if(WIN32)
-    target_link_libraries(GNet ws2_32)
+  target_link_libraries(GNet PRIVATE ws2_32)
 endif()
 
-install(TARGETS GNet EXPORT shmeaConfig
-    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
-
-export(TARGETS GNet FILE shmeaConfig.cmake)
+install(TARGETS GNet
+  EXPORT   shmeaTargets
+  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
