@@ -36,12 +36,11 @@ Connection::Connection(sock_t newSockFD, int newConnectionType, shmea::GString n
 
 }
 
-Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newIP, shmea::GString newPort)
+Connection::Connection(sock_t newSockFD, int newConnectionType, shmea::GString newIP, shmea::GString newPort)
 {
 	name = "";
 	ip = newIP;
 	port = newPort;
-
 	sockfd = newSockFD;
 	overflow = "";
 	connectionType = newConnectionType;
