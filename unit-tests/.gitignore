@@ -1,3 +1,4 @@
+logs/
 outputTest.csv
 cluster_test_output.png
 histogram_skewed_output.png

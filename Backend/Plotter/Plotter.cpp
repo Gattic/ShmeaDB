@@ -14,6 +14,20 @@
 
 namespace shmea {
 
+std::map<unsigned int, std::string> Plotter::AGG_SIZE;
+
+RGBA Plotter::GetUniqueColor(int i, int total)
+{
+    float hue = static_cast<float>(i)/total;
+    return colorManager->HSVtoRGBA(hue, 0.7f, 1.0f);
+}
+
+RGBA Plotter::GetThemeColor(int i)
+{
+    int themeColorSize = colorManager->getThemeColors().size();
+    return colorManager->getThemeColor(i % themeColorSize);
+}
+
 //
 // ChartBuilder Implementation
 //
@@ -28,9 +42,11 @@ ChartBuilder::ChartBuilder(Plotter& plotter)
       bullishColor(0x03, 0xC0, 0x3C, 0xFF),
       bearishColor(0xFF, 0x47, 0x45, 0xFF),
       hasClusterData(false),
-      alignCentroids(true)  // Default to aligning centroids with cluster centers
+      alignCentroids(true),  // Default to aligning centroids with cluster centers
+      normalizationMode(NORMALIZE_TOGETHER)  // Default to normalizing together
 {
     // Initialize boolean flags
+    
 }
 
 ChartBuilder& ChartBuilder::title(const std::string& title, unsigned int fontSize) {
@@ -91,6 +107,18 @@ ChartBuilder& ChartBuilder::colors(const std::vector<RGBA>& colors) {
     return *this;
 }
 
+ChartBuilder& ChartBuilder::dateLabels(bool date)
+{
+   plotter.setDateLabels(date);
+   return *this;
+}
+
+ChartBuilder& ChartBuilder::legendLabels(bool legend)
+{
+	plotter.setLegendLabels(legend);
+	return *this;
+}
+
 ChartBuilder& ChartBuilder::addSeries(const Series& series) {
     this->series.push_back(series);
     
@@ -149,6 +177,7 @@ ChartBuilder& ChartBuilder::addHistogramData(const std::vector<int>& bins,
     return *this;
 }
 
+//Timestamp needs to be in SECONDS
 ChartBuilder& ChartBuilder::addCandlestickData(const std::vector<CandleData>& candles,
                                              const RGBA& bullishColor,
                                              const RGBA& bearishColor) {
@@ -206,42 +235,101 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         allDataPoints.push_back(DataMapper::Point(arrows[i].start.x, arrows[i].start.y));
         allDataPoints.push_back(DataMapper::Point(arrows[i].end.x, arrows[i].end.y));
     }
+
+    //Add Candlestick Data
+    std::vector<DataMapper::CandleData> mapperCandles = plotter.convertToCandleData(candlestickData);
     
+    for(size_t i = 0; i < mapperCandles.size(); ++i)
+    {
+	allDataPoints.push_back(DataMapper::Point(mapperCandles[i].timestamp, mapperCandles[i].high));
+	allDataPoints.push_back(DataMapper::Point(mapperCandles[i].timestamp, mapperCandles[i].low));
+	allDataPoints.push_back(DataMapper::Point(mapperCandles[i].timestamp, mapperCandles[i].open));
+	allDataPoints.push_back(DataMapper::Point(mapperCandles[i].timestamp, mapperCandles[i].close));
+    }
+
     // If we have data points, calculate a common axis range for all elements
     if (!allDataPoints.empty()) {
         DataMapper::AxisRange xRange = plotter.dataMapper->calculateXRange(allDataPoints);
         DataMapper::AxisRange yRange = plotter.dataMapper->calculateYRange(allDataPoints);
-        
-        // Add padding to ensure all elements are visible
-        double xPadding = (xRange.max - xRange.min) * 0.1;
-        double yPadding = (yRange.max - yRange.min) * 0.1;
-        
-        // Ensure minimum padding
-        xPadding = std::max(xPadding, 0.5);
-        yPadding = std::max(yPadding, 0.5);
-        
-        // Apply padding
-        xRange.min -= xPadding;
-        xRange.max += xPadding;
-        yRange.min -= yPadding;
-        yRange.max += yPadding;
-        
-        printf("Chart display range - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
-               xRange.min, xRange.max, yRange.min, yRange.max);
+
         
         // If origin axes are enabled, adjust ranges to include origin
         if (plotter.chartLayout->areOriginAxesVisible()) {
-            // Make sure origin (0,0) is included in both ranges
-            if (xRange.min >= 0) xRange.min = -xRange.max * 0.1;
-            if (xRange.max <= 0) xRange.max = -xRange.min * 0.1;
-            if (yRange.min >= 0) yRange.min = -yRange.max * 0.1;
-            if (yRange.max <= 0) yRange.max = -yRange.min * 0.1;
-            
-            // Update origin axes with these ranges
-            plotter.currentXAxisRange = xRange;
-            plotter.currentYAxisRange = yRange;
+		 double xPaddingPrecisionMin = 0.1;
+		 double xPaddingPrecisionMax = 0.1;
+		 double yPaddingPrecisionMin = 0.1;
+		 double yPaddingPrecisionMax = 0.1;
+
+		if (fabs(xRange.min) < 0.1)
+		{
+			xPaddingPrecisionMin = 0.01;
+		}	
+
+		if (fabs(xRange.max) < 0.1)
+		{
+			xPaddingPrecisionMax = 0.01;
+		}
+
+		if (fabs(yRange.min) < 0.1)
+		{
+			yPaddingPrecisionMin = 0.01;
+		}
+		
+		if (fabs(yRange.max) < 0.1)
+		{
+			yPaddingPrecisionMax = 0.01;
+		}
+		    // Make sure origin (0,0) is included in both ranges
+		    if (xRange.min >= 0) xRange.min = -xRange.max * xPaddingPrecisionMin;
+		    if (xRange.max <= 0) xRange.max = -xRange.min * xPaddingPrecisionMax;
+		    if (yRange.min >= 0) yRange.min = -yRange.max * yPaddingPrecisionMin;
+		    if (yRange.max <= 0) yRange.max = -yRange.min * yPaddingPrecisionMax;
+		    
+		    // Update origin axes with these ranges
+		    plotter.currentXAxisRange = xRange;
+		    plotter.currentYAxisRange = yRange;
         }
-        
+	else
+	{
+
+		// Add padding to ensure all elements are visible on non origin axes visible
+		double xPadding = (xRange.max - xRange.min);
+		double yPadding = (yRange.max - yRange.min);
+		
+		double xPaddingPrecisionMin = xPadding * 0.1;
+		double xPaddingPrecisionMax = xPadding * 0.1;
+		double yPaddingPrecisionMin = yPadding * 0.1;
+		double yPaddingPrecisionMax = yPadding * 0.1;
+
+		if (fabs(xRange.min) < 0.1)
+		{
+			xPaddingPrecisionMin = xPadding * 0.01;
+		}	
+
+		if (fabs(xRange.max) < 0.1)
+		{
+			xPaddingPrecisionMax = xPadding * 0.01;
+		}
+
+		if (fabs(yRange.min) < 0.1)
+		{
+			yPaddingPrecisionMin = yPadding * 0.01;
+		}
+		
+		if (fabs(yRange.max) < 0.1)
+		{
+			yPaddingPrecisionMax = yPadding * 0.01;
+		}
+		
+		// Apply padding
+		xRange.min -= xPaddingPrecisionMin;
+		xRange.max += xPaddingPrecisionMax;
+		yRange.min -= yPaddingPrecisionMin;
+		yRange.max += yPaddingPrecisionMax;
+		
+		printf("Chart display range - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+		       xRange.min, xRange.max, yRange.min, yRange.max);
+	} 
         // Store the ranges in the DataMapper for consistent scaling of all elements
         plotter.dataMapper->setCurrentXRange(xRange);
         plotter.dataMapper->setCurrentYRange(yRange);
@@ -259,13 +347,9 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         DataMapper::AxisRange yRange = plotter.dataMapper->getCurrentYRange();
         plotter.setupStandardAxisTicks(xRange, yRange, 50);
     }
-    
+   
     // Render the appropriate chart based on the data provided
-    if (!series.empty()) {
-        // Plot the series data
-        plotter.plotChart(series);
-    }
-    else if (hasLabeledHistogramData) {
+    if (hasLabeledHistogramData) {
         // Plot histogram with custom labels
         plotter.plotHistogramWithLabels(histogramBins, histogramLabels, histogramColor);
     }
@@ -274,14 +358,29 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         plotter.plotHistogram(histogramBins, histogramColor, histogramShowXAxisLabels);
     }
     else if (hasCandlestickData) {
-        // Plot candlestick chart
-        plotter.plotCandlestickChart(candlestickData, bullishColor, bearishColor);
+	printf("Plotting Candle\n");
+        // Plot candlestick chart and remember timestamp needs to be in seconds
+        plotter.plotCandlestickChart(mapperCandles, bullishColor, bearishColor,
+                         "Financial Data Analysis", "Date", "Price");
+
+	if(!series.empty())
+	{
+	    printf("Plotting Series\n");
+	    plotter.plotChart(series,
+		plotter.dataMapper->getCurrentXRange(),
+		plotter.dataMapper->getCurrentYRange(),
+		candlestickData);
+	}
     }
     else if (hasClusterData) {
         // Plot cluster chart
         plotter.plotClusters(clusterData, clusterLabels, centroids);
     }
-    else if (arrows.empty()) {
+    else if(!series.empty())
+    {
+	plotter.plotChart(series, "", "", "", normalizationMode);
+    }
+    else {
         printf("Warning: No chart data provided to ChartBuilder. Nothing to render.\n");
     }
     
@@ -298,7 +397,7 @@ void ChartBuilder::saveAs(const std::string& filename, const std::string& folder
         // This will use the DataMapper's current X and Y ranges that we already set
         plotter.plotArrows(arrows, false);
     }
-    
+   
     // Save the chart
     plotter.saveAsPNG(filename, folder);
     
@@ -403,6 +502,11 @@ ChartBuilder& ChartBuilder::alignCentroidsWithClusters(bool align) {
     return *this;
 }
 
+ChartBuilder& ChartBuilder::normalizeSeries(NormalizationMode mode) {
+    normalizationMode = mode;
+    return *this;
+}
+
 // Let's implement the new method for histogram with custom labels
 ChartBuilder& ChartBuilder::addHistogramDataWithLabels(const std::vector<int>& bins,
                                                     const std::vector<std::string>& labels,
@@ -447,11 +551,14 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
       savedMarginBottom(0),
       savedMarginLeft(0),
       chartTitle(""),
-      chartTitleFontSize(36)
+      chartTitleFontSize(36),
+      bullishColor(0x03, 0xC0, 0x3C, 0xFF),
+      bearishColor(0xFF, 0x47, 0x45, 0xFF),
+      lastLegendY(0)
 {
     // Initialize boolean flags
     forceAlignCentroids = true;  // Default to aligning centroids with cluster centers
-    
+    initAggSize();    
     initialize_font("fonts/font.ttf");
     loadLogo("logo.png", true);
 
@@ -489,6 +596,23 @@ Plotter::Plotter(unsigned int width, unsigned int height, unsigned int ssaa_fact
     
     // Complete initialization
     initialize();
+}
+
+void Plotter::initAggSize() {
+    AGG_SIZE[1] = "1m";
+    AGG_SIZE[2] = "2m";
+    AGG_SIZE[3] = "3m";
+    AGG_SIZE[5] = "5m";
+    AGG_SIZE[15] = "15m";
+    AGG_SIZE[30] = "30m";
+    AGG_SIZE[60] = "1h";
+    AGG_SIZE[240] = "4h";
+    AGG_SIZE[390] = "1D";
+    AGG_SIZE[1950] = "1W";
+    AGG_SIZE[8190] = "1MO";
+    AGG_SIZE[1440] = "1D";
+    AGG_SIZE[10080] = "1W";
+    AGG_SIZE[43200] = "1MO";
 }
 
 void Plotter::initialize_font(const std::string fontPath)
@@ -646,10 +770,8 @@ void Plotter::prepareCanvas()
     
     // Redraw title if one is set
     if (!chartTitle.empty()) {
-        int titleY = 30;  // Standard position below top margin
         RGBA titleColor = colorManager->getElementColor("title");
-        textRenderer->drawText(chartLayout->getMarginLeft(), titleY, 
-                            chartTitle, titleColor, chartTitleFontSize, false);
+	addTitle(chartTitle, chartTitleFontSize);
     }
 }
 
@@ -659,8 +781,6 @@ void Plotter::addTitle(const std::string& text, unsigned int fontSize)
     chartTitle = text;
     chartTitleFontSize = fontSize;
     
-    // Draw the title immediately
-    textRenderer->addTitle(text, fontSize);
 }
 
 void Plotter::addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize)
@@ -686,9 +806,9 @@ void Plotter::addAxisLabels(const std::string& xLabel, const std::string& yLabel
 }
 
 int Plotter::addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors, 
-                       int x, int y, unsigned int fontSize)
+                       int x, int y, unsigned int fontSize, bool _new, bool redraw)
 {
-    return chartStyler->addLegend(labels, colors, x, y, fontSize);
+    return chartStyler->addLegend(labels, colors, x, y, fontSize, _new, redraw);
 }
 
 void Plotter::setYAxisLabel(const std::string& label)
@@ -936,7 +1056,7 @@ void Plotter::setupChart(const ChartConfig& config, unsigned int* originalTopMar
     
     // Set default titleY if needed and provided - exact positioning from plotter.cpp
     if (titleY) {
-        *titleY = 30; // Standard position below top margin - exact value from plotter.cpp
+        *titleY = 40; // Standard position below top margin - exact value from plotter.cpp
         
         // Use stored title if available, otherwise use config title
         std::string displayTitle = !chartTitle.empty() ? chartTitle : config.title;
@@ -1060,6 +1180,10 @@ void Plotter::plotHistogram(const std::vector<int>& bins,
     // Draw axis labels with larger font size
     addAxisLabels(xAxisLabel, yAxisLabel, 32);
     
+    // Calculate bar dimensions
+    int barWidth, barSpacing, startX;
+    calculateHistogramBarDimensions(bins.size(), barWidth, barSpacing, startX);
+
     // Draw Y-axis with value labels - use adjustedMaxYValue instead of maxBinValue
     // 5 ticks, values displayed as integers, 0 decimal places, 50px label offset
     gridRenderer->drawYAxisTicks(0, adjustedMaxYValue, 5, true, 0, 50);
@@ -1079,9 +1203,6 @@ void Plotter::plotHistogram(const std::vector<int>& bins,
         gridRenderer->drawXAxisTicks(xLabels, 8);
     }
     
-    // Calculate bar dimensions
-    int barWidth, barSpacing, startX;
-    calculateHistogramBarDimensions(bins.size(), barWidth, barSpacing, startX);
     
     // Draw each histogram bar
     for (size_t i = 0; i < bins.size(); ++i) {
@@ -1122,18 +1243,27 @@ void Plotter::plotHistogram(const std::vector<int>& bins,
     // chartLayout->setMarginTop(originalTopMargin);
 }
 
-// Original candlestick method for backward compatibility
+// This will setup the plotCandlestickchart data independently from SaveAs, but not quite sure if it will ever be needed
 void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
                                  const RGBA& bullishColor,
                                  const RGBA& bearishColor)
 {
+
+    
+    std::vector<DataMapper::CandleData> mapperCandles = convertToCandleData(candles);
+    DataMapper::AxisRange timeRange, priceRange;
+    calculateCandlestickRanges(mapperCandles, timeRange, priceRange);
+
+    dataMapper->setCurrentXRange(timeRange);
+    dataMapper->setCurrentYRange(priceRange);    
+
     // Call the enhanced version with default parameters
-    plotCandlestickChart(candles, bullishColor, bearishColor, 
+    plotCandlestickChart(mapperCandles, bullishColor, bearishColor, 
                          "Financial Data Analysis", "Date", "Price");
 }
 
 // Enhanced candlestick method with more parameters
-void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
+void Plotter::plotCandlestickChart(const std::vector<DataMapper::CandleData>& candles,
                                  const RGBA& bullishColor,
                                  const RGBA& bearishColor,
                                  const std::string& title,
@@ -1160,6 +1290,9 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
         // Use bright pink/red for bearish candles
         useBearishColor = colorManager->getElementColor("bearish");
     }
+
+    this->bullishColor = useBullishColor;
+    this->bearishColor = useBearishColor;    
     
     // Variables for margin storage and positioning
     unsigned int originalTopMargin, originalRightMargin;
@@ -1168,28 +1301,29 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Prepare the chart with standard configuration - use 220px right margin for candlestick charts
     prepareStandardChart(title, xAxisLabel, yAxisLabel, 36, 32, 220,
                         &originalTopMargin, &originalRightMargin, &titleY, &legendY);
-    
-    // Convert to DataMapper::CandleData
-    std::vector<DataMapper::CandleData> mapperCandles = convertToCandleData(candles);
-    
+   
+    this->lastLegendY = legendY;
+ 
     // Create legend labels and colors
-    std::vector<std::string> legendLabels;
-    legendLabels.push_back("Bullish Candle");
-    legendLabels.push_back("Bearish Candle");
+    // I don't think these are necessary 
+/*    std::vector<std::string> legendLabels;
+    legendLabels.push_back("Bullish");
+    legendLabels.push_back("Bearish");
     
     std::vector<RGBA> legendColors;
     legendColors.push_back(useBullishColor);
     legendColors.push_back(useBearishColor);
-    
+  */  
     // Add the legend - exact font size (16px) as in plotter.cpp
-    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
-    
-    // Draw price movement indicators and current price display
-    chartStyler->drawCandlestickPriceInfo(mapperCandles, useBullishColor, useBearishColor, legendY);
-    
+    //int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
+    //No need to actually draw anything since the calculation is:
+    // fontsize + 6 + top/bottom padding (these are hardcoded 
+    // idk where the 6 comes from...
+    int actualLegendHeight = 16 + 6 + 24;
+
     // Dynamically adjust top margin to fit both legend and price info with spacing
-    unsigned int newTopMargin = std::max(static_cast<unsigned int>(legendY + actualLegendHeight + 15), 
-                                         chartLayout->getMarginTop());
+    unsigned int newTopMargin = std::max(static_cast<unsigned int>(legendY + actualLegendHeight + 15), chartLayout->getMarginTop());
+
     chartLayout->setMarginTop(newTopMargin);
     
     // Redraw to ensure proper layout
@@ -1201,29 +1335,25 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     textRenderer->drawText(chartLayout->getMarginLeft(), titleY, displayTitle, 
                        colorManager->getElementColor("title"), displayFontSize, false);
     
-    // Add the legend again after the canvas redraw
-    chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
-    
     // Draw price info again after canvas redraw
-    chartStyler->drawCandlestickPriceInfo(mapperCandles, useBullishColor, useBearishColor, legendY);
+    chartStyler->drawCandlestickPriceInfo(candles, useBullishColor, useBearishColor, legendY);
     
     // Draw axis labels with larger font size
     addAxisLabels(xAxisLabel, yAxisLabel, 32);
     
     // Calculate time and price ranges
     DataMapper::AxisRange timeRange, priceRange;
-    calculateCandlestickRanges(mapperCandles, timeRange, priceRange);
-    
-    // Create time labels for X-axis (4 evenly spaced ticks)
-    std::vector<std::string> timeLabels = createTimeLabels(timeRange.min, timeRange.max, 4);
-    gridRenderer->drawXAxisTicks(timeLabels, 4);
+//    calculateCandlestickRanges(mapperCandles, timeRange, priceRange);
+   
+    timeRange = dataMapper->getCurrentXRange();
+    priceRange = dataMapper->getCurrentYRange(); 
     
     // Draw Y-axis ticks with appropriate values
     // 5 ticks, not displayed as integers, 2 decimal places precision, 70px label offset
     gridRenderer->drawYAxisTicks(priceRange.min, priceRange.max, 5, false, 2, 70);
     
     // Calculate optimal candle width and spacing to completely fill the plot width
-    int totalCandles = mapperCandles.size();
+    int totalCandles = candles.size();
     int plotWidth = chartLayout->getPlotWidth();
     
     // Calculate exact candle width to fill the entire plot width with no gaps
@@ -1232,10 +1362,18 @@ void Plotter::plotCandlestickChart(const std::vector<CandleData>& candles,
     // Adjust start position to ensure candles are centered in the plot area
     int leftoverSpace = plotWidth - (candleWidth * totalCandles);
     int startX = chartLayout->getMarginLeft() + leftoverSpace / 2;
-    
+  
+    //This is the local time range, the other time range is used for the whole graph 
+    DataMapper::AxisRange tLabelsTimeRange, tLabelsPriceRange;
+    calculateCandlestickRanges(candles, tLabelsTimeRange, tLabelsPriceRange); 
+ 
+    // Create time labels for X-axis (4 evenly spaced ticks)
+    std::vector<DataMapper::CandleXAxis> timeLabels = createTimeLabels(tLabelsTimeRange.min, tLabelsTimeRange.max, 4);
+    gridRenderer->drawCandleXAxisTicks(candles, timeLabels, leftoverSpace, candleWidth);
+
     // Draw each candle using the specialized ShapeRenderer method
-    for (size_t i = 0; i < mapperCandles.size(); ++i) {
-        const DataMapper::CandleData& candle = mapperCandles[i];
+    for (size_t i = 0; i < candles.size(); ++i) {
+        const DataMapper::CandleData& candle = candles[i];
         
         // Determine if candle is bullish or bearish
         bool isBullish = candle.close >= candle.open;
@@ -1577,6 +1715,16 @@ void Plotter::use10ClusterColorScheme() {
     }
 }
 
+void Plotter::setDateLabels(bool date)
+{
+    chartLayout->setDateLabel(date);    
+}
+
+void Plotter::setLegendLabels(bool legend)
+{
+    chartLayout->setLegendLabels(legend);
+}
+
 // Helper method to convert points to DataMapper points
 std::vector<DataMapper::Point> Plotter::convertToDataPoints(const std::vector<Point>& points) {
     std::vector<DataMapper::Point> dataPoints;
@@ -1602,9 +1750,9 @@ void Plotter::calculateDataRanges(const std::vector<DataMapper::Point>& dataPoin
 void Plotter::setupStandardAxisTicks(const DataMapper::AxisRange& xRange, 
                                      const DataMapper::AxisRange& yRange, 
                                      int yLabelOffset) {
+
     // Draw X-axis ticks with 5 divisions and 1 decimal place
-    gridRenderer->drawXAxisTicks(xRange.min, xRange.max, 5, 1);
-    
+        gridRenderer->drawXAxisTicks(xRange.min, xRange.max, 5, 1);
     // Draw Y-axis ticks with 5 divisions, not as integers, 1 decimal place
     // and customizable label offset
     gridRenderer->drawYAxisTicks(yRange.min, yRange.max, 5, false, 1, yLabelOffset);
@@ -1726,21 +1874,167 @@ void Plotter::calculateCandlestickRanges(const std::vector<DataMapper::CandleDat
     priceRange = DataMapper::AxisRange(minPrice, maxPrice, 0.05); // 5% padding
 }
 
-// Helper method to create time labels for X-axis
-std::vector<std::string> Plotter::createTimeLabels(double minTime, double maxTime, int numLabels) {
-    std::vector<std::string> timeLabels;
-    
-    for (int i = 0; i < numLabels; i++) {
-        // Calculate evenly spaced time points
-        double timestamp = minTime + (i * (maxTime - minTime) / (numLabels - 1.0));
-        std::time_t time = static_cast<std::time_t>(timestamp);
-        struct tm* timeinfo = std::localtime(&time);
-        char dateText[32];
-        // Format as MM/DD
-        std::strftime(dateText, sizeof(dateText), "%m/%d", timeinfo);
-        timeLabels.push_back(std::string(dateText));
+inline std::string dateToString(double timestamp, const char* format= "%m-%d-%Y")
+{
+    // Ensure the timestamp fits within the range of time_t
+    std::time_t time = static_cast<std::time_t>(timestamp);
+    char buffer[64];
+    std::memset(buffer, 0, sizeof(buffer));
+    // Format the timestamp into a human-readable string
+    if (std::strftime(buffer, sizeof(buffer), format, std::gmtime(&time))) 
+    {
+        return std::string(buffer);
+    } 
+    else 
+    {
+        return "Invalid Date";
     }
+}
+
+// Helper method to create time labels for X-axis
+std::vector<DataMapper::CandleXAxis> Plotter::createTimeLabels(double start, double end, int numLabels) {
+    std::vector<DataMapper::CandleXAxis> timeLabels;
+
+    if(numLabels <= 1 || start >= end)
+    {
+	timeLabels.push_back(DataMapper::CandleXAxis(start, dateToString(start, "%m-%d-%Y")));
+	timeLabels.push_back(DataMapper::CandleXAxis(end, dateToString(end, "%m-%d-%Y")));
+    }
+
+    double cDiff = end - start;
+    double timePerPosition = cDiff / numLabels;
+
+    std::string last_month_label = ""; //Track last month label
+    std::string last_year_label = "";
     
+    std::time_t now = std::time(0);
+
+    double DAY = 86400;
+    double cTime = start;
+    //Generate Labels
+    for (int i = 0; i < numLabels; ++i) {
+
+	//Calculate the timestampe for the position
+	cTime = start + (i * timePerPosition);
+
+	//Add appropriate label
+	//LESS THAN A DAY
+	if(cDiff < DAY)
+	{
+	    timeLabels.push_back(DataMapper::CandleXAxis(cTime, dateToString(cTime, "%H:%M")));
+	    if(i == numLabels -1)
+	    {
+		double foundTime = cTime;
+		std::string foundLabel = "";
+		for(double j = cTime; j <= end; j += 1800)
+		{
+			std::string cLabel = dateToString(j, "%H:%M");
+			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel)
+			{
+				foundLabel = cLabel;
+				foundTime = j;
+			}
+		}
+		if(foundLabel != "")
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(foundTime, foundLabel)); 
+			
+		}
+            }
+	}
+	else if(cDiff < 30 * DAY)
+	{
+		timeLabels.push_back(DataMapper::CandleXAxis(cTime, dateToString(cTime, "%m-%d")));
+	    if(i == numLabels -1)
+	    {
+		double foundTime = cTime;
+		std::string foundLabel = "";
+		for(double j = cTime; j <= end; j += DAY)
+		{
+			std::string cLabel = dateToString(j, "%m-%d");
+			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel)
+			{
+				foundLabel = cLabel;
+				foundTime = j;
+			}
+		}
+		if(foundLabel != "")
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(foundTime, foundLabel)); 
+			
+		}
+            }
+	}
+	else if(cDiff < 365 * DAY)
+	{
+		std::string cMonth = dateToString(cTime, "%b-%Y");
+		if(cMonth == last_month_label)
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(cTime, dateToString(cTime, "%d")));
+		}
+		else
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(cTime, cMonth));
+			last_month_label = cMonth;
+		}
+	    if(i == numLabels -1)
+	    {
+		double foundTime = cTime;
+		std::string foundLabel = "";
+		for(double j = cTime; j <= end; j += 86400)
+		{
+			std::string cLabel = dateToString(j, "%b-%Y");
+			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel && cLabel != last_month_label)
+			{
+				foundLabel = cLabel;
+				foundTime = j;
+				last_month_label = cLabel; 
+			}
+		}
+		if(foundLabel != "")
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(foundTime, foundLabel)); 
+			
+		}
+            }
+	}
+	else
+	{
+		//Multiple years
+		std::string cYear = dateToString(cTime, "%Y");
+		if(cYear == last_year_label)
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(cTime, dateToString(cTime, "%b")));
+		}
+		else
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(cTime, cYear));
+			last_year_label = cYear;
+		}
+	    if(i == numLabels -1)
+	    {
+		double foundTime = cTime;
+		std::string foundLabel = "";
+		for(double j = cTime; j <= end; j += 2500000)
+		{
+			std::string cLabel = dateToString(j, "%Y");
+			if(cLabel != timeLabels[timeLabels.size() - 1].timeLabel && foundLabel != cLabel && cLabel != last_month_label)
+			{
+				foundLabel = cLabel;
+				foundTime = j;
+				last_year_label = cLabel; 
+			}
+		}
+		if(foundLabel != "")
+		{
+			timeLabels.push_back(DataMapper::CandleXAxis(foundTime, foundLabel)); 
+			
+		}
+            }
+	}
+
+    }
+
     return timeLabels;
 }
 
@@ -1966,17 +2260,46 @@ ChartBuilder Plotter::chart() {
 void Plotter::plotChart(const std::vector<Series>& seriesList,
                   const std::string& title,
                   const std::string& xAxisLabel,
-                  const std::string& yAxisLabel)
+                  const std::string& yAxisLabel,
+                  NormalizationMode normalizationMode)
 {
     if (seriesList.empty()) {
         printf("Error: No series data to plot.\n");
         return;
     }
     
+    // Handle normalization based on the mode
+    std::vector<Series> normalizedSeriesList = seriesList;
+    
+    if (normalizationMode == NORMALIZE_INDEPENDENT) {
+        // Normalize each series independently
+        for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+            Series& series = normalizedSeriesList[i];
+            if (series.data.empty()) continue;
+            
+            // Find min and max values for this series
+            double minY = series.data[0].y;
+            double maxY = series.data[0].y;
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                minY = std::min(minY, series.data[j].y);
+                maxY = std::max(maxY, series.data[j].y);
+            }
+            
+            // Normalize Y values to [0, 1] range
+            double range = maxY - minY;
+            if (range > 0) {
+                for (size_t j = 0; j < series.data.size(); ++j) {
+                    series.data[j].y = (series.data[j].y - minY) / range;
+                }
+            }
+        }
+        printf("Applied independent normalization to %zu series\n", seriesList.size());
+    }
+    
     // Combine all points to calculate global axis ranges
     std::vector<DataMapper::Point> allDataPoints;
-    for (size_t i = 0; i < seriesList.size(); ++i) {
-        const Series& series = seriesList[i];
+    for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        const Series& series = normalizedSeriesList[i];
         if (series.data.empty()) {
             continue;
         }
@@ -1995,18 +2318,41 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     DataMapper::AxisRange xRange, yRange;
     xRange = dataMapper->calculateXRange(allDataPoints);
     yRange = dataMapper->calculateYRange(allDataPoints);
-    
     // Store these ranges for origin axes if enabled
     if (chartLayout->areOriginAxesVisible()) {
+    	double xPaddingPrecisionMin = 0.1;
+	double xPaddingPrecisionMax = 0.1;
+	double yPaddingPrecisionMin = 0.1;
+	double yPaddingPrecisionMax = 0.1;
+
+        if (xRange.min < 0.1)
+	{
+		xPaddingPrecisionMin = 0.01;
+	}	
+
+	if (xRange.max < 0.1)
+	{
+		xPaddingPrecisionMax = 0.01;
+	}
+
+	if (yRange.min < 0.1)
+	{
+		yPaddingPrecisionMin = 0.01;
+	}
+	
+	if (yRange.max < 0.1)
+	{
+		yPaddingPrecisionMax = 0.01;
+	}
         // If origin (0,0) is within the ranges, adjust them to ensure it's visible
         if ((xRange.min < 0 && xRange.max > 0) || (yRange.min < 0 && yRange.max > 0)) {
             // Ensure X-axis range includes zero if close
-            if (xRange.min > -0.1 * (xRange.max - xRange.min)) xRange.min = -0.1 * (xRange.max - xRange.min);
-            if (xRange.max < 0.1 * (xRange.max - xRange.min)) xRange.max = 0.1 * (xRange.max - xRange.min);
+            if (xRange.min > -xPaddingPrecisionMin * (xRange.max - xRange.min)) xRange.min = -xPaddingPrecisionMin * (xRange.max - xRange.min);
+            if (xRange.max < xPaddingPrecisionMax * (xRange.max - xRange.min)) xRange.max = xPaddingPrecisionMax * (xRange.max - xRange.min);
             
             // Ensure Y-axis range includes zero if close
-            if (yRange.min > -0.1 * (yRange.max - yRange.min)) yRange.min = -0.1 * (yRange.max - yRange.min);
-            if (yRange.max < 0.1 * (yRange.max - yRange.min)) yRange.max = 0.1 * (yRange.max - yRange.min);
+            if (yRange.min > -yPaddingPrecisionMin * (yRange.max - yRange.min)) yRange.min = -yPaddingPrecisionMin * (yRange.max - yRange.min);
+            if (yRange.max < yPaddingPrecisionMax * (yRange.max - yRange.min)) yRange.max = yPaddingPrecisionMax * (yRange.max - yRange.min);
             
             // Update the ranges in the DataMapper
             dataMapper->setCurrentXRange(xRange);
@@ -2052,19 +2398,21 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     std::vector<std::string> legendLabels;
     std::vector<RGBA> legendColors;
     
-    for (size_t i = 0; i < seriesList.size(); ++i) {
-        legendLabels.push_back(seriesList[i].name);
-        legendColors.push_back(seriesList[i].color);
-    }
+    if(chartLayout->isLegendVisible())
+    {
+    	for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        	legendLabels.push_back(normalizedSeriesList[i].name);
+        	legendColors.push_back(normalizedSeriesList[i].color);
+    	}
     
-    // Add the legend
-    int legendHeight = addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
-    
+    	// Add the legend
+    	int legendHeight = addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
     // Calculate and set a sufficient top margin to ensure legend doesn't overlap with the chart
     // Allow 20px padding below the legend
     unsigned int newTopMargin = legendY + legendHeight + 20;
     chartLayout->setMarginTop(newTopMargin);
-    
+    }
+
     // Redraw with the new margin
     prepareCanvas();
     
@@ -2073,22 +2421,39 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     unsigned int displayFontSize = !chartTitle.empty() ? chartTitleFontSize : 36;
     textRenderer->drawText(chartLayout->getMarginLeft(), titleY, displayTitle, 
                          colorManager->getElementColor("title"), displayFontSize, false);
-    
-    // Redraw the legend after adjusting margins
-    addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
-    
+   
+
+    if(chartLayout->isLegendVisible())
+    {
+    	// Redraw the legend after adjusting margins
+    	addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 16);
+    }
     // Set up standard axis ticks with 70px Y-axis label offset
-    setupStandardAxisTicks(xRange, yRange, 70);
-    
+    if(chartLayout->isDateLabelShown())
+    {
+	//TODO: For now date labels do not work properly, so when marked as true no x-axis will be shown for now
+	// std::vector<DataMapper::CandleXAxis> timeLabels = createTimeLabels(xRange.min, xRange.max, 4);
+	 //gridRenderer->drawXAxisTicks(timeLabels, seriesList[0]);
+    	// Draw Y-axis ticks with 5 divisions, not as integers, 1 decimal place
+    // and customizable label offset
+    	gridRenderer->drawYAxisTicks(yRange.min, yRange.max, 5, false, 1, 70);
+    }
+    else
+    {
+    	setupStandardAxisTicks(xRange, yRange, 70);
+    }
+    // Draw Y-axis ticks with 5 divisions, not as integers, 1 decimal place
+    // and customizable label offset
+    gridRenderer->drawYAxisTicks(yRange.min, yRange.max, 5, false, 1, 70);
+
     // Plot each series in order
-    for (size_t i = 0; i < seriesList.size(); ++i) {
-        const Series& series = seriesList[i];
+    for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        const Series& series = normalizedSeriesList[i];
         if (series.data.empty()) {
             continue;
         }
         
         RGBA color = series.color;
-        
         if (series.type == SERIES_LINE && series.data.size() >= 2) {
             // Draw as a line series
             // Draw line segments between adjacent points
@@ -2098,7 +2463,6 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
                     series.data[j-1].x, series.data[j-1].y, xRange, yRange);
                 DataMapper::Point p2 = dataMapper->mapDataToScreen(
                     series.data[j].x, series.data[j].y, xRange, yRange);
-                
                 // Draw the line segment with proper clipping
                 drawLineSegment(p1.x, p1.y, p2.x, p2.y, color, series.lineWidth, j);
             }
@@ -2129,6 +2493,126 @@ void Plotter::plotChart(const std::vector<Series>& seriesList,
     // chartLayout->setMarginRight(originalRightMargin);
     // chartLayout->setMarginTop(originalTopMargin);
 }
+
+//TODO: Improve this function where I don't have to recalculate DataMapper::CandleData
+void Plotter::plotChart(const std::vector<Series>& seriesList,
+                        const DataMapper::AxisRange& xRange,
+                        const DataMapper::AxisRange& yRange,
+			const std::vector<CandleData>& candles,
+                        NormalizationMode normalizationMode)
+{
+    if (seriesList.empty()) {
+        printf("Error: No series data to plot.\n");
+        return;
+    }
+
+    // Handle normalization based on the mode
+    std::vector<Series> normalizedSeriesList = seriesList;
+    
+    if (normalizationMode == NORMALIZE_INDEPENDENT) {
+        // Normalize each series independently
+        for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+            Series& series = normalizedSeriesList[i];
+            if (series.data.empty()) continue;
+            
+            // Find min and max values for this series
+            double minY = series.data[0].y;
+            double maxY = series.data[0].y;
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                minY = std::min(minY, series.data[j].y);
+                maxY = std::max(maxY, series.data[j].y);
+            }
+            
+            // Normalize Y values to [0, 1] range
+            double range = maxY - minY;
+            if (range > 0) {
+                for (size_t j = 0; j < series.data.size(); ++j) {
+                    series.data[j].y = (series.data[j].y - minY) / range;
+                }
+            }
+        }
+        printf("Applied independent normalization to %zu series\n", seriesList.size());
+    }
+
+    
+    std::vector<std::string> legendLabels;
+    std::vector<RGBA> legendColors;
+
+    for (size_t i = 0; i < normalizedSeriesList.size(); ++i) {
+        legendLabels.push_back(normalizedSeriesList[i].name);
+        legendColors.push_back(normalizedSeriesList[i].color);
+    }
+
+    if (legendLabels.size() != 0)
+    {
+	chartStyler->addLegend(legendLabels, legendColors,
+                           chartLayout->getMarginLeft(), lastLegendY, 16);
+    }                   
+    // You assume margins, canvas, title, legend, etc., are already set up externally.
+    // Only plot the series using the given ranges.
+   int startX = 0; 
+   int candleWidth = 0;
+
+    if(candles.size() > 0)
+    {
+	
+	std::vector<DataMapper::CandleData> mapperCandles = convertToCandleData(candles);
+
+	int totalCandles = mapperCandles.size();
+        int plotWidth = chartLayout->getPlotWidth();
+
+	candleWidth = plotWidth / totalCandles;
+    
+        int leftoverSpace = plotWidth - (candleWidth * totalCandles);
+	startX = chartLayout->getMarginLeft() + leftoverSpace / 2;
+
+    }
+
+    for (size_t i = 0; i < seriesList.size(); ++i) {
+        const Series& series = seriesList[i];
+        if (series.data.empty()) continue;
+
+        RGBA color = series.color;
+
+        if (series.type == SERIES_LINE && series.data.size() >= 2) {
+            for (size_t j = 1; j < series.data.size(); ++j) {
+                DataMapper::Point p1 = dataMapper->mapDataToScreen(
+                    series.data[j - 1].x, series.data[j - 1].y, xRange, yRange);
+                DataMapper::Point p2 = dataMapper->mapDataToScreen(
+                    series.data[j].x, series.data[j].y, xRange, yRange);
+	
+		int x1 = startX + j-1;
+		int x2 = startX + j;
+		
+		if(candles.size() != 0)
+		{
+		    x1 = startX + (j-1) * candleWidth + candleWidth / 2 ;
+		    x2 = startX + j * candleWidth + candleWidth / 2;
+		}
+
+                drawLineSegment(x1, p1.y, x2, p2.y, color, series.lineWidth, j);
+            }
+        }
+        else if (series.type == SERIES_SCATTER) {
+            for (size_t j = 0; j < series.data.size(); ++j) {
+                DataMapper::Point p = dataMapper->mapDataToScreen(
+                    series.data[j].x, series.data[j].y, xRange, yRange);
+
+                int ssaaX = ssaaManager->scaleX(p.x);
+                int ssaaY = ssaaManager->scaleY(p.y);
+                int ssaaSize = ssaaManager->scaleSize(series.pointSize);
+
+                if (isCoordinateValid(ssaaX, ssaaY)) {
+                    shapeRenderer->drawPoint(ssaaX, ssaaY, ssaaSize, color);
+                }
+            }
+        }
+        else if (series.type == SERIES_AREA) {
+            printf("Area charts not yet implemented.\n");
+        }
+    }
+}
+
 
 // Helper method to prepare cluster colors
 std::vector<RGBA> Plotter::prepareClusterColors(int numClusters) {
@@ -2509,7 +2993,6 @@ void Plotter::plotHistogramWithLabels(const std::vector<int>& bins,
     
     std::vector<RGBA> legendColors;
     legendColors.push_back(useColor);
-    
     // Estimate legend height before drawing
     int estimatedLegendHeight = chartStyler->calculateInfoBoxHeight(legendLabels, 18);
     
@@ -2533,10 +3016,12 @@ void Plotter::plotHistogramWithLabels(const std::vector<int>& bins,
     unsigned int displayFontSize = !chartTitle.empty() ? chartTitleFontSize : 42;
     textRenderer->drawText(chartLayout->getMarginLeft(), titleY, displayTitle, 
                       colorManager->getElementColor("title"), displayFontSize, false);
-    
-    // Now add the legend
-    int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 18);
-    
+   if(chartLayout->isLegendVisible())
+   { 
+	   // Now add the legend
+	   int actualLegendHeight = chartStyler->addLegend(legendLabels, legendColors, chartLayout->getMarginLeft(), legendY, 18);
+   }
+
     // Draw statistics info box with matching CSS styling - positioned right of the legend
     // We continue to display the true maxBinValue in the stats (not the adjusted one)
     chartStyler->drawHistogramStats(bins, maxBinValue, legendY, 16);

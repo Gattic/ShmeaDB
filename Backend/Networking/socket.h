@@ -69,6 +69,7 @@ private:
 	GMutex* outMutex;
 	std::map<int64_t, shmea::ServiceData*> inboundLists; // Vector of sds instead? Make the key advanced to take hostnames, usernames,  etc; too
 	std::map<int64_t, shmea::ServiceData*> outboundLists; // Vector of sds instead?
+	int udpfd;
 
 	void initSockets();
 
@@ -90,6 +91,8 @@ public:
 	void setPort(shmea::GString);
 	int openServerConnection();
 	int openClientConnection(const shmea::GString&, const shmea::GString&);
+	int openUDPServerSocket();
+	int getUDPSocketFD() const { return udpfd; }
 	void readConnection(Connection*, const int&, std::vector<shmea::ServiceData*>&);
 	void readConnectionHelper(Connection*, const int&, std::vector<shmea::ServiceData*>&);
 	int writeConnection(const Connection*, const int&, shmea::ServiceData*);
@@ -99,7 +102,8 @@ public:
 	bool anyOutboundLists();
 
 	bool readLists(Connection*);
-	void processLists(GServer*, Connection*);
+	bool readUDPDatagram(GServer*);
+	void processLists(GServer*);
 	void writeLists(GServer*);
 	void addResponseList(GServer*, Connection*, shmea::ServiceData*);
 };

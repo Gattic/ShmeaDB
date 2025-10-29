@@ -3,6 +3,7 @@
 
 #include "../Database/image.h"
 #include "DataMapper.h"
+#include <map>
 #include <string>
 #include <vector>
 #include <ft2build.h>
@@ -33,6 +34,12 @@ enum ChartType {
     CHART_SCATTER,
     CHART_CANDLESTICK,
     CHART_CLUSTER
+};
+
+// Normalization mode for series plotting
+enum NormalizationMode {
+    NORMALIZE_TOGETHER,    // All series normalized together on the same scale
+    NORMALIZE_INDEPENDENT  // Each series normalized independently on its own scale
 };
 
 // Series type for multi-series charts
@@ -138,7 +145,9 @@ public:
     ChartBuilder& cornerRadius(int radius);
     ChartBuilder& logo(const std::string& logoPath);
     ChartBuilder& colors(const std::vector<RGBA>& colors);
-    
+    ChartBuilder& dateLabels(bool date);
+    ChartBuilder& legendLabels(bool legend);
+
     // Data visualization methods
     ChartBuilder& addSeries(const Series& series);
     ChartBuilder& addSeries(const std::string& name, const std::vector<Point>& data, 
@@ -159,6 +168,9 @@ public:
     
     // Centroid positioning method
     ChartBuilder& alignCentroidsWithClusters(bool align = true);
+    
+    // Normalization control
+    ChartBuilder& normalizeSeries(NormalizationMode mode = NORMALIZE_TOGETHER);
     
     // Arrow visualization
     ChartBuilder& addArrows(const std::vector<Arrow>& arrows);
@@ -189,13 +201,17 @@ private:
     std::vector<int> clusterLabels;
     std::vector<std::vector<double> > centroids;
     bool alignCentroids; // Whether to force centroids to align with cluster centers
+    NormalizationMode normalizationMode; // How to normalize series data
 };
 
 // Plotter class that handles visualization using the component classes
 class Plotter {
 public:
+    static std::map<unsigned int, std::string> AGG_SIZE;
     // Constructor and destructor
     Plotter(unsigned int width = 800, unsigned int height = 600, unsigned int ssaa_factor = 1);
+
+    void initAggSize();
 
     void initialize_font(const std::string);
     
@@ -229,13 +245,19 @@ public:
     // Custom color manager
     void setCustomColors(const std::vector<RGBA>& clusterColors);
     void use10ClusterColorScheme(); // Use the 10-cluster color scheme
-    
+   
+    //Custom Date Labels decision
+    void setDateLabels(bool date);
+
+    //Custom Legend Labels
+    void setLegendLabels(bool legend);
+
     // Basic drawing methods
     void prepareCanvas();
     void addTitle(const std::string& text, unsigned int fontSize = 24);
     void addAxisLabels(const std::string& xLabel, const std::string& yLabel, unsigned int fontSize = 18);
     int addLegend(const std::vector<std::string>& labels, const std::vector<RGBA>& colors,
-                  int x, int y, unsigned int fontSize = 18);
+                  int x, int y, unsigned int fontSize = 18, bool _new = false, bool redraw = false);
     void setYAxisLabel(const std::string& label);
     
     // Logo handling
@@ -254,8 +276,16 @@ public:
     void plotChart(const std::vector<Series>& seriesList,
                   const std::string& title = "Chart Visualization",
                   const std::string& xAxisLabel = "X Value",
-                  const std::string& yAxisLabel = "Y Value");
-                  
+                  const std::string& yAxisLabel = "Y Value",
+                  NormalizationMode normalizationMode = NORMALIZE_TOGETHER);
+         
+    void plotChart(const std::vector<Series>& seriesList,
+                        const DataMapper::AxisRange& xRange,
+                        const DataMapper::AxisRange& yRange,
+			const std::vector<CandleData>& candles = std::vector<CandleData>(),
+                        NormalizationMode normalizationMode = NORMALIZE_TOGETHER);
+
+         
     // Arrow visualization methods
     void plotArrows(const std::vector<Arrow>& arrows, bool redrawBackground = false);
     void plotArrow(const Arrow& arrow, bool redrawBackground = false);
@@ -288,7 +318,7 @@ public:
                                const std::string& xAxisLabel = "Value",
                                const std::string& yAxisLabel = "Frequency");
                       
-    void plotCandlestickChart(const std::vector<CandleData>& candles,
+    void plotCandlestickChart(const std::vector<DataMapper::CandleData>& candles,
                              const RGBA& bullishColor,
                              const RGBA& bearishColor,
                              const std::string& title,
@@ -305,13 +335,21 @@ public:
     // Control centroid alignment with cluster centers (public API)
     void setAlignCentroidsWithClusters(bool align);
     bool getAlignCentroidsWithClusters() const;
-    
+   
+   //Color methods
+    RGBA GetUniqueColor(int, int);
+    RGBA GetThemeColor(int);
     // Direct access to GridRenderer for Y-axis ticks - consider using chart builder instead
     GridRenderer& getGridRenderer() { return *gridRenderer; }
     
 private:
     friend class ChartBuilder;
     
+    RGBA bullishColor;
+    RGBA bearishColor;
+    int lastLegendY;
+    
+
     // Component pointers
     ColorManager* colorManager;
     SuperSamplingManager* ssaaManager;
@@ -392,7 +430,7 @@ private:
     void calculateCandlestickRanges(const std::vector<DataMapper::CandleData>& candles,
                                   DataMapper::AxisRange& timeRange,
                                   DataMapper::AxisRange& priceRange);
-    std::vector<std::string> createTimeLabels(double minTime, double maxTime, int numLabels);
+    std::vector<DataMapper::CandleXAxis> createTimeLabels(double minTime, double maxTime,int numLabels);
     
     // Helper methods - cluster specific
     std::vector<RGBA> prepareClusterColors(int numClusters);

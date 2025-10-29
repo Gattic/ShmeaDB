@@ -1,5 +1,5 @@
 add_library(GNetTests
-  crypt-test.cpp
+crypt-test.cpp
 )
 
 target_include_directories(GNetTests PRIVATE

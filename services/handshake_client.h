@@ -74,6 +74,9 @@ public:
 
 		serverInstance->logger->info("SRVC", shmea::GString::format("Handshake_Client: %s", destination->getName().c_str()));
 
+		// Notify login listener for outbound server connection
+		serverInstance->notifyServerLogin(destination);
+
 		return NULL;
 	}
 

@@ -63,6 +63,38 @@ bool SaveFolder::deleteItem(const GString& siName)
 	return newSV->deleteByName();
 }
 
+bool SaveFolder::checkFolder()
+{
+	// create the directory if we need to
+	struct stat info;
+	GString dirname = getPath();
+	if (dirname.length() > 0)
+	{
+		if (stat(dirname.c_str(), &info) != 0)
+		{
+			// make the directory
+			int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+			if (status < 0)
+			{
+				printf("[DB] %s mkdir failed\n", dirname.c_str());
+				return false;
+			}
+		}
+		else if (info.st_mode & S_IFDIR)
+		{
+			// directory exists
+			// do nothing
+		}
+		else
+		{
+			// path is not a directory
+			printf("[DB] %s is not a directory\n", dirname.c_str());
+			return false;
+		}
+	}
+	return true;
+}
+
 SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 {
 	// create the directory if we need to

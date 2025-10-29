@@ -24,24 +24,47 @@ Connection::Connection(sock_t newSockFD, int newConnectionType, shmea::GString n
 {
 	name = "";
 	ip = newIP;
+	port = "";
 	sockfd = newSockFD;
 	overflow = "";
 	connectionType = newConnectionType;
 	cryptEnabled = true;
 	key = 420l; // shouldnt matter what this value is
 	finished = false;
+	protocol = PROTO_TCP;
+	closeOnFinish = true;
+
+}
+
+Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newIP, shmea::GString newPort)
+{
+	name = "";
+	ip = newIP;
+	port = newPort;
+
+	sockfd = newSockFD;
+	overflow = "";
+	connectionType = newConnectionType;
+	cryptEnabled = true;
+	key = 420l; // shouldnt matter what this value is
+	finished = false;
+	protocol = PROTO_TCP;
+	closeOnFinish = true;
 }
 
 Connection::Connection(const Connection& instance2)
 {
 	name = instance2.name;
 	ip = instance2.ip;
+	port = instance2.port;
 	sockfd = instance2.sockfd;
 	overflow = instance2.overflow;
 	connectionType = instance2.connectionType;
 	cryptEnabled = instance2.cryptEnabled;
 	key = instance2.key; // shouldnt matter what this value is
 	finished = instance2.finished;
+	protocol = instance2.protocol;
+	closeOnFinish = instance2.closeOnFinish;
 }
 
 Connection::~Connection()
@@ -50,6 +73,7 @@ Connection::~Connection()
 
 	name = "";
 	ip = "";
+	port = "";
 	sockfd = SHMEA_INVALID_SOCKET;
 	connectionType = EMPTY_TYPE;
 	cryptEnabled = true;
@@ -65,7 +89,8 @@ void Connection::finish()
 	finished = true;
 
 	// close the connection
-	CLOSESOCK(this->sockfd);
+	if (closeOnFinish)
+		CLOSESOCK(this->sockfd);
 	this->sockfd = SHMEA_INVALID_SOCKET;
 }
 
@@ -76,6 +101,10 @@ shmea::GString Connection::getName() const
 shmea::GString Connection::getIP() const
 {
 	return ip;
+}
+shmea::GString Connection::getPort() const
+{
+	return port;
 }
 int Connection::getConnectionType() const
 {
@@ -96,6 +125,11 @@ bool Connection::isFinished() const
 	return finished;
 }
 
+int Connection::getProtocol() const
+{
+	return protocol;
+}
+
 void Connection::setName(shmea::GString newName)
 {
 	name = newName;
@@ -104,6 +138,11 @@ void Connection::setName(shmea::GString newName)
 void Connection::setIP(shmea::GString newIP)
 {
 	ip = newIP;
+}
+
+void Connection::setPort(shmea::GString newPort)
+{
+	port = newPort;
 }
 
 void Connection::enableEncryption()
@@ -119,6 +158,16 @@ void Connection::disableEncryption()
 void Connection::setKey(int64_t newKey)
 {
 	key = newKey;
+}
+
+void Connection::setProtocol(int newProtocol)
+{
+	protocol = newProtocol;
+}
+
+void Connection::setCloseOnFinish(bool value)
+{
+	closeOnFinish = value;
 }
 
 bool Connection::validName(const shmea::GString& tempName)

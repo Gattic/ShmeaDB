@@ -17,6 +17,8 @@ ChartLayout::ChartLayout(unsigned int width, unsigned int height,
       cornerRadius(12),
       showGrid(true),
       showAxes(true),
+      dateLabel(false), 
+      legendLabel(true),
       showOriginAxes(false),
       ssaaFactor(ssaa_factor),
       logoWidth(0),
@@ -126,6 +128,26 @@ bool ChartLayout::isGridVisible() const {
 
 bool ChartLayout::areAxesVisible() const {
     return showAxes;
+}
+
+void ChartLayout::setDateLabel(bool date)
+{
+    dateLabel = date;
+}
+
+bool ChartLayout::isDateLabelShown() const 
+{
+    return dateLabel;
+}
+
+void ChartLayout::setLegendLabels(bool legend)
+{
+   legendLabel = legend;
+}
+
+bool ChartLayout::isLegendVisible() const
+{
+	return legendLabel;
 }
 
 int ChartLayout::clamp(int value, int min, int max) {

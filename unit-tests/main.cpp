@@ -13,29 +13,66 @@
 #include "Backend/Database/GTable-test.h"
 #include "Backend/Database/GObjects-test.h"
 #include "Backend/Networking/crypt-test.h"
+#include "Backend/Networking/udp-test.h"
 #include "Backend/Database/GVector-test.h"
 #include "Backend/Database/image-test.h"
 #include "Backend/Plotter/plotter-test.h"
 
 int main(int argc, char* argv[])
 {
-	GTypeUnitTest();
-	GStringUnitTest();
-	GVectorUnitTest();
-	GPointerUnitTest();
-	GListUnitTest();
-	GTableUnitTest();
-	//GObjectsUnitTest();
-	CryptUnitTest();
-	ImageUnitTest();
-	shmea::testCluster();
-	shmea::testHistogram();
-	shmea::testCandlestickChart();
-	shmea::testLineScatter();
-	shmea::testMultiCluster();
-	shmea::testArrows();
-	shmea::testOriginAxes();
-	shmea::testLabeledHistogram();
+	if (argc == 1)
+	{
+	    GTypeUnitTest();
+	    GStringUnitTest();
+	    GVectorUnitTest();
+	    GPointerUnitTest();
+	    GListUnitTest();
+	    GTableUnitTest();
+	    //GObjectsUnitTest();
+	    CryptUnitTest();
+	    UDPUnitTest();
+	    ImageUnitTest();
+	    shmea::testCluster();
+	    shmea::testHistogram();
+	    shmea::testCandlestickChart();
+	    shmea::testLineScatter();
+	    shmea::testMultiCluster();
+	    shmea::testArrows();
+	    shmea::testOriginAxes();
+	    shmea::testLabeledHistogram();
+	}
+	else if (argc > 1)
+	{
+	    if (strcmp(argv[1], "db") == 0)
+	    {
+		GTypeUnitTest();
+		GStringUnitTest();
+		GVectorUnitTest();
+		GPointerUnitTest();
+		GListUnitTest();
+		GTableUnitTest();
+	    }
+	    else if (strcmp(argv[1], "gnet") == 0)
+	    {
+		CryptUnitTest();
+	    }
+	    else if (strcmp(argv[1], "udp") == 0)
+		UDPUnitTest();
+	    else if (strcmp(argv[1], "images") == 0)
+	    {
+		ImageUnitTest();
+		shmea::testCluster();
+		shmea::testHistogram();
+		shmea::testCandlestickChart();
+		shmea::testLineScatter();
+		shmea::testMultiCluster();
+		shmea::testArrows();
+		shmea::testOriginAxes();
+		shmea::testLabeledHistogram();
+	    }
+	    else
+		printf("Invalid test: %s\n", argv[1]);
+	}
 
 	printf("========================\n");
 	printf("| Unit Tests Completed |\n");

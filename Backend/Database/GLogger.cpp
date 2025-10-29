@@ -221,20 +221,24 @@ bool GLogger::surpressCheck(int logType) const
 
 shmea::GString GLogger::getDateTime() const
 {
-    char timeString[100];
-    time_t now = time(0);
-    struct tm *timeinfo = localtime(&now);
-    strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
-    return shmea::GString(timeString);
+	char timeString[100];
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+	return strDateTime;
 }
 
 shmea::GString GLogger::generateLogFName() const
 {
 	char timeString[100];
-    time_t now = time(0);
-    struct tm *timeinfo = localtime(&now);
-    strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", timeinfo);
-    return shmea::GString(timeString);
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&tv.tv_sec));
+	shmea::GString strDateTime(timeString);
+	return strDateTime;
 }
 
 void GLogger::log(int logType, shmea::GString category, shmea::GString message)
