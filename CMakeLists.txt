@@ -28,8 +28,6 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_link_options(-fsanitize=address)
-
 #Project
 project(shmea)
 set(G_VERSION_MAJOR 0)
@@ -42,7 +40,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-add_link_options(-fsanitize=address)
+#add_link_options(-fsanitize=address)
 
 #Import libs
 include(GNUInstallDirs)
