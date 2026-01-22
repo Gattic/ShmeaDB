@@ -4,6 +4,8 @@
 
 ## Dependencies
 
+### Debian
+
 `cmake`
 
 `make`
@@ -11,6 +13,12 @@
 `g++`
 
 `libfreetype6-dev`
+
+### Fedora
+
+sudo dnf install -y gcc gcc-c++ clang cmake make
+sudo dnf install -y freetype-devel
+sudo dnf install -y libasan
 
 ---
 
