@@ -1,42 +1,50 @@
-# Plotter lib: Plotter
+cmake_minimum_required(VERSION 3.21)
 
-if(EMSCRIPTEN)
-    message(STATUS "Emscripten detected, enabling Freetype port for Plotter.")
-    add_compile_definitions(USE_FREETYPE_PORT)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_FREETYPE=1")
-else()
-    find_package(Freetype REQUIRED)
-endif()
-
-set(Plotter_src_files
-    ColorManager.cpp
-    SuperSamplingManager.cpp
-    ChartLayout.cpp
-    ShapeRenderer.cpp
-    TextRenderer.cpp
-    GridRenderer.cpp
-    DataMapper.cpp
-    ChartStyler.cpp
-    Plotter.cpp
+add_library(Plotter STATIC
+  ColorManager.cpp
+  SuperSamplingManager.cpp
+  ChartLayout.cpp
+  ShapeRenderer.cpp
+  TextRenderer.cpp
+  GridRenderer.cpp
+  DataMapper.cpp
+  ChartStyler.cpp
+  Plotter.cpp
 )
 
-add_library(Plotter ${Plotter_src_files})
+target_include_directories(Plotter
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Backend>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/Backend>
+)
 
-# Include/link: keep Freetype PRIVATE; DB is PUBLIC if Plotter's headers depend on DB types
-if(NOT EMSCRIPTEN)
-    target_include_directories(Plotter PRIVATE ${FREETYPE_INCLUDE_DIRS})
-    target_link_libraries(Plotter PRIVATE ${FREETYPE_LIBRARIES})
-endif()
-
-# Plotter needs DB — expose it PUBLIC if Plotter's public headers use DB types; otherwise PRIVATE
+# Plotter depends on DB; keep PUBLIC if Plotter headers expose DB types
 target_link_libraries(Plotter PUBLIC DB)
 
-install(TARGETS Plotter
-    EXPORT   shmeaTargets
-    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+# ---- Freetype ----
+if(EMSCRIPTEN)
+  target_compile_definitions(Plotter PUBLIC USE_FREETYPE_PORT)
+else()
+  find_package(Freetype CONFIG QUIET)
+  if(Freetype_FOUND)
+    target_link_libraries(Plotter PUBLIC Freetype::Freetype)
+  else()
+    find_package(Freetype REQUIRED)
+    target_include_directories(Plotter PUBLIC ${FREETYPE_INCLUDE_DIRS})
+    target_link_libraries(Plotter PUBLIC ${FREETYPE_LIBRARIES})
+  endif()
+endif()
 
-# NO install(EXPORT ...) or export(TARGETS ...) here
+if(MSVC)
+  set_property(TARGET Plotter PROPERTY MSVC_RUNTIME_LIBRARY "${SHMEA_MSVC_RUNTIME}")
+endif()
+
+install(TARGETS Plotter
+  EXPORT   shmeaTargets
+  ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)

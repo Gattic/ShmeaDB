@@ -26,6 +26,8 @@
     #include <unistd.h>
 #endif
 #include <time.h>
+#include <chrono>
+#include <ctime>
 
 using namespace shmea;
 
@@ -219,26 +221,32 @@ bool GLogger::surpressCheck(int logType) const
 	return false;
 }
 
+static shmea::GString formatUtc(const char* fmt)
+{
+    char buf[100];
+
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+
+    std::tm tm_utc{};
+#ifdef _WIN32
+    gmtime_s(&tm_utc, &t);
+#else
+    gmtime_r(&t, &tm_utc);
+#endif
+
+    std::strftime(buf, sizeof(buf), fmt, &tm_utc);
+    return shmea::GString(buf);
+}
+
 shmea::GString GLogger::getDateTime() const
 {
-	char timeString[100];
-	struct timeval tv;
-	struct timezone tz;
-	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&tv.tv_sec));
-	shmea::GString strDateTime(timeString);
-	return strDateTime;
+    return formatUtc("%Y-%m-%d %H:%M:%S");
 }
 
 shmea::GString GLogger::generateLogFName() const
 {
-	char timeString[100];
-	struct timeval tv;
-	struct timezone tz;
-	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&tv.tv_sec));
-	shmea::GString strDateTime(timeString);
-	return strDateTime;
+    return formatUtc("%Y-%m-%d-H%H");
 }
 
 void GLogger::log(int logType, shmea::GString category, shmea::GString message)

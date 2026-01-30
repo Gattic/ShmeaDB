@@ -17,6 +17,7 @@
 #ifndef _GSAVEFOLDER
 #define _GSAVEFOLDER
 
+#include "platform_fs.h"
 #include "GString.h"
 #include <dirent.h>
 #include <pthread.h>

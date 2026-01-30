@@ -33,7 +33,7 @@ void Sockets::initSockets()
 	PORT = "45019";
 	inMutex = new GMutex();
 	outMutex = new GMutex();
-	udpfd = -1;
+	udpfd = SHMEA_INVALID_SOCKET;
 }
 
 Sockets::Sockets() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger()))
@@ -65,186 +65,188 @@ void Sockets::setPort(const shmea::GString newPort)
 	PORT = newPort;
 }
 
-int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::GString& serverPort)
+sock_t Sockets::openClientConnection(const shmea::GString& serverIP,
+                                     const shmea::GString& serverPort)
 {
-	struct addrinfo* result;
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
+    SHMEA_WINSOCK_INIT(); // no-op on Linux, required on Windows (if you use that helper)
 
-	int status = getaddrinfo(serverIP.c_str(), serverPort.c_str(), &hints, &result);
-	if (status < 0)
-	{
-		logger->error("SOCKS", "Get client addr info fail");
-		return -1;
-	}
+    addrinfo hints{};
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
 
-	// get the ip
-	char fromIP[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &result->ai_addr->sa_data[2], fromIP, INET_ADDRSTRLEN);
-	shmea::GString clientIP = fromIP;
-
-	// get the ip
-	int sockfd = -1;
-	struct addrinfo* rp;
-	// for(rp=result;rp!=NULL;rp=rp->ai_next)
-	{
-		sockfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-		if (sockfd < 0)
-		{
-			logger->error("SOCKS", "Could not open client socket");
-			return -1; // continue;
-		}
-
-		/*int optval=1;
-		int sockopts=SO_REUSEADDR;
-		#ifdef (SO_REUSEPORT)
-			sockopts|=SO_REUSEPORT;
-		#endif
-		setsockopt(sockfd, SOL_SOCKET, sockopts, &optval, sizeof(optval));*/
-
-		// Having no buffer will force the socket to wait to send until the previous transaction is done.
-		// Ths knowledge cannot be found anywhere so please do not delete this comment
-		int bufVal = 0;
-		setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_CAST &bufVal, sizeof(bufVal));
-		setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_CAST &bufVal, sizeof(bufVal));
-
-		status = connect(sockfd, result->ai_addr, result->ai_addrlen);
-		if (status < 0)
-		{
-			logger->error("SOCKS", "Could not connect to the server!");
-			return -1; // continue;
-		}
-
-// Get the size of the receive buffer
-    int bufferSize;
-    socklen_t bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
-        std::cout << "Client Receive buffer size: " << bufferSize << " bytes" << std::endl;
-    } else {
-        perror("getsockopt");
+    addrinfo* result = nullptr;
+    int status = ::getaddrinfo(serverIP.c_str(), serverPort.c_str(), &hints, &result);
+    if (status != 0 || !result)
+    {
+        logger->error("SOCKS", "Get client addr info fail");
+        return SHMEA_INVALID_SOCKET;
     }
 
-// Get the size of the receive buffer
-    bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
-        std::cout << "Client SEND buffer size: " << bufferSize << " bytes" << std::endl;
-    } else {
-        perror("getsockopt");
+    sock_t sockfd = SHMEA_INVALID_SOCKET;
+
+    // if you later want to iterate rp, use rp. For now, just use result.
+    sockfd = ::socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (sockfd == SHMEA_INVALID_SOCKET)
+    {
+        logger->error("SOCKS", "Could not open client socket");
+        ::freeaddrinfo(result);
+        return SHMEA_INVALID_SOCKET;
     }
 
-	}
+    int bufVal = 0;
+    ::setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_CAST &bufVal, sizeof(bufVal));
+    ::setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_CAST &bufVal, sizeof(bufVal));
 
-	freeaddrinfo(result);
+    status = ::connect(sockfd, result->ai_addr, (SHMEA_SOCKLEN)result->ai_addrlen);
+    ::freeaddrinfo(result);
 
-	return sockfd;
-}
+    if (status != 0)
+    {
+        logger->error("SOCKS", "Could not connect to the server!");
+        CLOSESOCK(sockfd);
+        return SHMEA_INVALID_SOCKET;
+    }
 
-int Sockets::openServerConnection()
-{
-	int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sockfd < 0)
-	{
-		logger->error("SOCKS", "Could not open server socket");
-		return -1;
-	}
-
-	int optval = 1;
-	int sockopts = SO_REUSEADDR | SO_KEEPALIVE | TCP_NODELAY;
-#if (SO_REUSEPORT)
-	sockopts |= SO_REUSEPORT;
-#endif
-	setsockopt(sockfd, SOL_SOCKET, sockopts, SOCKOPT_CAST &optval, sizeof(optval));
-
-	struct addrinfo* result;
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	int status = getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
-	if (status < 0)
-	{
-		logger->error("SOCKS", "Get server addr info fail");
-		return -1;
-	}
-
-// Get the size of the receive buffer
+    // debug buffer sizes (optional)
     int bufferSize = 0;
-    socklen_t bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
-        std::cout << "Server Receive buffer size: " << bufferSize << " bytes" << std::endl;
-    } else {
-        perror("getsockopt");
-    }
+    SHMEA_SOCKLEN bufferSizeLen = sizeof(bufferSize);
 
-    bufferSize = 0;
+    if (::getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0)
+        std::cout << "Client Receive buffer size: " << bufferSize << " bytes\n";
+    else
+        std::cout << "getsockopt(SO_RCVBUF) failed: " << SHMEA_LAST_SOCK_ERR() << "\n";
+
     bufferSizeLen = sizeof(bufferSize);
-    bufferSizeLen = sizeof(bufferSize);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0) {
-        std::cout << "Server Write buffer size: " << bufferSize << " bytes" << std::endl;
-    } else {
-        perror("getsockopt");
-    }
+    if (::getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0)
+        std::cout << "Client Send buffer size: " << bufferSize << " bytes\n";
+    else
+        std::cout << "getsockopt(SO_SNDBUF) failed: " << SHMEA_LAST_SOCK_ERR() << "\n";
 
-	status = bind(sockfd, result->ai_addr, result->ai_addrlen);
-	if (status < 0)
-	{
-		logger->error("SOCKS", "Could not bind server!");
-		return -1;
-	}
-
-	listen(sockfd, 64);
-	freeaddrinfo(result);
-
-	return sockfd;
+    return sockfd;
 }
 
-int Sockets::openUDPServerSocket()
+
+sock_t Sockets::openServerConnection()
 {
-	int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (s < 0)
-	{
-		logger->error("SOCKS", "Could not open UDP socket");
-		return -1;
-	}
+    SHMEA_WINSOCK_INIT(); // no-op on Linux
 
-	int optval = 1;
-	int sockopts = SO_REUSEADDR;
-#if (SO_REUSEPORT)
-	sockopts |= SO_REUSEPORT;
+    sock_t sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sockfd == SHMEA_INVALID_SOCKET)
+    {
+        logger->error("SOCKS", "Could not open server socket");
+        return SHMEA_INVALID_SOCKET;
+    }
+
+    int optval = 1;
+    ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, SOCKOPT_CAST &optval, sizeof(optval));
+    ::setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, SOCKOPT_CAST &optval, sizeof(optval));
+    ::setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, SOCKOPT_CAST &optval, sizeof(optval));
+
+#if defined(SO_REUSEPORT)
+    ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, SOCKOPT_CAST &optval, sizeof(optval));
 #endif
-	setsockopt(s, SOL_SOCKET, sockopts, &optval, sizeof(optval));
 
-	struct addrinfo* result;
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
+    addrinfo hints{};
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    // optional (more canonical for server bind):
+    // hints.ai_flags = AI_PASSIVE;
 
-	int status = getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
-	if (status < 0)
-	{
-		logger->error("SOCKS", "Get UDP addr info fail");
-		close(s);
-		return -1;
-	}
+    addrinfo* result = nullptr;
+    int status = ::getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
+    if (status != 0 || !result)
+    {
+        logger->error("SOCKS", "Get server addr info fail");
+        CLOSESOCK(sockfd);
+        return SHMEA_INVALID_SOCKET;
+    }
 
-	status = bind(s, result->ai_addr, result->ai_addrlen);
-	freeaddrinfo(result);
-	if (status < 0)
-	{
-		logger->error("SOCKS", "Could not bind UDP socket");
-		close(s);
-		return -1;
-	}
+    status = ::bind(sockfd, result->ai_addr, (SHMEA_SOCKLEN)result->ai_addrlen);
+    ::freeaddrinfo(result);
 
-	udpfd = s;
-	return s;
+    if (status != 0)
+    {
+        logger->error("SOCKS", "Could not bind server!");
+        CLOSESOCK(sockfd);
+        return SHMEA_INVALID_SOCKET;
+    }
+
+    if (::listen(sockfd, 64) != 0)
+    {
+        logger->error("SOCKS", "listen() failed");
+        CLOSESOCK(sockfd);
+        return SHMEA_INVALID_SOCKET;
+    }
+
+    // Optional debug buffer size checks:
+    int bufferSize = 0;
+    SHMEA_SOCKLEN bufferSizeLen = sizeof(bufferSize);
+
+    if (::getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0)
+        std::cout << "Server Receive buffer size: " << bufferSize << " bytes\n";
+    else
+        std::cout << "getsockopt(SO_RCVBUF) failed: " << SHMEA_LAST_SOCK_ERR() << "\n";
+
+    bufferSizeLen = sizeof(bufferSize);
+    if (::getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, SOCKOPT_GCAST &bufferSize, &bufferSizeLen) == 0)
+        std::cout << "Server Send buffer size: " << bufferSize << " bytes\n";
+    else
+        std::cout << "getsockopt(SO_SNDBUF) failed: " << SHMEA_LAST_SOCK_ERR() << "\n";
+
+    return sockfd;
 }
 
-void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<shmea::ServiceData*>& srvcList)
+
+sock_t Sockets::openUDPServerSocket()
+{
+    SHMEA_WINSOCK_INIT();
+
+    sock_t s = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (s == SHMEA_INVALID_SOCKET)
+    {
+        logger->error("SOCKS", "Could not open UDP socket");
+        return SHMEA_INVALID_SOCKET;
+    }
+
+    int optval = 1;
+    ::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, SOCKOPT_CAST &optval, sizeof(optval));
+
+#if defined(SO_REUSEPORT)
+    ::setsockopt(s, SOL_SOCKET, SO_REUSEPORT, SOCKOPT_CAST &optval, sizeof(optval));
+#endif
+
+    addrinfo hints{};
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+
+    addrinfo* result = nullptr;
+    int status = ::getaddrinfo(ANYADDR.c_str(), PORT.c_str(), &hints, &result);
+    if (status != 0 || !result)
+    {
+        logger->error("SOCKS", "Get UDP addr info fail");
+        CLOSESOCK(s);
+        return SHMEA_INVALID_SOCKET;
+    }
+
+    status = ::bind(s, result->ai_addr, (SHMEA_SOCKLEN)result->ai_addrlen);
+    ::freeaddrinfo(result);
+
+    if (status != 0)
+    {
+        logger->error("SOCKS", "Could not bind UDP socket");
+        CLOSESOCK(s);
+        return SHMEA_INVALID_SOCKET;
+    }
+
+    udpfd = s;
+    return s;
+}
+
+
+void Sockets::readConnection(Connection* origin, const sock_t& sockfd, std::vector<shmea::ServiceData*>& srvcList)
 {
 	readConnectionHelper(origin, sockfd, srvcList);
 
@@ -259,7 +261,7 @@ void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<
 	}*/
 }
 
-void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<shmea::ServiceData*>& srvcList)
+void Sockets::readConnectionHelper(Connection* origin, const sock_t& sockfd, std::vector<shmea::ServiceData*>& srvcList)
 {
 	if (origin == NULL)
 		return;
@@ -269,7 +271,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	origin->overflow = "";
 
 	char buffer[4096];
-	int bytesRead = read(sockfd, buffer, sizeof(buffer));
+	int bytesRead = SHMEA_RECV(sockfd, buffer, (int)sizeof(buffer));
 	if (bytesRead == -1)
 	{
 		logger->error("SOCKS", "[READER] Error: 3");
@@ -335,7 +337,7 @@ void Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::v
 	origin->overflow = raw;
 }
 
-int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
+int Sockets::writeConnection(const Connection* cConnection, const sock_t& sockfd, shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
 
@@ -425,9 +427,9 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 		for (unsigned int i = 0; i < writeStr.length(); i+=1024)
 		{
 		    if(writeStr.length()-i < 1024)
-		        writeLen += write(sockfd, writeStr.c_str()+i, writeStr.length()-i);
+		        writeLen += SHMEA_SEND(sockfd, writeStr.c_str()+i, writeStr.length()-i);
 		    else
-		        writeLen += write(sockfd, writeStr.c_str()+i, 1024);
+		        writeLen += SHMEA_SEND(sockfd, writeStr.c_str()+i, 1024);
 		}
 	}
 
@@ -440,9 +442,10 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	return writeLen;
 }
 
-void Sockets::closeConnection(const int& sockfd)
+void Sockets::closeConnection(const sock_t& sockfd)
 {
-	close(sockfd);
+	CLOSESOCK(sockfd);
+
 }
 
 /*!
@@ -454,8 +457,9 @@ void Sockets::closeConnection(const int& sockfd)
 bool Sockets::readLists(Connection* origin)
 {
     if (!origin)
+	{
         return false;
-
+	}
     // Capture overflow size to detect partial progress
     unsigned int overflowBefore = origin->overflow.length();
 
@@ -464,11 +468,13 @@ bool Sockets::readLists(Connection* origin)
 
     // If no complete services arrived but overflow grew, we made progress (partial frame)
     if (srvcList.size() == 0 && origin->overflow.length() > overflowBefore)
+	{
         return true;
-
+	}
     if (srvcList.size() == 0)
+	{
         return false;
-
+	}
 	// loop through the srvcList
 	for (unsigned int i = 0; i < srvcList.size(); ++i)
 	{
@@ -501,12 +507,12 @@ bool Sockets::readLists(Connection* origin)
 
 bool Sockets::readUDPDatagram(GServer* serverInstance)
 {
-	if (udpfd < 0)
+	if (udpfd == SHMEA_INVALID_SOCKET)
 		return false;
 
-	char buffer[4096];
+	char buffer[4096]; 
 	struct sockaddr_in from;
-	socklen_t fromlen = sizeof(from);
+	SHMEA_SOCKLEN fromlen = sizeof(from);
 	int bytes = recvfrom(udpfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromlen);
 	if (bytes <= 0)
 		return false;
@@ -579,14 +585,14 @@ bool Sockets::readUDPDatagram(GServer* serverInstance)
 
 	for (unsigned int i = 0; i < srvcList.size(); ++i)
 	{
-		pthread_mutex_lock(inMutex);
+		inMutex->lock();
 		int64_t serviceNum = srvcList[i]->getServiceNum();
 		std::map<int64_t, shmea::ServiceData*>::iterator itr = inboundLists.find(serviceNum);
 		if (itr == inboundLists.end())
 			inboundLists.insert(std::pair<int64_t, shmea::ServiceData*>(serviceNum, srvcList[i]));
 		else
 			inboundLists[serviceNum] = srvcList[i];
-		pthread_mutex_unlock(inMutex);
+		inMutex->unlock();
 	}
 
 	return true;
@@ -605,7 +611,7 @@ void Sockets::processLists(GServer* serverInstance)
 		shmea::ServiceData* nextSD = (*inboundLists.begin()).second;
 		inboundLists.erase(inboundLists.begin());
 		inMutex->unlock();
-		GNet::Service::ExecuteService(serverInstance, nextSD, cConnection);
+		GNet::Service::ExecuteService(serverInstance, nextSD, nextSD->getConnection());
 	}
 }
 

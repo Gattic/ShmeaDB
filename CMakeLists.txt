@@ -1,148 +1,166 @@
-# ShmeaDB / top-level CMakeLists.txt (static library package)
-
 cmake_minimum_required(VERSION 3.21)
+
 project(shmea VERSION 0.57 LANGUAGES CXX)
 
-# ---------- Global policy: all static, MSVC static runtime ----------
-set(BUILD_SHARED_LIBS OFF)
-if(MSVC)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
+include(GNUInstallDirs)
+
+# --------------------
+# Project-wide settings (safe as subproject)
+# --------------------
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 
-# ---------- Default install prefix (~/.local or %USERPROFILE%/.local) ----------
-if(WIN32)
-  set(_default_prefix "$ENV{USERPROFILE}/.local")
-else()
-  set(_default_prefix "$ENV{HOME}/.local")
-endif()
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${_default_prefix}" CACHE PATH "Install prefix" FORCE)
-endif()
-
-# ---------- Tooling / warnings ----------
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Default build type for single-config generators (Ninja, Makefiles)
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
 endif()
+
+# Warnings/flags (do NOT propagate to consumers)
 if(MSVC)
   add_compile_options(/W3 /EHsc)
 else()
   add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter)
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 endif()
 
-include(GNUInstallDirs)
+# MSVC static runtime per-target (avoid forcing cache/global in parent projects)
+set(SHMEA_MSVC_RUNTIME "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-# ---------- Subdirectories: define STATIC libs & install into ONE export set ----------
-# Each subdir must: add_library(<name> STATIC ...); install(TARGETS <name> EXPORT shmeaTargets ...)
-add_subdirectory("Backend/Core")
-add_subdirectory("Backend/Database")
-add_subdirectory("Backend/Plotter")
-add_subdirectory("Backend/Networking")
+# Default install prefix ONLY when ShmeaDB is the top-level project
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  if(WIN32)
+    set(_default_prefix "$ENV{USERPROFILE}/.local")
+  else()
+    set(_default_prefix "$ENV{HOME}/.local")
+  endif()
+  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${_default_prefix}" CACHE PATH "Install prefix" FORCE)
+  endif()
+endif()
 
-# ---------- Main library (static) ----------
-set(SHMEA_MAIN_SRC
-  main.cpp
-  main.h
+# --------------------
+# Sub-libraries
+# --------------------
+add_subdirectory(Backend/Core)
+add_subdirectory(Backend/Database)
+add_subdirectory(Backend/Plotter)
+add_subdirectory(Backend/Networking)
+
+# --------------------
+# Umbrella library target: shmea
+# (This is what Gattic should link to if it wants "everything".)
+# --------------------
+add_library(shmea STATIC
+  # IMPORTANT:
+  # Do NOT compile a file that contains `int main()` into a library.
+  # If your current main.cpp has `int main()`, move it to Gattic.
   g_export.h
 )
-add_library(shmea STATIC ${SHMEA_MAIN_SRC})
+
+# Include dirs: allow consumers to include <Backend/...> and <include/...>
 target_include_directories(shmea
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-  PRIVATE
-    ${CMAKE_SOURCE_DIR}
 )
 
-# Link to your internal libs
+# Link all internal libs PUBLIC so deps propagate to final exe
 target_link_libraries(shmea
-  PRIVATE
-    Plotter GNet DB
+  PUBLIC
+    Plotter
+    GNet
+    DB
+    GCore
 )
 
-# Windows system libs if needed
-if(WIN32)
-  target_link_libraries(shmea PRIVATE ws2_32)
-  add_definitions(-D_WIN32_WINNT=0x0601)
+# MSVC static runtime on this target
+if(MSVC)
+  set_property(TARGET shmea PROPERTY MSVC_RUNTIME_LIBRARY "${SHMEA_MSVC_RUNTIME}")
 endif()
 
-# ---------- Install headers ----------
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include")
-  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# --------------------
+# Install headers
+# --------------------
+if(EXISTS "${PROJECT_SOURCE_DIR}/include")
+  install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 endif()
-install(DIRECTORY Backend/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Backend FILES_MATCHING PATTERN "*.h")
 
-# ---------- Install main lib into same export set ----------
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/Backend/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/Backend"
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
+
+# --------------------
+# Install targets (all export into one set)
+# --------------------
 install(TARGETS shmea
   EXPORT   shmeaTargets
-  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-# ---------- Package config (single export set emitted only here) ----------
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-w)
+endif()
+
+# --------------------
+# Package config + export
+# --------------------
 include(CMakePackageConfigHelpers)
+
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/shmeaConfigVersion.cmake"
   VERSION "${PROJECT_VERSION}"
   COMPATIBILITY SameMajorVersion
 )
+
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shmeaConfig.cmake"
   "include(\"\${CMAKE_CURRENT_LIST_DIR}/shmeaTargets.cmake\")\n"
 )
+
 install(EXPORT shmeaTargets
   NAMESPACE shmea::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/shmea
 )
+
 install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/shmeaConfig.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/shmeaConfigVersion.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/shmea
 )
 
-# Optional: export from build-tree
+# Optional: export from build tree (useful for find_package in a build folder)
 export(EXPORT shmeaTargets
   NAMESPACE shmea::
   FILE "${CMAKE_CURRENT_BINARY_DIR}/shmeaTargets.cmake"
 )
 
-# ---- Dev helpers ----
-add_custom_target(fmt
+# --------------------
+# Dev helpers (only meaningful when top-level)
+# --------------------
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  add_custom_target(fmt
     COMMAND ${CMAKE_COMMAND} -E echo "Run ./clang-format-all"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  )
 
-add_custom_target(local
-    COMMAND ${PROJECT_NAME} local
-    DEPENDS ${PROJECT_NAME}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-
-if(UNIX)
-    add_custom_target(debug
-        COMMAND gdb $<TARGET_FILE:${PROJECT_NAME}>
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
-    add_custom_target(mem
-        COMMAND valgrind --leak-check=full --track-origins=yes $<TARGET_FILE:${PROJECT_NAME}>
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
-    add_custom_target(profile
-        COMMAND valgrind --tool=callgrind $<TARGET_FILE:${PROJECT_NAME}>
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+  add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -E echo "Uninstalling..."
+    COMMAND xargs rm < ${CMAKE_BINARY_DIR}/install_manifest.txt
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  )
 endif()
 
-add_custom_target(uninstall
-    COMMAND xargs rm < ${CMAKE_BINARY_DIR}/install_manifest.txt
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+option(SHMEA_BUILD_TESTS "Build unit tests" ON)
+
+if(SHMEA_BUILD_TESTS)
+  include(CTest)
+  enable_testing()
+  add_subdirectory(unit-tests)
+endif()

@@ -124,13 +124,13 @@ class GServer
 	void LaunchLocalInstance(const shmea::GString&);
 	void LogoutInstance(Connection*);
 
-	int getSockFD();
+	sock_t getSockFD();
 	const std::vector<Connection*> getClientConnections();
 	const std::vector<Connection*> getServerConnections();
 	GMutex& getClientMutex();
 	GMutex& getServerMutex();
 
-	bool isConnection(int, const fd_set&);
+	bool isConnection(sock_t, const fd_set&);
 	Connection* setupNewConnection(int);
 	Connection* findExistingConnection(const std::vector<Connection*>&, const fd_set&);
 

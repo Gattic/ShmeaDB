@@ -132,8 +132,8 @@ Connection* GNet::GServer::getOrCreateUDPConnection(const shmea::GString& server
 		return existing;
 
 	// Create a lightweight Connection object pointing to the UDP socket
-	int udpfd = socks->getUDPSocketFD();
-	if (udpfd < 0)
+	sock_t udpfd = socks->getUDPSocketFD();
+	if (udpfd == SHMEA_INVALID_SOCKET)
 		udpfd = socks->openUDPServerSocket();
 
 	Connection* destination = new Connection(udpfd, Connection::SERVER_TYPE, serverIP, serverPort);
@@ -147,15 +147,15 @@ Connection* GNet::GServer::getOrCreateUDPConnection(const shmea::GString& server
 	shmea::GString serverKey = serverIP + ":" + serverPort;
 	if(serverCLookUp.find(serverKey) == serverCLookUp.end())
 	{
-		pthread_mutex_lock(serverMutex);
+		serverMutex->lock();
 		serverCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(serverKey, std::vector<int>()));
-		pthread_mutex_unlock(serverMutex);
+		serverMutex->unlock();
 	}
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex->lock();
 	serverC.push_back(destination);
 	serverCLookUp[serverKey].push_back(serverC.size()-1);
-	pthread_mutex_unlock(serverMutex);
+	serverMutex->lock();
 
 	return destination;
 }
@@ -259,7 +259,7 @@ bool GNet::GServer::isEncryptedByDefault() const
 	return cryptEnabled;
 }
 
-int GNet::GServer::getSockFD()
+sock_t GNet::GServer::getSockFD()
 {
 	return sockfd;
 }
@@ -362,7 +362,7 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 	}
 }
 
-bool GNet::GServer::isConnection(int _sockfd, const fd_set& fdarr)
+bool GNet::GServer::isConnection(sock_t _sockfd, const fd_set& fdarr)
 {
 	return FD_ISSET(_sockfd, &fdarr);
 }
@@ -372,8 +372,8 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 	struct sockaddr_in from;
 	socklen_t clientLength = sizeof(from);
 
-	int sockfd2 = accept(sockfd, (struct sockaddr*)&from, &clientLength);
-	if (sockfd2 < 0)
+	sock_t sockfd2 = accept(sockfd, (struct sockaddr*)&from, &clientLength);
+	if (sockfd2 == SHMEA_INVALID_SOCKET)
 	{
 		if (getRunning())
 			printf("[SOCKS] Could not accept new connection\n");
@@ -517,7 +517,7 @@ void GNet::GServer::commandCatcher(void*)
 {
 	// socket stuff
 	sockfd = SHMEA_INVALID_SOCKET;
-	int max_sock = 0;
+	int max_sock = -1;
 
 	// dont want to crash unnecassarily
 	#ifndef _WIN32
@@ -534,8 +534,8 @@ void GNet::GServer::commandCatcher(void*)
 		printf("[SOCKS] Listening on port %s\n", socks->getPort().c_str());
 
 	// Open UDP socket on same port
-	int udpfd = socks->openUDPServerSocket();
-	if (udpfd < 0)
+	sock_t udpfd = socks->openUDPServerSocket();
+	if (udpfd == SHMEA_INVALID_SOCKET)
 		printf("[SOCKS] Could not create UDP socket on port %s\n", socks->getPort().c_str());
 
 	// Launch a local instance of a client
@@ -552,11 +552,11 @@ void GNet::GServer::commandCatcher(void*)
 		FD_ZERO(&fdarr);
 		FD_SET(sockfd, &fdarr);
 		max_sock = sockfd;
-		if (udpfd >= 0)
+		if (udpfd != SHMEA_INVALID_SOCKET)
 		{
 			FD_SET(udpfd, &fdarr);
-			if (udpfd > max_sock)
-				max_sock = udpfd;
+			if ((int)udpfd > max_sock)
+				max_sock = (int)udpfd;
 		}
 
 		// clientConnections+serverConnections
@@ -578,7 +578,7 @@ void GNet::GServer::commandCatcher(void*)
 
 				instanceList.push_back(cConnection);
 				FD_SET(cConnection->sockfd, &fdarr);
-				if (cConnection->sockfd > (sock_t)max_sock)
+				if ((int)cConnection->sockfd > max_sock)
 					max_sock = (int)cConnection->sockfd;
 			}
 		}
@@ -599,13 +599,17 @@ void GNet::GServer::commandCatcher(void*)
 
 				instanceList.push_back(cConnection);
 				FD_SET(cConnection->sockfd, &fdarr);
-				if (cConnection->sockfd > (sock_t)max_sock)
-					max_sock = (int)cConnection->sockfd;
+				if ((int)cConnection->sockfd > max_sock)
+					max_sock = (sock_t)cConnection->sockfd;
 			}
 		}
 
 		// Listen for packets, blocking call
-		int status = select(max_sock + 1, &fdarr, NULL, NULL, &tv);
+		#ifdef _WIN32
+			int status = ::select(0, &fdarr, NULL, NULL, &tv);
+		#else
+			int status = ::select(max_sock + 1, &fdarr, NULL, NULL, &tv);
+		#endif
 		if (status < 0)
 		{
 			printf("[SOCKS] Socket select error");
@@ -619,7 +623,7 @@ void GNet::GServer::commandCatcher(void*)
 		bool udpEvent = false;
 		if (isConnection(sockfd, fdarr))
 			cConnection = setupNewConnection(max_sock);
-		else if (udpfd >= 0 && isConnection(udpfd, fdarr))
+		else if (udpfd != SHMEA_INVALID_SOCKET && isConnection(udpfd, fdarr))
 			udpEvent = socks->readUDPDatagram(this);
 		else
 			cConnection = findExistingConnection(instanceList, fdarr);
@@ -719,9 +723,9 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		return;
 	GServer* serverInstance = x->serverInstance;
 
-	int sockfd2 = serverInstance->socks->openClientConnection(x->serverIP, x->serverPort);
+	sock_t sockfd2 = serverInstance->socks->openClientConnection(x->serverIP, x->serverPort);
 	printf("[SOCKS] Connecting to %s:%s\n", x->serverIP.c_str(), x->serverPort.c_str());
-	if (sockfd2 < 0)
+	if (sockfd2 == SHMEA_INVALID_SOCKET)
 	{
 		printf("[SOCKS] Could not create client socket\n");
 		return;

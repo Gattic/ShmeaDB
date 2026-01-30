@@ -1,30 +1,30 @@
-# Backend/Core/CMakeLists.txt
+cmake_minimum_required(VERSION 3.21)
 
-cmake_minimum_required(VERSION 3.5.1)
-
-add_library(GCore
+add_library(GCore STATIC
   ../Networking/GMutex.cpp
   ../Networking/GCondition.cpp
   ../Networking/GThread.cpp
 )
 
-# Public include dirs must be split: build vs install
 target_include_directories(GCore
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Backend>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Backend/Networking>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Backend>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/Backend>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/Backend/Networking>
 )
 
 find_package(Threads REQUIRED)
-target_link_libraries(GCore PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(GCore PUBLIC Threads::Threads)
+
+if(MSVC)
+  set_property(TARGET GCore PROPERTY MSVC_RUNTIME_LIBRARY "${SHMEA_MSVC_RUNTIME}")
+endif()
 
 install(TARGETS GCore
   EXPORT   shmeaTargets
-  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )

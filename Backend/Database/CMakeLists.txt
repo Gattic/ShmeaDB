@@ -1,19 +1,9 @@
-# Database lib: DB
+cmake_minimum_required(VERSION 3.21)
 
-if(EMSCRIPTEN)
-  message(STATUS "Emscripten detected, enabling Freetype port for DB.")
-  add_compile_definitions(USE_FREETYPE_PORT)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_FREETYPE=1")
-else()
-  find_package(Freetype REQUIRED)
-endif()
-
-add_library(DB
+add_library(DB STATIC
   lodepng.cpp
   png-helper.cpp
   image.cpp
-  GVector.h
-  GPointer.h
   GType.cpp
   GType_helpers.cpp
   GType_operators.cpp
@@ -32,19 +22,41 @@ add_library(DB
   PNGPlotter.cpp
 )
 
-# Freetype stays PRIVATE
-if(NOT EMSCRIPTEN)
-  target_include_directories(DB PRIVATE ${FREETYPE_INCLUDE_DIRS})
-  target_link_libraries(DB PRIVATE ${FREETYPE_LIBRARIES})
+target_include_directories(DB
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Backend>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/Backend>
+)
+
+# DB needs core threading/sync objects
+target_link_libraries(DB PUBLIC GCore)
+
+# ---- Freetype ----
+if(EMSCRIPTEN)
+  target_compile_definitions(DB PUBLIC USE_FREETYPE_PORT)
+  # Add your emscripten flags as needed, but prefer toolchain handling over CMAKE_CXX_FLAGS
+else()
+  # Prefer CONFIG (vcpkg) but fall back to module
+  find_package(Freetype CONFIG QUIET)
+  if(Freetype_FOUND)
+    target_link_libraries(DB PUBLIC Freetype::Freetype)
+  else()
+    find_package(Freetype REQUIRED)
+    target_include_directories(DB PUBLIC ${FREETYPE_INCLUDE_DIRS})
+    target_link_libraries(DB PUBLIC ${FREETYPE_LIBRARIES})
+  endif()
 endif()
 
-# NEW: DB needs the core threading symbols (GMutex etc.)
-target_link_libraries(DB PRIVATE GCore)
+if(MSVC)
+  set_property(TARGET DB PROPERTY MSVC_RUNTIME_LIBRARY "${SHMEA_MSVC_RUNTIME}")
+endif()
 
 install(TARGETS DB
   EXPORT   shmeaTargets
-  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
