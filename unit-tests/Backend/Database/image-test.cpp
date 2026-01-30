@@ -25,14 +25,15 @@ void ImageUnitTest()
 	printf("------\n");
 	printf("PNG Unit Tests\n");
 	printf("------\n");
-	PNGHelper::createTestPNG("hello/out-png-test.png");
+	std::string workingPNG = std::string(SHMEA_TEST_DATA_DIR) + "hello/out-png-test.png";
+	PNGHelper::createTestPNG(workingPNG.c_str());
 
 	// Check if file exists
-	std::ifstream file("hello/out-png-test.png");
+	std::ifstream file(workingPNG.c_str());
 	G_assert(__FILE__, __LINE__, "image.save failed", file.good());
 	
 	Image image;
-	PNGHelper::LoadPNG(image, "hello/out-png-test.png");
+	PNGHelper::LoadPNG(image, workingPNG.c_str());
 
 	const unsigned width = 1200; // taken from png-helper.h createTestPNG fnc
 	const unsigned height = 800; // taken from png-helper.h createTestPNG fnc

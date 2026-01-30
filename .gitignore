@@ -2,6 +2,7 @@
 callgrind.*
 .DS_Store
 build/*
+build-install/*
 unit-tests/build/*
 database/*
 unit-tests/database/*

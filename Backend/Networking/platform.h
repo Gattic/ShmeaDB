@@ -12,6 +12,7 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
+
     #ifdef _MSC_VER
         #pragma comment(lib, "ws2_32.lib")
     #endif
@@ -50,6 +51,7 @@
     #include <netinet/tcp.h>
     #include <unistd.h>
     #include <errno.h>
+    #include <signal.h>
 
     typedef int sock_t;
     #define SHMEA_INVALID_SOCKET (-1)

@@ -155,7 +155,7 @@ Connection* GNet::GServer::getOrCreateUDPConnection(const shmea::GString& server
 	serverMutex->lock();
 	serverC.push_back(destination);
 	serverCLookUp[serverKey].push_back(serverC.size()-1);
-	serverMutex->lock();
+	serverMutex->unlock();
 
 	return destination;
 }

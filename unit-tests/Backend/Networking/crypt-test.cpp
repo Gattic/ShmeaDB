@@ -19,7 +19,8 @@
 void CryptUnitTest()
 {
 	// Test Encryption with Serialization
-	shmea::GTable decimalData = shmea::GTable("testTable.csv", ',', shmea::GTable::TYPE_FILE);
+	std::string testTable = std::string(SHMEA_TEST_DATA_DIR) + "/testTable.csv";	
+	shmea::GTable decimalData = shmea::GTable(testTable.c_str(), ',', shmea::GTable::TYPE_FILE);
 	shmea::GList mcArgs;
 	mcArgs.addString("MONTE-CARLO");
 

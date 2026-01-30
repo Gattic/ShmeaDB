@@ -258,7 +258,8 @@ void GListUnitTest()
 
 	// Word loading
 	shmea::GList wordList;
-	wordList.loadWords("datasets/wordlist.txt");
+	std::string path = std::string(SHMEA_TEST_DATA_DIR) + "/datasets/wordlist.txt";
+	wordList.loadWords(path.c_str());
 	wordList.print();
 	G_assert(__FILE__, __LINE__, "Wordlist size", wordList.size() == 16);
 	G_assert(__FILE__, __LINE__, "Wordlist[0]", wordList[0] == "hello");
@@ -280,7 +281,8 @@ void GListUnitTest()
 
 
 	shmea::GList wordList2;
-	wordList2.loadWords("datasets/wordlist2.txt");
+	std::string path2 = std::string(SHMEA_TEST_DATA_DIR) + "/datasets/wordlist2.txt";
+	wordList2.loadWords(path2.c_str());
 	wordList2.print();
 	G_assert(__FILE__, __LINE__, "Wordlist2 size", wordList2.size() == 23);
 	G_assert(__FILE__, __LINE__, "WordList2[0]", wordList2[0] == "hello");

@@ -16,6 +16,10 @@
 
 using namespace shmea;
 
+std::string absoluteLoc = std::string(SHMEA_TEST_DATA_DIR);
+std::string absoluteLocTestOutput = std::string(SHMEA_TEST_DATA_DIR) + "/test-output";
+std::string logoPNGLoc = std::string(SHMEA_TEST_DATA_DIR) + "/logo.png"; 
+
 void shmea::testCluster() {
     printf("Testing Cluster visualization with the new fluent API...\n");
     
@@ -100,30 +104,33 @@ void shmea::testCluster() {
     extremeCentroid.push_back(15.0);  // Far outside the main data range but should still be drawn
     extremeCentroid.push_back(10.0);  // Far outside the main data range but should still be drawn
     centroids2.push_back(extremeCentroid);
-    
+
+  
+
     // Use the new fluent API to create and save the cluster visualization
     plotter.chart()
         .title("Cluster Analysis", 36)
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Feature X", "Feature Y", 32)
         .autoMargins(CHART_CLUSTER)
         .addClusterData(clusterData, clusterLabels, centroids)
-        .saveAs("cluster_test_output.png", ".");
+        .saveAs("cluster_test_output.png", absoluteLoc.c_str());
     
+    std::string clusterTestExtremeOutput = std::string(SHMEA_TEST_DATA_DIR) + "cluster_test_extreme_output.png";
     // Generate the extreme centroid test image
     plotter2.chart()
         .title("Cluster Analysis with Extreme Centroid", 36)
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Feature X", "Feature Y", 32)
         .autoMargins(CHART_CLUSTER)
         .addClusterData(clusterData2, clusterLabels2, centroids2)
-        .saveAs("cluster_test_extreme_output.png", ".");
+        .saveAs("cluster_test_extreme_output.png", absoluteLoc.c_str());
     
     printf("Cluster test with fluent API completed. Output saved as 'cluster_test_output.png'.\n");
     printf("Extreme centroid test saved as 'cluster_test_extreme_output.png'.\n");
@@ -155,11 +162,11 @@ void shmea::testHistogram() {
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Value", "Frequency", 32)
         .autoMargins(CHART_HISTOGRAM)
         .addHistogramData(bellCurve, RGBA(0x00, 0x9E, 0xFF, 0xFF), true)
-        .saveAs("histogram_test_output.png", ".");
+        .saveAs("histogram_test_output.png", absoluteLoc.c_str());
     
     printf("Histogram test completed. Output saved as 'histogram_test_output.png'.\n");
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
@@ -187,11 +194,11 @@ void shmea::testHistogram() {
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Value", "Frequency", 32)
         .autoMargins(CHART_HISTOGRAM)
         .addHistogramData(skewedDist, RGBA(0xFF, 0x6B, 0x00, 0xFF), false)
-        .saveAs("histogram_skewed_output.png", ".");
+        .saveAs("histogram_skewed_output.png", absoluteLoc.c_str());
     
     printf("Skewed histogram test completed. Output saved as 'histogram_skewed_output.png'.\n");
     printf("Note: Bars appear at 80%% of their original height, while Y-axis shows values up to 125%% of the maximum bin value.\n");
@@ -276,11 +283,11 @@ void shmea::testCandlestickChart() {
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Date", "Price", 32)
         .autoMargins(CHART_CANDLESTICK)
         .addCandlestickData(candleData, RGBA(0x03, 0xC0, 0x3C, 0xFF), RGBA(0xFF, 0x47, 0x45, 0xFF))
-        .saveAs("candlestick_chart_output.png", ".");
+        .saveAs("candlestick_chart_output.png", absoluteLoc.c_str());
     
     printf("Candlestick chart test with fluent API completed. Output saved as 'candlestick_chart_output.png'.\n");
 }
@@ -331,13 +338,13 @@ void shmea::testLineScatter() {
         .grid(true)
         .axes(true)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("X Value", "Y Value", 28)
         .autoMargins(CHART_LINE)
         .addSeries("Sine Wave", lineData, RGBA(0x00, 0x9E, 0xFF, 0xFF), SERIES_LINE, 3)
         .addSeries("Cosine Wave", cosineData, RGBA(0xFF, 0x6B, 0x00, 0xFF), SERIES_LINE, 3)
         .addSeries("Random Points", scatterData, RGBA(0x33, 0xFF, 0x33, 0xFF), SERIES_SCATTER, 2, 10)
-        .saveAs("line_scatter_test_output.png", ".");
+        .saveAs("line_scatter_test_output.png", absoluteLoc.c_str());
     
     printf("Line and scatter plot test with fluent API completed. Output saved as 'line_scatter_test_output.png'.\n");
 }
@@ -416,10 +423,10 @@ void shmea::testMultiCluster() {
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .autoMargins(CHART_CLUSTER)
         .addClusterData(clusterData, clusterLabels, centroids)
-        .saveAs("multi_cluster_test_output.png", ".");
+        .saveAs("multi_cluster_test_output.png", absoluteLoc.c_str());
     
     printf("Multi-cluster test with fluent API completed. Output saved as 'multi_cluster_test_output.png'.\n");
 }
@@ -468,12 +475,12 @@ void shmea::testArrows() {
         .grid(true)
         .axes(true)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("X Value", "Y Value", 28)
         .autoMargins(CHART_LINE)
         .addSeries("Sine Wave", lineData, RGBA(0x00, 0x00, 0x00, 0xFF), SERIES_LINE, 3)
         .addArrows(waveArrows)
-        .saveAs("line_chart_with_arrows_test.png", ".");
+        .saveAs("line_chart_with_arrows_test.png", absoluteLoc.c_str());
     
     printf("Line chart with arrows test completed. Output saved as 'line_chart_with_arrows_test.png'.\n");
     
@@ -506,7 +513,7 @@ void shmea::testOriginAxes() {
         .originAxes(true)  // Enable four quadrant origin axes
         .grid(true)
         .addSeries("Spiral", points, RGBA(0xFF, 0x47, 0x45, 0xFF), SERIES_LINE, 2, 6)
-        .saveAs("origin_axes_test.png", "test-output");
+        .saveAs("origin_axes_test.png", absoluteLocTestOutput.c_str());
     
     std::cout << "Origin axes test completed. Output image: test-output/origin_axes_test.png" << std::endl;
     
@@ -535,7 +542,7 @@ void shmea::testOriginAxes() {
         .originAxes(true)  // Enable four quadrant origin axes
         .grid(true)
         .addSeries("Asymmetric Data", asymmetricPoints, RGBA(0x00, 0x9E, 0xFF, 0xFF), SERIES_SCATTER, 2, 8)
-        .saveAs("origin_axes_auto_aligned.png", "test-output");
+        .saveAs("origin_axes_auto_aligned.png", absoluteLocTestOutput.c_str());
     
     std::cout << "Auto-aligned origin axes test completed. Output image: test-output/origin_axes_auto_aligned.png" << std::endl;
     
@@ -559,11 +566,11 @@ void shmea::testOriginAxes() {
         .originAxes(true)  // Enable four quadrant origin axes
         .grid(true)
         .addSeries("Offset Sine Wave", offsetPoints, RGBA(0x03, 0xC0, 0x3C, 0xFF), SERIES_LINE, 2, 6)
-        .saveAs("origin_axes_comparison.png", "test-output");
-    
+        .saveAs("origin_axes_comparison.png", absoluteLocTestOutput.c_str());
+
     // Save a version with manually specified data ranges
     plotter3.drawOriginAxes(-3.0, 9.0, -4.0, 4.0);
-    plotter3.saveAsPNG("origin_axes_manual_range.png", "test-output");
+    plotter3.saveAsPNG("origin_axes_manual_range.png", absoluteLocTestOutput.c_str());
     
     std::cout << "Comparison test completed. Output images:" << std::endl
               << "  - Auto-aligned: test-output/origin_axes_comparison.png" << std::endl
@@ -628,7 +635,7 @@ void shmea::testCoordinateAlignment() {
         .addSeries("Grid Points", points, RGBA(0x80, 0x80, 0x80, 0xFF), SERIES_SCATTER, 2, 6)
         .addSeries("Diamond", diamond, RGBA(0xFF, 0x00, 0xFF, 0xFF), SERIES_LINE, 2)
         .addArrows(arrows)
-        .saveAs("coordinate_alignment_test.png", ".");
+        .saveAs("coordinate_alignment_test.png", absoluteLoc.c_str());
     
     std::cout << "Coordinate alignment test completed. Output saved as 'coordinate_alignment_test.png'." << std::endl;
     std::cout << "In the output image, verify that:" << std::endl;
@@ -680,7 +687,7 @@ void shmea::testCoordinateAlignment() {
         .addSeries("Scatter Points", scatterPoints, RGBA(0x99, 0x33, 0xFF, 0xFF), SERIES_SCATTER, 2, 8)
         .addSeries("Function Plot", linePoints, RGBA(0x00, 0xCC, 0x66, 0xFF), SERIES_LINE, 3)
         .addArrows(featureArrows)
-        .saveAs("margin_consistency_test.png", ".");
+        .saveAs("margin_consistency_test.png", absoluteLoc.c_str());
     
     std::cout << "Margin consistency test completed. Output saved as 'margin_consistency_test.png'." << std::endl;
     std::cout << "In the output image, verify that:" << std::endl;
@@ -741,7 +748,7 @@ void shmea::testCoordinateAlignment() {
         .autoMargins(CHART_SCATTER)
         .addSeries("Reference Points", referencePoints, RGBA(0x80, 0x80, 0x80, 0xFF), SERIES_SCATTER, 2, 4)
         .addArrows(originArrows)
-        .saveAs("arrow_origin_alignment_test.png", ".");
+        .saveAs("arrow_origin_alignment_test.png", absoluteLoc.c_str());
 
     std::cout << "Arrow origin alignment test completed. Output saved as 'arrow_origin_alignment_test.png'." << std::endl;
     std::cout << "In the output image, verify that:" << std::endl;
@@ -795,11 +802,11 @@ void shmea::testLabeledHistogram() {
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Month", "Sales Units", 32)
         .autoMargins(CHART_HISTOGRAM)
         .addHistogramDataWithLabels(salesData, monthLabels, RGBA(0x00, 0x9E, 0xFF, 0xFF))
-        .saveAs("labeled_histogram_test.png", ".");
+        .saveAs("labeled_histogram_test.png", absoluteLoc.c_str());
     
     printf("Labeled histogram test completed. Output saved as 'labeled_histogram_test.png'.\n");
     
@@ -829,11 +836,11 @@ void shmea::testLabeledHistogram() {
         .grid(true)
         .axes(false)
         .cornerRadius(15)
-        .logo("logo.png")
+        .logo(logoPNGLoc.c_str())
         .axisLabels("Quarter", "Sales Units", 32)
         .autoMargins(CHART_HISTOGRAM)
         .addHistogramDataWithLabels(quarterlyData, quarterLabels, RGBA(0x33, 0xCC, 0x66, 0xFF))
-        .saveAs("quarterly_histogram_labeled.png", ".");
+        .saveAs("quarterly_histogram_labeled.png", absoluteLoc.c_str());
     
     printf("Quarterly labeled histogram completed. Output saved as 'quarterly_histogram_labeled.png'.\n");
 }

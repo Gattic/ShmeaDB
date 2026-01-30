@@ -42,8 +42,10 @@ void GTableUnitTest()
 	//
 	// Test file I/O
 	//
-	shmea::GString fname( "AAPLtestTable.csv" );
-	shmea::GString outputFile( "outputTest.csv" );
+	std::string fileLocation = std::string(SHMEA_TEST_DATA_DIR) + "/AAPLtestTable.csv";	
+	shmea::GString fname(fileLocation.c_str() );
+	std::string outputFileLocation = std::string(SHMEA_TEST_DATA_DIR) + "/outputTest.csv";
+	shmea::GString outputFile(outputFileLocation.c_str());
 	shmea::GTable testTable( fname, ',', shmea::GTable::TYPE_FILE );
 
 	G_assert(__FILE__, __LINE__, "==============GTable::getNumCols() Failed==============", testTable.numberOfCols() == 6);
