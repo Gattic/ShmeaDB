@@ -57,6 +57,8 @@ public:
 	unsigned int length() const;
 
 	//operators
+	GString& operator=(const GString&);
+
 	const char& operator[](const unsigned int&) const;
 	char& operator[](const unsigned int&);
 

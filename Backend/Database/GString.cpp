@@ -31,6 +31,16 @@ GString::GString(const GString& g2) : GType(g2)
 	type = STRING_TYPE;
 }
 
+GString& GString::operator=(const GString& g2)
+{
+	if (this == &g2)
+		return *this;
+
+	GType::operator=(g2);
+	type = STRING_TYPE;
+	return *this;
+}
+
 GString::GString(const GType& g2) : GType(g2)
 {
 	// Calling parent constructor
