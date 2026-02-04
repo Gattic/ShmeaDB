@@ -25,7 +25,7 @@ void ImageUnitTest()
 	printf("------\n");
 	printf("PNG Unit Tests\n");
 	printf("------\n");
-	std::string workingPNG = std::string(SHMEA_TEST_DATA_DIR) + "hello/out-png-test.png";
+	std::string workingPNG = std::string(SHMEA_TEST_DATA_DIR) + "/hello/out-png-test.png";
 	PNGHelper::createTestPNG(workingPNG.c_str());
 
 	// Check if file exists

@@ -54,3 +54,26 @@ cmake --build build --target install
 cd C:\Users\Matt\dev\vcpkg
 .\vcpkg.exe install sdl2 sdl2-image sdl2-ttf freetype --triplet x64-windows
 ```
+
+Clean rebuild
+
+set CLEAN=1
+ShmeaDB_UnitTest.bat
+
+
+Use Ninja
+
+set GENERATOR=Ninja
+ShmeaDB_UnitTest.bat
+
+set CLEAN=1
+call ShmeaDB_Install.bat
+
+Install
+ShmeaDB_Install.bat
+
+Release install to custom prefix
+
+set BUILD_TYPE=Release
+set INSTALL_PREFIX=%USERPROFILE%\.local
+ShmeaDB_Install.bat
