@@ -33,6 +33,9 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	finished = false;
 	protocol = PROTO_TCP;
 	closeOnFinish = true;
+	inFlightServices = 0;
+	pendingSends = 0;
+	lastSeenSec = (int64_t)time(NULL);
 }
 
 Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newIP, shmea::GString newPort)
@@ -48,21 +51,9 @@ Connection::Connection(int newSockFD, int newConnectionType, shmea::GString newI
 	finished = false;
 	protocol = PROTO_TCP;
 	closeOnFinish = true;
-}
-
-Connection::Connection(const Connection& instance2)
-{
-	name = instance2.name;
-	ip = instance2.ip;
-	port = instance2.port;
-	sockfd = instance2.sockfd;
-	overflow = instance2.overflow;
-	connectionType = instance2.connectionType;
-	cryptEnabled = instance2.cryptEnabled;
-	key = instance2.key; // shouldnt matter what this value is
-	finished = instance2.finished;
-	protocol = instance2.protocol;
-	closeOnFinish = instance2.closeOnFinish;
+	inFlightServices = 0;
+	pendingSends = 0;
+	lastSeenSec = (int64_t)time(NULL);
 }
 
 Connection::~Connection()
@@ -128,6 +119,21 @@ int Connection::getProtocol() const
 	return protocol;
 }
 
+int64_t Connection::getLastSeenSec() const
+{
+	return lastSeenSec;
+}
+
+unsigned int Connection::getInFlightServices() const
+{
+	return (unsigned int)(inFlightServices < 0 ? 0 : inFlightServices);
+}
+
+unsigned int Connection::getPendingSends() const
+{
+	return (unsigned int)(pendingSends < 0 ? 0 : pendingSends);
+}
+
 void Connection::setName(shmea::GString newName)
 {
 	name = newName;
@@ -166,6 +172,63 @@ void Connection::setProtocol(int newProtocol)
 void Connection::setCloseOnFinish(bool value)
 {
 	closeOnFinish = value;
+}
+
+void Connection::noteSeen()
+{
+	int64_t now = (int64_t)time(NULL);
+#if defined(__GNUC__)
+	__sync_lock_test_and_set(&lastSeenSec, now);
+#else
+	lastSeenSec = now;
+#endif
+}
+
+void Connection::incInFlight()
+{
+#if defined(__GNUC__)
+	__sync_add_and_fetch(&inFlightServices, 1);
+#else
+	++inFlightServices;
+#endif
+}
+
+void Connection::decInFlight()
+{
+	// Clamp at 0 defensively (should never underflow).
+#if defined(__GNUC__)
+	int v = __sync_sub_and_fetch(&inFlightServices, 1);
+	if (v < 0)
+		__sync_lock_test_and_set(&inFlightServices, 0);
+#else
+	if (inFlightServices > 0)
+		--inFlightServices;
+	else
+		inFlightServices = 0;
+#endif
+}
+
+void Connection::incPendingSends()
+{
+#if defined(__GNUC__)
+	__sync_add_and_fetch(&pendingSends, 1);
+#else
+	++pendingSends;
+#endif
+}
+
+void Connection::decPendingSends()
+{
+#if defined(__GNUC__)
+	int v = __sync_sub_and_fetch(&pendingSends, 1);
+	if (v < 0)
+		__sync_lock_test_and_set(&pendingSends, 0);
+#else
+	if (pendingSends > 0)
+		--pendingSends;
+	else
+		pendingSends = 0;
+#endif
 }
 
 bool Connection::validName(const shmea::GString& tempName)

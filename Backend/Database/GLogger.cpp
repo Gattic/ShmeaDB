@@ -44,6 +44,7 @@ const shmea::GString GLogger::LOG_SYMBOLS = "vdiWEF";
 GLogger::GLogger()
 {
 	printLevel = LOG_NONE;
+	printToConsole = true;
 	surpressVerbose = false;
 	surpressDebug = false;
 	surpressInfo = false;
@@ -55,6 +56,7 @@ GLogger::GLogger()
 GLogger::GLogger(int newPrintLevel)
 {
 	printLevel = newPrintLevel;
+	printToConsole = true;
 	surpressVerbose = false;
 	surpressDebug = false;
 	surpressInfo = false;
@@ -83,6 +85,7 @@ void GLogger::copy(const GLogger& logger2)
 {
     // copy
     printLevel = logger2.printLevel;
+	printToConsole = logger2.printToConsole;
 
     verboseKeys = logger2.verboseKeys;
     debugKeys = logger2.debugKeys;
@@ -124,6 +127,16 @@ void GLogger::setPrintLevel(int newPrintLevel)
 int GLogger::getPrintLevel() const
 {
 	return printLevel;
+}
+
+void GLogger::setPrintToConsole(bool value)
+{
+	printToConsole = value;
+}
+
+bool GLogger::getPrintToConsole() const
+{
+	return printToConsole;
 }
 
 void GLogger::surpress(int logType)
@@ -248,7 +261,8 @@ void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 	    return;
 
 	// Print to console
-	printf("[%c]%s [%s]: %s\n", LOG_SYMBOLS[logType], strDateTime.c_str(), category.c_str(), message.c_str());
+	if (printToConsole)
+		printf("[%c]%s [%s]: %s\n", LOG_SYMBOLS[logType], strDateTime.c_str(), category.c_str(), message.c_str());
 
 	// Write to file
 	shmea::GString logDir = "logs/";
@@ -261,7 +275,6 @@ void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 	{
 	    // Create directory
 	    mkdir(logDir.c_str(), 0700);
-	    printf("+%s\n", logDir.c_str());
 	}
 
 	// Check if lock file exists

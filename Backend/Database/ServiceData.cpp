@@ -16,12 +16,53 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ServiceData.h"
 #include "../Database/Serializable.h"
+#include "../Networking/connection.h"
 
 using namespace shmea;
+
+void shmea::delete_connection(GNet::Connection* c)
+{
+	delete c;
+}
+
+namespace {
+// Thread-safe, process-wide monotonic counters for message identifiers.
+// NOTE: This intentionally does NOT use rand(); it must be deterministic and race-free.
+static pthread_mutex_t g_idMutex = PTHREAD_MUTEX_INITIALIZER;
+static int64_t g_serviceCounter = 0;
+static int64_t g_responseCounter = 0;
+} // namespace
+
+ServiceData::ServiceData(GNet::Connection* newConnection)
+{
+	cConnection = newConnection;
+	connectionOwner = shmea::GPointer<GNet::Connection, shmea::delete_connection>();
+	timesent = 0;
+	sid = generateSID();
+	command = "";
+	serviceKey = "";
+	type = TYPE_ACK;
+	serviceNum = -1;
+	responseServiceNum = -1;
+}
 
 ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 {
 	cConnection = newConnection;
+	connectionOwner = shmea::GPointer<GNet::Connection, shmea::delete_connection>();
+	timesent = 0;
+	sid = generateSID();
+	command = newCommand;
+	serviceKey = "";
+	type = TYPE_ACK;
+	serviceNum = -1;
+	responseServiceNum = -1;
+}
+
+ServiceData::ServiceData(shmea::GPointer<GNet::Connection, shmea::delete_connection> newConnection, GString newCommand)
+{
+	connectionOwner = newConnection;
+	cConnection = newConnection.get();
 	timesent = 0;
 	sid = generateSID();
 	command = newCommand;
@@ -33,6 +74,7 @@ ServiceData::ServiceData(GNet::Connection* newConnection, GString newCommand)
 ServiceData::ServiceData(const ServiceData& instance2)
 {
 	cConnection = instance2.cConnection;
+	connectionOwner = instance2.connectionOwner;
 	timesent = 0;
 	sid = instance2.sid;
 	command = instance2.command;
@@ -48,6 +90,7 @@ ServiceData::ServiceData(const ServiceData& instance2)
 ServiceData::~ServiceData()
 {
 	cConnection = NULL;
+	connectionOwner = shmea::GPointer<GNet::Connection, shmea::delete_connection>();
 	timesent = 0;
 	sid = "";
 	command = "";
@@ -55,6 +98,13 @@ ServiceData::~ServiceData()
 	type = TYPE_ACK;
 	serviceNum = -1;
 	responseServiceNum = -1;
+}
+
+void ServiceData::setConnectionOwner(shmea::GPointer<GNet::Connection, shmea::delete_connection> owner)
+{
+	connectionOwner = owner;
+	if (owner)
+		cConnection = owner.get();
 }
 
 void ServiceData::set(GString newServiceKey)
@@ -217,13 +267,20 @@ void ServiceData::setServiceKey(GString newServiceKey)
 
 void ServiceData::assignServiceNum()
 {
-	static int64_t serviceCounter = 0;
-	serviceNum = ++serviceCounter;
+	// Generate a unique id even when multiple threads are sending concurrently.
+	// Start at 1 (0 is treated as "unset" in some contexts).
+	pthread_mutex_lock(&g_idMutex);
+	serviceNum = ++g_serviceCounter;
+	pthread_mutex_unlock(&g_idMutex);
 }
 
 void ServiceData::assignResponseServiceNum()
 {
-	responseServiceNum = serviceNum + 1;
+	// The previous implementation (serviceNum + 1) was not unique and was not safe
+	// under concurrency. Generate an independent unique id.
+	pthread_mutex_lock(&g_idMutex);
+	responseServiceNum = ++g_responseCounter;
+	pthread_mutex_unlock(&g_idMutex);
 }
 
 void ServiceData::setServiceNum(int64_t newServiceNum)

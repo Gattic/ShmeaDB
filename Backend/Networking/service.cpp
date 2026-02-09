@@ -17,8 +17,34 @@
 #include "service.h"
 #include "connection.h"
 #include "socket.h"
+#include "main.h"
 
 using namespace GNet;
+
+namespace {
+static shmea::GString obs_conn_kv(const Connection* c)
+{
+	if (!c)
+		return "conn=null";
+	const char* proto = (c->getProtocol() == Connection::PROTO_UDP) ? "udp" : "tcp";
+	return shmea::GString::format("peer=%s:%s name=%s proto=%s enc=%d fd=%d",
+		c->getIP().c_str(), c->getPort().c_str(), c->getName().c_str(), proto, (int)c->isEncrypted(), c->sockfd);
+}
+
+static shmea::GString obs_sd_kv(const shmea::ServiceData* sd)
+{
+	if (!sd)
+		return "sid=? svc=? resp=? cmd=? sk=? type=?";
+	return shmea::GString::format("sid=%s svc=%ld resp=%ld cmd=%s sk=%s type=%d argc=%u",
+		sd->getSID().c_str(),
+		(long)sd->getServiceNum(),
+		(long)sd->getResponseServiceNum(),
+		sd->getCommand().c_str(),
+		sd->getServiceKey().c_str(),
+		sd->getType(),
+		(unsigned int)sd->getArgList().size());
+}
+} // namespace
 
 // services
 #include "../../services/bad_request.h"
@@ -54,20 +80,18 @@ bool Service::getRunning() const
  * @param sockData a package of network data
  * @param cConnection the current connection
  */
-void Service::ExecuteService(GServer* serverInstance, const shmea::ServiceData* sockData,
+void Service::ExecuteService(GServer* serverInstance, shmea::GPointer<shmea::ServiceData> sockData,
 							 Connection* cConnection)
 {
-	// set the args to pass in
-	newServiceArgs* x = new newServiceArgs();
-	x->serverInstance = serverInstance;
-	x->cConnection = cConnection;
-	x->sockData = sockData;
-	x->sThread = new pthread_t();
+	// Enqueue into server's bounded worker pool (no thread-per-request).
+	if (!serverInstance || !sockData)
+		return;
 
-	// launch a new service thread
-	pthread_create(x->sThread, NULL, &launchService, (void*)x);
-	if (x->sThread)
-		pthread_detach(*x->sThread);
+	// If no connection passed, fall back to the ServiceData's connection.
+	if (!cConnection)
+		cConnection = sockData->getConnection();
+
+	serverInstance->enqueueService(sockData, cConnection);
 }
 
 /*!
@@ -81,26 +105,43 @@ void* Service::launchService(void* y)
 
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
+	shmea::ServiceData* sockData = (x && x->sockData) ? x->sockData.get() : NULL;
+	GServer* serverInstance = NULL;
+	Connection* cConnection = NULL;
 
-	if (!x->serverInstance)
+	if (!x)
 		return NULL;
-	GServer* serverInstance = x->serverInstance;
+	if (!x->serverInstance)
+		goto cleanup;
+	serverInstance = x->serverInstance;
 
 	// Get the command in order to tell the service what to do
-	x->command = x->sockData->getCommand();
+	if (!sockData)
+		goto cleanup;
+	x->command = sockData->getCommand();
 	if(x->command.length() == 0)
-		return NULL;
+		goto cleanup;
 
 	// Can be 0 len
-	x->serviceKey = x->sockData->getServiceKey();
+	x->serviceKey = sockData->getServiceKey();
 
 	// Connection is dead so ignore it
-	Connection* cConnection = x->cConnection;
+	cConnection = x->cConnection;
 	if (!cConnection)
-		return NULL;
+		goto cleanup;
 
 	if (!cConnection->isFinished())
 	{
+		if (serverInstance && serverInstance->logger)
+			serverInstance->logger->info("OBS", "event=service_start " + obs_sd_kv(sockData) + " " + obs_conn_kv(cConnection));
+
+		// If this is a keyed (stateful) service, serialize access to the cached instance
+		// to avoid concurrent use of shared service objects.
+		const bool keyed = (x->serviceKey.length() > 0);
+		pthread_mutex_t* keyLock = keyed ? serverInstance->getOrCreateRunningServiceMutex(x->serviceKey) : NULL;
+		if (keyLock)
+			pthread_mutex_lock(keyLock);
+
 		Service* cService = serverInstance->DoService(x->command, x->serviceKey);
 		if (cService)
 		{
@@ -108,27 +149,49 @@ void* Service::launchService(void* y)
 			cService->StartService(x);
 
 			// execute the service
-			shmea::ServiceData* retData = cService->execute(x->sockData);
+			shmea::ServiceData* retData = cService->execute(sockData);
 			if(retData != NULL)
 			{
+				// Propagate request correlation id to the response for end-to-end log correlation.
+				retData->setSID(sockData->getSID());
+
 				//Response Service Number will be given by the service received by the server
-				retData->setResponseServiceNum(x->sockData->getResponseServiceNum());
-				serverInstance->socks->addResponseList(serverInstance, cConnection, retData);
+				retData->setResponseServiceNum(sockData->getResponseServiceNum());
+				serverInstance->socks->addResponseList(serverInstance, cConnection,
+					shmea::GPointer<shmea::ServiceData>(retData));
 			}
 
 			// exit the service
 			cService->ExitService(x);
 
-			delete cService;
+			if (serverInstance && serverInstance->logger)
+			{
+				serverInstance->logger->info(
+					"OBS",
+					"event=service_end " + obs_sd_kv(sockData) + " " + obs_conn_kv(cConnection) +
+						shmea::GString::format(" dur_s=%ld", (long)cService->timeExecuted));
+			}
+
+			// Only delete per-request service instances. Keyed services are cached in
+			// serverInstance->running_services and must not be deleted here.
+			if (!keyed)
+				delete cService;
 		}
+		else
+		{
+			if (serverInstance && serverInstance->logger)
+				serverInstance->logger->warning("OBS", "event=service_missing " + obs_sd_kv(sockData) + " " + obs_conn_kv(cConnection));
+		}
+
+		if (keyLock)
+			pthread_mutex_unlock(keyLock);
 	}
 
-	if (x)
-	{
-		if (x->sThread)
-			delete x->sThread;
-		delete x;
-	}
+cleanup:
+	// Release the in-flight service bookkeeping held by enqueueService().
+	if (x && x->cConnection)
+		x->cConnection->decInFlight();
+	delete x;
 
 	// delete the Connection
 	// Connection lifetime is managed by server logout handlers
@@ -156,7 +219,6 @@ void Service::StartService(newServiceArgs* x)
 	//printf("---------Service Start: %s (%s: %s)---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str());
 
 	// add the thread to the connection's active thread vector
-	cThread = x->sThread;
 	running = true;
 }
 
@@ -178,6 +240,4 @@ void Service::ExitService(newServiceArgs* x)
 	// Set and print the execution time
 	timeExecuted = time(NULL) - timeExecuted;
 	//printf("---------Service Exit: %s (%s: %s); %llds---------\n", ipAddress.c_str(), x->command.c_str(), x->serviceKey.c_str(), timeExecuted);
-
-	pthread_exit(0);
 }

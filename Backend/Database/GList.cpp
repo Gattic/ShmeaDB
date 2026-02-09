@@ -49,40 +49,44 @@ void GList::loadWords(const GString& fname)
 	if (fname.length() == 0)
 		return;
 
-	FILE* fd = fopen(fname.c_str(), "ro");
-	printf("[WORDS] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
-
+	FILE* fd = fopen(fname.c_str(), "r");
 	if (!fd)
 		return;
 
-	// Allocate a buffer
-	int MAX_LINE_SIZE = 1024;
+	// Read line-by-line; tokenize on whitespace.
+	static const size_t MAX_LINE_SIZE = 1024;
 	char buffer[MAX_LINE_SIZE];
-	char *ptr = NULL;
 
 	shmea::GList newRow;
-	bzero(buffer, MAX_LINE_SIZE);
-	while( !feof( fd ) )
+	while (fgets(buffer, sizeof(buffer), fd) != NULL)
 	{
-		fgets(&buffer[0], MAX_LINE_SIZE, fd);
-		GString delim_char(' '); //delimiter
+		// Strip newline(s) safely (avoid strlen()-1 underflow).
+		size_t len = strlen(buffer);
+		while (len > 0 && (buffer[len - 1] == '\n' || buffer[len - 1] == '\r'))
+			buffer[--len] = '\0';
 
-		if (!feof(fd))
+		// If the line is longer than the buffer, discard the rest.
+		if (len == (sizeof(buffer) - 1) && buffer[len - 1] != '\0')
 		{
-			buffer[strlen(buffer)-1] = '\0';
-			ptr = strtok(buffer, (const char*)delim_char.c_str());
-			while (ptr)
+			int ch = 0;
+			while ((ch = fgetc(fd)) != EOF && ch != '\n')
 			{
-				GString word(ptr);
-				newRow.addString(word.makeAlphaNum().toLower());
-
-				// Get the next token
-				ptr = strtok( NULL, (const char *)delim_char.c_str() );
+				// discard
 			}
+		}
+
+		char* saveptr = NULL;
+		char* token = strtok_r(buffer, " \t", &saveptr);
+		while (token)
+		{
+			GString word(token);
+			word = word.makeAlphaNum().toLower();
+			if (word.length() > 0)
+				newRow.addString(word);
+			token = strtok_r(NULL, " \t", &saveptr);
 		}
 	}
 
-	printf( "[CSV] %d cells of data\n", newRow.size());
 	copy(newRow);
 
 	// EOF

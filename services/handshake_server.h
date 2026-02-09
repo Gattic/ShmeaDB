@@ -75,7 +75,7 @@ public:
 			wData.addString(destination->getName());
 			wData.addLong(newKey);
 
-			shmea::ServiceData* cData = new shmea::ServiceData(destination, "Handshake_Client");
+			shmea::GPointer<shmea::ServiceData> cData(new shmea::ServiceData(destination, "Handshake_Client"));
 			cData->set(wData);
 			serverInstance->send(cData);
 			serverInstance->logger->debug("SRVC", shmea::GString::format("newKey1: %ld:%ld", newKey, wData.getLong(1)));

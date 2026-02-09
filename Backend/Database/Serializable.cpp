@@ -380,7 +380,9 @@ GString Serializable::Serialize(const ServiceData* cData)
 {
 	// Metadata at the front
 	GList metaList;
-	//metaList.addString(cData->getSID());
+	// Request correlation id (trace id). This is used for observability/log correlation.
+	// Older peers may not include it; Deserialize() handles both formats.
+	metaList.addString(cData->getSID());
 	metaList.addLong(cData->getServiceNum());
 	metaList.addLong(cData->getResponseServiceNum());
 	metaList.addInt(cData->getType());
@@ -759,7 +761,9 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 		return;
 
 	GList metaList;
-	int repLen = Deserialize(metaList, serial, 6);//we want only 6 GItems
+	// v2 format prepends SID (string) to metadata.
+	// v1 format has no SID and begins with serviceNum (long).
+	int repLen = Deserialize(metaList, serial, 7); // attempt up to 7 metadata items
 	GString repData = serial.substr(serial.length()-repLen);
 	/*for(unsigned int rCounter=0;rCounter<serial.length();++rCounter)
 	{
@@ -770,25 +774,34 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 
 	// metadata
 	// metaList.print();
-	//GString sdSID = metaList.getString(0);
-	//retData->setSID(sdSID);
+	int idx = 0;
+	if (metaList.size() >= 7 && metaList.getType(0) == GType::STRING_TYPE)
+	{
+		// v2: [sid][serviceNum][respServiceNum][type][command][serviceKey][argCount]
+		GString sdSID = metaList.getString(0);
+		if (sdSID.length() > 0)
+			retData->setSID(sdSID);
+		idx = 1;
+	}
+	// v1: [serviceNum][respServiceNum][type][command][serviceKey][argCount]
+	// v2: (idx==1) remaining fields match v1 ordering.
 
-	int64_t sdServiceNum = metaList.getLong(0);
+	int64_t sdServiceNum = metaList.getLong(idx + 0);
 	retData->setServiceNum(sdServiceNum);
 
-	int64_t sdRespServiceNum = metaList.getLong(1);
+	int64_t sdRespServiceNum = metaList.getLong(idx + 1);
 	retData->setResponseServiceNum(sdRespServiceNum);
 
-	int sdType = metaList.getInt(2);
+	int sdType = metaList.getInt(idx + 2);
 	retData->setType(sdType);
 
-	GString sdCommand = metaList.getString(3);
+	GString sdCommand = metaList.getString(idx + 3);
 	retData->setCommand(sdCommand);
 
-	GString sdSKey = metaList.getString(4);
+	GString sdSKey = metaList.getString(idx + 4);
 	retData->setServiceKey(sdSKey);
 
-	unsigned int argListLen = metaList.getInt(5);
+	unsigned int argListLen = metaList.getInt(idx + 5);
 	GList argList;
 	if(argListLen > 0)
 		repLen = Deserialize(argList, repData, argListLen);
