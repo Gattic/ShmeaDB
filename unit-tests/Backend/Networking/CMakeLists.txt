@@ -5,5 +5,6 @@ protocol-fuzz-test.cpp
 connection-test.cpp
 socket-integration-test.cpp
 socket-advanced-test.cpp
+binary-socket-test.cpp
 )
 add_library(GNetTests ${GNetTests_src_files})

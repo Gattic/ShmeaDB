@@ -21,6 +21,7 @@ set(DB_src_files
 	image.cpp
 	GVector.h
 	GPointer.h
+    GMutex.h
 	GType.cpp
 	GType_helpers.cpp
 	GType_operators.cpp

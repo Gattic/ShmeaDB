@@ -82,6 +82,7 @@ ServiceData::ServiceData(const ServiceData& instance2)
 	repList = instance2.repList;
 	repTable = instance2.repTable;
 	repObj = instance2.repObj;
+	binaryPayload = instance2.binaryPayload;
 	type = instance2.type;
 	serviceNum = instance2.serviceNum;
 	responseServiceNum = instance2.responseServiceNum;
@@ -167,6 +168,29 @@ void ServiceData::set(const Serializable& newNP)
 	serviceKey = "";
 	repObj = newNP.serialize();
 	type = TYPE_NETWORK_POINTER;
+}
+
+void ServiceData::set(GString newServiceKey, const char* data, unsigned int size)
+{
+	serviceKey = newServiceKey;
+	binaryPayload = GString(data, size);
+	type = TYPE_BINARY;
+}
+
+void ServiceData::setBinaryPayload(const char* data, unsigned int size)
+{
+	binaryPayload = GString(data, size);
+	type = TYPE_BINARY;
+}
+
+const GString& ServiceData::getBinaryPayload() const
+{
+	return binaryPayload;
+}
+
+unsigned int ServiceData::getBinaryPayloadSize() const
+{
+	return binaryPayload.length();
 }
 
 const GList& ServiceData::getList() const

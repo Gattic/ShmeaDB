@@ -20,6 +20,8 @@
 #include "Backend/Networking/socket-integration-test.h"
 #include "Backend/Networking/socket-advanced-test.h"
 #include "Backend/Database/ServiceData-test.h"
+#include "Backend/Database/binary-payload-test.h"
+#include "Backend/Networking/binary-socket-test.h"
 #include "Backend/Database/GVector-test.h"
 #include "Backend/Database/image-test.h"
 #include "Backend/Plotter/plotter-test.h"
@@ -44,6 +46,8 @@ int main(int argc, char* argv[])
 	    SocketAdvancedUnitTest();
 	    ImageUnitTest();
 	    ServiceDataUnitTest();
+	    BinaryPayloadUnitTest();
+	    BinarySocketUnitTest();
 	    shmea::testCluster();
 	    shmea::testHistogram();
 	    shmea::testCandlestickChart();
@@ -65,6 +69,7 @@ int main(int argc, char* argv[])
 		GTableUnitTest();
 		GListEdgeUnitTest();
 		ServiceDataUnitTest();
+		BinaryPayloadUnitTest();
 	    }
 	    else if (strcmp(argv[1], "gnet") == 0)
 	    {
@@ -73,6 +78,7 @@ int main(int argc, char* argv[])
 		ProtocolFuzzUnitTest();
 		SocketIntegrationUnitTest();
 		SocketAdvancedUnitTest();
+		BinarySocketUnitTest();
 	    }
 	    else if (strcmp(argv[1], "udp") == 0)
 		UDPUnitTest();

@@ -25,6 +25,7 @@ GObjects-test.cpp
 GVector-test.cpp
 image-test.cpp
 ServiceData-test.cpp
+binary-payload-test.cpp
 )
 add_library(DBTests ${DBTests_src_files})
 

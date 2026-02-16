@@ -425,6 +425,14 @@ GString Serializable::Serialize(const ServiceData* cData)
 			break;
 		}
 
+		case ServiceData::TYPE_BINARY:
+		{
+			// Raw binary payload - appended directly after metadata+args.
+			repData = GString(cData->getBinaryPayload().c_str(),
+			                  cData->getBinaryPayload().length());
+			break;
+		}
+
 		case ServiceData::TYPE_ACK:
 		default:
 		{
@@ -842,6 +850,14 @@ void Serializable::Deserialize(ServiceData* retData, const GString& serial)
 			//cList.print();
 			//printf("---SD List---\n");
 
+			break;
+		}
+
+		case ServiceData::TYPE_BINARY:
+		{
+			// Everything remaining after metadata+args is the raw binary payload.
+			if (repData.length() > 0)
+				retData->setBinaryPayload(repData.c_str(), repData.length());
 			break;
 		}
 

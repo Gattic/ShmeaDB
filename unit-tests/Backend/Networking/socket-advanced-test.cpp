@@ -26,7 +26,7 @@
 
 namespace {
 static const uint32_t FRAME_HEADER_BYTES = 8;               // [blockSize(4)][padding(4)]
-static const uint32_t MAX_FRAME_BYTES = 16 * 1024 * 1024;   // must match socket.cpp
+static const uint32_t MAX_FRAME_BYTES = 256 * 1024 * 1024;  // must match socket.cpp
 
 static void MakeSocketpair(int fds[2])
 {

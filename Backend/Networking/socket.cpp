@@ -35,7 +35,7 @@ const shmea::GString Sockets::LOCALHOST = "127.0.0.1";
 
 namespace {
 static const uint32_t FRAME_HEADER_BYTES = 8;               // [blockSize(4)][padding(4)]
-static const uint32_t MAX_FRAME_BYTES = 16 * 1024 * 1024;   // hard cap to avoid OOM/DoS
+static const uint32_t MAX_FRAME_BYTES = 256 * 1024 * 1024;  // 256 MB for large gradient buffers (DDP)
 
 static void set_send_timeout(int fd, int seconds, shmea::GPointer<shmea::GLogger> logger, const char* where)
 {
