@@ -212,7 +212,9 @@ bool create_directories(const std::string& path)
 void PNGHelper::SavePNG(const Image& image, const char* outputPath)
 {
     std::vector<unsigned char> buffer;
-    unsigned int error = lodepng::encode(buffer, image.getPixels(), image.getWidth(), image.getHeight());
+    // Pass raw RGBA data directly to lodepng instead of copying to a vector
+    const unsigned char* rawData = reinterpret_cast<const unsigned char*>(image.getData());
+    unsigned int error = lodepng::encode(buffer, rawData, image.getWidth(), image.getHeight());
 
     if(error)
     {

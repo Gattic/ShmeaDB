@@ -673,40 +673,28 @@ Plotter::~Plotter()
 
 void Plotter::initialize()
 {
-    // Prepare the canvas with background and grid
-    prepareCanvas();
+    // Canvas preparation is deferred until rendering (e.g., saveAs or plot functions)
+    // to avoid redundant redraws when multiple settings are changed in sequence.
 }
 
 void Plotter::setShowGrid(bool show)
 {
     chartLayout->setShowGrid(show);
-    
-    // Redraw the background when visibility changes
-    prepareCanvas();
 }
 
 void Plotter::setShowAxes(bool show)
 {
     chartLayout->setShowAxes(show);
-    
-    // Redraw the background when visibility changes
-    prepareCanvas();
 }
 
 void Plotter::setCornerRadius(int radius)
 {
     chartLayout->setCornerRadius(radius);
-    
-    // Redraw the background when corner radius changes
-    prepareCanvas();
 }
 
 void Plotter::setSuperSamplingFactor(unsigned int factor)
 {
     ssaaManager->setSuperSamplingFactor(factor);
-    
-    // Redraw with new supersampling settings
-    prepareCanvas();
 }
 
 void Plotter::prepareCanvas()
@@ -2102,9 +2090,6 @@ void Plotter::calculateOptimalMargins(ChartType chartType)
     chartLayout->setMarginRight(right);
     chartLayout->setMarginBottom(bottom);
     chartLayout->setMarginLeft(left);
-    
-    // Redraw with new margins if needed
-    prepareCanvas();
 }
 
 // Calculate top margin based on chart type and dimensions
@@ -2849,12 +2834,9 @@ void Plotter::setShowOriginAxes(bool show)
         dataMapper->setCurrentXRange(xRange);
         dataMapper->setCurrentYRange(yRange);
         
-        printf("Origin axes enabled with ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", 
+        printf("Origin axes enabled with ranges - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n",
                xRange.min, xRange.max, yRange.min, yRange.max);
     }
-    
-    // Always redraw the canvas when changing axes
-    prepareCanvas();
 }
 
 // Add implementation for drawOriginAxes method

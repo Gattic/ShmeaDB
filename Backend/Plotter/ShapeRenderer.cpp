@@ -16,26 +16,33 @@ ShapeRenderer::~ShapeRenderer() {
 }
 
 void ShapeRenderer::blendPixel(int x, int y, const RGBA& color, float alpha) {
-    if (x >= 0 && x < static_cast<int>(ssaa.getWidth()) && 
-        y >= 0 && y < static_cast<int>(ssaa.getHeight())) {
-        RGBA baseColor = ssaa.getImage().GetPixel(x, y);
+    int w = static_cast<int>(ssaa.getWidth());
+    int h = static_cast<int>(ssaa.getHeight());
+    if (x >= 0 && x < w && y >= 0 && y < h) {
+        Image& img = ssaa.getImage();
+        RGBA baseColor = img.GetPixel(x, y);
         RGBA blendedColor = colors.blendColors(baseColor, color, alpha);
-        ssaa.getImage().SetPixel(x, y, blendedColor);
+        img.SetPixel(x, y, blendedColor);
     }
 }
 
 void ShapeRenderer::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineColor, int lineWidth) {
+    // Cache dimensions and image reference
+    int imgW = static_cast<int>(ssaa.getWidth());
+    int imgH = static_cast<int>(ssaa.getHeight());
+    Image& img = ssaa.getImage();
+
     // Clamp coordinates to stay within image bounds
-    x1 = ChartLayout::clamp(x1, 0, ssaa.getWidth() - 1);
-    x2 = ChartLayout::clamp(x2, 0, ssaa.getWidth() - 1);
-    y1 = ChartLayout::clamp(y1, 0, ssaa.getHeight() - 1);
-    y2 = ChartLayout::clamp(y2, 0, ssaa.getHeight() - 1);
-    
+    x1 = ChartLayout::clamp(x1, 0, imgW - 1);
+    x2 = ChartLayout::clamp(x2, 0, imgW - 1);
+    y1 = ChartLayout::clamp(y1, 0, imgH - 1);
+    y2 = ChartLayout::clamp(y2, 0, imgH - 1);
+
     // Bresenham's Line algorithm for drawing a line
     int dx = std::abs(x2 - x1);
     int dy = std::abs(y2 - y1);
     bool steep = dy > dx;
-    
+
     // Swap if the line is steep (more vertical than horizontal)
     if (steep) {
         // C++03 swap
@@ -44,7 +51,7 @@ void ShapeRenderer::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineCol
         temp = x2; x2 = y2; y2 = temp;
         temp = dx; dx = dy; dy = temp;
     }
-    
+
     // Ensure x1 < x2
     if (x1 > x2) {
         // C++03 swap
@@ -52,10 +59,11 @@ void ShapeRenderer::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineCol
         temp = x1; x1 = x2; x2 = temp;
         temp = y1; y1 = y2; y2 = temp;
     }
-    
+
     int sx = (y1 < y2) ? 1 : -1;
     int err = dx / 2;
-    
+    bool semiTransparent = lineColor.a < 255;
+
     int y = y1;
     for (int x = x1; x <= x2; x++) {
         // Draw a point at the current coordinate
@@ -63,23 +71,23 @@ void ShapeRenderer::drawLine(int x1, int y1, int x2, int y2, const RGBA& lineCol
             for (int h = -lineWidth / 2; h <= lineWidth / 2; h++) {
                 int drawX = steep ? y + w : x + w;
                 int drawY = steep ? x + h : y + h;
-                
-                if (drawX >= 0 && drawX < static_cast<int>(ssaa.getWidth()) && 
-                    drawY >= 0 && drawY < static_cast<int>(ssaa.getHeight())) {
-                    
+
+                if (drawX >= 0 && drawX < imgW &&
+                    drawY >= 0 && drawY < imgH) {
+
                     // For semi-transparent colors, blend with background
-                    if (lineColor.a < 255) {
-                        RGBA currentPixel = ssaa.getImage().GetPixel(drawX, drawY);
+                    if (semiTransparent) {
+                        RGBA currentPixel = img.GetPixel(drawX, drawY);
                         RGBA blendedColor = colors.blendRGBA(currentPixel, lineColor);
-                        ssaa.getImage().SetPixel(drawX, drawY, blendedColor);
+                        img.SetPixel(drawX, drawY, blendedColor);
                     } else {
                         // Fully opaque - just set the pixel
-                        ssaa.getImage().SetPixel(drawX, drawY, lineColor);
+                        img.SetPixel(drawX, drawY, lineColor);
                     }
                 }
             }
         }
-        
+
         err -= dy;
         if (err < 0) {
             y += sx;
@@ -284,58 +292,53 @@ void ShapeRenderer::drawRect(int x, int y, int rectWidth, int rectHeight, const 
 
 void ShapeRenderer::drawRoundedCorners(int left, int top, int right, int bottom, int radius, const RGBA& color) {
     // Note: input coordinates are already scaled for supersampling
-    
+
+    // Cache dimensions and image reference
+    int imgW = static_cast<int>(ssaa.getWidth());
+    int imgH = static_cast<int>(ssaa.getHeight());
+    Image& img = ssaa.getImage();
+
     // Pre-calculate alpha value for consistent transparency
     float baseAlpha = color.a / 255.0f;
-    
-    // Draw the four corners with sub-pixel precision for better quality
-    const float stepSize = 0.2f; // 0.2 pixel steps for accurate anti-aliasing
-    
+
+    // Integer steps: each pixel drawn once. Supersampling (4x) already provides anti-aliasing.
     // Top-left corner
-    for (float dy = 0; dy <= radius; dy += stepSize) {
-        for (float dx = 0; dx <= radius; dx += stepSize) {
+    for (int dy = 0; dy <= radius; ++dy) {
+        for (int dx = 0; dx <= radius; ++dx) {
             // Calculate precise distance from corner
-            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
-            
+            float dist = std::sqrt(static_cast<float>((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy)));
+
             // Apply anti-aliasing at the edge: 1.0 at border, fading over 1 pixel
             float alpha = 0.0f;
             if (dist <= radius + 1) {
                 if (dist > radius) {
-                    // Fade out over a 1-pixel border for anti-aliasing
                     alpha = 1.0f - (dist - radius);
                 } else {
-                    // Full opacity inside the border
                     alpha = 1.0f;
                 }
                 alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
-                
-                // Only draw if we have some opacity
+
                 if (alpha > 0.01f) {
-                    int px = static_cast<int>(left + radius - dx);
-                    int py = static_cast<int>(top + radius - dy);
-                    
-                    if (px >= 0 && px < static_cast<int>(ssaa.getWidth()) && 
-                        py >= 0 && py < static_cast<int>(ssaa.getHeight())) {
-                        
-                        // Create color with calculated alpha
+                    int px = left + radius - dx;
+                    int py = top + radius - dy;
+
+                    if (px >= 0 && px < imgW && py >= 0 && py < imgH) {
                         RGBA pixelColor = color;
                         pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
-                        
-                        // Blend with existing pixel
-                        RGBA existingColor = ssaa.getImage().GetPixel(px, py);
+                        RGBA existingColor = img.GetPixel(px, py);
                         RGBA blendedColor = colors.blendRGBA(existingColor, pixelColor);
-                        ssaa.getImage().SetPixel(px, py, blendedColor);
+                        img.SetPixel(px, py, blendedColor);
                     }
                 }
             }
         }
     }
-    
+
     // Top-right corner
-    for (float dy = 0; dy <= radius; dy += stepSize) {
-        for (float dx = 0; dx <= radius; dx += stepSize) {
-            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
-            
+    for (int dy = 0; dy <= radius; ++dy) {
+        for (int dx = 0; dx <= radius; ++dx) {
+            float dist = std::sqrt(static_cast<float>((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy)));
+
             float alpha = 0.0f;
             if (dist <= radius + 1) {
                 if (dist > radius) {
@@ -344,30 +347,28 @@ void ShapeRenderer::drawRoundedCorners(int left, int top, int right, int bottom,
                     alpha = 1.0f;
                 }
                 alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
-                
+
                 if (alpha > 0.01f) {
-                    int px = static_cast<int>(right - radius + dx);
-                    int py = static_cast<int>(top + radius - dy);
-                    
-                    if (px >= 0 && px < static_cast<int>(ssaa.getWidth()) && 
-                        py >= 0 && py < static_cast<int>(ssaa.getHeight())) {
-                        
+                    int px = right - radius + dx;
+                    int py = top + radius - dy;
+
+                    if (px >= 0 && px < imgW && py >= 0 && py < imgH) {
                         RGBA pixelColor = color;
                         pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
-                        RGBA existingColor = ssaa.getImage().GetPixel(px, py);
+                        RGBA existingColor = img.GetPixel(px, py);
                         RGBA blendedColor = colors.blendRGBA(existingColor, pixelColor);
-                        ssaa.getImage().SetPixel(px, py, blendedColor);
+                        img.SetPixel(px, py, blendedColor);
                     }
                 }
             }
         }
     }
-    
+
     // Bottom-left corner
-    for (float dy = 0; dy <= radius; dy += stepSize) {
-        for (float dx = 0; dx <= radius; dx += stepSize) {
-            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
-            
+    for (int dy = 0; dy <= radius; ++dy) {
+        for (int dx = 0; dx <= radius; ++dx) {
+            float dist = std::sqrt(static_cast<float>((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy)));
+
             float alpha = 0.0f;
             if (dist <= radius + 1) {
                 if (dist > radius) {
@@ -376,30 +377,28 @@ void ShapeRenderer::drawRoundedCorners(int left, int top, int right, int bottom,
                     alpha = 1.0f;
                 }
                 alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
-                
+
                 if (alpha > 0.01f) {
-                    int px = static_cast<int>(left + radius - dx);
-                    int py = static_cast<int>(bottom - radius + dy);
-                    
-                    if (px >= 0 && px < static_cast<int>(ssaa.getWidth()) && 
-                        py >= 0 && py < static_cast<int>(ssaa.getHeight())) {
-                        
+                    int px = left + radius - dx;
+                    int py = bottom - radius + dy;
+
+                    if (px >= 0 && px < imgW && py >= 0 && py < imgH) {
                         RGBA pixelColor = color;
                         pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
-                        RGBA existingColor = ssaa.getImage().GetPixel(px, py);
+                        RGBA existingColor = img.GetPixel(px, py);
                         RGBA blendedColor = colors.blendRGBA(existingColor, pixelColor);
-                        ssaa.getImage().SetPixel(px, py, blendedColor);
+                        img.SetPixel(px, py, blendedColor);
                     }
                 }
             }
         }
     }
-    
+
     // Bottom-right corner
-    for (float dy = 0; dy <= radius; dy += stepSize) {
-        for (float dx = 0; dx <= radius; dx += stepSize) {
-            float dist = std::sqrt((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy));
-            
+    for (int dy = 0; dy <= radius; ++dy) {
+        for (int dx = 0; dx <= radius; ++dx) {
+            float dist = std::sqrt(static_cast<float>((radius - dx) * (radius - dx) + (radius - dy) * (radius - dy)));
+
             float alpha = 0.0f;
             if (dist <= radius + 1) {
                 if (dist > radius) {
@@ -408,19 +407,17 @@ void ShapeRenderer::drawRoundedCorners(int left, int top, int right, int bottom,
                     alpha = 1.0f;
                 }
                 alpha = std::max(0.0f, std::min(1.0f, alpha)) * baseAlpha;
-                
+
                 if (alpha > 0.01f) {
-                    int px = static_cast<int>(right - radius + dx);
-                    int py = static_cast<int>(bottom - radius + dy);
-                    
-                    if (px >= 0 && px < static_cast<int>(ssaa.getWidth()) && 
-                        py >= 0 && py < static_cast<int>(ssaa.getHeight())) {
-                        
+                    int px = right - radius + dx;
+                    int py = bottom - radius + dy;
+
+                    if (px >= 0 && px < imgW && py >= 0 && py < imgH) {
                         RGBA pixelColor = color;
                         pixelColor.a = static_cast<unsigned char>(255.0f * alpha);
-                        RGBA existingColor = ssaa.getImage().GetPixel(px, py);
+                        RGBA existingColor = img.GetPixel(px, py);
                         RGBA blendedColor = colors.blendRGBA(existingColor, pixelColor);
-                        ssaa.getImage().SetPixel(px, py, blendedColor);
+                        img.SetPixel(px, py, blendedColor);
                     }
                 }
             }

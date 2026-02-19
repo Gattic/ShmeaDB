@@ -23,72 +23,91 @@ GridRenderer::~GridRenderer() {
 
 void GridRenderer::drawBackground() {
     // Draw the dark gradient background from CSS styles
-    // Using radial gradient similar to histogram_with_labels.css: 
+    // Using radial gradient similar to histogram_with_labels.css:
     // radial-gradient(164.63% 83.5% at 54.69% 50%, #021331 0%, #000B1E 100%)
-    
+
+    // Cache dimensions and image reference to avoid repeated getter calls
+    unsigned int w = ssaa.getWidth();
+    unsigned int h = ssaa.getHeight();
+    Image& img = ssaa.getImage();
+    RGBA* pixels = img.getData();
+
     // Define the gradient center point (at 54.69% 50% as specified in CSS)
-    float centerX = ssaa.getWidth() * 0.5469f;
-    float centerY = ssaa.getHeight() * 0.5f;
-    
+    float centerX = w * 0.5469f;
+    float centerY = h * 0.5f;
+
     // Define the gradient radius (164.63% width and 83.5% height elliptical gradient)
-    float radiusX = ssaa.getWidth() * 1.6463f;
-    float radiusY = ssaa.getHeight() * 0.835f;
-    
+    float radiusX = w * 1.6463f;
+    float radiusY = h * 0.835f;
+
+    // Precompute reciprocals to replace division with multiplication
+    float invRadiusX = 1.0f / radiusX;
+    float invRadiusY = 1.0f / radiusY;
+
     // Get colors from our pre-defined palette
     RGBA centerColor = colors.getElementColor("bgGradientTop");    // #021331
     RGBA edgeColor = colors.getElementColor("bgGradientBottom");   // #000B1E
-    
-    // Render the radial gradient
-    for (unsigned int y = 0; y < ssaa.getHeight(); ++y) {
-        for (unsigned int x = 0; x < ssaa.getWidth(); ++x) {
-            // Calculate distance from center (normalize based on elliptical radiuses)
-            float dx = (x - centerX) / radiusX;
-            float dy = (y - centerY) / radiusY;
-            
-            // Calculate normalized distance (0.0 to 1.0)
-            float dist = std::sqrt(dx*dx + dy*dy);
-            dist = std::min(1.0f, dist); // Clamp to maximum 1.0
-            
-            // Use cubic easing for more dramatic gradient falloff (matching CSS)
-            dist = dist * dist * dist; // Cubic falloff
-            
-            // Interpolate between the two colors
-            RGBA pixelColor(
-                static_cast<unsigned char>(centerColor.r * (1.0f - dist) + edgeColor.r * dist),
-                static_cast<unsigned char>(centerColor.g * (1.0f - dist) + edgeColor.g * dist),
-                static_cast<unsigned char>(centerColor.b * (1.0f - dist) + edgeColor.b * dist),
-                0xFF
-            );
-            
-            // Set the pixel in the supersampled image
-            ssaa.getImage().SetPixel(x, y, pixelColor);
+
+    // Precompute 256-entry gradient lookup table indexed by quantized dist value
+    // This replaces per-pixel float interpolation (6 multiplies + 3 adds + 3 casts)
+    // with a single table lookup per pixel
+    static const unsigned int LUT_SIZE = 256;
+    RGBA gradientLUT[LUT_SIZE];
+    for (unsigned int i = 0; i < LUT_SIZE; ++i) {
+        float dist = static_cast<float>(i) / (LUT_SIZE - 1);
+        float oneMinusDist = 1.0f - dist;
+        gradientLUT[i].r = static_cast<unsigned char>(centerColor.r * oneMinusDist + edgeColor.r * dist);
+        gradientLUT[i].g = static_cast<unsigned char>(centerColor.g * oneMinusDist + edgeColor.g * dist);
+        gradientLUT[i].b = static_cast<unsigned char>(centerColor.b * oneMinusDist + edgeColor.b * dist);
+        gradientLUT[i].a = 0xFF;
+    }
+
+    // Precompute vignette boundary and per-row fade factors
+    unsigned int vignetteFadeHeight = static_cast<unsigned int>(h * 0.2f);
+
+    // Render gradient + vignette in a single pass using LUT
+    float lutScale = static_cast<float>(LUT_SIZE - 1);
+    for (unsigned int y = 0; y < h; ++y) {
+        // Hoist dy calculation out of the inner loop - constant per row
+        float dy = (y - centerY) * invRadiusY;
+        float dySq = dy * dy;
+        RGBA* row = pixels + y * w;
+
+        // Precompute vignette factor for this row (applied only to top 20%)
+        float vignetteScale = 1.0f;
+        if (y < vignetteFadeHeight) {
+            float fadeFactor = 1.0f - (static_cast<float>(y) / vignetteFadeHeight);
+            fadeFactor = fadeFactor * fadeFactor * 0.5f;
+            vignetteScale = 1.0f - fadeFactor;
+        }
+
+        if (y < vignetteFadeHeight) {
+            // Vignette rows: apply darkening during the LUT write (single pass)
+            for (unsigned int x = 0; x < w; ++x) {
+                float dx = (x - centerX) * invRadiusX;
+                float distSq = dx*dx + dySq;
+                if (distSq > 1.0f) distSq = 1.0f;
+                float dist = distSq * distSq;
+                unsigned int lutIdx = static_cast<unsigned int>(dist * lutScale);
+                const RGBA& c = gradientLUT[lutIdx];
+                row[x].r = static_cast<unsigned char>(c.r * vignetteScale);
+                row[x].g = static_cast<unsigned char>(c.g * vignetteScale);
+                row[x].b = static_cast<unsigned char>(c.b * vignetteScale);
+                row[x].a = 0xFF;
+            }
+        } else {
+            // Non-vignette rows: pure LUT copy
+            for (unsigned int x = 0; x < w; ++x) {
+                float dx = (x - centerX) * invRadiusX;
+                float distSq = dx*dx + dySq;
+                if (distSq > 1.0f) distSq = 1.0f;
+                float dist = distSq * distSq;
+                unsigned int lutIdx = static_cast<unsigned int>(dist * lutScale);
+                row[x] = gradientLUT[lutIdx];
+            }
         }
     }
-    
-    // Add subtle vignette effect at the top (like in histogram_with_labels.css)
-    // CSS: linear-gradient(180deg, #021331 0%, rgba(2, 19, 49, 0) 100%)
-    unsigned int vignetteFadeHeight = static_cast<unsigned int>(ssaa.getHeight() * 0.2f); // Top 20% has vignette
-    
-    for (unsigned int y = 0; y < vignetteFadeHeight; ++y) {
-        // Calculate fade factor (1.0 at top, 0.0 at bottom of fade)
-        float fadeFactor = 1.0f - (static_cast<float>(y) / vignetteFadeHeight);
-        fadeFactor = fadeFactor * fadeFactor * 0.5f; // Square it and adjust intensity
-        
-        for (unsigned int x = 0; x < ssaa.getWidth(); ++x) {
-            // Get current pixel and darken it slightly
-            RGBA currentColor = ssaa.getImage().GetPixel(x, y);
-            RGBA fadeColor(
-                static_cast<unsigned char>(currentColor.r * (1.0f - fadeFactor)),
-                static_cast<unsigned char>(currentColor.g * (1.0f - fadeFactor)),
-                static_cast<unsigned char>(currentColor.b * (1.0f - fadeFactor)),
-                0xFF
-            );
-            
-            // Set the darkened pixel in the supersampled image
-            ssaa.getImage().SetPixel(x, y, fadeColor);
-        }
-    }
-    
+
     // Draw grid if enabled
     if (layout.isGridVisible()) {
         drawGrid();
@@ -96,52 +115,58 @@ void GridRenderer::drawBackground() {
 }
 
 void GridRenderer::drawGrid() {
+    // Cache dimensions and image reference
+    unsigned int w = ssaa.getWidth();
+    unsigned int h = ssaa.getHeight();
+    Image& img = ssaa.getImage();
+    int samplingFactor = ssaa.getSamplingFactor();
+
     // Calculate the effective plotting area considering the margins
-    int effectiveWidth = ssaa.getWidth() - ssaa.scaleX(layout.getMarginLeft()) - ssaa.scaleX(layout.getMarginRight());
-    int effectiveHeight = ssaa.getHeight() - ssaa.scaleY(layout.getMarginTop()) - ssaa.scaleY(layout.getMarginBottom());
-    
+    int effectiveWidth = w - ssaa.scaleX(layout.getMarginLeft()) - ssaa.scaleX(layout.getMarginRight());
+    int effectiveHeight = h - ssaa.scaleY(layout.getMarginTop()) - ssaa.scaleY(layout.getMarginBottom());
+
     // Use exact grid pattern from CSS files in concepts/
     // Matching the fig and pdf files' grid styling
     int gridDivisionsX = 8;  // 8 vertical gridlines for better spacing
     int gridDivisionsY = 5;  // 5 horizontal gridlines like in the design
-    
+
     // Get colors for the grid lines with exact opacity from CSS
     RGBA gridColor = colors.getElementColor("majorGrid");
     gridColor.a = 0x66; // Increased to 40% opacity for better visibility
-    
+
     // Draw X-axis grid lines (vertical lines)
     for (int i = 1; i < gridDivisionsX; i++) {
         float percentage = static_cast<float>(i) / gridDivisionsX;
         int x = ssaa.scaleX(layout.getMarginLeft()) + static_cast<int>(percentage * effectiveWidth);
-        
+
         // Draw grid line with exact 1px width (scaled for supersampling)
-        int lineWidth = ssaa.getSamplingFactor(); // Scale line width with supersampling
-        for (int y = ssaa.scaleY(layout.getMarginTop()); y <= static_cast<int>(ssaa.getHeight() - ssaa.scaleY(layout.getMarginBottom())); y++) {
+        int lineWidth = samplingFactor;
+        for (int y = ssaa.scaleY(layout.getMarginTop()); y <= static_cast<int>(h - ssaa.scaleY(layout.getMarginBottom())); y++) {
             for (int dx = 0; dx < lineWidth; dx++) {
                 int drawX = x + dx;
-                if (drawX >= 0 && drawX < static_cast<int>(ssaa.getWidth()) && y >= 0 && y < static_cast<int>(ssaa.getHeight())) {
-                    RGBA currentPixel = ssaa.getImage().GetPixel(drawX, y);
+                if (drawX >= 0 && drawX < static_cast<int>(w) && y >= 0 && y < static_cast<int>(h)) {
+                    RGBA currentPixel = img.GetPixel(drawX, y);
                     RGBA blendedColor = colors.blendRGBA(currentPixel, gridColor);
-                    ssaa.getImage().SetPixel(drawX, y, blendedColor);
+                    img.SetPixel(drawX, y, blendedColor);
                 }
             }
         }
     }
-    
+
     // Draw Y-axis grid lines (horizontal lines)
     for (int i = 1; i < gridDivisionsY; i++) {
         float percentage = static_cast<float>(i) / gridDivisionsY;
-        int y = ssaa.getHeight() - ssaa.scaleY(layout.getMarginBottom()) - static_cast<int>(percentage * effectiveHeight);
-        
+        int y = h - ssaa.scaleY(layout.getMarginBottom()) - static_cast<int>(percentage * effectiveHeight);
+
         // Draw grid line with exact 1px width (scaled for supersampling)
-        int lineWidth = ssaa.getSamplingFactor(); // Scale line width with supersampling
-        for (int x = ssaa.scaleX(layout.getMarginLeft()); x <= static_cast<int>(ssaa.getWidth() - ssaa.scaleX(layout.getMarginRight())); x++) {
+        int lineWidth = samplingFactor;
+        for (int x = ssaa.scaleX(layout.getMarginLeft()); x <= static_cast<int>(w - ssaa.scaleX(layout.getMarginRight())); x++) {
             for (int dy = 0; dy < lineWidth; dy++) {
                 int drawY = y + dy;
-                if (x >= 0 && x < static_cast<int>(ssaa.getWidth()) && drawY >= 0 && drawY < static_cast<int>(ssaa.getHeight())) {
-                    RGBA currentPixel = ssaa.getImage().GetPixel(x, drawY);
+                if (x >= 0 && x < static_cast<int>(w) && drawY >= 0 && drawY < static_cast<int>(h)) {
+                    RGBA currentPixel = img.GetPixel(x, drawY);
                     RGBA blendedColor = colors.blendRGBA(currentPixel, gridColor);
-                    ssaa.getImage().SetPixel(x, drawY, blendedColor);
+                    img.SetPixel(x, drawY, blendedColor);
                 }
             }
         }
@@ -150,14 +175,14 @@ void GridRenderer::drawGrid() {
     // Draw outer border with exact styling from CSS
     RGBA borderColor = colors.getElementColor("border");
     borderColor.a = 0x66; // Increased to 40% opacity to match grid lines
-    int borderWidth = ssaa.getSamplingFactor();  // Scale border width with supersampling
-    
+    int borderWidth = samplingFactor;  // Scale border width with supersampling
+
     // Calculate border bounds with proper rounded corners
     int scaledCornerRadius = ssaa.scaleSize(layout.getCornerRadius());
     int leftX = ssaa.scaleX(layout.getMarginLeft());
     int topY = ssaa.scaleY(layout.getMarginTop());
-    int rightX = ssaa.getWidth() - ssaa.scaleX(layout.getMarginRight());
-    int bottomY = ssaa.getHeight() - ssaa.scaleY(layout.getMarginBottom());
+    int rightX = w - ssaa.scaleX(layout.getMarginRight());
+    int bottomY = h - ssaa.scaleY(layout.getMarginBottom());
     
     // Draw straight border segments (avoiding the corner regions)
     
@@ -348,98 +373,109 @@ void GridRenderer::drawOriginAxes(double xMin, double xMax, double yMin, double 
 }
 
 void GridRenderer::drawInfoBox(int x, int y, int boxWidth, int boxHeight, const std::string& text, unsigned int fontSize) {
+    // Cache dimensions and image reference
+    unsigned int w = ssaa.getWidth();
+    unsigned int h = ssaa.getHeight();
+    Image& img = ssaa.getImage();
+
     // Scale coordinates and dimensions for supersampling
     int ssaaX = ssaa.scaleX(x);
     int ssaaY = ssaa.scaleY(y);
     int ssaaBoxWidth = ssaa.scaleSize(boxWidth);
     int ssaaBoxHeight = ssaa.scaleSize(boxHeight);
-    int ssaaCornerRadius = ssaa.scaleSize(8); // Common corner radius for all info boxes, scaled 
-    
+    int ssaaCornerRadius = ssaa.scaleSize(8); // Common corner radius for all info boxes, scaled
+    float cornerRadiusSq = static_cast<float>(ssaaCornerRadius) * ssaaCornerRadius;
+
     // Get gradient colors from element colors - exact colors from CSS
     RGBA bgTopColor = colors.getElementColor("legendBgTop");
     RGBA bgBottomColor = colors.getElementColor("legendBgBottom");
-    
+
+    // Precompute reciprocal for gradient interpolation
+    float invGradTotal = 1.0f / static_cast<float>(ssaaBoxWidth + ssaaBoxHeight);
+
     // Draw gradient background with proper alpha blending
     for (int dy = 0; dy < ssaaBoxHeight; dy++) {
         // Calculate gradient interpolation - diagonal gradient to match the histogram stats box
         for (int dx = 0; dx < ssaaBoxWidth; dx++) {
-            float gradPos = (dx + dy) / static_cast<float>(ssaaBoxWidth + ssaaBoxHeight);
+            float gradPos = (dx + dy) * invGradTotal;
             RGBA currentBgColor(
                 static_cast<unsigned char>(bgTopColor.r * (1.0f - gradPos) + bgBottomColor.r * gradPos),
                 static_cast<unsigned char>(bgTopColor.g * (1.0f - gradPos) + bgBottomColor.g * gradPos),
                 static_cast<unsigned char>(bgTopColor.b * (1.0f - gradPos) + bgBottomColor.b * gradPos),
                 0xE6  // 90% opacity like the histogram stats box
             );
-            
+
             // Check if this pixel is in the rounded corner region
             bool inCorner = false;
-            
+
             // Check top-left corner
             if (dx < ssaaCornerRadius && dy < ssaaCornerRadius) {
-                float distSquared = std::pow(ssaaCornerRadius - dx, 2) + std::pow(ssaaCornerRadius - dy, 2);
-                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
+                float cdx = ssaaCornerRadius - dx;
+                float cdy = ssaaCornerRadius - dy;
+                inCorner = (cdx * cdx + cdy * cdy) > cornerRadiusSq;
             }
             // Check top-right corner
             else if (dx >= ssaaBoxWidth - ssaaCornerRadius && dy < ssaaCornerRadius) {
-                float distSquared = std::pow(dx - (ssaaBoxWidth - ssaaCornerRadius), 2) + std::pow(ssaaCornerRadius - dy, 2);
-                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
+                float cdx = dx - (ssaaBoxWidth - ssaaCornerRadius);
+                float cdy = ssaaCornerRadius - dy;
+                inCorner = (cdx * cdx + cdy * cdy) > cornerRadiusSq;
             }
             // Check bottom-left corner
             else if (dx < ssaaCornerRadius && dy >= ssaaBoxHeight - ssaaCornerRadius) {
-                float distSquared = std::pow(ssaaCornerRadius - dx, 2) + std::pow(dy - (ssaaBoxHeight - ssaaCornerRadius), 2);
-                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
+                float cdx = ssaaCornerRadius - dx;
+                float cdy = dy - (ssaaBoxHeight - ssaaCornerRadius);
+                inCorner = (cdx * cdx + cdy * cdy) > cornerRadiusSq;
             }
             // Check bottom-right corner
             else if (dx >= ssaaBoxWidth - ssaaCornerRadius && dy >= ssaaBoxHeight - ssaaCornerRadius) {
-                float distSquared = std::pow(dx - (ssaaBoxWidth - ssaaCornerRadius), 2) + std::pow(dy - (ssaaBoxHeight - ssaaCornerRadius), 2);
-                inCorner = distSquared > std::pow(ssaaCornerRadius, 2);
+                float cdx = dx - (ssaaBoxWidth - ssaaCornerRadius);
+                float cdy = dy - (ssaaBoxHeight - ssaaCornerRadius);
+                inCorner = (cdx * cdx + cdy * cdy) > cornerRadiusSq;
             }
-            
+
             // Only draw pixel if it's within the rounded rectangle
             if (!inCorner) {
                 int drawX = ssaaX + dx;
                 int drawY = ssaaY + dy;
-                
-                if (drawX >= 0 && drawX < static_cast<int>(ssaa.getWidth()) &&
-                    drawY >= 0 && drawY < static_cast<int>(ssaa.getHeight())) {
+
+                if (drawX >= 0 && drawX < static_cast<int>(w) &&
+                    drawY >= 0 && drawY < static_cast<int>(h)) {
                     // Use proper alpha blending
-                    RGBA existingPixel = ssaa.getImage().GetPixel(drawX, drawY);
+                    RGBA existingPixel = img.GetPixel(drawX, drawY);
                     RGBA blendedColor = colors.blendRGBA(existingPixel, currentBgColor);
-                    ssaa.getImage().SetPixel(drawX, drawY, blendedColor);
+                    img.SetPixel(drawX, drawY, blendedColor);
                 }
             }
         }
     }
-    
+
     // Add subtle inner highlight to top edge - exact 10% opacity from CSS
     RGBA highlightColor(0xFF, 0xFF, 0xFF, 0x1A); // 10% white (0.1 * 255 = 26 ≈ 0x1A)
     for (int dx = ssaaCornerRadius; dx < ssaaBoxWidth - ssaaCornerRadius; dx++) {
         int pixelX = ssaaX + dx;
         int pixelY = ssaaY;
-        
-        if (pixelX >= 0 && pixelX < static_cast<int>(ssaa.getWidth()) &&
-            pixelY >= 0 && pixelY < static_cast<int>(ssaa.getHeight())) {
+
+        if (pixelX >= 0 && pixelX < static_cast<int>(w) &&
+            pixelY >= 0 && pixelY < static_cast<int>(h)) {
             // Blend highlight with existing pixel
-            float alpha = highlightColor.a / 255.0f;
-            RGBA existingPixel = ssaa.getImage().GetPixel(pixelX, pixelY);
+            RGBA existingPixel = img.GetPixel(pixelX, pixelY);
             RGBA blendedColor = colors.blendRGBA(existingPixel, highlightColor);
-            ssaa.getImage().SetPixel(pixelX, pixelY, blendedColor);
+            img.SetPixel(pixelX, pixelY, blendedColor);
         }
     }
-    
+
     // Add subtle drop shadow to bottom edge - exact 15% opacity from CSS
     RGBA shadowColor(0x00, 0x00, 0x00, 0x26); // 15% black (0.15 * 255 = 38 ≈ 0x26)
     for (int dx = ssaaCornerRadius; dx < ssaaBoxWidth - ssaaCornerRadius; dx++) {
         int pixelX = ssaaX + dx;
         int pixelY = ssaaY + ssaaBoxHeight - 1;
-        
-        if (pixelX >= 0 && pixelX < static_cast<int>(ssaa.getWidth()) &&
-            pixelY >= 0 && pixelY < static_cast<int>(ssaa.getHeight())) {
+
+        if (pixelX >= 0 && pixelX < static_cast<int>(w) &&
+            pixelY >= 0 && pixelY < static_cast<int>(h)) {
             // Blend shadow with existing pixel
-            float alpha = shadowColor.a / 255.0f;
-            RGBA existingPixel = ssaa.getImage().GetPixel(pixelX, pixelY);
+            RGBA existingPixel = img.GetPixel(pixelX, pixelY);
             RGBA blendedColor = colors.blendRGBA(existingPixel, shadowColor);
-            ssaa.getImage().SetPixel(pixelX, pixelY, blendedColor);
+            img.SetPixel(pixelX, pixelY, blendedColor);
         }
     }
     

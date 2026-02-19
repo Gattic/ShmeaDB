@@ -145,39 +145,6 @@ bool ColorManager::hasElementColor(const std::string& element) const {
     return elementColors.find(element) != elementColors.end();
 }
 
-RGBA ColorManager::blendColors(const RGBA& baseColor, const RGBA& overlayColor, float alpha) const {
-    return RGBA(
-        static_cast<unsigned char>(baseColor.r * (1.0f - alpha) + overlayColor.r * alpha),
-        static_cast<unsigned char>(baseColor.g * (1.0f - alpha) + overlayColor.g * alpha),
-        static_cast<unsigned char>(baseColor.b * (1.0f - alpha) + overlayColor.b * alpha),
-        baseColor.a  // Keep the original alpha
-    );
-}
-
-RGBA ColorManager::blendRGBA(const RGBA& base, const RGBA& over) const {
-    // If the overlay is fully transparent, return the base unchanged
-    if (over.a == 0) return base;
-    
-    // If the overlay is fully opaque, return it directly
-    if (over.a == 255) return over;
-    
-    // Calculate alpha values for blending
-    float alphaOver = over.a / 255.0f;
-    float alphaBase = base.a / 255.0f;
-    float alphaOut = alphaOver + alphaBase * (1.0f - alphaOver);
-    
-    // If the resulting alpha is zero, return transparent black
-    if (alphaOut < 0.001f) return RGBA(0, 0, 0, 0);
-    
-    // Blend the colors properly considering the alpha channels
-    unsigned char r = static_cast<unsigned char>((over.r * alphaOver + base.r * alphaBase * (1.0f - alphaOver)) / alphaOut);
-    unsigned char g = static_cast<unsigned char>((over.g * alphaOver + base.g * alphaBase * (1.0f - alphaOver)) / alphaOut);
-    unsigned char b = static_cast<unsigned char>((over.b * alphaOver + base.b * alphaBase * (1.0f - alphaOver)) / alphaOut);
-    unsigned char a = static_cast<unsigned char>(alphaOut * 255.0f);
-    
-    return RGBA(r, g, b, a);
-}
-
 RGBA ColorManager::HSVtoRGBA(float h, float s, float v)
 {
     float r, g, b;
