@@ -67,7 +67,7 @@ static void Connection_LastSeen_Updates()
 	c.setCloseOnFinish(false);
 
 	int64_t before = c.getLastSeenSec();
-	usleep(10 * 1000);
+	g_sleep_ms(10);
 	c.noteSeen();
 	int64_t after = c.getLastSeenSec();
 	ASSERT("noteSeen() should not go backwards", after >= before);

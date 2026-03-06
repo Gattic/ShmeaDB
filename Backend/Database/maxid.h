@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <sys/signal.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <vector>
 #include "GString.h"

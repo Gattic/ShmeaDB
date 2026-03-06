@@ -15,9 +15,8 @@
 #include "../../../Backend/Networking/connection.h"
 #include "../../../Backend/Networking/socket.h"
 
+#include "Backend/Core/platform.h"
 #include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -26,20 +25,20 @@ namespace {
 // Helpers
 // ---------------------------------------------------------------------------
 
-static void MakeSocketpair(int fds[2])
+static void MakeSocketpair(socket_t fds[2])
 {
-	int rc = ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+	int rc = g_socketpair(fds);
 	ASSERT("socketpair failed", rc == 0);
 }
 
-static void ClosePair(int fds[2])
+static void ClosePair(socket_t fds[2])
 {
-	if (fds[0] >= 0)
-		::close(fds[0]);
-	if (fds[1] >= 0)
-		::close(fds[1]);
-	fds[0] = -1;
-	fds[1] = -1;
+	if (fds[0] != INVALID_SOCKET_VALUE)
+		G_CLOSE_SOCKET(fds[0]);
+	if (fds[1] != INVALID_SOCKET_VALUE)
+		G_CLOSE_SOCKET(fds[1]);
+	fds[0] = INVALID_SOCKET_VALUE;
+	fds[1] = INVALID_SOCKET_VALUE;
 }
 
 static bool buffers_equal(const char* a, const char* b, unsigned int len)
@@ -52,7 +51,7 @@ static bool buffers_equal(const char* a, const char* b, unsigned int len)
 // ---------------------------------------------------------------------------
 static void BinarySocket_WriteRead_Unencrypted()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -98,7 +97,7 @@ static void BinarySocket_WriteRead_Unencrypted()
 // ---------------------------------------------------------------------------
 static void BinarySocket_WriteRead_Encrypted()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	const int64_t key = 987654;
@@ -136,7 +135,7 @@ static void BinarySocket_WriteRead_Encrypted()
 // ---------------------------------------------------------------------------
 static void BinarySocket_MultipleFrames()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -195,13 +194,13 @@ static void BinarySocket_MultipleFrames()
 // ---------------------------------------------------------------------------
 static void BinarySocket_LargePayload()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	// Increase socket buffer to handle the large payload without blocking
 	int bufSz = 512 * 1024;
-	setsockopt(fds[0], SOL_SOCKET, SO_SNDBUF, &bufSz, sizeof(bufSz));
-	setsockopt(fds[1], SOL_SOCKET, SO_RCVBUF, &bufSz, sizeof(bufSz));
+	setsockopt(fds[0], SOL_SOCKET, SO_SNDBUF, G_SETSOCKOPT_VAL(bufSz), sizeof(bufSz));
+	setsockopt(fds[1], SOL_SOCKET, SO_RCVBUF, G_SETSOCKOPT_VAL(bufSz), sizeof(bufSz));
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
 	dest.disableEncryption();
@@ -252,7 +251,7 @@ static void BinarySocket_LargePayload()
 // ---------------------------------------------------------------------------
 static void BinarySocket_MixedTypes()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -320,7 +319,7 @@ static void BinarySocket_MixedTypes()
 // ---------------------------------------------------------------------------
 static void BinarySocket_NullBytesInPayload()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -361,7 +360,7 @@ static void BinarySocket_NullBytesInPayload()
 // ---------------------------------------------------------------------------
 static void BinarySocket_AllByteValues_Encrypted()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	const int64_t key = 314159;
@@ -401,7 +400,7 @@ static void BinarySocket_AllByteValues_Encrypted()
 // ---------------------------------------------------------------------------
 static void BinarySocket_EmptyPayload()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -434,7 +433,7 @@ static void BinarySocket_EmptyPayload()
 // ---------------------------------------------------------------------------
 static void BinarySocket_DelimitersInArgsAndPayload()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -480,7 +479,7 @@ static void BinarySocket_DelimitersInArgsAndPayload()
 // ---------------------------------------------------------------------------
 static void BinarySocket_BackToBack_Binary()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");

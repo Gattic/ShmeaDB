@@ -21,7 +21,6 @@ set(DB_src_files
 	image.cpp
 	GVector.h
 	GPointer.h
-    GMutex.h
 	GType.cpp
 	GType_helpers.cpp
 	GType_operators.cpp
@@ -44,7 +43,7 @@ add_library(DB ${DB_src_files})
 #Link libraries
 if(EMSCRIPTEN)
 else()
-    target_link_libraries(DB ${FREETYPE_LIBRARIES})
+    target_link_libraries(DB Core ${FREETYPE_LIBRARIES})
 endif()
 
 install(TARGETS DB EXPORT shmeaConfig
@@ -55,4 +54,4 @@ install(TARGETS DB EXPORT shmeaConfig
 
 install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
 
-export(TARGETS DB FILE shmeaConfig.cmake)
+export(TARGETS DB Core FILE shmeaConfig.cmake)

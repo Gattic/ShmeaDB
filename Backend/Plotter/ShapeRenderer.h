@@ -1,11 +1,21 @@
 #ifndef SHAPE_RENDERER_H
 #define SHAPE_RENDERER_H
 
+#ifdef _WIN32
+    #ifndef _USE_MATH_DEFINES
+        #define _USE_MATH_DEFINES
+    #endif
+#endif
+
 #include "../Database/image.h"
 #include "ColorManager.h"
 #include "SuperSamplingManager.h"
 #include "ChartLayout.h"
 #include <cmath>
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 
 namespace shmea {
 

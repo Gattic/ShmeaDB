@@ -19,6 +19,15 @@
 #include "socket.h"
 #include "main.h"
 
+/* Windows.h (via platform.h) defines StartService as a macro -> StartServiceA.
+   Undefine it so our GNet::Service::StartService method works correctly. */
+#ifdef StartService
+    #undef StartService
+#endif
+#ifdef ExitService
+    #undef ExitService
+#endif
+
 using namespace GNet;
 
 namespace {
@@ -101,7 +110,7 @@ void Service::ExecuteService(GServer* serverInstance, shmea::GPointer<shmea::Ser
  */
 void* Service::launchService(void* y)
 {
-	// Helper function for pthread_create
+	// Thread entry point (called by GThread or worker pool)
 
 	// set the service args
 	newServiceArgs* x = (newServiceArgs*)y;
@@ -138,9 +147,9 @@ void* Service::launchService(void* y)
 		// If this is a keyed (stateful) service, serialize access to the cached instance
 		// to avoid concurrent use of shared service objects.
 		const bool keyed = (x->serviceKey.length() > 0);
-		pthread_mutex_t* keyLock = keyed ? serverInstance->getOrCreateRunningServiceMutex(x->serviceKey) : NULL;
+		shmea::GMutex* keyLock = keyed ? serverInstance->getOrCreateRunningServiceMutex(x->serviceKey) : NULL;
 		if (keyLock)
-			pthread_mutex_lock(keyLock);
+			keyLock->lock();
 
 		Service* cService = serverInstance->DoService(x->command, x->serviceKey);
 		if (cService)
@@ -184,7 +193,7 @@ void* Service::launchService(void* y)
 		}
 
 		if (keyLock)
-			pthread_mutex_unlock(keyLock);
+			keyLock->unlock();
 	}
 
 cleanup:

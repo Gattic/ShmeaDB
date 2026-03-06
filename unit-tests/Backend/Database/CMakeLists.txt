@@ -28,6 +28,7 @@ ServiceData-test.cpp
 binary-payload-test.cpp
 )
 add_library(DBTests ${DBTests_src_files})
+target_include_directories(DBTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../..")
 
 # Link against FreeType
 if(NOT EMSCRIPTEN)

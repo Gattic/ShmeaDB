@@ -2,9 +2,20 @@
 #ifndef PNGPLOTTER_H
 #define PNGPLOTTER_H
 
+#ifdef _WIN32
+    #ifndef _USE_MATH_DEFINES
+        #define _USE_MATH_DEFINES
+    #endif
+#endif
+
 #include "image.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <stdint.h>
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 #include <string>
 #include <limits>
 #include <vector>

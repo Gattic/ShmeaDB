@@ -16,9 +16,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GLogger.h"
 #include "GType.h"
-#include <sys/time.h>
 #include <time.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <direct.h>
+    #ifndef mkdir
+        #define mkdir(path, mode) _mkdir(path)
+    #endif
+    /* gettimeofday: MinGW already provides timeval/timezone and gettimeofday via sys/time.h */
+    #include <sys/time.h>
+#else
+    #include <sys/time.h>
+#endif
 
 using namespace shmea;
 
@@ -231,7 +241,7 @@ shmea::GString GLogger::getDateTime() const
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&tv.tv_sec));
+	{ time_t _t = (time_t)tv.tv_sec; strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&_t)); }
 	shmea::GString strDateTime(timeString);
 	return strDateTime;
 }
@@ -242,7 +252,7 @@ shmea::GString GLogger::generateLogFName() const
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&tv.tv_sec));
+	{ time_t _t = (time_t)tv.tv_sec; strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&_t)); }
 	shmea::GString strDateTime(timeString);
 	return strDateTime;
 }

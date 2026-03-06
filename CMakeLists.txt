@@ -2,7 +2,11 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
-set (CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+if(WIN32)
+    set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/shmea" CACHE PATH "default install path" FORCE)
+else()
+    set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+endif()
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
 
 #Init
@@ -15,10 +19,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 set(CMAKE_BUILD_TYPE Release) # -O3 -g
 
 if(WIN32)
-	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
 else()
-	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC") # its set below
-	set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
 endif()
 
 if(EMSCRIPTEN)
@@ -46,6 +49,7 @@ endif()
 include(GNUInstallDirs)
 
 #Subdirectories
+add_subdirectory("Backend/Core")
 add_subdirectory("Backend/Database")
 add_subdirectory("Backend/Plotter")
 add_subdirectory("Backend/Networking")
@@ -94,26 +98,28 @@ add_custom_target(local
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-#make debug
-add_custom_target(debug
-	COMMAND gdb ./build/${PROJECT_NAME}
-	DEPENDS ${PROJECT_NAME}
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+if(NOT WIN32)
+    #make debug
+    add_custom_target(debug
+        COMMAND gdb ./build/${PROJECT_NAME}
+        DEPENDS ${PROJECT_NAME}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
 
-#make mem
-	add_custom_target(mem
-	COMMAND valgrind --leak-check=full --track-origins=yes ./build/${PROJECT_NAME}
-	DEPENDS ${PROJECT_NAME}
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+    #make mem
+    add_custom_target(mem
+        COMMAND valgrind --leak-check=full --track-origins=yes ./build/${PROJECT_NAME}
+        DEPENDS ${PROJECT_NAME}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
 
-#make profile
-	add_custom_target(profile
-	COMMAND valgrind --tool=callgrind ./build/${PROJECT_NAME}
-	DEPENDS ${PROJECT_NAME}
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+    #make profile
+    add_custom_target(profile
+        COMMAND valgrind --tool=callgrind ./build/${PROJECT_NAME}
+        DEPENDS ${PROJECT_NAME}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+endif()
 
 #make uninstall
 	add_custom_target(uninstall

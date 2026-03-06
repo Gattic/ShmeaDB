@@ -15,41 +15,37 @@
 #include "../../../Backend/Networking/connection.h"
 #include "../../../Backend/Networking/socket.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
 #include <stdint.h>
 #include <string>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <vector>
+#include "Backend/Core/platform.h"
 
 namespace {
 static const uint32_t FRAME_HEADER_BYTES = 8;               // [blockSize(4)][padding(4)]
 static const uint32_t MAX_FRAME_BYTES = 256 * 1024 * 1024;  // must match socket.cpp
 
-static void MakeSocketpair(int fds[2])
+static void MakeSocketpair(socket_t fds[2])
 {
-	int rc = ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+	int rc = g_socketpair(fds);
 	ASSERT("socketpair failed", rc == 0);
 }
 
-static void ClosePair(int fds[2])
+static void ClosePair(socket_t fds[2])
 {
-	if (fds[0] >= 0)
-		::close(fds[0]);
-	if (fds[1] >= 0)
-		::close(fds[1]);
-	fds[0] = -1;
-	fds[1] = -1;
+	if (fds[0] != INVALID_SOCKET_VALUE)
+		G_CLOSE_SOCKET(fds[0]);
+	if (fds[1] != INVALID_SOCKET_VALUE)
+		G_CLOSE_SOCKET(fds[1]);
+	fds[0] = INVALID_SOCKET_VALUE;
+	fds[1] = INVALID_SOCKET_VALUE;
 }
 
-static bool write_all_bytes(int fd, const char* buf, size_t len)
+static bool write_all_bytes(socket_t fd, const char* buf, size_t len)
 {
 	size_t off = 0;
 	while (off < len)
 	{
-		ssize_t rc = ::send(fd, buf + off, len - off, MSG_NOSIGNAL);
+		int rc = (int)::send(fd, buf + off, len - off, G_MSG_NOSIGNAL);
 		if (rc > 0)
 		{
 			off += (size_t)rc;
@@ -57,7 +53,7 @@ static bool write_all_bytes(int fd, const char* buf, size_t len)
 		}
 		if (rc == 0)
 			return false;
-		if (errno == EINTR)
+		if (G_LAST_SOCK_ERROR() == G_EINTR)
 			continue;
 		return false;
 	}
@@ -106,7 +102,7 @@ static shmea::GString build_serialized_service(
 
 static void Socket_Overflow_Reassembly_PartialHeaderThenPayload()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -145,7 +141,7 @@ static void Socket_Overflow_Reassembly_PartialHeaderThenPayload()
 
 static void Socket_MultiFrames_WithTrailingPartial_PreservesOverflow()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -193,7 +189,7 @@ static void Socket_MultiFrames_WithTrailingPartial_PreservesOverflow()
 
 static void Socket_Padding_StripsCorrectly()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -222,7 +218,7 @@ static void Socket_Padding_StripsCorrectly()
 
 static void Socket_InvalidPadding_IsFatalAndClearsOverflow()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -246,7 +242,7 @@ static void Socket_InvalidPadding_IsFatalAndClearsOverflow()
 
 static void Socket_ClaimedTooLarge_IsRejected_EvenWithoutPayload()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -270,7 +266,7 @@ static void Socket_ClaimedTooLarge_IsRejected_EvenWithoutPayload()
 
 static void Socket_EncryptedPayload_NotMultipleOf8_IsFatal()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -295,7 +291,7 @@ static void Socket_EncryptedPayload_NotMultipleOf8_IsFatal()
 
 static void Socket_Encrypted_WriteRead_RoundTrip()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	const int64_t key = 424242;
@@ -367,7 +363,7 @@ static void Socket_OutboundCollision_And_Purge_AdjustsPendingSends()
 
 static void Socket_InboundPurge_ClearsInboundQueue()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -399,7 +395,7 @@ static void Socket_InboundBackpressure_TriggersLogoutSignal()
 	// when inbound queue grows to its cap (8192), readLists returns false.
 	//
 	// Important: we avoid huge single writes (which can block) by feeding frames in batches.
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
