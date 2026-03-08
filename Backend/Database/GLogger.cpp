@@ -19,13 +19,33 @@
 #include <time.h>
 #include <sys/stat.h>
 #ifdef _WIN32
-    #include <windows.h>
+    #include "../Core/platform.h"
     #include <direct.h>
     #ifndef mkdir
         #define mkdir(path, mode) _mkdir(path)
     #endif
-    /* gettimeofday: MinGW already provides timeval/timezone and gettimeofday via sys/time.h */
-    #include <sys/time.h>
+    #ifdef _MSC_VER
+        /* MSVC does not provide sys/time.h or gettimeofday; provide a replacement */
+        #include <ctime>
+        struct msvc_timeval { long tv_sec; long tv_usec; };
+        struct msvc_timezone { int tz_minuteswest; int tz_dsttime; };
+        #define timeval msvc_timeval
+        #define timezone msvc_timezone
+        static inline int gettimeofday(struct msvc_timeval* tp, struct msvc_timezone* tzp)
+        {
+            FILETIME ft;
+            GetSystemTimeAsFileTime(&ft);
+            unsigned long long t = ((unsigned long long)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
+            t -= 116444736000000000ULL; /* Jan 1, 1601 -> Jan 1, 1970 */
+            t /= 10; /* 100-ns intervals -> microseconds */
+            if (tp) { tp->tv_sec = (long)(t / 1000000ULL); tp->tv_usec = (long)(t % 1000000ULL); }
+            if (tzp) { tzp->tz_minuteswest = 0; tzp->tz_dsttime = 0; }
+            return 0;
+        }
+    #else
+        /* MinGW provides gettimeofday via sys/time.h */
+        #include <sys/time.h>
+    #endif
 #else
     #include <sys/time.h>
 #endif

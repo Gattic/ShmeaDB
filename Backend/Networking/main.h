@@ -34,7 +34,9 @@
 #include <string.h>
 #include <string>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <vector>
 /*#include <openssl/bio.h>
 #include <openssl/err.h>

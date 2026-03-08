@@ -18,9 +18,13 @@
 #define _DB_MAXID
 
 #include <algorithm>
+#ifndef _WIN32
 #include <dirent.h>
+#endif
 #include <map>
+#ifndef _WIN32
 #include <pthread.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

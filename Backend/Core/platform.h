@@ -10,7 +10,11 @@
     #include <windows.h>
 
     typedef SOCKET socket_t;
-    /* ssize_t is already defined by MinGW's corecrt.h as __int64; do not redefine it */
+    /* ssize_t: MinGW provides it via corecrt.h; MSVC does not have it at all */
+    #ifdef _MSC_VER
+        #include <BaseTsd.h>
+        typedef SSIZE_T ssize_t;
+    #endif
     static const socket_t INVALID_SOCKET_VALUE = INVALID_SOCKET;
 
     #define G_CLOSE_SOCKET(fd)  closesocket(fd)

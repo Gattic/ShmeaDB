@@ -11,28 +11,35 @@ file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
 
 #Init
 cmake_minimum_required(VERSION 3.5.1)
+cmake_policy(SET CMP0091 NEW)
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 #Compiler Flags
 #set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_BUILD_TYPE Release) # -O3 -g
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-if(WIN32)
+#Project
+project(shmea)
+
+# Compiler flags must come after project() so MSVC variable is available
+if(MSVC)
+    add_compile_options(/W3 /wd4101 /wd4100)
+    add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2")
+elseif(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
 else()
     set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
 endif()
 
 if(EMSCRIPTEN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=4 -s PROXY_TO_PTHREAD -s INITIAL_MEMORY=64MB -s EXIT_RUNTIME=1")
 endif()
-
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-#Project
-project(shmea)
 set(G_VERSION_MAJOR 0)
 set(G_VERSION_MINOR 57)
 
@@ -121,8 +128,10 @@ if(NOT WIN32)
     )
 endif()
 
-#make uninstall
-	add_custom_target(uninstall
-	COMMAND xargs rm < ./build/install_manifest.txt
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+if(NOT WIN32)
+    #make uninstall
+    add_custom_target(uninstall
+        COMMAND xargs rm < ./build/install_manifest.txt
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+endif()

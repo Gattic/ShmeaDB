@@ -17,6 +17,7 @@
 #include "ServiceData.h"
 #include "../Database/Serializable.h"
 #include "../Networking/connection.h"
+#include "../Core/GMutex.h"
 
 using namespace shmea;
 
@@ -28,7 +29,7 @@ void shmea::delete_connection(GNet::Connection* c)
 namespace {
 // Thread-safe, process-wide monotonic counters for message identifiers.
 // NOTE: This intentionally does NOT use rand(); it must be deterministic and race-free.
-static pthread_mutex_t g_idMutex = PTHREAD_MUTEX_INITIALIZER;
+static shmea::GMutex g_idMutex;
 static int64_t g_serviceCounter = 0;
 static int64_t g_responseCounter = 0;
 } // namespace
@@ -293,18 +294,18 @@ void ServiceData::assignServiceNum()
 {
 	// Generate a unique id even when multiple threads are sending concurrently.
 	// Start at 1 (0 is treated as "unset" in some contexts).
-	pthread_mutex_lock(&g_idMutex);
+	g_idMutex.lock();
 	serviceNum = ++g_serviceCounter;
-	pthread_mutex_unlock(&g_idMutex);
+	g_idMutex.unlock();
 }
 
 void ServiceData::assignResponseServiceNum()
 {
 	// The previous implementation (serviceNum + 1) was not unique and was not safe
 	// under concurrency. Generate an independent unique id.
-	pthread_mutex_lock(&g_idMutex);
+	g_idMutex.lock();
 	responseServiceNum = ++g_responseCounter;
-	pthread_mutex_unlock(&g_idMutex);
+	g_idMutex.unlock();
 }
 
 void ServiceData::setServiceNum(int64_t newServiceNum)

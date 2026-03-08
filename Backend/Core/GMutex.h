@@ -2,7 +2,7 @@
 #define _GMUTEX
 
 #ifdef _WIN32
-    #include <windows.h>
+    #include "platform.h"
 #else
     #include <pthread.h>
 #endif

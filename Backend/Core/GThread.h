@@ -2,7 +2,7 @@
 #define _GTHREAD
 
 #ifdef _WIN32
-    #include <windows.h>
+    #include "platform.h"
 #else
     #include <pthread.h>
 #endif

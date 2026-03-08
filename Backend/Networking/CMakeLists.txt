@@ -5,7 +5,9 @@
 #include_directories(${OPENSSL_INCLUDE_DIRS})
 
 #Threading lib
-include(FindPkgConfig)
+if(NOT WIN32)
+    include(FindPkgConfig)
+endif()
 find_package(Threads REQUIRED)
 
 set(GNet_src_files

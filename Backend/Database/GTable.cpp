@@ -133,7 +133,7 @@ void GTable::importFromFile(const GString& fname)
 
 	// Allocate a buffer
 	int rowCounter = 0;
-	int MAX_LINE_SIZE = 256;
+	const int MAX_LINE_SIZE = 256;
 	int linesRead = 0; // Are the lines read, not how many lines read
 	char buffer[MAX_LINE_SIZE];
 

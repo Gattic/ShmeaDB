@@ -2,23 +2,40 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
-set (CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+if(WIN32)
+    set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/shmea" CACHE PATH "default install path" FORCE)
+else()
+    set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
+endif()
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
 
 #Init
 cmake_minimum_required(VERSION 3.5.1)
+cmake_policy(SET CMP0091 NEW)
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 #Compiler Flags
-set(CMAKE_BUILD_TYPE Debug) # -g
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+if(WIN32)
+    set(CMAKE_BUILD_TYPE Release)
+else()
+    set(CMAKE_BUILD_TYPE Debug) # -g
+endif()
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
 
 #Project
 project(shmea-unit-tests)
+
+# Compiler flags must come after project() so MSVC variable is available
+if(MSVC)
+    add_compile_options(/W3 /wd4101 /wd4100)
+    add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2")
+else()
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+endif()
 set(G_VERSION_MAJOR 0)
 set(G_VERSION_MINOR 57)
 
@@ -70,26 +87,28 @@ if(NOT CMAKE_GENERATOR MATCHES "Ninja")
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 
-    #make debug
-    add_custom_target(debug
-        COMMAND gdb --args ./build/${PROJECT_NAME} $(ARGS)
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+    if(NOT WIN32)
+        #make debug
+        add_custom_target(debug
+            COMMAND gdb --args ./build/${PROJECT_NAME} $(ARGS)
+            DEPENDS ${PROJECT_NAME}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
 
-    #make mem
-    add_custom_target(mem
-        COMMAND valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./build/${PROJECT_NAME} $(ARGS)
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+        #make mem
+        add_custom_target(mem
+            COMMAND valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./build/${PROJECT_NAME} $(ARGS)
+            DEPENDS ${PROJECT_NAME}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
 
-    #make profile
-    add_custom_target(profile
-        COMMAND valgrind --tool=callgrind ./build/${PROJECT_NAME} $(ARGS)
-        DEPENDS ${PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+        #make profile
+        add_custom_target(profile
+            COMMAND valgrind --tool=callgrind ./build/${PROJECT_NAME} $(ARGS)
+            DEPENDS ${PROJECT_NAME}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+    endif()
 
     # Generate a GNUmakefile wrapper in the build directory.
     file(WRITE "${CMAKE_BINARY_DIR}/GNUmakefile"

@@ -4,7 +4,7 @@
 #include "GMutex.h"
 
 #ifdef _WIN32
-    #include <windows.h>
+    #include "platform.h"
 #else
     #include <pthread.h>
     #include <time.h>

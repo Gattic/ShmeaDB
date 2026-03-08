@@ -26,6 +26,11 @@
 #include <time.h>
 #include <vector>
 
+// Windows API defines StartService as a macro — undefine to avoid conflict
+#ifdef StartService
+#undef StartService
+#endif
+
 namespace shmea {
 class ServiceData;
 };

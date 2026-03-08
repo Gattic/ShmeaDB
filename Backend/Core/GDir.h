@@ -2,7 +2,7 @@
 #define _GDIR
 
 #ifdef _WIN32
-    #include <windows.h>
+    #include "platform.h"
 #else
     #include <dirent.h>
     #include <sys/stat.h>
