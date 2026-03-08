@@ -55,6 +55,24 @@ make uninstall
 
 Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) with the **"Desktop development with C++"** workload. This provides `cl.exe` (MSVC compiler), `cmake`, and `ninja`.
 
+> **Note:** The Visual Studio installation path varies depending on the version and edition you install. Common paths include:
+>
+> | Version | Path |
+> |---------|------|
+> | VS 2022 Build Tools | `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools` |
+> | VS 2022 Community | `C:\Program Files\Microsoft Visual Studio\2022\Community` |
+> | VS 2025 Build Tools | `C:\Program Files (x86)\Microsoft Visual Studio\2025\BuildTools` |
+> | VS 18 Build Tools | `C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools` |
+>
+> The `.bat` scripts (`build-and-install.bat` and `unit-tests/build-and-run.bat`) will automatically search for known VS versions and editions. If your installation uses a non-standard path, you can either:
+> 1. Open a **Developer Command Prompt for VS** before running the script (so `cl.exe` is already on PATH), or
+> 2. Manually call `VsDevCmd.bat` from your VS installation before running the build.
+>
+> To find your installation path, run in PowerShell:
+> ```powershell
+> & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -all -property installationPath
+> ```
+
 Install [vcpkg](https://github.com/microsoft/vcpkg):
 
 ```bash
@@ -73,11 +91,13 @@ vcpkg install freetype
 
 ### Compilation (Command Line)
 
-Open a **Developer Command Prompt for VS** (or run `vcvarsall.bat x64`). If using the Visual Studio terminal in PowerShell:
+Open a **Developer Command Prompt for VS** (or run `vcvarsall.bat x64`). If using PowerShell, launch the VS Developer Shell (adjust the path to match your VS installation):
 
 ```powershell
 & "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64
 ```
+
+If your VS version differs (e.g. `18` or `2025`), replace `2022\BuildTools` with your version and edition.
 
 **Note:** The Developer Shell may override `VCPKG_ROOT` to point to a vcpkg bundled with Visual Studio. If `cmake` fails with `Could NOT find Freetype`, reset it to your own vcpkg:
 
