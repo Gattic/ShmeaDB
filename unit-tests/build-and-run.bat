@@ -1,8 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Usage: build-and-run.bat [VS_VERSION]
+:: Example: build-and-run.bat 18
+:: Default: 2022
+
+set "VS_VER=2022"
+if not "%~1"=="" set "VS_VER=%~1"
+
 echo ============================================
 echo  ShmeaDB Unit Tests - Build and Run (Windows)
+echo  Visual Studio version: !VS_VER!
 echo ============================================
 echo.
 
@@ -14,27 +22,21 @@ if !errorlevel! equ 0 (
     echo [OK] cl.exe already available.
     goto :vcpkg_check
 )
-echo [INFO] cl.exe not found. Searching for Visual Studio installation...
-set "VSDEVCMD="
-for %%Y in (2022 2025 18 17) do (
-    for %%E in (BuildTools Community Professional Enterprise) do (
-        for %%P in ("!ProgramFiles(x86)!" "!ProgramFiles!") do (
-            if exist "%%~P\Microsoft Visual Studio\%%Y\%%E\Common7\Tools\VsDevCmd.bat" (
-                set "VSDEVCMD=%%~P\Microsoft Visual Studio\%%Y\%%E\Common7\Tools\VsDevCmd.bat"
-                goto :found_vs
-            )
-        )
-    )
+echo [INFO] cl.exe not found. Initializing VS Developer Environment...
+if exist "C:\Program Files (x86)\Microsoft Visual Studio\!VS_VER!\BuildTools\Common7\Tools\VsDevCmd.bat" (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\!VS_VER!\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=amd64 >nul 2>&1
+    echo [OK] VS Developer Environment initialized.
+    goto :vcpkg_check
 )
-echo [ERROR] Could not find Visual Studio Build Tools or any VS edition.
-echo         Install VS Build Tools with the "Desktop development with C++" workload.
-echo         See INSTALL.md for details on supported Visual Studio versions.
+if exist "C:\Program Files\Microsoft Visual Studio\!VS_VER!\Community\Common7\Tools\VsDevCmd.bat" (
+    call "C:\Program Files\Microsoft Visual Studio\!VS_VER!\Community\Common7\Tools\VsDevCmd.bat" -arch=amd64 >nul 2>&1
+    echo [OK] VS Developer Environment initialized.
+    goto :vcpkg_check
+)
+echo [ERROR] Could not find Visual Studio !VS_VER! Build Tools or Community edition.
+echo         Install VS Build Tools with "Desktop development with C++" workload.
+echo         See INSTALL.md for details.
 exit /b 1
-
-:found_vs
-echo [INFO] Found: !VSDEVCMD!
-call "!VSDEVCMD!" -arch=amd64 >nul 2>&1
-echo [OK] VS Developer Environment initialized.
 
 :vcpkg_check
 

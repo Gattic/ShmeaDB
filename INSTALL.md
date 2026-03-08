@@ -55,23 +55,31 @@ make uninstall
 
 Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) with the **"Desktop development with C++"** workload. This provides `cl.exe` (MSVC compiler), `cmake`, and `ninja`.
 
-> **Note:** The Visual Studio installation path varies depending on the version and edition you install. Common paths include:
+> **Important:** The build scripts default to Visual Studio **2022**. If you have a different version installed, pass the version as an argument:
 >
-> | Version | Path |
-> |---------|------|
-> | VS 2022 Build Tools | `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools` |
-> | VS 2022 Community | `C:\Program Files\Microsoft Visual Studio\2022\Community` |
-> | VS 2025 Build Tools | `C:\Program Files (x86)\Microsoft Visual Studio\2025\BuildTools` |
-> | VS 18 Build Tools | `C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools` |
+> ```batch
+> build-and-install.bat 18
+> cd unit-tests
+> build-and-run.bat 18
+> ```
 >
-> The `.bat` scripts (`build-and-install.bat` and `unit-tests/build-and-run.bat`) will automatically search for known VS versions and editions. If your installation uses a non-standard path, you can either:
-> 1. Open a **Developer Command Prompt for VS** before running the script (so `cl.exe` is already on PATH), or
-> 2. Manually call `VsDevCmd.bat` from your VS installation before running the build.
+> Common version values:
+>
+> | Visual Studio Version | Argument |
+> |----------------------|----------|
+> | VS 2022 | `2022` (default) |
+> | VS 2025 | `2025` |
+> | VS 18 | `18` |
+> | VS 17 | `17` |
 >
 > To find your installation path, run in PowerShell:
 > ```powershell
 > & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -all -property installationPath
 > ```
+>
+> If `vswhere.exe` is not found, Visual Studio Build Tools has not been installed yet.
+>
+> Alternatively, you can skip the `.bat` files entirely by opening a **Developer Command Prompt for VS** (which puts `cl.exe` on PATH automatically) and running the `cmake` commands directly.
 
 Install [vcpkg](https://github.com/microsoft/vcpkg):
 
