@@ -91,10 +91,13 @@ cd C:\vcpkg
 
 Set the `VCPKG_ROOT` environment variable to `C:\vcpkg` (or wherever you cloned it).
 
+Also add the `C:\vcpkg` to the PATH environment so you can directly ues vcpkg command below (optional)
+
 Install FreeType:
 
 ```bash
 vcpkg install freetype
+vcpkg install freetype:x64-windows
 ```
 
 ### Compilation (Command Line)

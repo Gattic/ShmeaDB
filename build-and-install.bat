@@ -78,8 +78,13 @@ echo         Install it with: vcpkg install freetype
 exit /b 1
 
 :freetype_ok
+:: If VCPKG_ROOT was reset, clear any stale CMake cache that points to the old path
+if exist "build\CMakeCache.txt" (
+    echo [FIX] Clearing stale CMake cache...
+    rmdir /s /q build >nul 2>&1
+)
 
-echo [OK] VCPKG_ROOT = %VCPKG_ROOT%
+echo [OK] VCPKG_ROOT = !VCPKG_ROOT!
 
 :: --------------------------------------------------
 :: 3. Verify prerequisites
