@@ -78,7 +78,7 @@ target_link_libraries(${PROJECT_NAME}
 	Plotter GNet DB) #custom libs
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     PRIVATE ${CMAKE_SOURCE_DIR})
 
@@ -87,6 +87,13 @@ install(TARGETS ${PROJECT_NAME} EXPORT shmeaConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Install headers preserving Backend/ directory structure
+install(DIRECTORY Backend/Core/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Backend/Core FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY Backend/Database/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Backend/Database FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY Backend/Networking/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Backend/Networking FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY Backend/Plotter/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Backend/Plotter FILES_MATCHING PATTERN "*.h")
+install(FILES main.h g_export.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
 
