@@ -262,7 +262,8 @@ socket_t Sockets::openClientConnection(const shmea::GString& serverIP, const shm
 			break;
 		}
 
-		if (status < 0 && G_LAST_SOCK_ERROR() == G_EINPROGRESS)
+		int connErr = G_LAST_SOCK_ERROR();
+		if (status < 0 && (connErr == G_EINPROGRESS || connErr == G_EWOULDBLOCK))
 		{
 			fd_set wfds;
 			FD_ZERO(&wfds);

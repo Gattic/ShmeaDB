@@ -5,6 +5,11 @@
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
+    /* Raise the maximum number of sockets in an fd_set from the default 64.
+       Must be defined BEFORE <winsock2.h> is included. */
+    #ifndef FD_SETSIZE
+        #define FD_SETSIZE 1024
+    #endif
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <windows.h>
