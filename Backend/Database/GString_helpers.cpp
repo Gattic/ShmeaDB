@@ -77,10 +77,13 @@ GType GString::Typify(const char* word, unsigned int wordLen)
 bool GString::isWhitespace() const
 {
 	const GString options(" \t\r\n", 4);
+	const char* raw = rawData();
+	if (!raw)
+		return true;
 
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		unsigned int breakPoint = options.cfind(block[i]);
+		unsigned int breakPoint = options.cfind(raw[i]);
 		if (breakPoint == npos)
 			return false;
 	}
@@ -91,6 +94,9 @@ bool GString::isWhitespace() const
 bool GString::isInteger() const
 {
 	const GString options = "0123456789";
+	const char* raw = rawData();
+	if (!raw)
+		return false;
 
 	unsigned int negNumber = cfind('-'), i = 0;
 	if ((negNumber != npos) && (negNumber > 0))
@@ -100,7 +106,7 @@ bool GString::isInteger() const
 
 	for (; i < size(); ++i)
 	{
-		unsigned int breakPoint = options.cfind(block[i]);
+		unsigned int breakPoint = options.cfind(raw[i]);
 		if (breakPoint == npos)
 			return false;
 	}
@@ -111,6 +117,9 @@ bool GString::isInteger() const
 bool GString::isFloat() const
 {
 	const GString options = "0123456789.f";
+	const char* raw = rawData();
+	if (!raw)
+		return false;
 
 	unsigned int negNumber = cfind('-'), i = 0;
 	if ((negNumber != npos) && (negNumber > 0))
@@ -120,7 +129,7 @@ bool GString::isFloat() const
 
 	for (; i < size(); ++i)
 	{
-		unsigned int breakPoint = options.cfind(block[i]);
+		unsigned int breakPoint = options.cfind(raw[i]);
 		if (breakPoint == npos)
 			return false;
 	}
@@ -130,9 +139,12 @@ bool GString::isFloat() const
 
 bool GString::isUpper() const
 {
+	const char* raw = rawData();
+	if (!raw)
+		return false;
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		char letter = block[i];
+		char letter = raw[i];
 		if (!isUpper(letter))
 			return false;
 	}
@@ -141,10 +153,11 @@ bool GString::isUpper() const
 
 GString GString::toUpper() const
 {
+	const char* raw = rawData();
 	GString y = "";
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		char letter = block[i];
+		char letter = raw[i];
 		letter = toUpper(letter);
 		y += letter;
 	}
@@ -153,9 +166,12 @@ GString GString::toUpper() const
 
 bool GString::isLower() const
 {
+	const char* raw = rawData();
+	if (!raw)
+		return false;
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		char letter = block[i];
+		char letter = raw[i];
 		if (!isLower(letter))
 			return false;
 	}
@@ -164,10 +180,11 @@ bool GString::isLower() const
 
 GString GString::toLower() const
 {
+	const char* raw = rawData();
 	GString y = "";
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		char letter = block[i];
+		char letter = raw[i];
 		letter = toLower(letter);
 		y += letter;
 	}
@@ -176,10 +193,11 @@ GString GString::toLower() const
 
 GString GString::toggleCase() const
 {
+	const char* raw = rawData();
 	GString y = "";
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		char letter = block[i];
+		char letter = raw[i];
 		letter = toggleCase(letter);
 		y += letter;
 	}
@@ -198,7 +216,7 @@ GString GString::trim() const
 
 GString GString::Stringify() const
 {
-	if ((!block) || (size() == 0))
+	if (size() == 0 || !rawData())
 		return "";
 
 	if (getType() == CHAR_TYPE)
@@ -267,10 +285,11 @@ bool GString::isAlphaNum(char x)
 
 GString GString::makeAlphaNum() const
 {
+	const char* raw = rawData();
 	GString y = "";
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		char letter = block[i];
+		char letter = raw[i];
 		if (isAlphaNum(letter))
 			y += letter;
 	}

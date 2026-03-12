@@ -21,12 +21,13 @@ using namespace shmea;
 // Member helpers
 unsigned int GType::cfind(char cChar) const
 {
-	if(!block)
+	const char* raw = rawData();
+	if(!raw)
 		return npos;
 
 	for (unsigned int i = 0; i < size(); ++i)
 	{
-		if (block[i] == cChar)
+		if (raw[i] == cChar)
 			return i;
 	}
 
@@ -35,7 +36,8 @@ unsigned int GType::cfind(char cChar) const
 
 unsigned int GType::find(const char* cStr, unsigned int cLen) const
 {
-	if(!block)
+	const char* raw = rawData();
+	if(!raw)
 		return npos;
 
 	for (unsigned int i = 0; i < size(); ++i)
@@ -45,7 +47,7 @@ unsigned int GType::find(const char* cStr, unsigned int cLen) const
 			if(i+j >= size())
 				break;
 
-			if (block[i+j] != cStr[j])
+			if (raw[i+j] != cStr[j])
 				break;
 
 			if (j < cLen - 1)

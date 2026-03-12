@@ -23,20 +23,26 @@ GType::GType()
 {
 	type = NULL_TYPE;
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 }
 
 GType::GType(const GType& g2)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 	if (g2.blockSize > 0)
-		set(g2.type, g2.block.get(), g2.blockSize);
+		set(g2.type, g2.rawData(), g2.blockSize);
 }
 
 GType::GType(const bool& newBlock)
 {
 	unsigned int newBlockSize = sizeof(bool);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(BOOLEAN_TYPE, &newBlock, newBlockSize);
 }
@@ -45,6 +51,8 @@ GType::GType(const char& newBlock)
 {
 	unsigned int newBlockSize = sizeof(char);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(CHAR_TYPE, &newBlock, newBlockSize);
 }
@@ -53,6 +61,8 @@ GType::GType(const short& newBlock)
 {
 	unsigned int newBlockSize = sizeof(short);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(SHORT_TYPE, &newBlock, newBlockSize);
 }
@@ -61,6 +71,8 @@ GType::GType(const int& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(INT_TYPE, &newBlock, newBlockSize);
 }
@@ -69,6 +81,8 @@ GType::GType(const int64_t& newBlock)
 {
 	unsigned int newBlockSize = sizeof(int64_t);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(LONG_TYPE, &newBlock, newBlockSize);
 }
@@ -77,6 +91,8 @@ GType::GType(const float& newBlock)
 {
 	unsigned int newBlockSize = sizeof(float);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(FLOAT_TYPE, &newBlock, newBlockSize);
 }
@@ -85,6 +101,8 @@ GType::GType(const double& newBlock)
 {
 	unsigned int newBlockSize = sizeof(double);
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	set(DOUBLE_TYPE, &newBlock, newBlockSize);
 }
@@ -93,6 +111,8 @@ GType::GType(const char* newBlock)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	// Add the object if its valid
 	unsigned int newBlockSize = strlen(newBlock);
@@ -104,6 +124,8 @@ GType::GType(const char* newBlock, unsigned int len)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	// Add the object if its valid
 	unsigned int newBlockSize = len;
@@ -115,6 +137,8 @@ GType::GType(Type newType, const void* newBlock, int64_t newBlockSize)
 {
 	type = NULL_TYPE;
 	blockSize = 0;
+	useInline = false;
+	memset(inlineBlock, 0, SBO_SIZE + 1);
 
 	// Add the object if its valid
 	if (newBlockSize > 0)
@@ -125,6 +149,7 @@ GType::~GType()
 {
 	blockSize = 0;
 	type = NULL_TYPE;
+	useInline = false;
 }
 
 GType::Type GType::getType() const
@@ -134,15 +159,28 @@ GType::Type GType::getType() const
 
 const char* GType::c_str() const
 {
-	if ((!block.get()) || (size() == 0))
+	if (size() == 0)
 		return NULL;
+	if (useInline)
+		return inlineBlock;
+	if (!block.get())
+		return NULL;
+	return block.get();
+}
 
+const char* GType::rawData() const
+{
+	if (size() == 0)
+		return NULL;
+	if (useInline)
+		return inlineBlock;
 	return block.get();
 }
 
 char GType::getChar() const
 {
-	if ((!block.get()) || (size() == 0))
+	const char* raw = rawData();
+	if (!raw)
 		return 0;
 
 	// Char Type (match)
@@ -152,7 +190,7 @@ char GType::getChar() const
 	switch (this->getType())
 	{
 		case CHAR_TYPE:
-			return *((char*)block.get());
+			return *((char*)raw);
 		case SHORT_TYPE:
 			return this->getShort();
 		case INT_TYPE:
@@ -166,17 +204,18 @@ char GType::getChar() const
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
-			return *this->block;
+			return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return 0;
 	}
 
-	return *((char*)block.get());
+	return *((char*)raw);
 }
 
 short GType::getShort() const
 {
-	if ((!block.get()) || (size() == 0))
+	const char* raw = rawData();
+	if (!raw)
 		return 0;
 
 	// Short Type (match)
@@ -188,7 +227,7 @@ short GType::getShort() const
 		case CHAR_TYPE:
 			return this->getChar();
 		case SHORT_TYPE:
-			return *((short*)block.get());
+			return *((short*)raw);
 		case INT_TYPE:
 			return this->getInt();
 		case LONG_TYPE:
@@ -200,17 +239,18 @@ short GType::getShort() const
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
-			return *this->block;
+			return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return 0;
 	}
 
-	return *((short*)block.get());
+	return *((short*)raw);
 }
 
 int GType::getInt() const
 {
-	if ((!block.get()) || (size() == 0))
+	const char* raw = rawData();
+	if (!raw)
 		return 0;
 
 	// int Type (match)
@@ -224,7 +264,7 @@ int GType::getInt() const
 		case SHORT_TYPE:
 			return this->getShort();
 		case INT_TYPE:
-			return *((int*)block.get());
+			return *((int*)raw);
 		case LONG_TYPE:
 			return this->getLong();
 		case FLOAT_TYPE:
@@ -234,17 +274,18 @@ int GType::getInt() const
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
-		    return *this->block;
+		    return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return 0;
 	}
 
-	return *((int*)block.get());
+	return *((int*)raw);
 }
 
 int64_t GType::getLong() const
 {
-	if ((!block.get()) || (size() == 0))
+	const char* raw = rawData();
+	if (!raw)
 		return 0;
 
 	// Long Type (match)
@@ -260,7 +301,7 @@ int64_t GType::getLong() const
 		case INT_TYPE:
 			return this->getInt();
 		case LONG_TYPE:
-			return *((int64_t*)block.get());
+			return *((int64_t*)raw);
 		case FLOAT_TYPE:
 			return this->getFloat();
 		case DOUBLE_TYPE:
@@ -268,17 +309,18 @@ int64_t GType::getLong() const
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
-			return *this->block;
+			return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return 0l;
 	}
 
-	return *((int64_t*)block.get());
+	return *((int64_t*)raw);
 }
 
 float GType::getFloat() const
 {
-	if ((!block.get()) || (size() == 0))
+	const char* raw = rawData();
+	if (!raw)
 		return 0;
 
 	// Float Type (match)
@@ -296,23 +338,24 @@ float GType::getFloat() const
 		case LONG_TYPE:
 			return this->getLong();
 		case FLOAT_TYPE:
-			return *((float*)block.get());
+			return *((float*)raw);
 		case DOUBLE_TYPE:
 			return this->getDouble();
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
-			return *this->block;
+			return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return 0.0;
 	}
 
-	return *((float*)block.get());
+	return *((float*)raw);
 }
 
 double GType::getDouble() const
 {
-	if ((!block.get()) || (size() == 0))
+	const char* raw = rawData();
+	if (!raw)
 		return 0;
 
 	// Double Type (match)
@@ -332,22 +375,23 @@ double GType::getDouble() const
 		case FLOAT_TYPE:
 			return this->getFloat();
 		case DOUBLE_TYPE:
-			return *((double*)block.get());
+			return *((double*)raw);
 		case BOOLEAN_TYPE:
 			return this->getBoolean();
 		case STRING_TYPE:
-			return *this->block;
+			return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return 0.0f;
 	}
 
-	return *((double*)block.get());
+	return *((double*)raw);
 }
 
 bool GType::getBoolean() const
 {
-	if ((!block.get()) || (size() == 0))
-		return 0;
+	const char* raw = rawData();
+	if (!raw)
+		return false;
 
 	// Boolean Type (match)
 	//if (size() != sizeof(bool))
@@ -368,14 +412,14 @@ bool GType::getBoolean() const
 		case DOUBLE_TYPE:
 			return this->getDouble();
 		case BOOLEAN_TYPE:
-			return *((bool*)block.get());
+			return *((bool*)raw);
 		case STRING_TYPE:
-			return *this->block;
+			return *raw;
 		case NULL_TYPE: case FUNCTION_TYPE:
 			return false;
 	}
 
-	return *((bool*)block.get());
+	return *((bool*)raw);
 }
 
 unsigned int GType::size() const
@@ -385,19 +429,32 @@ unsigned int GType::size() const
 
 void GType::set(Type newType, const void* newBlock, int64_t newBlockSize)
 {
-    // Create new buffer before clearing old one
+    if (newBlock && newBlockSize > 0 && static_cast<unsigned int>(newBlockSize) <= SBO_SIZE)
+    {
+        // Small-buffer path: store inline, no heap allocation
+        block.reset();
+        type = newType;
+        blockSize = newBlockSize;
+        useInline = true;
+        memcpy(inlineBlock, newBlock, newBlockSize);
+        inlineBlock[newBlockSize] = '\0';
+        return;
+    }
+
+    // Heap path for large strings
     char* newData = NULL;
     if (newBlock && newBlockSize > 0)
     {
-        newData = new char[newBlockSize + 1];  // +1 for null terminator
+        newData = new char[newBlockSize + 1];
         memcpy(newData, newBlock, newBlockSize);
         newData[newBlockSize] = '\0';
     }
 
-    // Only reset old data after new data is ready
     block.reset();
     type = newType;
     blockSize = newBlockSize;
+    useInline = false;
+    memset(inlineBlock, 0, SBO_SIZE + 1);
 
     if (newData)
     {

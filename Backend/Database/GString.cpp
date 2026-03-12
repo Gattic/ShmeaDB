@@ -130,7 +130,8 @@ const char& GString::operator[](const unsigned int& index) const
 		throw std::out_of_range(buffer);
 	}
 
-	return block[index];
+	const char* raw = rawData();
+	return raw[index];
 }
 
 char& GString::operator[](const unsigned int& index)
@@ -142,6 +143,8 @@ char& GString::operator[](const unsigned int& index)
 		throw std::out_of_range(buffer);
 	}
 
+	if (useInline)
+		return inlineBlock[index];
 	return block[index];
 }
 
@@ -255,7 +258,7 @@ GString GString::operator+=(const char& cChar)
 
 	unsigned int newBlockSize = length() + 1;
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, block.get(), length());
+	memcpy(newBlock, rawData(), length());
 	newBlock[newBlockSize-1] = cChar;
 
 	set(getType(), newBlock, newBlockSize);
@@ -274,7 +277,7 @@ GString GString::operator+=(const GType& str2)
 
 	unsigned int newBlockSize = length() + str2.size();
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, block.get(), length());
+	memcpy(newBlock, rawData(), length());
 	memcpy(&newBlock[length()], str2.c_str(), str2.size());
 
 	set(getType(), newBlock, newBlockSize);
@@ -293,7 +296,7 @@ GString GString::operator+=(const GString& str2)
 
 	unsigned int newBlockSize = length() + str2.size();
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, block.get(), length());
+	memcpy(newBlock, rawData(), length());
 	memcpy(&newBlock[length()], str2.c_str(), str2.size());
 
 	set(getType(), newBlock, newBlockSize);
@@ -312,7 +315,7 @@ GString GString::operator+=(const char* str2)
 
 	unsigned int newBlockSize = length() + strlen(str2);
 	char* newBlock = (char*)malloc(newBlockSize);
-	memcpy(newBlock, block.get(), length());
+	memcpy(newBlock, rawData(), length());
 	memcpy(&newBlock[length()], str2, strlen(str2));
 
 	set(getType(), newBlock, newBlockSize);
@@ -397,7 +400,8 @@ GString GString::substr(unsigned int start, unsigned int len) const
 	if(len == 0)
 		return emptyStr;
 
-	GString newStr(&block[start], len);
+	const char* raw = rawData();
+	GString newStr(&raw[start], len);
 	return newStr;
 }
 
@@ -406,7 +410,8 @@ std::vector<GString> GString::split(const shmea::GString& delimiter) const
 	unsigned int pos = 0;
 	unsigned int prevPos = 0;
 	std::vector<GString> ret;
-	while (((pos = find(&block[prevPos], blockSize-prevPos, delimiter.c_str(), delimiter.length()))) ) {
+	const char* raw = rawData();
+	while (((pos = find(&raw[prevPos], blockSize-prevPos, delimiter.c_str(), delimiter.length()))) ) {
 		ret.push_back(substr(prevPos, pos));
 		//the last iteration
 		if(pos == shmea::GString::npos)

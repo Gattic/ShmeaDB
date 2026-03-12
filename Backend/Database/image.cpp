@@ -455,25 +455,20 @@ void Image::LoadPNG(const GString& filename)
 
 	// Load the image
 	PNGHelper::LoadPNG(*this, filename.c_str());
-
-	printf("[IMG] Loaded PNG: %s(%d,%d)\n", filename.c_str(), width, height);
 }
 
 
 shmea::GVector<float> Image::flatten() const
 {
+    const unsigned int pixelCount = width * height;
     shmea::GVector<float> retList;
+    if (pixelCount == 0 || !data)
+        return retList;
 
-    for (unsigned int y = 0; y < height; ++y)
+    retList.reserve(pixelCount);
+    for (unsigned int i = 0; i < pixelCount; ++i)
     {
-        for (unsigned int x = 0; x < width; ++x)
-        {
-            RGBA c = GetPixel(x, y);
-
-            // Pack RGBA into a single float
-            float hue = rgbaToHueIntensity(c);
-            retList.push_back(hue);
-        }
+        retList.push_back(rgbaToHueIntensity(data[i]));
     }
 
     return retList;
@@ -523,6 +518,25 @@ float shmea::Image::rgbaToHueIntensity(const RGBA& c) const
 
     // Blend hue and intensity based on saturation, then multiply by alpha
     return ((saturation * hueNorm) + ((1.0f - saturation) * intensity)) * a;
+}
+
+shmea::GVector<float> Image::flattenRawRGBA(const unsigned char* rgba, unsigned int w, unsigned int h)
+{
+    const unsigned int pixelCount = w * h;
+    shmea::GVector<float> retList;
+    if (pixelCount == 0 || !rgba)
+        return retList;
+
+    retList.reserve(pixelCount);
+    Image dummy; // only used for rgbaToHueIntensity
+    for (unsigned int i = 0; i < pixelCount; ++i)
+    {
+        const unsigned char* p = &rgba[i * 4];
+        RGBA c(p[0], p[1], p[2], p[3]);
+        retList.push_back(dummy.rgbaToHueIntensity(c));
+    }
+
+    return retList;
 }
 
 shmea::GString Image::hash() const
