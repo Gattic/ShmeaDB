@@ -335,10 +335,22 @@ void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 	}
 	else
 	{
-	    // Wait for lock file to be removed
+	    // Wait for lock file to be removed, with a stale-lock timeout.
+	    // If the lock is not released within 5 seconds, assume the previous
+	    // holder crashed and remove the stale file.
+	    struct timeval waitStart;
+	    gettimeofday(&waitStart, NULL);
 	    while(stat((logDir + lockFile).c_str(), &st) != -1)
 	    {
-		// Wait
+		struct timeval now;
+		gettimeofday(&now, NULL);
+		long elapsedMs = (long)((now.tv_sec - waitStart.tv_sec) * 1000L +
+				        (now.tv_usec - waitStart.tv_usec) / 1000L);
+		if (elapsedMs > 5000)
+		{
+		    remove((logDir + lockFile).c_str());
+		    break;
+		}
 	    }
 
 	    // Append to log file

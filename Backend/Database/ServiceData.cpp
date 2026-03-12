@@ -80,6 +80,7 @@ ServiceData::ServiceData(const ServiceData& instance2)
 	sid = instance2.sid;
 	command = instance2.command;
 	serviceKey = instance2.serviceKey;
+	argList = instance2.argList;
 	repList = instance2.repList;
 	repTable = instance2.repTable;
 	repObj = instance2.repObj;
