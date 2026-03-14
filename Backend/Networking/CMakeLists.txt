@@ -19,6 +19,8 @@ set(GNet_src_files
 	service.h
 	socket.cpp
 	socket.h
+	udp_channel.cpp
+	udp_channel.h
 )
 add_library(GNet ${GNet_src_files})
 
