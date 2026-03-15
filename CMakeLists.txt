@@ -75,7 +75,7 @@ endif()
 
 #Link libraries
 target_link_libraries(${PROJECT_NAME}
-	Plotter GNet DB) #custom libs
+	Plotter GNet DB ${FREETYPE_LIBRARIES}) #custom libs
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
