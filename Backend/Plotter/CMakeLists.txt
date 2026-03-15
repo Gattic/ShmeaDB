@@ -42,7 +42,3 @@ install(TARGETS Plotter EXPORT shmeaConfig
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
-
-export(TARGETS Plotter FILE shmeaConfig.cmake)
-

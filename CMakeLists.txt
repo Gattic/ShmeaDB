@@ -97,8 +97,6 @@ install(FILES main.h g_export.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
 
-export(TARGETS ${PROJECT_NAME} FILE shmeaConfig.cmake)
-
 #make fmt
 add_custom_target(fmt
 	COMMAND ./clang-format-all
