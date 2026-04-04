@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <assert.h>
 
 void G_assert(const char* fileName, int lineNo, const char* failureMsg, bool expr);

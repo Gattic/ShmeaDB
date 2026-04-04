@@ -5,7 +5,9 @@ if(EMSCRIPTEN)
     add_compile_definitions(USE_FREETYPE_PORT) # Optional, for your app logic
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_FREETYPE=1")
 else()
-    include(FindPkgConfig)
+    if(NOT WIN32)
+        include(FindPkgConfig)
+    endif()
     find_package(Freetype REQUIRED)
     include_directories(${FREETYPE_INCLUDE_DIRS})
 endif()
@@ -21,7 +23,6 @@ set(DB_src_files
 	image.cpp
 	GVector.h
 	GPointer.h
-    GMutex.h
 	GType.cpp
 	GType_helpers.cpp
 	GType_operators.cpp
@@ -44,7 +45,7 @@ add_library(DB ${DB_src_files})
 #Link libraries
 if(EMSCRIPTEN)
 else()
-    target_link_libraries(DB ${FREETYPE_LIBRARIES})
+    target_link_libraries(DB Core ${FREETYPE_LIBRARIES})
 endif()
 
 install(TARGETS DB EXPORT shmeaConfig
@@ -52,7 +53,3 @@ install(TARGETS DB EXPORT shmeaConfig
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
-
-export(TARGETS DB FILE shmeaConfig.cmake)

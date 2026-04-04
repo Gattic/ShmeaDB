@@ -17,11 +17,10 @@
 #ifndef _GNET_UDP_CHANNEL
 #define _GNET_UDP_CHANNEL
 
+#include "../Core/platform.h"
+#include "../Core/GMutex.h"
 #include "../Database/GString.h"
 #include <vector>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <pthread.h>
 
 namespace GNet {
 
@@ -48,12 +47,12 @@ public:
     int AddPeer(const sockaddr_storage& addr, socklen_t addrLen);
     void RemovePeer(int peerIndex);
 
-    bool IsOpen() const { return m_socket >= 0; }
+    bool IsOpen() const { return m_socket != INVALID_SOCKET_VALUE; }
 
 private:
-    int m_socket;
+    socket_t m_socket;
     std::vector<UDPPeer> m_peers;
-    pthread_mutex_t* m_peerMutex;
+    shmea::GMutex* m_peerMutex;
 };
 
 } // namespace GNet

@@ -6,6 +6,7 @@
 // in any form or by any means without the written permission of
 // Robert Carneiro is strictly prohibited.
 #include "main.h"
+#include "Backend/Core/platform.h"
 #include "Backend/Database/GType-test.h"
 #include "Backend/Database/GString-test.h"
 #include "Backend/Database/GPointer-test.h"
@@ -25,11 +26,21 @@
 #include "Backend/Database/GVector-test.h"
 #include "Backend/Database/image-test.h"
 #include "Backend/Plotter/plotter-test.h"
+#include "Backend/Core/GThread-test.h"
+#include "Backend/Core/GCondVar-test.h"
+#include "Backend/Core/GDir-test.h"
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+	WSADATA wsaData;
+	WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 	if (argc == 1)
 	{
+	    GThreadUnitTest();
+	    GCondVarUnitTest();
+	    GDirUnitTest();
 	    GTypeUnitTest();
 	    GStringUnitTest();
 	    GVectorUnitTest();
@@ -59,7 +70,13 @@ int main(int argc, char* argv[])
 	}
 	else if (argc > 1)
 	{
-	    if (strcmp(argv[1], "db") == 0)
+	    if (strcmp(argv[1], "core") == 0)
+	    {
+		GThreadUnitTest();
+		GCondVarUnitTest();
+		GDirUnitTest();
+	    }
+	    else if (strcmp(argv[1], "db") == 0)
 	    {
 		GTypeUnitTest();
 		GStringUnitTest();
@@ -108,5 +125,8 @@ int main(int argc, char* argv[])
 	// `pthread_exit()` keeps the process alive while other threads exist.
 	// For test executables (and GUI apps), that can look like a "hang forever"
 	// if libraries (e.g. GLib) have background thread pools.
+#ifdef _WIN32
+	WSACleanup();
+#endif
 	return EXIT_SUCCESS;
 }

@@ -65,63 +65,33 @@ bool SaveFolder::deleteItem(const GString& siName)
 
 bool SaveFolder::checkFolder()
 {
-	// create the directory if we need to
-	struct stat info;
 	GString dirname = getPath();
 	if (dirname.length() > 0)
 	{
-		if (stat(dirname.c_str(), &info) != 0)
+		if (!shmea::GDir::exists(dirname.c_str()))
 		{
-			// make the directory
-			int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-			if (status < 0)
+			if (!shmea::GDir::makeDir(dirname.c_str()))
 			{
 				printf("[DB] %s mkdir failed\n", dirname.c_str());
 				return false;
 			}
 		}
-		else if (info.st_mode & S_IFDIR)
-		{
-			// directory exists
-			// do nothing
-		}
-		else
-		{
-			// path is not a directory
-			printf("[DB] %s is not a directory\n", dirname.c_str());
-			return false;
-		}
+		// GDir::exists() confirms it's a directory, not a file
 	}
 	return true;
 }
 
 SaveTable* SaveFolder::newItem(const GString& siName, const GTable& newTable)
 {
-	// create the directory if we need to
-	struct stat info;
 	GString dirname = getPath();
 	if (dirname.length() > 0)
 	{
-		if (stat(dirname.c_str(), &info) != 0)
+		if (!shmea::GDir::exists(dirname.c_str()))
 		{
-			// make the directory
-			int status = mkdir(dirname.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-			if (status < 0)
+			if (!shmea::GDir::makeDir(dirname.c_str()))
 			{
 				printf("[DB] %s mkdir failed\n", dirname.c_str());
-				// return;
 			}
-		}
-		else if (info.st_mode & S_IFDIR)
-		{
-			// directory exists
-			// do nothing
-		}
-		else
-		{
-			// path is not a directory
-			printf("[DB] %s is not a directory\n", dirname.c_str());
-			// return;
 		}
 	}
 
@@ -140,29 +110,24 @@ void SaveFolder::load()
 		return;
 
 	GString folderName = getPath();
-	DIR* dir = opendir(folderName.c_str());
-	if (!dir)
+	shmea::GDir dir;
+	if (!dir.open(folderName.c_str()))
 	{
 		printf("[DB] -%s\n", folderName.c_str());
 		return;
 	}
 
 	// loop through the files in the directory
-	struct dirent* ent = NULL;
-	while ((ent = readdir(dir)) != NULL)
+	shmea::GDirEntry ent;
+	while (dir.next(ent))
 	{
-		// don't want the current directory, parent or hidden files/folders
-		GString fname(ent->d_name);
-		if (fname[0] == '.')
-			continue;
-
 		// Load each file by the name
+		GString fname(ent.name.c_str());
 		SaveTable* newSV = new SaveTable(dname, fname);
 		newSV->loadByName();
 		addItem(newSV);
 	}
-
-	closedir(dir);
+	// GDir::~GDir() closes automatically
 }
 
 std::vector<SaveFolder*> SaveFolder::loadFolders()
@@ -170,29 +135,25 @@ std::vector<SaveFolder*> SaveFolder::loadFolders()
 	GString folderName = "database/";
 	std::vector<SaveFolder*> folderList;
 
-	DIR* dir;
-	struct dirent* ent;
-	if ((dir = opendir(folderName.c_str())) != NULL)
+	shmea::GDir dir;
+	if (!dir.open(folderName.c_str()))
 	{
 		printf("[DB] -%s\n", folderName.c_str());
 		return folderList;
 	}
 
 	// loop through the directory
-	while ((ent = readdir(dir)) != NULL)
+	shmea::GDirEntry ent;
+	while (dir.next(ent))
 	{
-		// don't want the current directory, parent or hidden files/folders
-		GString fname(ent->d_name);
-		if (fname[0] == '.')
-			continue;
-
+		GString fname(ent.name.c_str());
 		printf("Folder Name: %s \n", fname.c_str());
 		SaveFolder* newSL = new SaveFolder(fname);
 		newSL->load();
 		folderList.push_back(newSL);
 	}
+	// GDir::~GDir() closes automatically
 
-	closedir(dir);
 	return folderList;
 }
 

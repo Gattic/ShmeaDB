@@ -17,6 +17,10 @@
 #include "GList.h"
 #include "GType.h"
 
+#ifdef _MSC_VER
+#define strtok_r strtok_s
+#endif
+
 using namespace shmea;
 
 GList::GList()

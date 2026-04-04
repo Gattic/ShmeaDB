@@ -63,7 +63,7 @@ Connection::~Connection()
 	name = "";
 	ip = "";
 	port = "";
-	sockfd = -1;
+	sockfd = INVALID_SOCKET_VALUE;
 	connectionType = EMPTY_TYPE;
 	cryptEnabled = true;
 	key = 420l;
@@ -79,8 +79,8 @@ void Connection::finish()
 
 	// close the connection
 	if (closeOnFinish)
-		close(this->sockfd);
-	this->sockfd = -1;
+		G_CLOSE_SOCKET(this->sockfd);
+	this->sockfd = INVALID_SOCKET_VALUE;
 }
 
 shmea::GString Connection::getName() const

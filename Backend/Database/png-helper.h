@@ -24,6 +24,12 @@
 #include <cstring>
 #include <string>
 #include <cmath>
+#ifdef _WIN32
+    #include <direct.h>
+    #ifndef mkdir
+        #define mkdir(path, mode) _mkdir(path)
+    #endif
+#endif
 //#include <png.h>
 #include "GTable.h"
 

@@ -5,7 +5,9 @@
 #include_directories(${OPENSSL_INCLUDE_DIRS})
 
 #Threading lib
-include(FindPkgConfig)
+if(NOT WIN32)
+    include(FindPkgConfig)
+endif()
 find_package(Threads REQUIRED)
 
 set(GNet_src_files
@@ -25,14 +27,10 @@ set(GNet_src_files
 add_library(GNet ${GNet_src_files})
 
 #Link libraries
-target_link_libraries(GNet ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(GNet Core ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS GNet EXPORT shmeaConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
-
-export(TARGETS GNet FILE shmeaConfig.cmake)

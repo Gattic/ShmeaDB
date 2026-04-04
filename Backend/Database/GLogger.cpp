@@ -16,9 +16,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GLogger.h"
 #include "GType.h"
-#include <sys/time.h>
 #include <time.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+    #include "../Core/platform.h"
+    #include <direct.h>
+    #ifndef mkdir
+        #define mkdir(path, mode) _mkdir(path)
+    #endif
+    #ifdef _MSC_VER
+        /* MSVC does not provide sys/time.h or gettimeofday; provide a replacement */
+        #include <ctime>
+        struct msvc_timeval { long tv_sec; long tv_usec; };
+        struct msvc_timezone { int tz_minuteswest; int tz_dsttime; };
+        #define timeval msvc_timeval
+        #define timezone msvc_timezone
+        static inline int gettimeofday(struct msvc_timeval* tp, struct msvc_timezone* tzp)
+        {
+            FILETIME ft;
+            GetSystemTimeAsFileTime(&ft);
+            unsigned long long t = ((unsigned long long)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
+            t -= 116444736000000000ULL; /* Jan 1, 1601 -> Jan 1, 1970 */
+            t /= 10; /* 100-ns intervals -> microseconds */
+            if (tp) { tp->tv_sec = (long)(t / 1000000ULL); tp->tv_usec = (long)(t % 1000000ULL); }
+            if (tzp) { tzp->tz_minuteswest = 0; tzp->tz_dsttime = 0; }
+            return 0;
+        }
+    #else
+        /* MinGW provides gettimeofday via sys/time.h */
+        #include <sys/time.h>
+    #endif
+#else
+    #include <sys/time.h>
+#endif
 
 using namespace shmea;
 
@@ -231,7 +261,7 @@ shmea::GString GLogger::getDateTime() const
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&tv.tv_sec));
+	{ time_t _t = (time_t)tv.tv_sec; strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", gmtime(&_t)); }
 	shmea::GString strDateTime(timeString);
 	return strDateTime;
 }
@@ -242,7 +272,7 @@ shmea::GString GLogger::generateLogFName() const
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-	strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&tv.tv_sec));
+	{ time_t _t = (time_t)tv.tv_sec; strftime(timeString, sizeof(timeString), "%Y-%m-%d-H%H", gmtime(&_t)); }
 	shmea::GString strDateTime(timeString);
 	return strDateTime;
 }
@@ -305,10 +335,22 @@ void GLogger::log(int logType, shmea::GString category, shmea::GString message)
 	}
 	else
 	{
-	    // Wait for lock file to be removed
+	    // Wait for lock file to be removed, with a stale-lock timeout.
+	    // If the lock is not released within 5 seconds, assume the previous
+	    // holder crashed and remove the stale file.
+	    struct timeval waitStart;
+	    gettimeofday(&waitStart, NULL);
 	    while(stat((logDir + lockFile).c_str(), &st) != -1)
 	    {
-		// Wait
+		struct timeval now;
+		gettimeofday(&now, NULL);
+		long elapsedMs = (long)((now.tv_sec - waitStart.tv_sec) * 1000L +
+				        (now.tv_usec - waitStart.tv_usec) / 1000L);
+		if (elapsedMs > 5000)
+		{
+		    remove((logDir + lockFile).c_str());
+		    break;
+		}
 	    }
 
 	    // Append to log file
