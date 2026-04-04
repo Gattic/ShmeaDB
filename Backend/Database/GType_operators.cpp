@@ -62,7 +62,7 @@ GType::operator bool() const
 
 GType& GType::operator=(const GType& compValue)
 {
-	set(compValue.getType(), compValue.block, compValue.size());
+	set(compValue.getType(), compValue.rawData(), compValue.size());
 	return *this;
 }
 
@@ -233,7 +233,7 @@ bool GType::operator==(const GType& cCell2) const
 	else if ((doubleFlag1) && (doubleFlag2))
 		return (doubleValue1 == doubleValue2);
 	else if ((stringFlag1) && (stringFlag2))
-		return ((size() == cCell2.size()) && (strncmp(block, cCell2.block, size()) == 0));//strings
+		return ((size() == cCell2.size()) && (strncmp(rawData(), cCell2.rawData(), size()) == 0));//strings
 	else if ((boolFlag1) && (boolFlag2))
 		return (boolValue1 == boolValue2);
 	// cross ints and floats
@@ -286,7 +286,9 @@ bool GType::operator==(const double& compValue) const
 bool GType::operator==(const char* compValue) const
 {
 	if (this->blockSize != strlen(compValue)) return false;
-	return (strncmp(block, compValue, strlen(compValue)) == 0);
+	const char* raw = rawData();
+	if (!raw) return false;
+	return (strncmp(raw, compValue, strlen(compValue)) == 0);
 }
 
 bool GType::operator==(const bool& compValue) const
@@ -458,7 +460,7 @@ bool GType::operator<(const GType& cCell2) const
 	else if ((doubleFlag1) && (doubleFlag2))
 		return (doubleValue1 < doubleValue2);
 	else if ((stringFlag1) && (stringFlag2))
-		return (strncmp(block, cCell2.block, size()) < 0);//strings
+		return (strncmp(rawData(), cCell2.rawData(), size()) < 0);//strings
 	else if ((boolFlag1) && (boolFlag2))
 		return (boolValue1 < boolValue2);
 	// cross ints and floats
@@ -635,7 +637,7 @@ bool GType::operator>(const GType& cCell2) const
 	else if ((doubleFlag1) && (doubleFlag2))
 		return (doubleValue1 > doubleValue2);
 	else if ((stringFlag1) && (stringFlag2))
-		return (strncmp(block, cCell2.block, size()) > 0);//strings
+		return (strncmp(rawData(), cCell2.rawData(), size()) > 0);//strings
 	else if ((boolFlag1) && (boolFlag2))
 		return (boolValue1 > boolValue2);
 	// cross ints and floats
@@ -812,7 +814,7 @@ bool GType::operator<=(const GType& cCell2) const
 	else if ((doubleFlag1) && (doubleFlag2))
 		return (doubleValue1 <= doubleValue2);
 	else if ((stringFlag1) && (stringFlag2))
-		return (strncmp(block, cCell2.block, size()) <= 0);//strings
+		return (strncmp(rawData(), cCell2.rawData(), size()) <= 0);//strings
 	else if ((boolFlag1) && (boolFlag2))
 		return (boolValue1 <= boolValue2);
 	// cross ints and floats
@@ -989,7 +991,7 @@ bool GType::operator>=(const GType& cCell2) const
 	else if ((doubleFlag1) && (doubleFlag2))
 		return (doubleValue1 >= doubleValue2);
 	else if ((stringFlag1) && (stringFlag2))
-		return (strncmp(block, cCell2.block, size()) >= 0);//strings
+		return (strncmp(rawData(), cCell2.rawData(), size()) >= 0);//strings
 	else if ((boolFlag1) && (boolFlag2))
 		return (boolValue1 >= boolValue2);
 	// cross ints and floats

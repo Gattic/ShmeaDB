@@ -262,17 +262,10 @@ void PNGHelper::LoadPNG(Image& image, const unsigned char* rgba, unsigned int w,
 {
 	image.Allocate(w, h);
 
-	// Copy image data to the Image class
-	for (unsigned y = 0; y < h; ++y)
+	// RGBA struct is 4 bytes in r,g,b,a order matching lodepng output
+	if (w > 0 && h > 0 && image.getData())
 	{
-		for (unsigned x = 0; x < w; ++x)
-		{
-			const int channels = 4;
-			const unsigned char* pixel = &(rgba[(y * w + x) * channels]);
-
-			shmea::RGBA rgba(pixel[0], pixel[1], pixel[2], pixel[3]);
-			image.SetPixel(x, y, rgba);
-		}
+		memcpy(image.getData(), rgba, static_cast<size_t>(w) * h * 4);
 	}
 }
 

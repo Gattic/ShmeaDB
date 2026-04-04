@@ -73,6 +73,8 @@ GTable::GTable(const GString& fname, char newDelimiter, int importFlag)
 		importFromFile(fname);
 	else if (importFlag == TYPE_STRING)
 		importFromString(fname);
+	else if (importFlag == TYPE_FILE_STRINGS_ONLY)
+		importFromFileStringsOnly(fname);
 }
 
 /*!
@@ -131,11 +133,29 @@ void GTable::importFromFile(const GString& fname)
 	int64_t fSize = ftell(fd);
 	fseek(fd, 0, SEEK_SET);
 
+	// Pre-count rows for reserve (scan for newlines)
+	unsigned int estRows = 0;
+	{
+		static const int COUNT_BUF = 8192;
+		char cbuf[COUNT_BUF];
+		size_t nread;
+		while ((nread = fread(cbuf, 1, COUNT_BUF, fd)) > 0)
+		{
+			for (size_t i = 0; i < nread; ++i)
+				if (cbuf[i] == '\n')
+					++estRows;
+		}
+		fseek(fd, 0, SEEK_SET);
+	}
+	if (estRows > 0)
+		cells.reserve(estRows); // header row doesn't count, but close enough
+
 	// Allocate a buffer
 	int rowCounter = 0;
-	const int MAX_LINE_SIZE = 256;
+	static const int MAX_LINE_SIZE = 4096;
 	int linesRead = 0; // Are the lines read, not how many lines read
 	char buffer[MAX_LINE_SIZE];
+	unsigned int numCols = 0; // learned from header row
 
 	do
 	{
@@ -152,6 +172,10 @@ void GTable::importFromFile(const GString& fname)
 		// EOF or error
 		if (linesRead <= 0)
 			break;
+
+		// Pre-reserve items for data rows
+		if (rowCounter > 0 && numCols > 0)
+			newRow.reserveItems(numCols);
 
 		// Read each column
 		int colCounter = 0;
@@ -186,6 +210,10 @@ void GTable::importFromFile(const GString& fname)
 			}
 		}
 
+		// Learn column count from header row
+		if (rowCounter == 0)
+			numCols = colCounter;
+
 		// add the row to the object
 		if (rowCounter > 0)
 			addRow(newRow);
@@ -194,6 +222,107 @@ void GTable::importFromFile(const GString& fname)
 	} while ((linesRead > 0) && (ftell(fd) < fSize));
 
 	// EOF
+	fclose(fd);
+}
+
+/*!
+ * @brief GTable file import (strings only)
+ * @details imports GTable data from a file, storing every cell as STRING_TYPE (skips Typify)
+ * @param fname the file path to the desired data
+ */
+void GTable::importFromFileStringsOnly(const GString& fname)
+{
+	if (fname.length() == 0)
+		return;
+
+	FILE* fd = fopen(fname.c_str(), "r");
+	printf("[CSV] %c%s\n", (fd != NULL) ? '+' : '-', fname.c_str());
+
+	if (!fd)
+		return;
+
+	fseek(fd, 0, SEEK_END);
+	int64_t fSize = ftell(fd);
+	fseek(fd, 0, SEEK_SET);
+
+	// Pre-count rows for reserve
+	unsigned int estRows = 0;
+	{
+		static const int COUNT_BUF = 8192;
+		char cbuf[COUNT_BUF];
+		size_t nread;
+		while ((nread = fread(cbuf, 1, COUNT_BUF, fd)) > 0)
+		{
+			for (size_t i = 0; i < nread; ++i)
+				if (cbuf[i] == '\n')
+					++estRows;
+		}
+		fseek(fd, 0, SEEK_SET);
+	}
+	if (estRows > 0)
+		cells.reserve(estRows);
+
+	int rowCounter = 0;
+	static const int MAX_LINE_SIZE = 4096;
+	int linesRead = 0;
+	char buffer[MAX_LINE_SIZE];
+	unsigned int numCols = 0;
+
+	do
+	{
+		shmea::GList newRow;
+		bzero(buffer, MAX_LINE_SIZE);
+
+		char readBuffer[MAX_LINE_SIZE];
+		if (fgets(readBuffer, sizeof(readBuffer), fd) != 0)
+			linesRead = sscanf(readBuffer, "%[^\n]s", buffer);
+		else
+			linesRead = 0;
+
+		if (linesRead <= 0)
+			break;
+
+		if (rowCounter > 0 && numCols > 0)
+			newRow.reserveItems(numCols);
+
+		int colCounter = 0;
+		bool lastCol = false;
+		GString line(buffer);
+		int breakPoint = line.cfind(delimiter);
+		while (breakPoint != -1)
+		{
+			GString word = line.substr(0, breakPoint);
+			if (!lastCol)
+				line = line.substr(breakPoint + 1);
+
+			if (rowCounter == 0)
+				header.push_back(word);
+			else
+			{
+				// Skip Typify - store directly as string
+				GType newCell(word.c_str(), word.length());
+				newRow.addGType(newCell);
+			}
+
+			breakPoint = line.cfind(delimiter);
+			++colCounter;
+
+			if ((breakPoint == -1) && (line.length() > 0) && (!lastCol))
+			{
+				breakPoint = line.length();
+				lastCol = true;
+			}
+		}
+
+		if (rowCounter == 0)
+			numCols = colCounter;
+
+		if (rowCounter > 0)
+			addRow(newRow);
+		++rowCounter;
+
+	} while ((linesRead > 0) && (ftell(fd) < fSize));
+
 	fclose(fd);
 }
 

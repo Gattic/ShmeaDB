@@ -24,6 +24,7 @@
 #include "../Core/GMutex.h"
 #include "../Core/GThread.h"
 #include "../Core/GCondVar.h"
+#include "udp_channel.h"
 #include <errno.h>
 #include <iostream>
 #include <map>
@@ -89,6 +90,7 @@ class GServer
 	friend Service;
 
 	shmea::GPointer<GNet::Sockets> socks;
+	UDPChannel* m_udpChannel;
 
 	// Detached outbound connect launcher threads (LaunchInstance) must be accounted for so
 	// GServer can shut down safely without use-after-free.
@@ -226,6 +228,11 @@ public:
 	Connection* getLocalConnection();
 	void removeClientConnection(Connection*);
 	void removeServerConnection(Connection*);
+
+	// UDP game channel (lightweight, independent of TCP service infrastructure)
+	void OpenUDPChannel(const shmea::GString& port);
+	void CloseUDPChannel();
+	UDPChannel* GetUDPChannel() { return m_udpChannel; }
 
 	// Callbacks
 	void setLogoutListener(shmea::GPointer<LogoutListener> listener) { logoutListener = listener; }

@@ -14,61 +14,47 @@
 // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#include "GType.h"
+#ifndef _GNET_UDP_CHANNEL
+#define _GNET_UDP_CHANNEL
 
-using namespace shmea;
+#include "../Core/platform.h"
+#include "../Core/GMutex.h"
+#include "../Database/GString.h"
+#include <vector>
 
-// Member helpers
-unsigned int GType::cfind(char cChar) const
-{
-	const char* raw = rawData();
-	if(!raw)
-		return npos;
+namespace GNet {
 
-	for (unsigned int i = 0; i < size(); ++i)
-	{
-		if (raw[i] == cChar)
-			return i;
-	}
+struct UDPPeer {
+    sockaddr_storage addr;
+    socklen_t addrLen;  // 0 = tombstoned (empty slot)
+};
 
-	return npos;
-}
+class UDPChannel {
+public:
+    UDPChannel();
+    ~UDPChannel();
 
-unsigned int GType::find(const char* cStr, unsigned int cLen) const
-{
-	const char* raw = rawData();
-	if(!raw)
-		return npos;
+    bool Open(const shmea::GString& port);
+    void Close();
 
-	for (unsigned int i = 0; i < size(); ++i)
-	{
-		for (unsigned int j = 0; j < cLen; ++j)
-		{
-			if(i+j >= size())
-				break;
+    void Send(int peerIndex, const void* data, size_t len);
+    void Broadcast(const void* data, size_t len);
 
-			if (raw[i+j] != cStr[j])
-				break;
+    // Non-blocking receive. Returns bytes read, 0 if none, -1 on error.
+    int Receive(void* buffer, size_t maxLen, sockaddr_storage& outAddr);
 
-			if (j < cLen - 1)
-			    continue;
+    // Returns stable peer index. Reuses tombstoned slots.
+    int AddPeer(const sockaddr_storage& addr, socklen_t addrLen);
+    void RemovePeer(int peerIndex);
 
-			// Match
-			return i;
-		}
-	}
+    bool IsOpen() const { return m_socket != INVALID_SOCKET_VALUE; }
 
-	return npos;
-}
+private:
+    socket_t m_socket;
+    std::vector<UDPPeer> m_peers;
+    shmea::GMutex* m_peerMutex;
+};
 
-unsigned int GType::cfind(char cChar, const char* cStr, unsigned int cLen)
-{
-	GType gTemp(STRING_TYPE, cStr, cLen);
-	return gTemp.cfind(cChar);
-}
+} // namespace GNet
 
-unsigned int GType::find(const char* str, unsigned int len, const char* str2, unsigned int len2)
-{
-	GType gTemp(STRING_TYPE, str, len);
-	return gTemp.find(str2, len2);
-}
+#endif // _GNET_UDP_CHANNEL

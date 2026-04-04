@@ -76,6 +76,7 @@ GNet::GServer::GServer()
 	logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	socks = shmea::GPointer<Sockets>(new Sockets(this));
 	sockfd = INVALID_SOCKET_VALUE;
+	m_udpChannel = NULL;
 	cryptEnabled = true;
 	LOCAL_ONLY = false;
 	running = false;
@@ -467,6 +468,9 @@ shmea::GString GNet::GServer::getPort() const
 void GNet::GServer::stop()
 {
 	running = false;
+
+	// Close UDP game channel before stopping threads.
+	CloseUDPChannel();
 
 	// Stop worker pool first (it may enqueue final outbound messages).
 	stopServicePool();
@@ -1529,5 +1533,29 @@ void GNet::GServer::LogoutInstance(Connection* cConnection)
 
 	// Attempt immediate delete if possible; otherwise it will be reaped later.
 	reapRetiredConnections();
+}
+
+// ---------------------------------------------------------------------------
+// UDP game channel
+// ---------------------------------------------------------------------------
+
+void GNet::GServer::OpenUDPChannel(const shmea::GString& port) {
+	if (m_udpChannel) return;
+	m_udpChannel = new UDPChannel();
+	if (!m_udpChannel->Open(port)) {
+		delete m_udpChannel;
+		m_udpChannel = NULL;
+		printf("[GServer] Failed to open UDP channel on port %s\n", port.c_str());
+	} else {
+		printf("[GServer] UDP channel opened on port %s\n", port.c_str());
+	}
+}
+
+void GNet::GServer::CloseUDPChannel() {
+	if (m_udpChannel) {
+		m_udpChannel->Close();
+		delete m_udpChannel;
+		m_udpChannel = NULL;
+	}
 }
 
