@@ -44,20 +44,21 @@ public:
 		serverInstance = NULL; // Not ours to delete
 	}
 
-	shmea::ServiceData* execute(const shmea::ServiceData* data)
+	shmea::GPointer<shmea::ServiceData> execute(
+		const shmea::ServiceData* data)
 	{
 		// Log the client into the server
 		class GNet::Connection* destination = data->getConnection();
 
 		if (!serverInstance)
-			return NULL;
+			return {};
 
 		if (data->getType() != shmea::ServiceData::TYPE_LIST)
-			return NULL;
+			return {};
 
 		shmea::GList cList = data->getList();
 		if (cList.size() < 1)
-			return NULL;
+			return {};
 
 		// Check the characters in the name
 		shmea::GString clientName = cList.getString(0);
@@ -75,7 +76,8 @@ public:
 			wData.addString(destination->getName());
 			wData.addLong(newKey);
 
-			shmea::GPointer<shmea::ServiceData> cData(new shmea::ServiceData(destination, "Handshake_Client"));
+			auto cData = shmea::make_gpointer<shmea::ServiceData>(
+				destination, "Handshake_Client");
 			cData->set(wData);
 			serverInstance->send(cData);
 			serverInstance->logger->debug("SRVC", shmea::GString::format("newKey1: %ld:%ld", newKey, wData.getLong(1)));
@@ -89,7 +91,7 @@ public:
 		// Notify login listener now that the name is known
 		serverInstance->notifyClientLogin(destination);
 
-		return NULL;
+		return {};
 	}
 
 	shmea::GString getName() const
@@ -97,9 +99,10 @@ public:
 		return "Handshake_Server";
 	}
 
-	GNet::Service* MakeService(GNet::GServer* newInstance) const
+	shmea::GPointer<GNet::Service> MakeService(
+		GNet::GServer* newInstance) const
 	{
-		return new Handshake_Server(newInstance);
+		return shmea::make_gpointer<Handshake_Server>(newInstance);
 	}
 };
 

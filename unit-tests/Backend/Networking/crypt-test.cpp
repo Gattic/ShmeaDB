@@ -30,7 +30,7 @@ void CryptUnitTest()
 	mcData->setArgList(mcArgs);
 
 	// Serialize
-	shmea::GString serializedStr = shmea::Serializable::Serialize(mcData);
+	shmea::GString serializedStr = shmea::Serializable::Serialize(mcData.get());
 
 	// Encrypt
 	int64_t key = 123;
@@ -46,7 +46,7 @@ void CryptUnitTest()
 
 	// Deserialize
 	shmea::GPointer<shmea::ServiceData> deserializedCD(new shmea::ServiceData(cConnection, shmea::GString("ServiceNameHere")));
-	shmea::Serializable::Deserialize(deserializedCD, cryptUndo.dText);
+	shmea::Serializable::Deserialize(deserializedCD.get(), cryptUndo.dText);
 	shmea::GTable deserializedTable = deserializedCD->getTable();
 	//deserializedTable.print();
 

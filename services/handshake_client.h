@@ -44,20 +44,21 @@ public:
 		serverInstance = NULL; // Not ours to delete
 	}
 
-	shmea::ServiceData* execute(const shmea::ServiceData* data)
+	shmea::GPointer<shmea::ServiceData> execute(
+		const shmea::ServiceData* data)
 	{
 		// Log the server into the client
 		class GNet::Connection* destination = data->getConnection();
 
 		if (!serverInstance)
-			return NULL;
+			return {};
 
 		if (data->getType() != shmea::ServiceData::TYPE_LIST)
-			return NULL;
+			return {};
 
 		shmea::GList cList = data->getList();
 		if (cList.size() < 2)
-			return NULL;
+			return {};
 
 		// Check the characters in the name
 		shmea::GString clientName = cList.getString(0);
@@ -77,12 +78,13 @@ public:
 		// Notify login listener for outbound server connection
 		serverInstance->notifyServerLogin(destination);
 
-		return NULL;
+		return {};
 	}
 
-	GNet::Service* MakeService(GNet::GServer* newInstance) const
+	shmea::GPointer<GNet::Service> MakeService(
+		GNet::GServer* newInstance) const
 	{
-		return new Handshake_Client(newInstance);
+		return shmea::make_gpointer<Handshake_Client>(newInstance);
 	}
 
 	shmea::GString getName() const

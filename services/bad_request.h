@@ -43,15 +43,17 @@ public:
 		serverInstance = NULL; // Not ours to delete
 	}
 
-	shmea::ServiceData* execute(const shmea::ServiceData* data)
+	shmea::GPointer<shmea::ServiceData> execute(
+		const shmea::ServiceData* data)
 	{
 		serverInstance->logger->info("SRVC", "Bad Request");
-		return NULL;
+		return {};
 	}
 
-	GNet::Service* MakeService(GNet::GServer* newInstance) const
+	shmea::GPointer<GNet::Service> MakeService(
+		GNet::GServer* newInstance) const
 	{
-		return new Bad_Request(newInstance);
+		return shmea::make_gpointer<Bad_Request>(newInstance);
 	}
 
 	shmea::GString getName() const

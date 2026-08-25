@@ -19,6 +19,8 @@
 #include "socket.h"
 #include "main.h"
 
+#include <memory>
+
 using namespace GNet;
 
 namespace {
@@ -103,8 +105,9 @@ void* Service::launchService(void* y)
 {
 	// Helper function for pthread_create
 
-	// set the service args
-	newServiceArgs* x = (newServiceArgs*)y;
+	// Adopt the C callback payload immediately; all exits release it.
+	std::unique_ptr<newServiceArgs> args(static_cast<newServiceArgs*>(y));
+	newServiceArgs* x = args.get();
 	shmea::ServiceData* sockData = (x && x->sockData) ? x->sockData.get() : NULL;
 	GServer* serverInstance = NULL;
 	Connection* cConnection = NULL;
@@ -142,23 +145,23 @@ void* Service::launchService(void* y)
 		if (keyLock)
 			pthread_mutex_lock(keyLock);
 
-		Service* cService = serverInstance->DoService(x->command, x->serviceKey);
+		auto cService = serverInstance->DoService(x->command, x->serviceKey);
 		if (cService)
 		{
 			// start the service
 			cService->StartService(x);
 
 			// execute the service
-			shmea::ServiceData* retData = cService->execute(sockData);
-			if(retData != NULL)
+			auto retData = cService->execute(sockData);
+			if(retData)
 			{
 				// Propagate request correlation id to the response for end-to-end log correlation.
 				retData->setSID(sockData->getSID());
 
 				//Response Service Number will be given by the service received by the server
 				retData->setResponseServiceNum(sockData->getResponseServiceNum());
-				serverInstance->socks->addResponseList(serverInstance, cConnection,
-					shmea::GPointer<shmea::ServiceData>(retData));
+				serverInstance->socks->addResponseList(
+					serverInstance, cConnection, retData);
 			}
 
 			// exit the service
@@ -172,10 +175,6 @@ void* Service::launchService(void* y)
 						shmea::GString::format(" dur_s=%ld", (long)cService->timeExecuted));
 			}
 
-			// Only delete per-request service instances. Keyed services are cached in
-			// serverInstance->running_services and must not be deleted here.
-			if (!keyed)
-				delete cService;
 		}
 		else
 		{
@@ -191,9 +190,8 @@ cleanup:
 	// Release the in-flight service bookkeeping held by enqueueService().
 	if (x && x->cConnection)
 		x->cConnection->decInFlight();
-	delete x;
 
-	// delete the Connection
+	// Connection destruction
 	// Connection lifetime is managed by server logout handlers
 	return NULL;
 }

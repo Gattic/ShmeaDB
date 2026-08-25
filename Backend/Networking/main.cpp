@@ -121,14 +121,9 @@ GNet::GServer::GServer()
 	pthread_cond_init(writersBlock, NULL);
 	writerWakeups = 0;
 
-	Handshake_Client* hc = new Handshake_Client(this);
-	addService(hc);
-
-	Handshake_Server* hs = new Handshake_Server(this);
-	addService(hs);
-
-	Bad_Request* br = new Bad_Request(this);
-	addService(br);
+	addService(shmea::make_gpointer<Handshake_Client>(this));
+	addService(shmea::make_gpointer<Handshake_Server>(this));
+	addService(shmea::make_gpointer<Bad_Request>(this));
 
 	if (logger)
 		logger->info("OBS", "event=server_init");
@@ -404,64 +399,58 @@ void GNet::GServer::LaunchUDPInstance(const shmea::GString& serverIP, const shme
 	getOrCreateUDPConnection(serverIP, serverPort, clientName);
 }
 
-unsigned int GNet::GServer::addService(GNet::Service* newServiceObj)
+unsigned int GNet::GServer::addService(
+	shmea::GPointer<GNet::Service> newServiceObj)
 {
-	shmea::GString newServiceName = newServiceObj->getName();
-	pthread_mutex_lock(servicesMutex);
-	std::map<shmea::GString, Service*>::const_iterator itr = service_depot.find(newServiceName);
-	if(itr == service_depot.end())
-		service_depot.insert(std::pair<shmea::GString, Service*>(newServiceName, newServiceObj));
-	else
-		service_depot[newServiceName] = newServiceObj;
-	pthread_mutex_unlock(servicesMutex);
+	if (!newServiceObj)
+		return service_depot.size();
 
-	return service_depot.size();
+	const shmea::GString newServiceName = newServiceObj->getName();
+	pthread_mutex_lock(servicesMutex);
+	service_depot[newServiceName] = std::move(newServiceObj);
+	const unsigned int serviceCount = service_depot.size();
+	pthread_mutex_unlock(servicesMutex);
+	return serviceCount;
 }
 
-GNet::Service* GNet::GServer::DoService(shmea::GString cCommand, shmea::GString newKey)
+shmea::GPointer<GNet::Service> GNet::GServer::DoService(
+	shmea::GString cCommand, shmea::GString newKey)
 {
-	// Does it exist at all?
 	pthread_mutex_lock(servicesMutex);
-	std::map<shmea::GString, Service*>::const_iterator itr = service_depot.find(cCommand);
-	if(itr == service_depot.end())
+	const auto prototype = service_depot.find(cCommand);
+	if (prototype == service_depot.end())
 	{
 		pthread_mutex_unlock(servicesMutex);
-		return NULL;
+		return {};
 	}
 
-	if(newKey.length() == 0)
+	if (newKey.length() == 0)
 	{
-		GNet::Service* cService = service_depot[cCommand]->MakeService(this);
+		auto service = prototype->second->MakeService(this);
 		pthread_mutex_unlock(servicesMutex);
-		return cService;
-	}
-	else if(newKey.length() > 0)
-	{
-		std::map<shmea::GString, Service*>::const_iterator itr2 = running_services.find(newKey);
-		if(itr2 == running_services.end())
-		{
-			GNet::Service* cService = service_depot[cCommand]->MakeService(this);
-			running_services[newKey] = cService;
-			// Ensure per-key lock exists for this cached running service.
-			if (runningServiceLocks.find(newKey) == runningServiceLocks.end())
-			{
-				pthread_mutex_t* m = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-				pthread_mutex_init(m, NULL);
-				runningServiceLocks.insert(std::pair<shmea::GString, pthread_mutex_t*>(newKey, m));
-			}
-			pthread_mutex_unlock(servicesMutex);
-			return cService;
-		}
-		else
-		{
-			GNet::Service* cService = running_services[newKey];
-			pthread_mutex_unlock(servicesMutex);
-			return cService;
-		}
+		return service;
 	}
 
+	const auto running = running_services.find(newKey);
+	if (running != running_services.end())
+	{
+		auto service = running->second;
+		pthread_mutex_unlock(servicesMutex);
+		return service;
+	}
+
+	auto service = prototype->second->MakeService(this);
+	running_services[newKey] = service;
+	// Ensure per-key lock exists for this cached running service.
+	if (runningServiceLocks.find(newKey) == runningServiceLocks.end())
+	{
+		pthread_mutex_t* m = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+		pthread_mutex_init(m, NULL);
+		runningServiceLocks.insert(
+			std::pair<shmea::GString, pthread_mutex_t*>(newKey, m));
+	}
 	pthread_mutex_unlock(servicesMutex);
-	return NULL;
+	return service;
 }
 
 bool GNet::GServer::getRunning() const
@@ -667,7 +656,7 @@ void GNet::GServer::ServiceWorker(void*)
 		logger->info("OBS", shmea::GString::format("event=worker_start tid=%lu", (unsigned long)pthread_self()));
 	for (;;)
 	{
-		newServiceArgs* job = NULL;
+		std::unique_ptr<newServiceArgs> job;
 
 		pthread_mutex_lock(serviceMutex);
 		while (serviceQueue.empty() && !serviceStopRequested)
@@ -681,7 +670,7 @@ void GNet::GServer::ServiceWorker(void*)
 
 		if (!serviceQueue.empty())
 		{
-			job = serviceQueue.front();
+			job = std::move(serviceQueue.front());
 			serviceQueue.pop();
 		}
 		pthread_mutex_unlock(serviceMutex);
@@ -690,8 +679,8 @@ void GNet::GServer::ServiceWorker(void*)
 			continue;
 
 		// Execute in this worker thread (no per-request thread spawn).
-		// This function owns and deletes both `job` and its `sockData`.
-		GNet::Service::launchService((void*)job);
+		// launchService adopts the callback-boundary pointer immediately.
+		GNet::Service::launchService(job.release());
 	}
 	if (logger)
 		logger->info("OBS", shmea::GString::format("event=worker_stop tid=%lu", (unsigned long)pthread_self()));
@@ -744,14 +733,10 @@ void GNet::GServer::stopServicePool()
 	pthread_mutex_lock(serviceMutex);
 	while (!serviceQueue.empty())
 	{
-		newServiceArgs* job = serviceQueue.front();
+		auto job = std::move(serviceQueue.front());
 		serviceQueue.pop();
-		if (job)
-		{
-			if (job->cConnection)
-				job->cConnection->decInFlight();
-			delete job;
-		}
+		if (job && job->cConnection)
+			job->cConnection->decInFlight();
 	}
 	pthread_mutex_unlock(serviceMutex);
 }
@@ -768,7 +753,7 @@ bool GNet::GServer::enqueueService(shmea::GPointer<shmea::ServiceData> sockData,
 	// Hold a refcount-like guard for safe UDP pruning.
 	cConnection->incInFlight();
 
-	newServiceArgs* x = new newServiceArgs();
+	auto x = std::make_unique<newServiceArgs>();
 	x->serverInstance = this;
 	x->cConnection = cConnection;
 	x->sockData = sockData;
@@ -785,11 +770,10 @@ bool GNet::GServer::enqueueService(shmea::GPointer<shmea::ServiceData> sockData,
 		// This may be called from a worker thread; defer actual LogoutInstance() to the server loop.
 		requestLogout(cConnection);
 		cConnection->decInFlight();
-		delete x;
 		return false;
 	}
 
-	serviceQueue.push(x);
+	serviceQueue.push(std::move(x));
 	size_t qszAfter = serviceQueue.size();
 	pthread_cond_signal(serviceCond);
 	pthread_mutex_unlock(serviceMutex);
