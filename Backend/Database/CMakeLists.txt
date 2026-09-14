@@ -57,7 +57,3 @@ install(TARGETS DB EXPORT shmeaConfig
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Backend/Database
     FILES_MATCHING PATTERN "*.h")
-
-install(EXPORT shmeaConfig DESTINATION share/shmea/cmake)
-
-export(TARGETS DB FILE shmeaConfig.cmake)
