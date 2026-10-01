@@ -121,11 +121,11 @@ static bool decrypt_into_service_data(Sockets* self, Connection* origin, const s
 		return false;
 	}
 
-	shmea::ServiceData* cData = new shmea::ServiceData(origin, "");
+	auto cData = shmea::make_gpointer<shmea::ServiceData>(origin, "");
 	shmea::GString cStr = crypt.dText;
-	shmea::Serializable::Deserialize(cData, cStr);
+	shmea::Serializable::Deserialize(cData.get(), cStr);
 	cData->setTimesent(crypt.getTimesent());
-	outSD = shmea::GPointer<shmea::ServiceData>(cData);
+	outSD = std::move(cData);
 	return true;
 }
 
@@ -535,7 +535,7 @@ int Sockets::readConnectionHelper(Connection* origin, const socket_t& sockfd, st
 		}
 		else
 		{
-			shmea::GPointer<shmea::ServiceData> cData(new shmea::ServiceData(origin, ""));
+			auto cData = shmea::make_gpointer<shmea::ServiceData>(origin, "");
 			shmea::Serializable::Deserialize(cData.get(), payload);
 			srvcList.push_back(cData);
 		}

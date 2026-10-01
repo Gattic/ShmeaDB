@@ -15,6 +15,8 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "image.h"
+
+#include <vector>
 #include "GString.h"
 #include "GList.h"
 #include "GVector.h"
@@ -167,8 +169,7 @@ bool Image::LoadPPM(const GString& fname)
 		return false;
 
 	// the data
-	delete[] data;
-	data = new RGBA[height * width];
+	data = std::make_unique<RGBA[]>(height * width);
 
 	// flip y so that (0,0) is bottom left corner
 	//for (unsigned int y = height - 1; y >= 0; y--)
@@ -231,21 +232,18 @@ bool Image::LoadPBM(const GString& fname)
 	sscanf(buffer, "%d %d", &width, &height);
 
 	// Allocate the buffer
-	if (data)
-		delete[] data; // don't leak!!
-
-	data = new RGBA[width * height]; // 1 RGBA per pixel
+	data = std::make_unique<RGBA[]>(width * height); // 1 RGBA per pixel
 
 	// Read in the pixel array row-by-row
 	// each row is width bits, packed 8 to a byte
 	int rowsize = (width + 7) / 8;							// the size of each row in bytes
-	unsigned char* packedData = new unsigned char[rowsize]; // array of row bits to unpack
+	std::vector<unsigned char> packedData(static_cast<std::size_t>(rowsize)); // row bits to unpack
 
 	// for each line of the image
 	for (unsigned int i = 0; i < height; ++i)
 	{
 		// read a row from the file of packed data
-		fread(packedData, sizeof(char), rowsize, file);
+		fread(packedData.data(), sizeof(char), rowsize, file);
 		for (int k = 0; k < rowsize; ++k)
 		{											// for each byte in the row
 			unsigned char packed_d = packedData[k]; // temporary char of packed bits
@@ -272,7 +270,6 @@ bool Image::LoadPBM(const GString& fname)
 
 	// close the file
 	fclose(file);
-	delete[] packedData;
 	return true;
 }
 
@@ -345,7 +342,7 @@ bool Image::SavePBM(const GString& filename) const
 
 	// size of row in bytes
 	int rowsize = (width + 7) / 8;							// the size of each row
-	unsigned char* packedData = new unsigned char[rowsize]; // row of packed bytes to write
+	std::vector<unsigned char> packedData(static_cast<std::size_t>(rowsize)); // packed output row
 
 	// Write the image row by row
 	for (unsigned int i = 0; i < height; ++i)
@@ -371,11 +368,10 @@ bool Image::SavePBM(const GString& filename) const
 			}
 			packedData[k] = packed_d;
 		}
-		fwrite((void*)packedData, sizeof(unsigned char), rowsize, file);
+		fwrite(packedData.data(), sizeof(unsigned char), rowsize, file);
 	}
 
 	fclose(file);
-	delete[] packedData;
 	return true;
 }
 
@@ -407,7 +403,7 @@ void Image::LoadBMP(const GString& filename)
 	int depth = *(int*)&info[28];
 
 	// flip y so that (0,0) is bottom left corner
-	data = new RGBA[height * width];
+	data = std::make_unique<RGBA[]>(height * width);
 	//for (unsigned int y = height - 1; y >= 0; --y)
 	for (unsigned int y = 0; y < height; ++y)//TODO CHECK THIS
 	{
