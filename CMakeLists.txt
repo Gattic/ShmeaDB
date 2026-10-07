@@ -2,13 +2,6 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
-if(WIN32)
-    set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/shmea" CACHE PATH "default install path" FORCE)
-else()
-    set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
-endif()
-file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
-
 #Init
 cmake_minimum_required(VERSION 3.20)
 cmake_policy(SET CMP0091 NEW)
@@ -18,13 +11,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 #Compiler Flags
-#set(DEFAULT_BUILD_TYPE "Release")
-set(CMAKE_BUILD_TYPE Release) # -O3 -g
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 #Project
 project(shmea)
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    if(WIN32)
+        set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/shmea" CACHE PATH "Install prefix" FORCE)
+    else()
+        set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "Install prefix" FORCE)
+    endif()
+endif()
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
 # Compiler flags must come after project() so MSVC variable is available
 if(MSVC)
@@ -104,6 +106,16 @@ add_subdirectory("Backend/Database")
 add_subdirectory("Backend/Plotter")
 add_subdirectory("Backend/Networking")
 
+# Database ServiceData owns Connections; networking in turn uses database types.
+target_link_libraries(DB GNet)
+target_link_libraries(GNet DB)
+foreach(SHMEA_COMPONENT Core DB GNet Plotter)
+    target_compile_features(${SHMEA_COMPONENT} PUBLIC cxx_std_23)
+    target_include_directories(${SHMEA_COMPONENT} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+endforeach()
+
 set(MAIN_SRC_FILES
 	main.cpp
 	main.h
@@ -115,6 +127,8 @@ if(EMSCRIPTEN)
 else()
     add_library(${PROJECT_NAME} SHARED ${MAIN_SRC_FILES})
 endif()
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 
 #Link libraries
 target_link_libraries(${PROJECT_NAME}
@@ -151,6 +165,9 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shmeaConfig.cmake"
 "set(shmea_SOURCE_DIRTY ${SHMEA_SOURCE_DIRTY})\n"
 "set(shmea_SOURCE_DIFF_SHA256 \"${SHMEA_SOURCE_DIFF_SHA256}\")\n"
 "set(shmea_SOURCE_ID \"${SHMEA_SOURCE_ID}\")\n"
+"include(CMakeFindDependencyMacro)\n"
+"find_dependency(Freetype)\n"
+"find_dependency(Threads)\n"
 "include(\"\${CMAKE_CURRENT_LIST_DIR}/shmeaBuildTargets.cmake\")\n")
 
 # The install export is consolidated, so its config has one target include.
@@ -161,6 +178,9 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shmeaInstallConfig.cmake"
 "set(shmea_SOURCE_DIRTY ${SHMEA_SOURCE_DIRTY})\n"
 "set(shmea_SOURCE_DIFF_SHA256 \"${SHMEA_SOURCE_DIFF_SHA256}\")\n"
 "set(shmea_SOURCE_ID \"${SHMEA_SOURCE_ID}\")\n"
+"include(CMakeFindDependencyMacro)\n"
+"find_dependency(Freetype)\n"
+"find_dependency(Threads)\n"
 "include(\"\${CMAKE_CURRENT_LIST_DIR}/shmeaTargets.cmake\")\n")
 
 include(CMakePackageConfigHelpers)

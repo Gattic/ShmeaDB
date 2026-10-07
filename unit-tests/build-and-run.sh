@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# Legacy configure/build entry point; also supports invocation via sh.
-[ -n "${BASH_VERSION:-}" ] || exec bash "$0" "$@"
+# Linux counterpart to build-and-run.bat; test saves stay in unit-tests/.
 set -euo pipefail
 source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$source_dir"
-command -v cmake >/dev/null || { echo "CMake is required" >&2; exit 1; }
 preset="linux-release"
 cmake_args=()
+test_args=()
 for arg in "$@"; do
     case "$arg" in
         -D?*=*) cmake_args+=("$arg") ;;
-        --help|-h) echo "Usage: sh .configure.sh [-DNAME=VALUE ...]"; exit 0 ;;
-        *) echo "Unknown argument: $arg" >&2; exit 2 ;;
+        --help|-h) echo "Usage: bash build-and-run.sh [test-selector] [-DNAME=VALUE ...]"; exit 0 ;;
+        -*) echo "Unknown option: $arg" >&2; exit 2 ;;
+        *) test_args+=("$arg") ;;
     esac
 done
 cmake --preset "$preset" "${cmake_args[@]}"
 cmake --build --preset "$preset" --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
+exec ./build/shmea-unit-tests "${test_args[@]}"

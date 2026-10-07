@@ -22,30 +22,35 @@ sudo dnf install -y libasan
 
 ---
 
-## Compilation
- 
-```
-sh .configure.sh
-```
-or
-```
-mkdir build
-cd build
-cmake ..
-make
+## Linux build and tests
+
+The Linux shell helpers mirror the Windows batch workflow. Use CMake 3.25 or
+newer for the presets, Make, a compiler supporting C++23, and FreeType development
+headers. Run from the repository root:
+
+```sh
+bash build-and-install.sh
+bash unit-tests/build-and-run.sh
 ```
 
----
+Installation defaults to `$HOME/.local`; an explicit `CMAKE_INSTALL_PREFIX` is
+respected. The exported `shmea` target propagates C++23 and its component
+dependencies, including the DB/GNet static archive cycle.
 
-## Installation
+All helpers accept quoted CMake `-DNAME=VALUE` overrides and stop on failure.
+For a custom dependency/install prefix, for example:
 
-make install
+```sh
+bash build-and-install.sh -DCMAKE_INSTALL_PREFIX="$HOME/libs" -DCMAKE_PREFIX_PATH="$HOME/libs"
+```
 
----
-
-## Uninstall
-
-make uninstall
+When changing from an existing cached dependency, also pass
+`-Dshmea_DIR="$HOME/libs/share/shmea/cmake"`. Use
+`CMAKE_BUILD_PARALLEL_LEVEL=4` to adjust build concurrency (default: 8).
+Run helpers from any working directory; they resolve their own repository path.
+Builds reuse `build/` incrementally. Development headers for glades-ml and
+gfxplusplus live under `build/shmea-include/` and do not modify source `include/`
+folders. ShmeaDB still needs to be built and installed for linking.
 
 ---
 

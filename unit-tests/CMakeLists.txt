@@ -2,25 +2,13 @@ if(NOT (${CMAKE_BINARY_DIR} STREQUAL "${CMAKE_SOURCE_DIR}/build"))
 	message(FATAL_ERROR "Must be in \"build\" directory")
 endif()
 
-if(WIN32)
-    set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/shmea" CACHE PATH "default install path" FORCE)
-else()
-    set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
-endif()
-file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include)
-
 #Init
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.20)
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 #Compiler Flags
-if(WIN32)
-    set(CMAKE_BUILD_TYPE Release)
-else()
-    set(CMAKE_BUILD_TYPE Debug) # -g
-endif()
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
 

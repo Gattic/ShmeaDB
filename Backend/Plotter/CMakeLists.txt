@@ -33,7 +33,7 @@ add_library(Plotter ${Plotter_src_files})
 #Link libraries
 if(EMSCRIPTEN)
 else()
-    target_link_libraries(Plotter ${FREETYPE_LIBRARIES} DB)
+    target_link_libraries(Plotter Freetype::Freetype DB)
 endif()
 
 install(TARGETS Plotter EXPORT shmeaConfig
