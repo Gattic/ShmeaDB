@@ -1,5 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
+if not defined SHMEA_BUILD_PRESET set "SHMEA_BUILD_PRESET=windows-release"
+if not defined SHMEA_INSTALL_PREFIX set "SHMEA_INSTALL_PREFIX=C:\GatticSDK"
 
 :: Usage: build-and-install.bat [VS_VERSION]
 :: Example: build-and-install.bat 18
@@ -108,8 +110,8 @@ echo.
 :: --------------------------------------------------
 :: 4. Configure
 :: --------------------------------------------------
-echo [STEP] Configuring with CMake preset 'windows-release'...
-cmake --preset windows-release
+echo [STEP] Configuring with CMake preset '!SHMEA_BUILD_PRESET!'...
+cmake --preset !SHMEA_BUILD_PRESET! -Ushmea_DIR -Uglades_DIR -Ugfxplusplus_DIR
 if !errorlevel! neq 0 (
     echo [ERROR] CMake configure failed.
     exit /b 1
@@ -121,7 +123,7 @@ echo.
 :: 5. Build
 :: --------------------------------------------------
 echo [STEP] Building...
-cmake --build --preset windows-release
+cmake --build --preset !SHMEA_BUILD_PRESET!
 if !errorlevel! neq 0 (
     echo [ERROR] Build failed.
     exit /b 1
@@ -132,17 +134,17 @@ echo.
 :: --------------------------------------------------
 :: 6. Install
 :: --------------------------------------------------
-echo [STEP] Installing to %USERPROFILE%\shmea ...
+echo [STEP] Installing to !SHMEA_INSTALL_PREFIX! ...
 cmake --install build
 if !errorlevel! neq 0 (
     echo [ERROR] Install failed.
     exit /b 1
 )
-echo [OK] Installed to %USERPROFILE%\shmea
+echo [OK] Installed to !SHMEA_INSTALL_PREFIX!
 echo.
 
 echo ============================================
-echo  Done! ShmeaDB installed to %USERPROFILE%\shmea
+echo  Done! ShmeaDB installed to !SHMEA_INSTALL_PREFIX!
 echo ============================================
 
 endlocal

@@ -1,5 +1,11 @@
 # Install, Compile, and Run
 
+Windows development installs use `%USERPROFILE%\dev\installed` via
+`dev-build.bat` / `windows-dev`. Release installs use `C:\GatticSDK` via
+`build-and-install.bat` / `windows-release`. Both keep artifacts in `build/`.
+See [the shared build guide](../InformationGattic/build-guide.md) for dependency
+order, application setup, and switching between prefixes.
+
 ---
 
 ## Dependencies
@@ -154,14 +160,14 @@ Replace the path with your actual vcpkg location (matching your `VCPKG_ROOT` env
 cmake --install build
 ```
 
-Installs to `%USERPROFILE%\shmea` (e.g. `C:\Users\YourName\shmea`).
+Installs to `C:\GatticSDK` (e.g. `C:\GatticSDK`).
 
 ### Unit Tests (Command Line)
 
 Make sure `shmea.dll` and `freetype.dll` are on your PATH:
 
 ```powershell
-$env:PATH = "$env:USERPROFILE\shmea\bin;$env:VCPKG_ROOT\installed\x64-windows\bin;$env:PATH"
+$env:PATH = "C:\GatticSDK\bin;$env:VCPKG_ROOT\installed\x64-windows\bin;$env:PATH"
 ```
 
 Then build and run:

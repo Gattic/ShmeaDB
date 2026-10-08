@@ -19,7 +19,7 @@ project(shmea)
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     if(WIN32)
-        set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/shmea" CACHE PATH "Install prefix" FORCE)
+        set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/dev/installed" CACHE PATH "Install prefix" FORCE)
     else()
         set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "Install prefix" FORCE)
     endif()

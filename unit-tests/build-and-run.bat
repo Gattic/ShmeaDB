@@ -80,17 +80,17 @@ echo [OK] VCPKG_ROOT = %VCPKG_ROOT%
 :: --------------------------------------------------
 :: 3. Verify ShmeaDB is installed
 :: --------------------------------------------------
-if not exist "%USERPROFILE%\shmea\bin\shmea.dll" (
-    echo [ERROR] shmea.dll not found at %USERPROFILE%\shmea\bin\shmea.dll
+if not exist "C:\GatticSDK\bin\shmea.dll" (
+    echo [ERROR] shmea.dll not found at C:\GatticSDK\bin\shmea.dll
     echo         Build and install ShmeaDB first -- run build-and-install.bat from the root.
     exit /b 1
 )
-echo [OK] ShmeaDB installation found at %USERPROFILE%\shmea
+echo [OK] ShmeaDB installation found at C:\GatticSDK
 
 :: --------------------------------------------------
 :: 4. Set PATH so DLLs are found at runtime
 :: --------------------------------------------------
-set "PATH=%USERPROFILE%\shmea\bin;%VCPKG_ROOT%\installed\x64-windows\bin;%PATH%"
+set "PATH=C:\GatticSDK\bin;%VCPKG_ROOT%\installed\x64-windows\bin;%PATH%"
 echo [OK] PATH updated with shmea.dll and freetype.dll locations.
 
 :: --------------------------------------------------
@@ -116,7 +116,7 @@ echo.
 :: 6. Configure
 :: --------------------------------------------------
 echo [STEP] Configuring unit tests with CMake preset 'windows-release'...
-cmake --preset windows-release
+cmake --preset windows-release -Ushmea_DIR -Uglades_DIR -Ugfxplusplus_DIR
 if !errorlevel! neq 0 (
     echo [ERROR] CMake configure failed.
     exit /b 1
