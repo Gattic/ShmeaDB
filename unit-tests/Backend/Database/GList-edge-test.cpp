@@ -12,31 +12,40 @@
 #include "../../../Backend/Database/GString.h"
 #include "../../../Backend/Database/GType.h"
 
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include "Backend/Core/platform.h"
 
 namespace {
 static shmea::GString write_temp_file(const char* contents)
 {
+#ifdef _WIN32
+	char tmpDir[MAX_PATH];
+	char path[MAX_PATH];
+	GetTempPathA(MAX_PATH, tmpDir);
+	GetTempFileNameA(tmpDir, "shmea", 0, path);
+	FILE* f = fopen(path, "wb");
+	ASSERT("fopen failed", f != NULL);
+	fwrite(contents, 1, strlen(contents), f);
+	fclose(f);
+	return shmea::GString(path);
+#else
 	char path[] = "/tmp/shmeadb_ut_words_XXXXXX";
 	int fd = mkstemp(path);
 	ASSERT("mkstemp failed", fd >= 0);
-
-	// best-effort write
 	size_t n = strlen(contents);
 	ssize_t w = write(fd, contents, n);
 	(void)w;
 	close(fd);
 	return shmea::GString(path);
+#endif
 }
 
 static void remove_file(const shmea::GString& p)
 {
 	if (p.length() > 0)
-		unlink(p.c_str());
+		remove(p.c_str());
 }
 
 static void GList_LoadWords_EmptyAndMissing()
@@ -46,7 +55,11 @@ static void GList_LoadWords_EmptyAndMissing()
 	ASSERT("Empty filename should not load", a.size() == 0);
 
 	shmea::GList b;
+#ifdef _WIN32
+	b.loadWords("C:/nonexistent_shmeadb_test_42b4e0c9.txt");
+#else
 	b.loadWords("/tmp/this_file_should_not_exist_42b4e0c9.txt");
+#endif
 	ASSERT("Missing file should not load", b.size() == 0);
 }
 

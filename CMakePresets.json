@@ -1,0 +1,64 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "linux-release",
+            "displayName": "Linux Release",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_INSTALL_PREFIX": "$env{HOME}/.local",
+                "CMAKE_PREFIX_PATH": "$env{HOME}/.local"
+            },
+            "condition": {
+                "type": "notEquals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows Release (MSVC)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe",
+                "CMAKE_INSTALL_PREFIX": "C:/GatticSDK",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL",
+                "CMAKE_PREFIX_PATH": "C:/GatticSDK"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-dev",
+            "displayName": "Windows Development (local installed libraries)",
+            "inherits": "windows-release",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "$env{USERPROFILE}/dev/installed",
+                "CMAKE_INSTALL_PREFIX": "$env{USERPROFILE}/dev/installed"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "linux-release",
+            "configurePreset": "linux-release"
+        },
+        {
+            "name": "windows-release",
+            "configurePreset": "windows-release"
+        },
+        {
+            "name": "windows-dev",
+            "configurePreset": "windows-dev"
+        }
+    ]
+}

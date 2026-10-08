@@ -14,30 +14,29 @@
 #include "../../../Backend/Networking/connection.h"
 #include "../../../Backend/Networking/socket.h"
 
-#include <sys/socket.h>
-#include <unistd.h>
+#include "../../../Backend/Core/platform.h"
 #include <vector>
 
 namespace {
-static void MakeSocketpair(int fds[2])
+static void MakeSocketpair(socket_t fds[2])
 {
-	int rc = ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+	int rc = g_socketpair(fds);
 	ASSERT("socketpair failed", rc == 0);
 }
 
-static void ClosePair(int fds[2])
+static void ClosePair(socket_t fds[2])
 {
-	if (fds[0] >= 0)
-		::close(fds[0]);
-	if (fds[1] >= 0)
-		::close(fds[1]);
-	fds[0] = -1;
-	fds[1] = -1;
+	if (fds[0] != INVALID_SOCKET_VALUE)
+		G_CLOSE_SOCKET(fds[0]);
+	if (fds[1] != INVALID_SOCKET_VALUE)
+		G_CLOSE_SOCKET(fds[1]);
+	fds[0] = INVALID_SOCKET_VALUE;
+	fds[1] = INVALID_SOCKET_VALUE;
 }
 
 static void Socket_ReadHelper_ReturnCodes()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local", "0");
@@ -53,8 +52,8 @@ static void Socket_ReadHelper_ReturnCodes()
 	ASSERT("no data should decode nothing", out.size() == 0);
 
 	// Close peer => EOF => -1 (no frames)
-	::close(fds[0]);
-	fds[0] = -1;
+	G_CLOSE_SOCKET(fds[0]);
+	fds[0] = INVALID_SOCKET_VALUE;
 	rc = socks.readConnectionHelper(&origin, origin.sockfd, out);
 	ASSERT("EOF should return -1", rc == -1);
 
@@ -63,7 +62,7 @@ static void Socket_ReadHelper_ReturnCodes()
 
 static void Socket_WriteRead_RoundTrip_Unencrypted()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	// Writer-side connection (TCP)
@@ -115,7 +114,7 @@ static void Socket_WriteRead_RoundTrip_Unencrypted()
 
 static void Socket_WriteRead_MultipleFrames()
 {
-	int fds[2] = {-1, -1};
+	socket_t fds[2] = {INVALID_SOCKET_VALUE, INVALID_SOCKET_VALUE};
 	MakeSocketpair(fds);
 
 	GNet::Connection dest(fds[0], GNet::Connection::SERVER_TYPE, "local", "0");

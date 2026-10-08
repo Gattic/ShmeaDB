@@ -75,7 +75,7 @@ GNet::GServer::GServer()
 	logger = shmea::GPointer<shmea::GLogger>(new shmea::GLogger(shmea::GLogger::LOG_INFO));
 	logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	socks = shmea::GPointer<Sockets>(new Sockets(this));
-	sockfd = -1;
+	sockfd = INVALID_SOCKET_VALUE;
 	m_udpChannel = NULL;
 	cryptEnabled = true;
 	LOCAL_ONLY = false;
@@ -85,40 +85,13 @@ GNet::GServer::GServer()
 	logoutListener = shmea::GPointer<LogoutListener>();
 	loginListener = shmea::GPointer<LoginListener>();
 
-	// Service registry primitives.
-	servicesMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(servicesMutex, NULL);
-
 	// LaunchInstance() detached threads bookkeeping.
-	launchMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(launchMutex, NULL);
-	launchCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-	pthread_cond_init(launchCond, NULL);
 	launchInFlight = 0;
 
 	// Service worker pool primitives (started in run()).
-	serviceMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(serviceMutex, NULL);
-	serviceCond = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-	pthread_cond_init(serviceCond, NULL);
 	serviceQueueMax = 1024;
 	serviceStopRequested = false;
 
-	// Logout queue primitives (drained by server thread).
-	logoutMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(logoutMutex, NULL);
-
-	commandThread = (pthread_t*)malloc(sizeof(pthread_t));
-	writerThread = (pthread_t*)malloc(sizeof(pthread_t));
-	clientMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(clientMutex, NULL);
-	serverMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(serverMutex, NULL);
-
-	writersMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(writersMutex, NULL);
-	writersBlock = (pthread_cond_t*)malloc(sizeof(pthread_cond_t));
-	pthread_cond_init(writersBlock, NULL);
 	writerWakeups = 0;
 
 	addService(shmea::make_gpointer<Handshake_Client>(this));
@@ -132,34 +105,34 @@ GNet::GServer::GServer()
 void GNet::GServer::interruptAllIO()
 {
 	// Shutdown the listening socket (wakes select/accept).
-	if (sockfd >= 0)
+	if (sockfd != INVALID_SOCKET_VALUE)
 		::shutdown(sockfd, 2 /*SHUT_RDWR*/);
 
 	// Shutdown all connected TCP sockets so any blocking send() unblocks.
 	// (Do not close here; actual close happens via normal logout/finish paths.)
 	std::vector<Connection*> conns;
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	for (unsigned int i = 0; i < clientC.size(); ++i)
 	{
 		if (clientC[i] && clientC[i]->getProtocol() == Connection::PROTO_TCP)
 			conns.push_back(clientC[i]);
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	for (unsigned int i = 0; i < serverC.size(); ++i)
 	{
 		if (serverC[i] && serverC[i]->getProtocol() == Connection::PROTO_TCP)
 			conns.push_back(serverC[i]);
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
 	for (unsigned int i = 0; i < conns.size(); ++i)
 	{
 		Connection* c = conns[i];
 		if (!c)
 			continue;
-		if (c->sockfd >= 0)
+		if (c->sockfd != INVALID_SOCKET_VALUE)
 			::shutdown(c->sockfd, 2 /*SHUT_RDWR*/);
 	}
 }
@@ -176,11 +149,11 @@ GNet::GServer::~GServer()
 
 	running = false;
 	// Close listening sockets (if still open). These are not part of Connection objects.
-	if (getSockFD() >= 0)
+	if (getSockFD() != INVALID_SOCKET_VALUE)
 	{
 		shutdown(getSockFD(), 2);
-		close(getSockFD());
-		sockfd = -1;
+		G_CLOSE_SOCKET(getSockFD());
+		sockfd = INVALID_SOCKET_VALUE;
 	}
 	if (socks)
 		socks->closeSockets();
@@ -188,103 +161,34 @@ GNet::GServer::~GServer()
 	stopServicePool(); // idempotent
 
 	LOCAL_ONLY = true;
-	sockfd = -1;
+	sockfd = INVALID_SOCKET_VALUE;
 	cryptEnabled = true;
 
 	// Release all Connection objects (prevents leaks).
 	shutdownAllConnections();
 	reapRetiredConnections();
 
-	if (commandThread)
-		free(commandThread);
-	commandThread = NULL;
-
-	if (writerThread)
-		free(writerThread);
-	writerThread = NULL;
-
-	pthread_mutex_destroy(clientMutex);
-	if (clientMutex)
-		free(clientMutex);
-	clientMutex = NULL;
-
-	pthread_mutex_destroy(serverMutex);
-	if (serverMutex)
-		free(serverMutex);
-	serverMutex = NULL;
-
-	pthread_mutex_destroy(writersMutex);
-	if (writersMutex)
-		free(writersMutex);
-	writersMutex = NULL;
-
-	pthread_mutex_destroy(serviceMutex);
-	if (serviceMutex)
-		free(serviceMutex);
-	serviceMutex = NULL;
-
-	// Destroy running-service keyed locks and the registry mutex.
-	if (servicesMutex)
+	// Destroy running-service keyed locks.
+	servicesMutex.lock();
+	for (std::map<shmea::GString, shmea::GMutex*>::iterator it = runningServiceLocks.begin();
+		 it != runningServiceLocks.end();
+		 ++it)
 	{
-		pthread_mutex_lock(servicesMutex);
-		for (std::map<shmea::GString, pthread_mutex_t*>::iterator it = runningServiceLocks.begin();
-			 it != runningServiceLocks.end();
-			 ++it)
-		{
-			pthread_mutex_t* m = it->second;
-			if (m)
-			{
-				pthread_mutex_destroy(m);
-				free(m);
-			}
-		}
-		runningServiceLocks.clear();
-		pthread_mutex_unlock(servicesMutex);
-		pthread_mutex_destroy(servicesMutex);
-		free(servicesMutex);
+		delete it->second;
 	}
-	servicesMutex = NULL;
+	runningServiceLocks.clear();
+	servicesMutex.unlock();
 
 	// Clear any pending logout requests without invoking LogoutInstance().
 	// Destructor ordering destroys other mutexes used by LogoutInstance().
-	if (logoutMutex)
-	{
-		pthread_mutex_lock(logoutMutex);
-		while (!logoutQueue.empty())
-			logoutQueue.pop();
-		pthread_mutex_unlock(logoutMutex);
-		pthread_mutex_destroy(logoutMutex);
-		free(logoutMutex);
-	}
-	logoutMutex = NULL;
+	logoutMutex.lock();
+	while (!logoutQueue.empty())
+		logoutQueue.pop();
+	logoutMutex.unlock();
 
-	if (serviceCond)
-	{
-		pthread_cond_destroy(serviceCond);
-		free(serviceCond);
-	}
-	serviceCond = NULL;
-
-	if (writersBlock)
-	{
-		pthread_cond_destroy(writersBlock);
-		free(writersBlock);
-	}
-	writersBlock = NULL;
-
-	if (launchCond)
-	{
-		pthread_cond_destroy(launchCond);
-		free(launchCond);
-	}
-	launchCond = NULL;
-
-	if (launchMutex)
-	{
-		pthread_mutex_destroy(launchMutex);
-		free(launchMutex);
-	}
-	launchMutex = NULL;
+#ifdef _WIN32
+	WSACleanup();
+#endif
 }
 
 void GNet::GServer::send(shmea::GPointer<shmea::ServiceData> cData)
@@ -337,25 +241,22 @@ void GNet::GServer::send(shmea::GPointer<shmea::ServiceData> cData)
 	}
 }
 
-pthread_mutex_t* GNet::GServer::getOrCreateRunningServiceMutex(const shmea::GString& key)
+shmea::GMutex* GNet::GServer::getOrCreateRunningServiceMutex(const shmea::GString& key)
 {
 	if (key.length() == 0)
 		return NULL;
 
-	pthread_mutex_t* m = NULL;
-	pthread_mutex_lock(servicesMutex);
-	std::map<shmea::GString, pthread_mutex_t*>::iterator it = runningServiceLocks.find(key);
+	servicesMutex.lock();
+	std::map<shmea::GString, shmea::GMutex*>::iterator it = runningServiceLocks.find(key);
 	if (it != runningServiceLocks.end())
 	{
-		m = it->second;
+		shmea::GMutex* m = it->second;
+		servicesMutex.unlock();
+		return m;
 	}
-	else
-	{
-		m = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-		pthread_mutex_init(m, NULL);
-		runningServiceLocks.insert(std::pair<shmea::GString, pthread_mutex_t*>(key, m));
-	}
-	pthread_mutex_unlock(servicesMutex);
+	shmea::GMutex* m = new shmea::GMutex();
+	runningServiceLocks[key] = m;
+	servicesMutex.unlock();
 	return m;
 }
 
@@ -368,8 +269,8 @@ Connection* GNet::GServer::getOrCreateUDPConnection(const shmea::GString& server
 		return existing;
 
 	// Create a lightweight Connection object pointing to the UDP socket
-	int udpfd = socks->getUDPSocketFD();
-	if (udpfd < 0)
+	socket_t udpfd = socks->getUDPSocketFD();
+	if (udpfd == INVALID_SOCKET_VALUE)
 		udpfd = socks->openUDPServerSocket();
 
 	Connection* destination = new Connection(udpfd, Connection::SERVER_TYPE, serverIP, serverPort);
@@ -381,15 +282,15 @@ Connection* GNet::GServer::getOrCreateUDPConnection(const shmea::GString& server
 
 	// Track in server maps under UDP key
 	shmea::GString serverKey = serverIP + ":" + serverPort;
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	if(serverCLookUp.find(serverKey) == serverCLookUp.end())
 		serverCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(serverKey, std::vector<int>()));
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	serverC.push_back(destination);
 	serverCLookUp[serverKey].push_back(serverC.size()-1);
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
 	return destination;
 }
@@ -406,28 +307,28 @@ unsigned int GNet::GServer::addService(
 		return service_depot.size();
 
 	const shmea::GString newServiceName = newServiceObj->getName();
-	pthread_mutex_lock(servicesMutex);
+	servicesMutex.lock();
 	service_depot[newServiceName] = std::move(newServiceObj);
 	const unsigned int serviceCount = service_depot.size();
-	pthread_mutex_unlock(servicesMutex);
+	servicesMutex.unlock();
 	return serviceCount;
 }
 
 shmea::GPointer<GNet::Service> GNet::GServer::DoService(
 	shmea::GString cCommand, shmea::GString newKey)
 {
-	pthread_mutex_lock(servicesMutex);
+	servicesMutex.lock();
 	const auto prototype = service_depot.find(cCommand);
 	if (prototype == service_depot.end())
 	{
-		pthread_mutex_unlock(servicesMutex);
+		servicesMutex.unlock();
 		return {};
 	}
 
 	if (newKey.length() == 0)
 	{
 		auto service = prototype->second->MakeService(this);
-		pthread_mutex_unlock(servicesMutex);
+		servicesMutex.unlock();
 		return service;
 	}
 
@@ -435,7 +336,7 @@ shmea::GPointer<GNet::Service> GNet::GServer::DoService(
 	if (running != running_services.end())
 	{
 		auto service = running->second;
-		pthread_mutex_unlock(servicesMutex);
+		servicesMutex.unlock();
 		return service;
 	}
 
@@ -444,12 +345,11 @@ shmea::GPointer<GNet::Service> GNet::GServer::DoService(
 	// Ensure per-key lock exists for this cached running service.
 	if (runningServiceLocks.find(newKey) == runningServiceLocks.end())
 	{
-		pthread_mutex_t* m = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-		pthread_mutex_init(m, NULL);
+		shmea::GMutex* m = new shmea::GMutex();
 		runningServiceLocks.insert(
-			std::pair<shmea::GString, pthread_mutex_t*>(newKey, m));
+			std::pair<shmea::GString, shmea::GMutex*>(newKey, m));
 	}
-	pthread_mutex_unlock(servicesMutex);
+	servicesMutex.unlock();
 	return service;
 }
 
@@ -463,16 +363,16 @@ void GNet::GServer::requestLogout(Connection* c)
 	if (!c)
 		return;
 	// Queue it; server thread will drain and perform LogoutInstance().
-	pthread_mutex_lock(logoutMutex);
+	logoutMutex.lock();
 	logoutQueue.push(c);
-	pthread_mutex_unlock(logoutMutex);
+	logoutMutex.unlock();
 }
 
 void GNet::GServer::drainLogoutQueue()
 {
 	// Drain into a local list to minimize lock hold time.
 	std::vector<Connection*> toLogout;
-	pthread_mutex_lock(logoutMutex);
+	logoutMutex.lock();
 	while (!logoutQueue.empty())
 	{
 		Connection* c = logoutQueue.front();
@@ -480,7 +380,7 @@ void GNet::GServer::drainLogoutQueue()
 		if (c)
 			toLogout.push_back(c);
 	}
-	pthread_mutex_unlock(logoutMutex);
+	logoutMutex.unlock();
 
 	for (unsigned int i = 0; i < toLogout.size(); ++i)
 		LogoutInstance(toLogout[i]);
@@ -516,21 +416,21 @@ void GNet::GServer::shutdownAllConnections()
 	// Best-effort cleanup. Intended to run once worker/writer threads have stopped.
 	std::vector<Connection*> all;
 
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	for (unsigned int i = 0; i < clientC.size(); ++i)
 	{
 		if (clientC[i])
 			all.push_back(clientC[i]);
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	for (unsigned int i = 0; i < serverC.size(); ++i)
 	{
 		if (serverC[i])
 			all.push_back(serverC[i]);
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
 	for (unsigned int i = 0; i < all.size(); ++i)
 		LogoutInstance(all[i]);
@@ -539,15 +439,15 @@ void GNet::GServer::shutdownAllConnections()
 	reapRetiredConnections();
 
 	// Finally, clear registries. (All entries should already be detached by remove*Connection().)
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	clientCLookUp.clear();
 	clientC.clear();
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	serverCLookUp.clear();
 	serverC.clear();
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 }
 
 shmea::GString GNet::GServer::getPort() const
@@ -568,24 +468,14 @@ void GNet::GServer::stop()
 	// Ensure any blocking I/O in the command/writer threads unblocks promptly.
 	interruptAllIO();
 
-	const pthread_t self = pthread_self();
-
 	// Stop writer thread before command thread closes/returns fds.
 	wakeWriter();
 	if (writerThreadStarted)
-	{
-		// Never attempt to join ourselves (would deadlock forever).
-		if (writerThread && !pthread_equal(self, *writerThread))
-			pthread_join(*writerThread, NULL);
-	}
+		writerThread.join();
 
 	// Now stop the command thread (it will exit its select loop promptly).
 	if (commandThreadStarted)
-	{
-		// Never attempt to join ourselves (would deadlock forever).
-		if (commandThread && !pthread_equal(self, *commandThread))
-			pthread_join(*commandThread, NULL);
-	}
+		commandThread.join();
 
 	// Wait for any outstanding detached connect-launch threads.
 	waitForLaunchThreads();
@@ -596,11 +486,11 @@ void GNet::GServer::stop()
 
 	// Close listening/UDP sockets after all network threads have stopped to avoid
 	// fd-reuse races with other subsystems (e.g. Wayland/GLFW).
-	if (sockfd >= 0)
+	if (sockfd != INVALID_SOCKET_VALUE)
 	{
 		shutdown(sockfd, 2);
-		close(sockfd);
-		sockfd = -1;
+		G_CLOSE_SOCKET(sockfd);
+		sockfd = INVALID_SOCKET_VALUE;
 	}
 	if (socks)
 		socks->closeSockets();
@@ -608,16 +498,22 @@ void GNet::GServer::stop()
 
 void GNet::GServer::waitForLaunchThreads()
 {
-	if (!launchMutex || !launchCond)
-		return;
-	pthread_mutex_lock(launchMutex);
+	launchMutex.lock();
 	while (launchInFlight > 0)
-		pthread_cond_wait(launchCond, launchMutex);
-	pthread_mutex_unlock(launchMutex);
+		launchCond.wait(launchMutex);
+	launchMutex.unlock();
 }
 
 void GNet::GServer::run(shmea::GString newPort, bool _networkingDisabled)
 {
+#ifdef _WIN32
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		if (logger) logger->error("NET", "WSAStartup failed");
+		return;
+	}
+#endif
 	LOCAL_ONLY = _networkingDisabled;
 	running = true;
 	commandThreadStarted = false;
@@ -629,17 +525,15 @@ void GNet::GServer::run(shmea::GString newPort, bool _networkingDisabled)
 		logger->info("OBS", shmea::GString::format("event=server_run port=%s local_only=%d enc_default=%d",
 			newPort.c_str(), (int)LOCAL_ONLY, (int)cryptEnabled));
 	// Launch the server server
-	int rc1 = pthread_create(commandThread, NULL, commandLauncher, this);
-	if (rc1 == 0)
+	if (commandThread.start(commandLauncher, this))
 		commandThreadStarted = true;
 	else if (logger)
-		logger->error("SOCKS", shmea::GString::format("pthread_create(commandThread) failed rc=%d", rc1));
+		logger->error("SOCKS", "commandThread.start() failed");
 
-	int rc2 = pthread_create(writerThread, NULL, ListWLauncher, this);
-	if (rc2 == 0)
+	if (writerThread.start(ListWLauncher, this))
 		writerThreadStarted = true;
 	else if (logger)
-		logger->error("SOCKS", shmea::GString::format("pthread_create(writerThread) failed rc=%d", rc2));
+		logger->error("SOCKS", "writerThread.start() failed");
 }
 
 void* GNet::GServer::ServiceWorkerLauncher(void* y)
@@ -653,18 +547,22 @@ void* GNet::GServer::ServiceWorkerLauncher(void* y)
 void GNet::GServer::ServiceWorker(void*)
 {
 	if (logger)
+#ifdef _WIN32
+		logger->info("OBS", shmea::GString::format("event=worker_start tid=%lu", (unsigned long)GetCurrentThreadId()));
+#else
 		logger->info("OBS", shmea::GString::format("event=worker_start tid=%lu", (unsigned long)pthread_self()));
+#endif
 	for (;;)
 	{
 		std::unique_ptr<newServiceArgs> job;
 
-		pthread_mutex_lock(serviceMutex);
+		serviceMutex.lock();
 		while (serviceQueue.empty() && !serviceStopRequested)
-			pthread_cond_wait(serviceCond, serviceMutex);
+			serviceCond.wait(serviceMutex);
 
 		if (serviceStopRequested && serviceQueue.empty())
 		{
-			pthread_mutex_unlock(serviceMutex);
+			serviceMutex.unlock();
 			break;
 		}
 
@@ -673,7 +571,7 @@ void GNet::GServer::ServiceWorker(void*)
 			job = std::move(serviceQueue.front());
 			serviceQueue.pop();
 		}
-		pthread_mutex_unlock(serviceMutex);
+		serviceMutex.unlock();
 
 		if (!job)
 			continue;
@@ -683,7 +581,11 @@ void GNet::GServer::ServiceWorker(void*)
 		GNet::Service::launchService(job.release());
 	}
 	if (logger)
+#ifdef _WIN32
+		logger->info("OBS", shmea::GString::format("event=worker_stop tid=%lu", (unsigned long)GetCurrentThreadId()));
+#else
 		logger->info("OBS", shmea::GString::format("event=worker_stop tid=%lu", (unsigned long)pthread_self()));
+#endif
 }
 
 void GNet::GServer::startServicePool(unsigned int workerCount, unsigned int maxQueue)
@@ -697,7 +599,13 @@ void GNet::GServer::startServicePool(unsigned int workerCount, unsigned int maxQ
 
 	if (workerCount == 0)
 	{
+#ifdef _WIN32
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+		long n = (long)si.dwNumberOfProcessors;
+#else
 		long n = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
 		if (n <= 0)
 			workerCount = 4;
 		else if (n > 16)
@@ -709,9 +617,12 @@ void GNet::GServer::startServicePool(unsigned int workerCount, unsigned int maxQ
 	}
 
 	serviceStopRequested = false;
-	serviceWorkers.resize(workerCount);
 	for (unsigned int i = 0; i < workerCount; ++i)
-		pthread_create(&serviceWorkers[i], NULL, ServiceWorkerLauncher, this);
+	{
+		shmea::GThread* t = new shmea::GThread();
+		t->start(ServiceWorkerLauncher, this);
+		serviceWorkers.push_back(t);
+	}
 }
 
 void GNet::GServer::stopServicePool()
@@ -720,17 +631,20 @@ void GNet::GServer::stopServicePool()
 		return;
 
 	// Ask workers to stop after draining queued jobs.
-	pthread_mutex_lock(serviceMutex);
+	serviceMutex.lock();
 	serviceStopRequested = true;
-	pthread_cond_broadcast(serviceCond);
-	pthread_mutex_unlock(serviceMutex);
+	serviceCond.broadcast();
+	serviceMutex.unlock();
 
 	for (unsigned int i = 0; i < serviceWorkers.size(); ++i)
-		pthread_join(serviceWorkers[i], NULL);
+	{
+		serviceWorkers[i]->join();
+		delete serviceWorkers[i];
+	}
 	serviceWorkers.clear();
 
 	// Drain any leftover jobs defensively (should be empty after joins).
-	pthread_mutex_lock(serviceMutex);
+	serviceMutex.lock();
 	while (!serviceQueue.empty())
 	{
 		auto job = std::move(serviceQueue.front());
@@ -738,7 +652,7 @@ void GNet::GServer::stopServicePool()
 		if (job && job->cConnection)
 			job->cConnection->decInFlight();
 	}
-	pthread_mutex_unlock(serviceMutex);
+	serviceMutex.unlock();
 }
 
 bool GNet::GServer::enqueueService(shmea::GPointer<shmea::ServiceData> sockData, Connection* cConnection)
@@ -758,11 +672,11 @@ bool GNet::GServer::enqueueService(shmea::GPointer<shmea::ServiceData> sockData,
 	x->cConnection = cConnection;
 	x->sockData = sockData;
 
-	pthread_mutex_lock(serviceMutex);
+	serviceMutex.lock();
 	if (serviceQueue.size() >= (size_t)serviceQueueMax)
 	{
 		size_t qsz = serviceQueue.size();
-		pthread_mutex_unlock(serviceMutex);
+		serviceMutex.unlock();
 		if (logger)
 			logger->warning("OBS", shmea::GString::format("event=service_drop reason=queue_full q=%u qmax=%u ",
 				(unsigned int)qsz, (unsigned int)serviceQueueMax) + obs_sd_kv(sockData.get()) + " " + obs_conn_kv(cConnection));
@@ -775,8 +689,8 @@ bool GNet::GServer::enqueueService(shmea::GPointer<shmea::ServiceData> sockData,
 
 	serviceQueue.push(std::move(x));
 	size_t qszAfter = serviceQueue.size();
-	pthread_cond_signal(serviceCond);
-	pthread_mutex_unlock(serviceMutex);
+	serviceCond.signal();
+	serviceMutex.unlock();
 	if (logger)
 		logger->debug("OBS", shmea::GString::format("event=service_enqueue q=%u qmax=%u ",
 			(unsigned int)qszAfter, (unsigned int)serviceQueueMax) + obs_sd_kv(sockData.get()) + " " + obs_conn_kv(cConnection));
@@ -803,15 +717,25 @@ bool GNet::GServer::isEncryptedByDefault() const
 	return cryptEnabled;
 }
 
-int GNet::GServer::getSockFD()
+socket_t GNet::GServer::getSockFD()
 {
 	return sockfd;
+}
+
+shmea::GMutex* GNet::GServer::getClientMutex()
+{
+	return &clientMutex;
+}
+
+shmea::GMutex* GNet::GServer::getServerMutex()
+{
+	return &serverMutex;
 }
 
 const std::vector<GNet::Connection*> GNet::GServer::getClientConnections()
 {
 	std::vector<Connection*> clientConnections;
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = clientCLookUp.begin();
 	for(; itr != clientCLookUp.end(); ++itr)
 	{
@@ -823,7 +747,7 @@ const std::vector<GNet::Connection*> GNet::GServer::getClientConnections()
 				clientConnections.push_back(cConnection);
 		}
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
 	return clientConnections;
 }
@@ -835,7 +759,7 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 
 	//Instead of deleting we will remove the index from the dictionary look up, and make the connection null in the vector
 	shmea::GString _clientKey = cConnection->getIP() + ":" + cConnection->getPort();
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	std::map<shmea::GString, std::vector<int> >::iterator itr = clientCLookUp.find(_clientKey);
 	if (itr != clientCLookUp.end())
 	{
@@ -853,14 +777,14 @@ void GNet::GServer::removeClientConnection(Connection* cConnection)
 		if (clientCIndexs.empty())
 			clientCLookUp.erase(itr);
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
 }
 
 const std::vector<GNet::Connection*> GNet::GServer::getServerConnections()
 {
 	std::vector<Connection*> serverConnections;
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.begin();
 	for(; itr != serverCLookUp.end(); ++itr)
 	{
@@ -872,7 +796,7 @@ const std::vector<GNet::Connection*> GNet::GServer::getServerConnections()
 				serverConnections.push_back(cConnection);
 		}
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 	return serverConnections;
 }
 
@@ -884,7 +808,7 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 	//Instead of deleting we will remove the index from the dictionary look up, and make the connection null in the vector
 	//The key will only be removed if its corresponding vector is empty
 	shmea::GString _serverKey = cConnection->getIP() + ":" + cConnection->getPort();
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	std::map<shmea::GString, std::vector<int> >::iterator itr = serverCLookUp.find(_serverKey);
 	if (itr != serverCLookUp.end())
 	{
@@ -902,10 +826,10 @@ void GNet::GServer::removeServerConnection(GNet::Connection* cConnection)
 		if (serverCIndexs.empty())
 			serverCLookUp.erase(itr);
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 }
 
-bool GNet::GServer::isConnection(int _sockfd, const fd_set& fdarr)
+bool GNet::GServer::isConnection(socket_t _sockfd, const fd_set& fdarr)
 {
 	return FD_ISSET(_sockfd, &fdarr);
 }
@@ -915,8 +839,8 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 	struct sockaddr_in from;
 	socklen_t clientLength = sizeof(from);
 
-	int sockfd2 = accept(sockfd, (struct sockaddr*)&from, &clientLength);
-	if (sockfd2 < 0)
+	socket_t sockfd2 = accept(sockfd, (struct sockaddr*)&from, &clientLength);
+	if (sockfd2 == INVALID_SOCKET_VALUE)
 	{
 		if (getRunning())
 		{
@@ -929,12 +853,12 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 	// Ensure send() cannot block forever (prevents shutdown hangs).
 	{
 		int optval = 1;
-		(void)setsockopt(sockfd2, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
-		(void)setsockopt(sockfd2, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
+		(void)setsockopt(sockfd2, SOL_SOCKET, SO_KEEPALIVE, G_SETSOCKOPT_VAL(optval), sizeof(optval));
+		(void)setsockopt(sockfd2, IPPROTO_TCP, TCP_NODELAY, G_SETSOCKOPT_VAL(optval), sizeof(optval));
 		struct timeval tv;
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
-		(void)setsockopt(sockfd2, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+		(void)setsockopt(sockfd2, SOL_SOCKET, SO_SNDTIMEO, G_SETSOCKOPT_VAL(tv), sizeof(tv));
 	}
 
 	// select has a limit of 1024
@@ -949,7 +873,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 		shmea::GString clientPort = shmea::GString::format("%d", (int)ntohs(from.sin_port));
 		shmea::GString clientKey = clientIP + ":" + clientPort;
 
-		pthread_mutex_lock(clientMutex);
+		clientMutex.lock();
 		if(clientCLookUp.find(clientKey) == clientCLookUp.end())
 			clientCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(clientKey, std::vector<int>()));
 
@@ -962,7 +886,7 @@ GNet::Connection* GNet::GServer::setupNewConnection(int max_sock)
 			cConnection->disableEncryption();
 		clientC.push_back(cConnection);
 		clientCLookUp[clientKey].push_back(clientC.size()-1);
-		pthread_mutex_unlock(clientMutex);
+		clientMutex.unlock();
 	
 		return cConnection;
 
@@ -997,7 +921,7 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 
 	shmea::GString serverKey = newServerIP + ":" + newPort;
 	Connection* found = NULL;
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.find(serverKey);
 	if (itr != serverCLookUp.end())
 	{
@@ -1015,12 +939,12 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 			}
 		}
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 	if (found)
 		return found;
 
 	shmea::GString clientKey = newServerIP + ":" + newPort;
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	itr = clientCLookUp.find(clientKey);
 	if (itr != clientCLookUp.end())
 	{
@@ -1037,7 +961,7 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 			}
 		}
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 	if (found)
 		return found;
 
@@ -1047,7 +971,7 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 	// a unique (ip, name) match.
 	Connection* candidate = NULL;
 	unsigned int matches = 0;
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	for (unsigned int i = 0; i < clientC.size(); ++i)
 	{
 		Connection* c = clientC[i];
@@ -1064,7 +988,7 @@ GNet::Connection* GNet::GServer::getConnection(shmea::GString newServerIP, shmea
 		if (matches > 1)
 			break;
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 	if (matches == 1)
 		return candidate;
 
@@ -1075,7 +999,7 @@ GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName
 {
 
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.begin();
 	for(; itr != serverCLookUp.end(); ++itr)
 	{
@@ -1087,15 +1011,15 @@ GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName
 				continue;
 			if(cConnection->getName() == clientName)
 			{
-				pthread_mutex_unlock(serverMutex);
+				serverMutex.unlock();
 				return cConnection;
 			}
 		}
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
 
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	itr = clientCLookUp.begin();
 	for(; itr != clientCLookUp.end(); ++itr)
 	{
@@ -1107,12 +1031,12 @@ GNet::Connection* GNet::GServer::getConnectionFromName(shmea::GString clientName
 				continue;
 			if(cConnection->getName() == clientName)
 			{
-				pthread_mutex_unlock(clientMutex);
+				clientMutex.unlock();
 				return cConnection;
 			}
 		}
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
 	return NULL;
 }
@@ -1129,14 +1053,16 @@ void* GNet::GServer::commandLauncher(void* y)
 void GNet::GServer::commandCatcher(void*)
 {
 	// socket stuff
-	sockfd = -1;
+	sockfd = INVALID_SOCKET_VALUE;
 	int max_sock = 0;
 
 	// dont want to crash unnecassarily
+#ifndef _WIN32
 	signal(SIGPIPE, SIG_IGN);
+#endif
 
 	sockfd = socks->openServerConnection();
-	if (sockfd < 0)
+	if (sockfd == INVALID_SOCKET_VALUE)
 	{
 		if (logger)
 			logger->fatal("SOCKS", "Could not create server socket");
@@ -1149,8 +1075,8 @@ void GNet::GServer::commandCatcher(void*)
 	}
 
 	// Open UDP socket on same port
-	int udpfd = socks->openUDPServerSocket();
-	if (udpfd < 0)
+	socket_t udpfd = socks->openUDPServerSocket();
+	if (udpfd == INVALID_SOCKET_VALUE)
 	{
 		if (logger)
 			logger->warning("SOCKS", "Could not create UDP socket on port " + socks->getPort());
@@ -1183,19 +1109,19 @@ void GNet::GServer::commandCatcher(void*)
 
 		FD_ZERO(&fdarr);
 		FD_SET(sockfd, &fdarr);
-		max_sock = sockfd;
-		if (udpfd >= 0)
+		max_sock = (int)sockfd;
+		if (udpfd != INVALID_SOCKET_VALUE)
 		{
 			FD_SET(udpfd, &fdarr);
-			if (udpfd > max_sock)
-				max_sock = udpfd;
+			if ((int)udpfd > max_sock)
+				max_sock = (int)udpfd;
 		}
 
 		// clientConnections+serverConnections
 		std::vector<Connection*> instanceList;
 
 		// Snapshot client TCP connections under lock (LaunchInstanceHelper and services may touch registries).
-		pthread_mutex_lock(clientMutex);
+		clientMutex.lock();
 		{
 			std::map<shmea::GString, std::vector<int> >::const_iterator itr = clientCLookUp.begin();
 			for(; itr != clientCLookUp.end(); ++itr)
@@ -1211,21 +1137,21 @@ void GNet::GServer::commandCatcher(void*)
 						continue;
 
 					// Valid socket descriptor?
-					if (cConnection->sockfd < 0)
+					if (cConnection->sockfd == INVALID_SOCKET_VALUE)
 						continue;
 
 					instanceList.push_back(cConnection);
 					FD_SET(cConnection->sockfd, &fdarr);
-					if (cConnection->sockfd > max_sock)
-						max_sock = cConnection->sockfd;
+					if ((int)cConnection->sockfd > max_sock)
+						max_sock = (int)cConnection->sockfd;
 				}
 			}
 		}
-		pthread_mutex_unlock(clientMutex);
+		clientMutex.unlock();
 
 
 		// set the max sock from the serverConnections
-		pthread_mutex_lock(serverMutex);
+		serverMutex.lock();
 		{
 			std::map<shmea::GString, std::vector<int> >::const_iterator itr = serverCLookUp.begin();
 			for(; itr != serverCLookUp.end(); ++itr)
@@ -1241,17 +1167,17 @@ void GNet::GServer::commandCatcher(void*)
 						continue;
 
 					// Valid socket descriptor?
-					if (cConnection->sockfd < 0)
+					if (cConnection->sockfd == INVALID_SOCKET_VALUE)
 						continue;
 
 					instanceList.push_back(cConnection);
 					FD_SET(cConnection->sockfd, &fdarr);
-					if (cConnection->sockfd > max_sock)
-						max_sock = cConnection->sockfd;
+					if ((int)cConnection->sockfd > max_sock)
+						max_sock = (int)cConnection->sockfd;
 				}
 			}
 		}
-		pthread_mutex_unlock(serverMutex);
+		serverMutex.unlock();
 
 		// Listen for packets, blocking call
 		int status = select(max_sock + 1, &fdarr, NULL, NULL, &tv);
@@ -1269,7 +1195,7 @@ void GNet::GServer::commandCatcher(void*)
 		bool udpEvent = false;
 		if (isConnection(sockfd, fdarr))
 			cConnection = setupNewConnection(max_sock);
-		else if (udpfd >= 0 && isConnection(udpfd, fdarr))
+		else if (udpfd != INVALID_SOCKET_VALUE && isConnection(udpfd, fdarr))
 			udpEvent = socks->readUDPDatagram(this);
 		else
 			cConnection = findExistingConnection(instanceList, fdarr);
@@ -1319,13 +1245,13 @@ void* GNet::GServer::LaunchInstanceLauncher(void* y)
 	delete x;
 
 	// Signal completion for shutdown safety.
-	if (server && server->launchMutex && server->launchCond)
+	if (server)
 	{
-		pthread_mutex_lock(server->launchMutex);
+		server->launchMutex.lock();
 		if (server->launchInFlight > 0)
 			--server->launchInFlight;
-		pthread_cond_broadcast(server->launchCond);
-		pthread_mutex_unlock(server->launchMutex);
+		server->launchCond.broadcast();
+		server->launchMutex.unlock();
 	}
 	return NULL;
 }
@@ -1337,10 +1263,10 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		return;
 	GServer* serverInstance = x->serverInstance;
 
-	int sockfd2 = serverInstance->socks->openClientConnection(x->serverIP, x->serverPort);
+	socket_t sockfd2 = serverInstance->socks->openClientConnection(x->serverIP, x->serverPort);
 	if (serverInstance->logger)
 		serverInstance->logger->info("SOCKS", "Connecting to " + x->serverIP + ":" + x->serverPort);
-	if (sockfd2 < 0)
+	if (sockfd2 == INVALID_SOCKET_VALUE)
 	{
 		if (serverInstance->logger)
 			serverInstance->logger->error("SOCKS", "Could not create client socket");
@@ -1350,7 +1276,7 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 	// If the server is stopping, don't create/leak a new Connection.
 	if (!serverInstance->getRunning())
 	{
-		close(sockfd2);
+		G_CLOSE_SOCKET(sockfd2);
 		return;
 	}
 
@@ -1361,15 +1287,15 @@ void GNet::GServer::LaunchInstanceHelper(void* y)
 		destination->disableEncryption();
 	
 	shmea::GString serverKey = x->serverIP + ":" + x->serverPort;
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	if(serverCLookUp.find(serverKey) == serverCLookUp.end())
 		serverCLookUp.insert(std::pair<shmea::GString, std::vector<int> >(serverKey, std::vector<int>()));
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	serverC.push_back(destination);
 	serverCLookUp[serverKey].push_back(serverC.size()-1);
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
 	// Start the Login Handshake
 	shmea::GList wData;
@@ -1383,7 +1309,7 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 {
 	//Checks if the serverIP key exists in serverConnections then checks the indexs in the vector serverC
 	shmea::GString serverKey = serverIP + ":" + serverPort;
-	pthread_mutex_lock(serverMutex);
+	serverMutex.lock();
 	bool serverCKeyExists = serverCLookUp.find(serverKey) != serverCLookUp.end();
 	bool serverCIndexExists = false;
 	if(serverCKeyExists)
@@ -1400,7 +1326,7 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 			}
 		}
 	}
-	pthread_mutex_unlock(serverMutex);
+	serverMutex.unlock();
 
 	// login to the server
 	if (!serverCKeyExists || !serverCIndexExists)
@@ -1412,25 +1338,26 @@ void GNet::GServer::LaunchInstance(const shmea::GString& serverIP, const shmea::
 		x->serverPort = serverPort;
 
 		// Launch the Connection with a connection request
-		pthread_t launchInstanceThread;
 		// Track in-flight detached threads so shutdown can wait safely.
-		pthread_mutex_lock(launchMutex);
+		launchMutex.lock();
 		++launchInFlight;
-		pthread_mutex_unlock(launchMutex);
+		launchMutex.unlock();
 
-		int rc = pthread_create(&launchInstanceThread, NULL, LaunchInstanceLauncher, x);
-		if (rc != 0)
+		shmea::GThread* launchInstanceThread = new shmea::GThread();
+		if (!launchInstanceThread->start(LaunchInstanceLauncher, x))
 		{
 			// Roll back bookkeeping on failure.
-			pthread_mutex_lock(launchMutex);
+			delete launchInstanceThread;
+			launchMutex.lock();
 			if (launchInFlight > 0)
 				--launchInFlight;
-			pthread_cond_broadcast(launchCond);
-			pthread_mutex_unlock(launchMutex);
+			launchCond.broadcast();
+			launchMutex.unlock();
 			delete x;
 			return;
 		}
-		pthread_detach(launchInstanceThread);
+		launchInstanceThread->detach();
+		delete launchInstanceThread;
 	}
 }
 
@@ -1438,10 +1365,10 @@ void GNet::GServer::wakeWriter()
 {
 	// Use a protected predicate to avoid missed wakeups:
 	// the writer thread waits while writerWakeups==0.
-	pthread_mutex_lock(writersMutex);
+	writersMutex.lock();
 	++writerWakeups;
-	pthread_cond_signal(writersBlock); // wake the ListWriter thread
-	pthread_mutex_unlock(writersMutex);
+	writersBlock.signal(); // wake the ListWriter thread
+	writersMutex.unlock();
 }
 
 void* GNet::GServer::ListWLauncher(void* y)
@@ -1461,23 +1388,16 @@ void GNet::GServer::ListWriter(void*)
 		// "outbound queue not empty" directly because that predicate is guarded
 		// by `Sockets::outMutex`, not `writersMutex`. This counter prevents
 		// missed signals between "check" and "wait".
-		pthread_mutex_lock(writersMutex);
+		writersMutex.lock();
 		while (writerWakeups == 0 && getRunning())
 		{
-			int waitError = pthread_cond_wait(writersBlock, writersMutex);
-			if (waitError != 0)
-			{
-				// Rare: if wait fails, avoid spinning; just release and try again.
-				if (logger)
-					logger->error("SOCKS", shmea::GString::format("ListWriter Err: %d", waitError));
-				break;
-			}
+			writersBlock.wait(writersMutex);
 		}
 
 		// Consume one wakeup (more may remain queued).
 		if (writerWakeups > 0)
 			--writerWakeups;
-		pthread_mutex_unlock(writersMutex);
+		writersMutex.unlock();
 
 		// Drain one outbound item per wakeup.
 		socks->writeLists(this);
@@ -1496,7 +1416,7 @@ void GNet::GServer::pruneIdleUDPClients()
 
 	std::vector<Connection*> toDelete;
 
-	pthread_mutex_lock(clientMutex);
+	clientMutex.lock();
 	for (unsigned int i = 0; i < clientC.size(); ++i)
 	{
 		Connection* c = clientC[i];
@@ -1534,7 +1454,7 @@ void GNet::GServer::pruneIdleUDPClients()
 		clientC[i] = NULL;
 		toDelete.push_back(c);
 	}
-	pthread_mutex_unlock(clientMutex);
+	clientMutex.unlock();
 
 	for (unsigned int i = 0; i < toDelete.size(); ++i)
 	{

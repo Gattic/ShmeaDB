@@ -21,8 +21,6 @@
 #include "crypt.h"
 #include "main.h"
 #include "service.h"
-#include <errno.h>
-#include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
@@ -37,14 +35,14 @@ namespace {
 static const uint32_t FRAME_HEADER_BYTES = 8;               // [blockSize(4)][padding(4)]
 static const uint32_t MAX_FRAME_BYTES = 256 * 1024 * 1024;  // 256 MB for large gradient buffers (DDP)
 
-static void set_send_timeout(int fd, int seconds, shmea::GPointer<shmea::GLogger> logger, const char* where)
+static void set_send_timeout(socket_t fd, int seconds, shmea::GPointer<shmea::GLogger> logger, const char* where)
 {
-	if (fd < 0)
+	if (fd == INVALID_SOCKET_VALUE)
 		return;
 	struct timeval tv;
 	tv.tv_sec = seconds;
 	tv.tv_usec = 0;
-	if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0)
+	if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, G_SETSOCKOPT_VAL(tv), sizeof(tv)) < 0)
 	{
 		if (logger)
 			logger->warning("SOCKS", shmea::GString::format("setsockopt(SO_SNDTIMEO) failed (%s)", where ? where : "?"));
@@ -67,13 +65,13 @@ static void append_u32_be(shmea::GString& out, uint32_t v)
 	out += shmea::GString((const char*)&be, sizeof(be));
 }
 
-static int write_all(int fd, const char* buf, size_t len)
+static int write_all(socket_t fd, const char* buf, size_t len)
 {
 	size_t written = 0;
 	while (written < len)
 	{
 		// Avoid SIGPIPE on peer disconnect (Linux).
-		ssize_t rc = ::send(fd, buf + written, len - written, MSG_NOSIGNAL);
+		int rc = (int)::send(fd, buf + written, (int)(len - written), G_MSG_NOSIGNAL);
 		if (rc > 0)
 		{
 			written += (size_t)rc;
@@ -83,11 +81,11 @@ static int write_all(int fd, const char* buf, size_t len)
 		if (rc == 0)
 			break;
 
-		if (errno == EINTR)
+		if (G_LAST_SOCK_ERROR() == G_EINTR)
 			continue;
 
 		// For this protocol layer, treat non-blocking "try again" as an error; caller can retry later.
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
+		if (G_LAST_SOCK_ERROR() == G_EWOULDBLOCK)
 			return -1;
 
 		return -1;
@@ -169,12 +167,12 @@ void Sockets::maybeLogMetrics(const char* where)
 
 	unsigned int inSz = 0;
 	unsigned int outSz = 0;
-	pthread_mutex_lock(inMutex);
+	inMutex.lock();
 	inSz = (unsigned int)inboundLists.size();
-	pthread_mutex_unlock(inMutex);
-	pthread_mutex_lock(outMutex);
+	inMutex.unlock();
+	outMutex.lock();
 	outSz = (unsigned int)outboundLists.size();
-	pthread_mutex_unlock(outMutex);
+	outMutex.unlock();
 
 	logger->info("OBS", shmea::GString::format("event=metrics where=%s inbound_q=%u outbound_q=%u",
 		where ? where : "?", inSz, outSz));
@@ -184,16 +182,11 @@ void Sockets::initSockets()
 {
 	//logger->setPrintLevel(shmea::GLogger::LOG_INFO);
 	PORT = "45019";
-	inMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	outMutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-	udpfd = -1;
+	udpfd = INVALID_SOCKET_VALUE;
 	// Basic backpressure caps to prevent unbounded memory growth under load/abuse.
 	// These are global across all connections (queue keys are per-connection).
 	inboundQueueMax = 8192;
 	outboundQueueMax = 8192;
-
-	pthread_mutex_init(inMutex, NULL);
-	pthread_mutex_init(outMutex, NULL);
 }
 
 Sockets::Sockets() : logger(shmea::GPointer<shmea::GLogger>(new shmea::GLogger()))
@@ -208,13 +201,6 @@ Sockets::Sockets(const GServer* serverInstance) : logger(serverInstance->logger)
 
 Sockets::~Sockets()
 {
-	pthread_mutex_destroy(inMutex);
-	if (inMutex)
-		free(inMutex);
-
-	pthread_mutex_destroy(outMutex);
-	if (outMutex)
-		free(outMutex);
 }
 
 const shmea::GString Sockets::getPort()
@@ -227,7 +213,7 @@ void Sockets::setPort(const shmea::GString newPort)
 	PORT = newPort;
 }
 
-int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::GString& serverPort)
+socket_t Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::GString& serverPort)
 {
 	struct addrinfo* result = NULL;
 	struct addrinfo hints;
@@ -239,14 +225,14 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 	if (status != 0 || !result)
 	{
 		logger->error("SOCKS", shmea::GString::format("Get client addr info fail: %s", gai_strerror(status)));
-		return -1;
+		return INVALID_SOCKET_VALUE;
 	}
 
-	int sockfd = -1;
+	socket_t sockfd = INVALID_SOCKET_VALUE;
 	for (struct addrinfo* rp = result; rp != NULL; rp = rp->ai_next)
 	{
 		sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (sockfd < 0)
+		if (sockfd == INVALID_SOCKET_VALUE)
 		{
 			continue;
 		}
@@ -256,30 +242,28 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 		#ifdef (SO_REUSEPORT)
 			sockopts|=SO_REUSEPORT;
 		#endif
-		setsockopt(sockfd, SOL_SOCKET, sockopts, &optval, sizeof(optval));*/
+		setsockopt(sockfd, SOL_SOCKET, sockopts, G_SETSOCKOPT_VAL(optval), sizeof(optval));*/
 
 		int optval = 1;
-		if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0)
+		if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 			logger->warning("SOCKS", "setsockopt(SO_KEEPALIVE) failed (client)");
-		if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval)) < 0)
+		if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 			logger->warning("SOCKS", "setsockopt(TCP_NODELAY) failed (client)");
 		set_send_timeout(sockfd, 3, logger, "client");
 
 		// Use a finite connect timeout so shutdown can't hang indefinitely.
-		int flags = fcntl(sockfd, F_GETFL, 0);
-		if (flags >= 0)
-			(void)fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+		int nb_ok = g_set_nonblocking(sockfd, 1);
 
 		status = connect(sockfd, rp->ai_addr, rp->ai_addrlen);
 		if (status == 0)
 		{
 			// connected immediately
-			if (flags >= 0)
-				(void)fcntl(sockfd, F_SETFL, flags); // restore blocking
+			if (nb_ok == 0) g_set_nonblocking(sockfd, 0);
 			break;
 		}
 
-		if (status < 0 && errno == EINPROGRESS)
+		int connErr = G_LAST_SOCK_ERROR();
+		if (status < 0 && (connErr == G_EINPROGRESS || connErr == G_EWOULDBLOCK))
 		{
 			fd_set wfds;
 			FD_ZERO(&wfds);
@@ -291,23 +275,22 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 			int sel;
 			do {
 				sel = select(sockfd + 1, NULL, &wfds, NULL, &tv);
-			} while (sel < 0 && errno == EINTR);
+			} while (sel < 0 && G_LAST_SOCK_ERROR() == G_EINTR);
 
 			if (sel > 0 && FD_ISSET(sockfd, &wfds))
 			{
 				int soerr = 0;
 				socklen_t slen = sizeof(soerr);
-				if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &soerr, &slen) == 0 && soerr == 0)
+				if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, G_GETSOCKOPT_VAL(soerr), &slen) == 0 && soerr == 0)
 				{
-					if (flags >= 0)
-						(void)fcntl(sockfd, F_SETFL, flags); // restore blocking
+					if (nb_ok == 0) g_set_nonblocking(sockfd, 0);
 					break; // success
 				}
 			}
 		}
 
-		close(sockfd);
-		sockfd = -1;
+		G_CLOSE_SOCKET(sockfd);
+		sockfd = INVALID_SOCKET_VALUE;
 	}
 
 	freeaddrinfo(result);
@@ -315,27 +298,27 @@ int Sockets::openClientConnection(const shmea::GString& serverIP, const shmea::G
 	return sockfd;
 }
 
-int Sockets::openServerConnection()
+socket_t Sockets::openServerConnection()
 {
-	int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sockfd < 0)
+	socket_t sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sockfd == INVALID_SOCKET_VALUE)
 	{
 		logger->error("SOCKS", "Could not open server socket");
-		return -1;
+		return INVALID_SOCKET_VALUE;
 	}
 
 	int optval = 1;
 	// IMPORTANT: setsockopt() takes a single optname at a time.
 	// Some options also require a different protocol level (e.g. TCP_NODELAY).
-	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 		logger->warning("SOCKS", "setsockopt(SO_REUSEADDR) failed");
 #ifdef SO_REUSEPORT
-	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 		logger->warning("SOCKS", "setsockopt(SO_REUSEPORT) failed");
 #endif
-	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0)
+	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 		logger->warning("SOCKS", "setsockopt(SO_KEEPALIVE) failed");
-	if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval)) < 0)
+	if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 		logger->warning("SOCKS", "setsockopt(TCP_NODELAY) failed");
 
 	struct addrinfo* result;
@@ -349,8 +332,8 @@ int Sockets::openServerConnection()
 	if (status != 0 || !result)
 	{
 		logger->error("SOCKS", shmea::GString::format("Get server addr info fail: %s", gai_strerror(status)));
-		close(sockfd);
-		return -1;
+		G_CLOSE_SOCKET(sockfd);
+		return INVALID_SOCKET_VALUE;
 	}
 
 	bool bound = false;
@@ -369,34 +352,34 @@ int Sockets::openServerConnection()
 	if (!bound)
 	{
 		logger->error("SOCKS", "Could not bind server!");
-		close(sockfd);
-		return -1;
+		G_CLOSE_SOCKET(sockfd);
+		return INVALID_SOCKET_VALUE;
 	}
 
 	if (listen(sockfd, 64) < 0)
 	{
 		logger->error("SOCKS", "listen() failed");
-		close(sockfd);
-		return -1;
+		G_CLOSE_SOCKET(sockfd);
+		return INVALID_SOCKET_VALUE;
 	}
 
 	return sockfd;
 }
 
-int Sockets::openUDPServerSocket()
+socket_t Sockets::openUDPServerSocket()
 {
-	int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (s < 0)
+	socket_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s == INVALID_SOCKET_VALUE)
 	{
 		logger->error("SOCKS", "Could not open UDP socket");
-		return -1;
+		return INVALID_SOCKET_VALUE;
 	}
 
 	int optval = 1;
-	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 		logger->warning("SOCKS", "setsockopt(SO_REUSEADDR) failed (UDP)");
 #ifdef SO_REUSEPORT
-	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, G_SETSOCKOPT_VAL(optval), sizeof(optval)) < 0)
 		logger->warning("SOCKS", "setsockopt(SO_REUSEPORT) failed (UDP)");
 #endif
 
@@ -411,8 +394,8 @@ int Sockets::openUDPServerSocket()
 	if (status != 0 || !result)
 	{
 		logger->error("SOCKS", shmea::GString::format("Get UDP addr info fail: %s", gai_strerror(status)));
-		close(s);
-		return -1;
+		G_CLOSE_SOCKET(s);
+		return INVALID_SOCKET_VALUE;
 	}
 
 	bool bound = false;
@@ -429,15 +412,15 @@ int Sockets::openUDPServerSocket()
 	if (!bound)
 	{
 		logger->error("SOCKS", "Could not bind UDP socket");
-		close(s);
-		return -1;
+		G_CLOSE_SOCKET(s);
+		return INVALID_SOCKET_VALUE;
 	}
 
 	udpfd = s;
 	return s;
 }
 
-void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<shmea::GPointer<shmea::ServiceData> >& srvcList)
+void Sockets::readConnection(Connection* origin, const socket_t& sockfd, std::vector<shmea::GPointer<shmea::ServiceData> >& srvcList)
 {
 	readConnectionHelper(origin, sockfd, srvcList);
 
@@ -452,7 +435,7 @@ void Sockets::readConnection(Connection* origin, const int& sockfd, std::vector<
 	}*/
 }
 
-int Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::vector<shmea::GPointer<shmea::ServiceData> >& srvcList)
+int Sockets::readConnectionHelper(Connection* origin, const socket_t& sockfd, std::vector<shmea::GPointer<shmea::ServiceData> >& srvcList)
 {
 	if (origin == NULL)
 		return -2;
@@ -465,10 +448,13 @@ int Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::ve
 	char buffer[4096];
 	bool readAny = false;
 	bool peerClosed = false;
+#ifdef _WIN32
+	g_set_nonblocking(sockfd, 1);
+#endif
 	for (;;)
 	{
 		// Never block inside the protocol parser; drain what is available.
-		ssize_t bytesRead = ::recv(sockfd, buffer, sizeof(buffer), MSG_DONTWAIT);
+		int bytesRead = (int)::recv(sockfd, buffer, sizeof(buffer), G_MSG_DONTWAIT);
 		if (bytesRead > 0)
 		{
 			readAny = true;
@@ -483,16 +469,22 @@ int Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::ve
 		}
 
 		// bytesRead < 0
-		if (errno == EINTR)
+		if (G_LAST_SOCK_ERROR() == G_EINTR)
 			continue;
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
+		if (G_LAST_SOCK_ERROR() == G_EWOULDBLOCK)
 			break;
 
 		// Preserve existing overflow on permanent errors
 		origin->overflow = raw;
+#ifdef _WIN32
+		g_set_nonblocking(sockfd, 0);
+#endif
 		logger->error("SOCKS", "[READER] recv() failed");
 		return -2;
 	}
+#ifdef _WIN32
+	g_set_nonblocking(sockfd, 0);
+#endif
 
 	bool parsedAny = false;
 	while ((uint32_t)raw.length() >= FRAME_HEADER_BYTES)
@@ -570,7 +562,7 @@ int Sockets::readConnectionHelper(Connection* origin, const int& sockfd, std::ve
 	return 1;
 }
 
-int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, shmea::ServiceData* cData)
+int Sockets::writeConnection(const Connection* cConnection, const socket_t& sockfd, shmea::ServiceData* cData)
 {
 	int64_t key = DEFAULT_KEY;
 
@@ -651,7 +643,7 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(atoi(cConnection->getPort().c_str()));
 		inet_pton(AF_INET, cConnection->getIP().c_str(), &addr.sin_addr);
-		int sent = sendto(sockfd, frame.c_str(), frame.length(), 0, (struct sockaddr*)&addr, sizeof(addr));
+		int sent = (int)sendto(sockfd, frame.c_str(), frame.length(), 0, (struct sockaddr*)&addr, sizeof(addr));
 		if (sent >= 0)
 		{
 			if ((unsigned int)sent == frame.length())
@@ -687,18 +679,18 @@ int Sockets::writeConnection(const Connection* cConnection, const int& sockfd, s
 	return (int)writeLen;
 }
 
-void Sockets::closeConnection(const int& sockfd)
+void Sockets::closeConnection(const socket_t& sockfd)
 {
-	close(sockfd);
+	G_CLOSE_SOCKET(sockfd);
 }
 
 void Sockets::closeSockets()
 {
 	// Only close the shared UDP socket here. TCP sockets are owned by Connection::finish().
-	if (udpfd >= 0)
+	if (udpfd != INVALID_SOCKET_VALUE)
 	{
-		close(udpfd);
-		udpfd = -1;
+		G_CLOSE_SOCKET(udpfd);
+		udpfd = INVALID_SOCKET_VALUE;
 	}
 }
 
@@ -743,11 +735,11 @@ bool Sockets::readLists(Connection* origin)
 		/*if (version != clientVersion)
 			return false;*/
 
-		pthread_mutex_lock(inMutex);
+		inMutex.lock();
 		if (inboundLists.size() >= (size_t)inboundQueueMax)
 		{
 			size_t qsz = inboundLists.size();
-			pthread_mutex_unlock(inMutex);
+			inMutex.unlock();
 			if (logger)
 				logger->warning(
 					"OBS",
@@ -779,7 +771,7 @@ bool Sockets::readLists(Connection* origin)
 			}
 		}
 
-		pthread_mutex_unlock(inMutex);
+		inMutex.unlock();
 	}
 	maybeLogMetrics("readLists");
 	return true;
@@ -787,7 +779,7 @@ bool Sockets::readLists(Connection* origin)
 
 bool Sockets::readUDPDatagram(GServer* serverInstance)
 {
-	if (udpfd < 0)
+	if (udpfd == INVALID_SOCKET_VALUE)
 		return false;
 
 	char buffer[4096];
@@ -810,7 +802,7 @@ bool Sockets::readUDPDatagram(GServer* serverInstance)
 	Connection* tempConn = NULL;
 	const shmea::GString peerKey = ip + ":" + port;
 
-	pthread_mutex_lock(serverInstance->clientMutex);
+	serverInstance->clientMutex.lock();
 	{
 		std::map<shmea::GString, std::vector<int> >::iterator itr = serverInstance->clientCLookUp.find(peerKey);
 		if (itr != serverInstance->clientCLookUp.end())
@@ -850,7 +842,7 @@ bool Sockets::readUDPDatagram(GServer* serverInstance)
 		if (tempConn)
 			tempConn->noteSeen();
 	}
-	pthread_mutex_unlock(serverInstance->clientMutex);
+	serverInstance->clientMutex.unlock();
 
 	// UDP datagram carries already network-order encapsulated frame per existing protocol
 	std::vector<shmea::GPointer<shmea::ServiceData> > srvcList;
@@ -928,11 +920,11 @@ bool Sockets::readUDPDatagram(GServer* serverInstance)
 	{
 		if (logger && srvcList[i])
 			logger->debug("OBS", "event=recv_service " + obs_sd_kv(srvcList[i].get()) + " " + obs_conn_kv(tempConn));
-		pthread_mutex_lock(inMutex);
+		inMutex.lock();
 		if (inboundLists.size() >= (size_t)inboundQueueMax)
 		{
 			size_t qsz = inboundLists.size();
-			pthread_mutex_unlock(inMutex);
+			inMutex.unlock();
 			if (logger)
 				logger->warning(
 					"OBS",
@@ -961,7 +953,7 @@ bool Sockets::readUDPDatagram(GServer* serverInstance)
 						obs_conn_kv(tempConn));
 			}
 		}
-		pthread_mutex_unlock(inMutex);
+		inMutex.unlock();
 	}
 
 	maybeLogMetrics("readUDPDatagram");
@@ -977,15 +969,15 @@ void Sockets::processLists(GServer* serverInstance)
 {
 	for (;;)
 	{
-		pthread_mutex_lock(inMutex);
+		inMutex.lock();
 		if (inboundLists.empty())
 		{
-			pthread_mutex_unlock(inMutex);
+			inMutex.unlock();
 			break;
 		}
 		shmea::GPointer<shmea::ServiceData> nextSD = (*inboundLists.begin()).second;
 		inboundLists.erase(inboundLists.begin());
-		pthread_mutex_unlock(inMutex);
+		inMutex.unlock();
 		if (logger && nextSD)
 			logger->debug("OBS", "event=dispatch_service " + obs_sd_kv(nextSD.get()) + " " + obs_conn_kv(nextSD->getConnection()));
 		if (serverInstance)
@@ -1004,15 +996,15 @@ void Sockets::writeLists(GServer* serverInstance)
 	if (!serverInstance)
 		return;
 
-	pthread_mutex_lock(outMutex);
+	outMutex.lock();
 	if (outboundLists.empty())
 	{
-		pthread_mutex_unlock(outMutex);
+		outMutex.unlock();
 		return;
 	}
 	shmea::GPointer<shmea::ServiceData> nextOutbound = (*outboundLists.begin()).second;
 	outboundLists.erase(outboundLists.begin());
-	pthread_mutex_unlock(outMutex);
+	outMutex.unlock();
 
 	if (logger && nextOutbound)
 		logger->debug("OBS", "event=dequeue_send " + obs_sd_kv(nextOutbound.get()) + " " + obs_conn_kv(nextOutbound->getConnection()));
@@ -1027,9 +1019,9 @@ void Sockets::writeLists(GServer* serverInstance)
  */
 bool Sockets::anyInboundLists()
 {
-	pthread_mutex_lock(inMutex);
+	inMutex.lock();
 	bool any = !inboundLists.empty();
-	pthread_mutex_unlock(inMutex);
+	inMutex.unlock();
 	return any;
 }
 
@@ -1040,9 +1032,9 @@ bool Sockets::anyInboundLists()
  */
 bool Sockets::anyOutboundLists()
 {
-	pthread_mutex_lock(outMutex);
+	outMutex.lock();
 	bool any = !outboundLists.empty();
-	pthread_mutex_unlock(outMutex);
+	outMutex.unlock();
 	return any;
 }
 void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, shmea::GPointer<shmea::ServiceData> cData)
@@ -1053,11 +1045,11 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, 
 	if (!cData)
 		return;
 
-	pthread_mutex_lock(outMutex);
+	outMutex.lock();
 	if (outboundLists.size() >= (size_t)outboundQueueMax)
 	{
 		size_t qsz = outboundLists.size();
-		pthread_mutex_unlock(outMutex);
+		outMutex.unlock();
 		if (logger)
 			logger->warning(
 				"OBS",
@@ -1093,7 +1085,7 @@ void Sockets::addResponseList(GServer* serverInstance, Connection* cConnection, 
 					obs_conn_kv(cConnection));
 		}
 	}
-	pthread_mutex_unlock(outMutex);
+	outMutex.unlock();
 
 	if (logger)
 		logger->debug("OBS", "event=enqueue_send " + obs_sd_kv(cData.get()) + " " + obs_conn_kv(cConnection));
@@ -1111,7 +1103,7 @@ void Sockets::purgeConnection(Connection* c)
 		return;
 
 	// Remove queued inbound messages for this connection.
-	pthread_mutex_lock(inMutex);
+	inMutex.lock();
 	for (std::map<Sockets::QueueKey, shmea::GPointer<shmea::ServiceData>, Sockets::QueueKeyLess>::iterator it = inboundLists.begin();
 		 it != inboundLists.end();)
 	{
@@ -1120,10 +1112,10 @@ void Sockets::purgeConnection(Connection* c)
 		else
 			++it;
 	}
-	pthread_mutex_unlock(inMutex);
+	inMutex.unlock();
 
 	// Remove queued outbound messages and release pending-send bookkeeping for each dropped message.
-	pthread_mutex_lock(outMutex);
+	outMutex.lock();
 	for (std::map<Sockets::QueueKey, shmea::GPointer<shmea::ServiceData>, Sockets::QueueKeyLess>::iterator it = outboundLists.begin();
 		 it != outboundLists.end();)
 	{
@@ -1138,7 +1130,7 @@ void Sockets::purgeConnection(Connection* c)
 			++it;
 		}
 	}
-	pthread_mutex_unlock(outMutex);
+	outMutex.unlock();
 
 	if (logger)
 		logger->info("OBS", "event=purge_queues " + obs_conn_kv(c));

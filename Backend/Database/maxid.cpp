@@ -117,13 +117,13 @@ void MaxID::parseMaxIDFile(const GString& name, char* fileContents, int64_t fSiz
 		{
 			// get the line contents
 			char* line = (char*)malloc(sizeof(char) * (len + 1)); //+1 because of indexing
-			bzero(line, len + 1);								  //+1 because of indexing
+			memset(line, 0, len + 1);								  //+1 because of indexing
 			memcpy(line, fileContents, len);
 
 			int nl = (len == fSize) ? 0 : 1; // no nl if its the last line
 			fSize -= len + nl;
 			memcpy(fileContents, &fileContents[len + nl], fSize);
-			bzero(&fileContents[fSize], len);
+			memset(&fileContents[fSize], 0, len);
 
 			// set the new max id
 			newMaxID = atoll(line);

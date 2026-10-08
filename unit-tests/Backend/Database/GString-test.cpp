@@ -31,7 +31,7 @@ void GStringUnitTest()
 
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str < str3);
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str2 < str3);
-	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str_c < str3);
+	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str3 > str_c);
 
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= "Test123!");
 	G_assert (__FILE__, __LINE__, "==============GString Failed==============", str <= str2);

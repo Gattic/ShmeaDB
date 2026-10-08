@@ -11,7 +11,7 @@
 #include "../../../Backend/Database/ServiceData.h"
 #include "../../../Backend/Networking/connection.h"
 
-#include <pthread.h>
+#include "Backend/Core/GThread.h"
 #include <algorithm>
 #include <vector>
 
@@ -61,7 +61,7 @@ static void ServiceData_AssignIds_Concurrency_Unique()
 	const int kThreads = 8;
 	const int kIters = 200;
 
-	pthread_t tids[kThreads];
+	shmea::GThread tids[kThreads];
 	AssignIdsArgs args[kThreads];
 	std::vector<int64_t> svcPerThread[kThreads];
 	std::vector<int64_t> respPerThread[kThreads];
@@ -73,13 +73,12 @@ static void ServiceData_AssignIds_Concurrency_Unique()
 		args[t].iters = kIters;
 		args[t].svc = &svcPerThread[t];
 		args[t].resp = &respPerThread[t];
-		int rc = pthread_create(&tids[t], NULL, AssignIdsThread, &args[t]);
-		ASSERT("pthread_create failed", rc == 0);
+		tids[t].start(AssignIdsThread, &args[t]);
 	}
 
 	for (int t = 0; t < kThreads; ++t)
 	{
-		pthread_join(tids[t], NULL);
+		tids[t].join();
 	}
 
 	std::vector<int64_t> allSvc;

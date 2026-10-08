@@ -15,13 +15,9 @@
 #include "../../../Backend/Networking/connection.h"
 #include "../../../Backend/Networking/socket.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "../../../Backend/Core/platform.h"
 
 namespace {
 static const uint32_t FRAME_HEADER_BYTES = 8;               // [blockSize(4)][padding(4)]
@@ -49,12 +45,12 @@ struct PRNG
 	}
 };
 
-static bool write_all_bytes(int fd, const char* buf, size_t len)
+static bool write_all_bytes(socket_t fd, const char* buf, size_t len)
 {
 	size_t off = 0;
 	while (off < len)
 	{
-		ssize_t rc = ::send(fd, buf + off, len - off, MSG_NOSIGNAL);
+		int rc = (int)::send(fd, buf + off, len - off, G_MSG_NOSIGNAL);
 		if (rc > 0)
 		{
 			off += (size_t)rc;
@@ -62,7 +58,7 @@ static bool write_all_bytes(int fd, const char* buf, size_t len)
 		}
 		if (rc == 0)
 			return false;
-		if (errno == EINTR)
+		if (G_LAST_SOCK_ERROR() == G_EINTR)
 			continue;
 		return false;
 	}
@@ -116,8 +112,8 @@ static shmea::GString build_serialized_service(
 
 static void parse_from_socketpair(const shmea::GString& bytes, std::vector< shmea::GPointer<shmea::ServiceData> >& out)
 {
-	int fds[2];
-	int rc = ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+	socket_t fds[2];
+	int rc = g_socketpair(fds);
 	ASSERT("socketpair() failed", rc == 0);
 
 	// Reader side parses using Sockets::readConnectionHelper()
@@ -133,8 +129,8 @@ static void parse_from_socketpair(const shmea::GString& bytes, std::vector< shme
 	GNet::Sockets socks;
 	(void)socks.readConnectionHelper(&origin, origin.sockfd, out);
 
-	::close(fds[0]);
-	::close(fds[1]);
+	G_CLOSE_SOCKET(fds[0]);
+	G_CLOSE_SOCKET(fds[1]);
 }
 
 static void Protocol_Frame_RoundTrip_Single()
@@ -200,8 +196,8 @@ static void Protocol_Frame_PartialDelivery()
 		"UTSID0000000", 55, 56, shmea::ServiceData::TYPE_ACK, "PART", "SK", args, NULL);
 	shmea::GString frame = build_frame(payload, 0);
 
-	int fds[2];
-	int rc = ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+	socket_t fds[2];
+	int rc = g_socketpair(fds);
 	ASSERT("socketpair() failed", rc == 0);
 
 	GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local");
@@ -228,8 +224,8 @@ static void Protocol_Frame_PartialDelivery()
 	ASSERT("Complete frame should decode exactly one", out.size() == 1);
 	ASSERT("Decoded command mismatch after partial delivery", out[0] && out[0]->getCommand() == "PART");
 
-	::close(fds[0]);
-	::close(fds[1]);
+	G_CLOSE_SOCKET(fds[0]);
+	G_CLOSE_SOCKET(fds[1]);
 }
 
 static void Protocol_Frame_InvalidBlockSize_DoesNotCrash()
@@ -257,8 +253,8 @@ static void Protocol_Fuzz_RandomBytes_NoCrash()
 	PRNG rng(0xC0FFEEu);
 	for (int i = 0; i < 250; ++i)
 	{
-		int fds[2];
-		int rc = ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+		socket_t fds[2];
+		int rc = g_socketpair(fds);
 		ASSERT("socketpair() failed", rc == 0);
 
 		GNet::Connection origin(fds[1], GNet::Connection::SERVER_TYPE, "local");
@@ -293,8 +289,8 @@ static void Protocol_Fuzz_RandomBytes_NoCrash()
 		std::vector< shmea::GPointer<shmea::ServiceData> > out;
 		socks.readConnectionHelper(&origin, origin.sockfd, out);
 
-		::close(fds[0]);
-		::close(fds[1]);
+		G_CLOSE_SOCKET(fds[0]);
+		G_CLOSE_SOCKET(fds[1]);
 	}
 
 	// If we reached here, we didn't crash.

@@ -1037,7 +1037,7 @@ void GTable::save(const GString& fname) const
 				}
 				case GType::LONG_TYPE: {
 					int64_t word = getCell(r, c).getLong();
-					fprintf(fd, "%ld", word);
+					fprintf(fd, "%lld", (long long)word);
 					break;
 				}
 				case GType::FLOAT_TYPE: {

@@ -17,20 +17,16 @@
 // Strengthened UDP loopback test:
 // Start server locally, send a framed Handshake_Server over UDP, and assert we receive a framed Handshake_Client reply.
 
-#include <arpa/inet.h>
 #include <errno.h>
-#include <netinet/in.h>
 #include <stdint.h>
 #include <string>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+#include "../../../Backend/Core/platform.h"
 
 // Basic UDP loopback test: start server locally, send a Handshake_Server over UDP and expect Handshake_Client response
 
 static void sleep_ms(int ms)
 {
-	usleep(ms * 1000);
+	g_sleep_ms(ms);
 }
 
 static uint32_t read_u32_be(const char* p)
@@ -67,8 +63,8 @@ void UDPUnitTest()
 	sleep_ms(50);
 
 	// Create a UDP client socket bound to localhost:ephemeral
-	int cfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	ASSERT("socket(AF_INET,SOCK_DGRAM) failed", cfd >= 0);
+	socket_t cfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	ASSERT("socket(AF_INET,SOCK_DGRAM) failed", cfd != INVALID_SOCKET_VALUE);
 
 	struct sockaddr_in caddr;
 	memset(&caddr, 0, sizeof(caddr));
@@ -92,8 +88,8 @@ void UDPUnitTest()
 	saddr.sin_port = htons(atoi(server.getPort().c_str()));
 	inet_pton(AF_INET, "127.0.0.1", &saddr.sin_addr);
 
-	ssize_t sent = sendto(cfd, frame.c_str(), frame.length(), 0, (struct sockaddr*)&saddr, sizeof(saddr));
-	ASSERT("sendto failed", sent == (ssize_t)frame.length());
+	int sent = (int)sendto(cfd, frame.c_str(), frame.length(), 0, (struct sockaddr*)&saddr, sizeof(saddr));
+	ASSERT("sendto failed", sent == (int)frame.length());
 
 	// Wait up to 1s for a response datagram
 	fd_set rfds;
@@ -102,7 +98,7 @@ void UDPUnitTest()
 	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
-	int sel = select(cfd + 1, &rfds, NULL, NULL, &tv);
+	int sel = select((int)(cfd + 1), &rfds, NULL, NULL, &tv);
 	ASSERT("select() should indicate readable", sel == 1);
 
 	char buf[4096];
@@ -131,7 +127,7 @@ void UDPUnitTest()
 	int64_t k = resp.getList().getLong(1);
 	ASSERT("Response key is within 6-digit range", (k >= 0) && (k <= 999999));
 
-	close(cfd);
+	G_CLOSE_SOCKET(cfd);
 
 	server.stop();
 }
